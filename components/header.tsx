@@ -31,8 +31,8 @@ export function Header() {
             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#00d4ff]/20 to-[#e91e8c]/20 opacity-0 group-hover:opacity-100 transition-opacity" />
           </motion.div>
           <div className="flex flex-col">
-            <span className="text-xl font-bold text-white flex items-center gap-2">
-              ChapCam
+            <span className="text-xl font-bold flex items-center gap-2">
+              <span className="bg-gradient-to-r from-[#8b5cf6] via-[#00d4ff] via-[#22c55e] to-[#f97316] bg-clip-text text-transparent">ChapCam</span>
               <svg width="20" height="14" viewBox="0 0 20 14" fill="none" className="text-[#00d4ff]">
                 <rect x="1" y="2" width="14" height="10" rx="2" stroke="currentColor" strokeWidth="1.5"/>
                 <path d="M15 5L19 3V11L15 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
