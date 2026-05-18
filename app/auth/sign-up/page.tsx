@@ -24,35 +24,44 @@ export default function SignUpPage() {
 
     try {
       const supabase = createClient()
-      console.log("[v0] Starting sign up for:", email)
       
-      const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo:
-          process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ??
-          `${window.location.origin}/auth/callback`,
-        data: {
-          full_name: fullName,
+      // Sign up the user
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            full_name: fullName,
+          },
         },
-      },
-    })
+      })
 
-    if (error) {
-      console.log("[v0] Sign up error:", error.message)
-      setError(error.message)
+      if (signUpError) {
+        setError(signUpError.message)
+        setLoading(false)
+        return
+      }
+
+      // If sign up successful, sign in immediately
+      if (data.user) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+
+        if (signInError) {
+          // User created but needs email confirmation
+          window.location.href = "/auth/sign-up-success"
+        } else {
+          // Redirect to dashboard
+          window.location.href = "/dashboard"
+        }
+      }
+    } catch (err) {
+      setError("Une erreur est survenue. Veuillez reessayer.")
       setLoading(false)
-    } else {
-      console.log("[v0] Sign up success, redirecting...")
-      window.location.href = "/auth/sign-up-success"
     }
-  } catch (err) {
-    console.log("[v0] Unexpected error:", err)
-    setError("Une erreur est survenue. Veuillez reessayer.")
-    setLoading(false)
   }
-}
 
   return (
     <div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center p-4 relative overflow-hidden">
@@ -128,7 +137,7 @@ export default function SignUpPage() {
                 <Input
                   id="password"
                   type="password"
-                  placeholder="••••••••"
+                  placeholder="********"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
