@@ -76,7 +76,7 @@ export function HeroSection() {
             Transforme instantanement ton apparence pendant tes streams, appels WhatsApp, Telegram, Zoom, Teams et autres plateformes video.
           </p>
 
-          {/* Premium CTA Button */}
+          {/* Premium CTA Button - Blue Electric */}
           <motion.div
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -84,14 +84,14 @@ export function HeroSection() {
           >
             {/* Animated glow */}
             <motion.div 
-              className="absolute inset-0 bg-gradient-to-r from-[#8b5cf6] via-[#e91e8c] to-[#00d4ff] rounded-full blur-xl opacity-60"
+              className="absolute inset-0 bg-gradient-to-r from-[#0066ff] via-[#00d4ff] to-[#00ffaa] rounded-full blur-xl opacity-60"
               animate={{ 
                 scale: [1, 1.1, 1],
                 opacity: [0.5, 0.8, 0.5]
               }}
               transition={{ duration: 2, repeat: Infinity }}
             />
-            <Button className="relative bg-gradient-to-r from-[#8b5cf6] via-[#e91e8c] to-[#00d4ff] text-white border-0 px-8 py-7 rounded-full font-bold text-lg transition-all flex items-center gap-3 group-hover:shadow-[0_0_40px_rgba(139,92,246,0.5)]">
+            <Button className="relative bg-gradient-to-r from-[#0066ff] via-[#00a8ff] to-[#00d4ff] text-white border-0 px-8 py-7 rounded-full font-bold text-lg transition-all flex items-center gap-3 group-hover:shadow-[0_0_40px_rgba(0,168,255,0.6)]">
               Commencer maintenant
               <motion.div
                 animate={{ x: [0, 5, 0] }}
