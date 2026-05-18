@@ -22,8 +22,11 @@ export default function SignUpPage() {
     setLoading(true)
     setError(null)
 
-    const supabase = createClient()
-    const { error } = await supabase.auth.signUp({
+    try {
+      const supabase = createClient()
+      console.log("[v0] Starting sign up for:", email)
+      
+      const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -37,12 +40,19 @@ export default function SignUpPage() {
     })
 
     if (error) {
+      console.log("[v0] Sign up error:", error.message)
       setError(error.message)
       setLoading(false)
     } else {
+      console.log("[v0] Sign up success, redirecting...")
       window.location.href = "/auth/sign-up-success"
     }
+  } catch (err) {
+    console.log("[v0] Unexpected error:", err)
+    setError("Une erreur est survenue. Veuillez reessayer.")
+    setLoading(false)
   }
+}
 
   return (
     <div className="min-h-screen bg-[#0a0e1a] flex items-center justify-center p-4 relative overflow-hidden">
