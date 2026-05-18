@@ -219,31 +219,32 @@ export function HowItWorksSection() {
                   transition={{ duration: 0.6, delay: 0.6 }}
                   className="lg:pl-8 lg:border-l border-white/10"
                 >
-                  <h4 className="text-white/60 text-sm font-medium mb-6 text-center lg:text-left">Compatible avec</h4>
-                  <div className="grid grid-cols-4 gap-4">
-                    {platforms.map((platform, i) => (
-                      <motion.div
-                        key={platform.name}
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        whileInView={{ opacity: 1, scale: 1 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.8 + i * 0.1 }}
-                        whileHover={{ 
-                          scale: 1.15, 
-                          y: -5,
-                          boxShadow: `0 0 25px ${platform.color}60`
-                        }}
-                        className="flex flex-col items-center gap-2 cursor-pointer"
-                      >
-                        <div 
-                          className="w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300 border border-white/10 hover:border-white/30"
-                          style={{ backgroundColor: `${platform.color}20`, color: platform.color }}
+                  <h4 className="text-gray-600 text-sm font-medium mb-6 text-center lg:text-left">Compatible avec</h4>
+                  <div className="bg-white rounded-2xl p-6 shadow-lg shadow-white/10">
+                    <div className="grid grid-cols-4 gap-4">
+                      {platforms.map((platform, i) => (
+                        <motion.div
+                          key={platform.name}
+                          initial={{ opacity: 0, scale: 0.5 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          viewport={{ once: true }}
+                          transition={{ delay: 0.8 + i * 0.1 }}
+                          whileHover={{ 
+                            scale: 1.15, 
+                            y: -5,
+                          }}
+                          className="flex flex-col items-center gap-2 cursor-pointer"
                         >
-                          {platform.icon}
-                        </div>
-                        <span className="text-gray-400 text-[10px] font-medium">{platform.name}</span>
-                      </motion.div>
-                    ))}
+                          <div 
+                            className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300"
+                            style={{ color: platform.color }}
+                          >
+                            {platform.icon}
+                          </div>
+                          <span className="text-gray-600 text-[10px] font-medium">{platform.name}</span>
+                        </motion.div>
+                      ))}
+                    </div>
                   </div>
                 </motion.div>
               </div>
