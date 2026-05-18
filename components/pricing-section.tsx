@@ -15,8 +15,8 @@ const plans = [
       "Qualite HD 1080p"
     ],
     validity: "Valable 24 heures",
-    color: "#f97316",
-    bgGradient: "from-orange-500/20 to-orange-600/5",
+    color: "#00d4ff",
+    bgGradient: "from-cyan-500/20 to-blue-600/5",
     popular: false,
     icon: Zap
   },

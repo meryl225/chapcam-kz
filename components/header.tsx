@@ -71,15 +71,15 @@ export function Header() {
             </Button>
           </motion.div>
           
-          {/* S'inscrire - Neon Green */}
+          {/* S'inscrire - Violet */}
           <motion.div
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             className="relative"
           >
-            <div className="absolute inset-0 bg-[#22c55e] rounded-full blur-lg opacity-50 animate-pulse" />
+            <div className="absolute inset-0 bg-[#8b5cf6] rounded-full blur-lg opacity-50 animate-pulse" />
             <Button 
-              className="relative bg-[#22c55e] hover:bg-[#16a34a] text-white border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_25px_rgba(34,197,94,0.5)]"
+              className="relative bg-[#8b5cf6] hover:bg-[#7c3aed] text-white border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_25px_rgba(139,92,246,0.5)]"
             >
               {"S'inscrire"}
             </Button>
