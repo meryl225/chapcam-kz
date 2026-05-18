@@ -72,32 +72,36 @@ export function Header() {
           </motion.div>
           
           {/* S'inscrire - Violet */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="relative"
-          >
-            <div className="absolute inset-0 bg-[#8b5cf6] rounded-full blur-lg opacity-50 animate-pulse" />
-            <Button 
-              className="relative bg-[#8b5cf6] hover:bg-[#7c3aed] text-white border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_25px_rgba(139,92,246,0.5)]"
+          <Link href="/auth/sign-up">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative"
             >
-              {"S'inscrire"}
-            </Button>
-          </motion.div>
+              <div className="absolute inset-0 bg-[#8b5cf6] rounded-full blur-lg opacity-50 animate-pulse" />
+              <Button 
+                className="relative bg-[#8b5cf6] hover:bg-[#7c3aed] text-white border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_25px_rgba(139,92,246,0.5)]"
+              >
+                {"S'inscrire"}
+              </Button>
+            </motion.div>
+          </Link>
           
           {/* Connexion - Electric Blue */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="relative"
-          >
-            <div className="absolute inset-0 bg-[#00d4ff] rounded-full blur-lg opacity-30" />
-            <Button 
-              className="relative bg-[#00d4ff] hover:bg-[#00b8e6] text-[#0a0e1a] border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_20px_rgba(0,212,255,0.4)]"
+          <Link href="/auth/login">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative"
             >
-              Connexion
-            </Button>
-          </motion.div>
+              <div className="absolute inset-0 bg-[#00d4ff] rounded-full blur-lg opacity-30" />
+              <Button 
+                className="relative bg-[#00d4ff] hover:bg-[#00b8e6] text-[#0a0e1a] border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_20px_rgba(0,212,255,0.4)]"
+              >
+                Connexion
+              </Button>
+            </motion.div>
+          </Link>
         </div>
       </div>
     </motion.header>
