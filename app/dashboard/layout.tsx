@@ -82,22 +82,6 @@ export default async function DashboardLayout({
         </div>
       </main>
 
-      {/* Custom Dashboard Scrollbar */}
-      <style jsx global>{`
-        ::-webkit-scrollbar {
-          width: 4px;
-        }
-        ::-webkit-scrollbar-track {
-          background: #0a0a0a;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: #00ff88;
-          border-radius: 2px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: #00cc6a;
-        }
-      `}</style>
     </div>
   )
 }
