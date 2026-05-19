@@ -11,18 +11,9 @@ export default async function DashboardPage() {
     redirect("/auth/login")
   }
 
-  // Get active subscription
-  const { data: subscription } = await supabase
-    .from("subscriptions")
-    .select("*")
-    .eq("user_id", user.id)
-    .single()
-
-  const currentPlan = subscription?.plan || "free"
-  const isExpired = subscription?.expires_at 
-    ? new Date(subscription.expires_at) < new Date() 
-    : true
-  const isActive = subscription?.is_active && !isExpired
+  // Simple version - later add subscription queries
+  const isActive = false
+  const currentPlan = "free"
 
   return <LiveSwapClient isActive={isActive} currentPlan={currentPlan} />
 }
