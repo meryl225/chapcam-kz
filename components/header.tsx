@@ -59,17 +59,27 @@ export function Header() {
         {/* CTA Buttons */}
         <div className="flex items-center gap-3">
           {/* WhatsApp Button */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Button 
-              className="hidden lg:flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] text-white border-0 px-5 py-2 rounded-full font-medium transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:shadow-[0_0_30px_rgba(34,197,94,0.6)]"
+          <a href="https://wa.me/225055560189" target="_blank" rel="noopener noreferrer">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative group"
             >
-              <MessageCircle className="w-4 h-4" />
-              WhatsApp
-            </Button>
-          </motion.div>
+              <motion.div 
+                className="absolute inset-0 bg-[#22c55e] rounded-full blur-lg opacity-0 group-hover:opacity-60"
+                animate={{ 
+                  scale: [1, 1.1, 1],
+                }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              />
+              <Button 
+                className="relative hidden lg:flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] text-white border-0 px-5 py-2 rounded-full font-medium transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:shadow-[0_0_40px_rgba(34,197,94,0.7)]"
+              >
+                <MessageCircle className="w-4 h-4" />
+                WhatsApp
+              </Button>
+            </motion.div>
+          </a>
           
           {/* S'inscrire - Violet */}
           <Link href="/auth/sign-up">

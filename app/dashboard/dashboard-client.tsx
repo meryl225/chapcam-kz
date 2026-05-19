@@ -200,8 +200,8 @@ export default function DashboardClient({ user, profile, subscription }: Dashboa
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">Support</h3>
               <p className="text-gray-400 text-sm mb-4">Besoin d&apos;aide? Contacte-nous</p>
-              <a href="https://wa.me/1234567890" target="_blank" rel="noopener noreferrer">
-                <Button className="w-full bg-[#25D366] hover:bg-[#1da851] text-white">
+              <a href="https://wa.me/225055560189" target="_blank" rel="noopener noreferrer">
+                <Button className="w-full bg-[#25D366] hover:bg-[#1da851] hover:shadow-[0_0_30px_rgba(37,211,102,0.6)] text-white transition-all">
                   <MessageCircle className="w-4 h-4 mr-2" />
                   WhatsApp
                 </Button>

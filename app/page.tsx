@@ -2,6 +2,7 @@ import { Header } from "@/components/header"
 import { HeroSection } from "@/components/hero-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
 import { PricingSection } from "@/components/pricing-section"
+import { FAQSection } from "@/components/faq-section"
 import { AnimatedBackground } from "@/components/animated-background"
 
 export default function Home() {
@@ -20,6 +21,7 @@ export default function Home() {
         <HeroSection />
         <HowItWorksSection />
         <PricingSection />
+        <FAQSection />
       </div>
     </main>
   )

@@ -106,24 +106,28 @@ export function HeroSection() {
           </Link>
 
           {/* WhatsApp Contact Button */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="relative w-fit"
-          >
-            <motion.div 
-              className="absolute inset-0 bg-[#22c55e] rounded-full blur-lg opacity-40"
-              animate={{ opacity: [0.3, 0.6, 0.3] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-            <Button 
-              variant="outline"
-              className="relative bg-[#22c55e]/10 border-[#22c55e] text-[#22c55e] hover:bg-[#22c55e] hover:text-white px-6 py-5 rounded-full font-semibold transition-all flex items-center gap-2"
+          <a href="https://wa.me/225055560189" target="_blank" rel="noopener noreferrer">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="relative w-fit group"
             >
-              <MessageCircle className="w-5 h-5" />
-              Nous contacter sur WhatsApp
-            </Button>
-          </motion.div>
+              <motion.div 
+                className="absolute inset-0 bg-[#22c55e] rounded-full blur-lg opacity-40"
+                animate={{ 
+                  opacity: [0.3, 0.7, 0.3],
+                  scale: [1, 1.1, 1]
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <Button 
+                className="relative bg-[#22c55e]/20 border-2 border-[#22c55e] text-[#22c55e] hover:bg-[#22c55e] hover:text-white hover:shadow-[0_0_40px_rgba(34,197,94,0.6)] px-6 py-5 rounded-full font-semibold transition-all flex items-center gap-2"
+              >
+                <MessageCircle className="w-5 h-5" />
+                Nous contacter sur WhatsApp
+              </Button>
+            </motion.div>
+          </a>
 
           {/* Feature badges */}
           <div className="flex items-center gap-6 mt-2">
