@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import * as fal from '@fal-ai/serverless-client'
+import { fal } from '@fal-ai/client'
 
 // Configure fal client
 fal.config({
-  credentials: process.env.NEXT_PUBLIC_FAL_KEY,
+  credentials: process.env.NEXT_PUBLIC_FAL_KEY || '',
 })
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
@@ -95,14 +95,15 @@ export function useLucySwap({
           base_image: frameDataUrl,
           swap_image: currentAvatarUrl.current,
         },
-      }) as { image?: { url: string } }
+      }) as { data?: { image?: { url: string } } }
 
       // Update latency
       const endTime = performance.now()
       setLatency(Math.round(endTime - startTime))
 
       // Display result
-      if (result?.image?.url) {
+      const imageUrl = result?.data?.image?.url || (result as unknown as { image?: { url: string } })?.image?.url
+      if (imageUrl) {
         // Create image element and draw to output
         const img = new Image()
         img.crossOrigin = 'anonymous'
@@ -123,7 +124,7 @@ export function useLucySwap({
             }
           }
         }
-        img.src = result.image.url
+        img.src = imageUrl
       }
 
     } catch (err) {
