@@ -59,45 +59,51 @@ export function Header() {
         {/* CTA Buttons */}
         <div className="flex items-center gap-3">
           {/* WhatsApp Button */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Button 
-              className="hidden lg:flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] text-white border-0 px-5 py-2 rounded-full font-medium transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:shadow-[0_0_30px_rgba(34,197,94,0.6)]"
+          <a href="https://wa.me/2250555560189" target="_blank" rel="noopener noreferrer">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <MessageCircle className="w-4 h-4" />
-              WhatsApp
-            </Button>
-          </motion.div>
+              <Button 
+                className="hidden lg:flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] text-white border-0 px-5 py-2 rounded-full font-medium transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:shadow-[0_0_30px_rgba(34,197,94,0.6)]"
+              >
+                <MessageCircle className="w-4 h-4" />
+                WhatsApp
+              </Button>
+            </motion.div>
+          </a>
           
           {/* S'inscrire - Violet */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="relative"
-          >
-            <div className="absolute inset-0 bg-[#8b5cf6] rounded-full blur-lg opacity-50 animate-pulse" />
-            <Button 
-              className="relative bg-[#8b5cf6] hover:bg-[#7c3aed] text-white border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_25px_rgba(139,92,246,0.5)]"
+          <Link href="/auth/sign-up">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative"
             >
-              {"S'inscrire"}
-            </Button>
-          </motion.div>
+              <div className="absolute inset-0 bg-[#8b5cf6] rounded-full blur-lg opacity-50 animate-pulse" />
+              <Button 
+                className="relative bg-[#8b5cf6] hover:bg-[#7c3aed] text-white border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_25px_rgba(139,92,246,0.5)]"
+              >
+                {"S'inscrire"}
+              </Button>
+            </motion.div>
+          </Link>
           
           {/* Connexion - Electric Blue */}
-          <motion.div
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="relative"
-          >
-            <div className="absolute inset-0 bg-[#00d4ff] rounded-full blur-lg opacity-30" />
-            <Button 
-              className="relative bg-[#00d4ff] hover:bg-[#00b8e6] text-[#0a0e1a] border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_20px_rgba(0,212,255,0.4)]"
+          <Link href="/auth/login">
+            <motion.div
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="relative"
             >
-              Connexion
-            </Button>
-          </motion.div>
+              <div className="absolute inset-0 bg-[#00d4ff] rounded-full blur-lg opacity-30" />
+              <Button 
+                className="relative bg-[#00d4ff] hover:bg-[#00b8e6] text-[#0a0e1a] border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_20px_rgba(0,212,255,0.4)]"
+              >
+                Connexion
+              </Button>
+            </motion.div>
+          </Link>
         </div>
       </div>
     </motion.header>
