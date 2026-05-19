@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@fal-ai/client": "^1.10.1",
-    "@fal-ai/serverless-client": "^0.15.0",
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-accordion": "1.2.12",
     "@radix-ui/react-alert-dialog": "1.1.15",

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createBrowserClient } from '@supabase/ssr'
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -13,7 +13,6 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const router = useRouter()
-  const supabase = createClient()
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -32,7 +31,18 @@ export default function SignUpPage() {
       return
     }
 
-    const { error } = await supabase.auth.signUp({
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!url || !key) {
+      setError('Configuration Supabase manquante')
+      setLoading(false)
+      return
+    }
+
+    const supabase = createBrowserClient(url, key)
+
+    const { error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -40,8 +50,8 @@ export default function SignUpPage() {
       },
     })
 
-    if (error) {
-      setError(error.message)
+    if (signUpError) {
+      setError(signUpError.message)
       setLoading(false)
       return
     }

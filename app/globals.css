@@ -215,18 +215,18 @@ html {
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: #0a0e1a;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #00ff88;
-  border-radius: 2px;
+  background: linear-gradient(180deg, #00d4ff, #8b5cf6);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #00cc6a;
+  background: linear-gradient(180deg, #00b8e6, #7c3aed);
 }
