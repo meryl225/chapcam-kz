@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { ArrowRight, Zap, Shield, Monitor, MessageCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FeatureList } from "@/components/feature-list"
@@ -77,50 +78,54 @@ export function HeroSection() {
           </p>
 
           {/* Premium CTA Button - Blue Violet */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="relative w-fit group"
-          >
-            {/* Animated glow */}
-            <motion.div 
-              className="absolute inset-0 bg-gradient-to-r from-[#7c3aed] via-[#3b82f6] to-[#00d4ff] rounded-full blur-xl opacity-60"
-              animate={{ 
-                scale: [1, 1.1, 1],
-                opacity: [0.5, 0.8, 0.5]
-              }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-            <Button className="relative bg-gradient-to-r from-[#7c3aed] via-[#3b82f6] to-[#00d4ff] text-white border-0 px-8 py-7 rounded-full font-bold text-lg transition-all flex items-center gap-3 group-hover:shadow-[0_0_40px_rgba(99,102,241,0.6)]">
-              Commencer maintenant
-              <motion.div
-                animate={{ x: [0, 5, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                <ArrowRight className="w-5 h-5" />
-              </motion.div>
-            </Button>
-          </motion.div>
+          <Link href="/auth/sign-up">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="relative w-fit group"
+            >
+              {/* Animated glow */}
+              <motion.div 
+                className="absolute inset-0 bg-gradient-to-r from-[#7c3aed] via-[#3b82f6] to-[#00d4ff] rounded-full blur-xl opacity-60"
+                animate={{ 
+                  scale: [1, 1.1, 1],
+                  opacity: [0.5, 0.8, 0.5]
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <Button className="relative bg-gradient-to-r from-[#7c3aed] via-[#3b82f6] to-[#00d4ff] text-white border-0 px-8 py-7 rounded-full font-bold text-lg transition-all flex items-center gap-3 group-hover:shadow-[0_0_40px_rgba(99,102,241,0.6)]">
+                Commencer maintenant
+                <motion.div
+                  animate={{ x: [0, 5, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  <ArrowRight className="w-5 h-5" />
+                </motion.div>
+              </Button>
+            </motion.div>
+          </Link>
 
           {/* WhatsApp Contact Button */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="relative w-fit"
-          >
-            <motion.div 
-              className="absolute inset-0 bg-[#22c55e] rounded-full blur-lg opacity-40"
-              animate={{ opacity: [0.3, 0.6, 0.3] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
-            <Button 
-              variant="outline"
-              className="relative bg-[#22c55e]/10 border-[#22c55e] text-[#22c55e] hover:bg-[#22c55e] hover:text-white px-6 py-5 rounded-full font-semibold transition-all flex items-center gap-2"
+          <a href="https://wa.me/message/YOUR_WHATSAPP_NUMBER" target="_blank" rel="noopener noreferrer">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="relative w-fit"
             >
-              <MessageCircle className="w-5 h-5" />
-              Nous contacter sur WhatsApp
-            </Button>
-          </motion.div>
+              <motion.div 
+                className="absolute inset-0 bg-[#22c55e] rounded-full blur-lg opacity-40"
+                animate={{ opacity: [0.3, 0.6, 0.3] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <Button 
+                variant="outline"
+                className="relative bg-[#22c55e]/10 border-[#22c55e] text-[#22c55e] hover:bg-[#22c55e] hover:text-white px-6 py-5 rounded-full font-semibold transition-all flex items-center gap-2"
+              >
+                <MessageCircle className="w-5 h-5" />
+                Nous contacter sur WhatsApp
+              </Button>
+            </motion.div>
+          </a>
 
           {/* Feature badges */}
           <div className="flex items-center gap-6 mt-2">
