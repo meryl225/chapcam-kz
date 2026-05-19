@@ -5,22 +5,39 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
-export default function LoginPage() {
+export default function SignUpPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
-    const { error } = await supabase.auth.signInWithPassword({
+    if (password !== confirmPassword) {
+      setError('Les mots de passe ne correspondent pas')
+      setLoading(false)
+      return
+    }
+
+    if (password.length < 6) {
+      setError('Le mot de passe doit contenir au moins 6 caracteres')
+      setLoading(false)
+      return
+    }
+
+    const { error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: 'https://chapcam.com/auth/callback',
+      },
     })
 
     if (error) {
@@ -29,8 +46,28 @@ export default function LoginPage() {
       return
     }
 
-    router.push('/dashboard')
-    router.refresh()
+    setSuccess(true)
+    setLoading(false)
+  }
+
+  if (success) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] p-4">
+        <div className="w-full max-w-md rounded-lg border border-white/10 bg-[#111111] p-8 text-center">
+          <div className="mb-4 text-4xl">📧</div>
+          <h1 className="mb-2 text-xl font-bold text-white">Verifie ton email</h1>
+          <p className="mb-6 text-sm text-gray-400">
+            Un lien de confirmation a ete envoye a <span className="text-[#00ff88]">{email}</span>
+          </p>
+          <Link
+            href="/auth/login"
+            className="text-sm text-[#00ff88] hover:underline"
+          >
+            Retour a la connexion
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -42,7 +79,7 @@ export default function LoginPage() {
             <span className="text-[#00ff88]">Cam</span>
           </h1>
           <p className="mt-2 text-sm text-gray-400">
-            Connecte-toi pour acceder au dashboard
+            Cree ton compte pour commencer
           </p>
         </div>
 
@@ -52,7 +89,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSignUp} className="space-y-4">
           <div>
             <label htmlFor="email" className="mb-2 block text-sm font-bold uppercase text-gray-400">
               Email
@@ -85,20 +122,36 @@ export default function LoginPage() {
             />
           </div>
 
+          <div>
+            <label htmlFor="confirmPassword" className="mb-2 block text-sm font-bold uppercase text-gray-400">
+              Confirmer le mot de passe
+            </label>
+            <input
+              type="password"
+              id="confirmPassword"
+              name="confirmPassword"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-[#00ff88] focus:outline-none"
+              required
+            />
+          </div>
+
           <button
             type="submit"
             disabled={loading}
             className="w-full rounded-lg bg-[#00ff88] py-3 font-bold uppercase text-black transition-colors hover:bg-[#00cc6a] disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'CONNEXION...' : 'SE CONNECTER'}
+            {loading ? 'CREATION...' : 'CREER MON COMPTE'}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-400">
-            Pas encore de compte ?{' '}
-            <Link href="/auth/sign-up" className="text-[#00ff88] hover:underline">
-              Creer un compte
+            Deja un compte ?{' '}
+            <Link href="/auth/login" className="text-[#00ff88] hover:underline">
+              Se connecter
             </Link>
           </p>
         </div>
