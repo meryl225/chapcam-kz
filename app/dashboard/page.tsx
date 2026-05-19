@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import DashboardClient from "./dashboard-client"
+import { LiveSwapClient } from "./live-swap-client"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -11,29 +11,18 @@ export default async function DashboardPage() {
     redirect("/auth/login")
   }
 
-  // Get user profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single()
-
   // Get active subscription
   const { data: subscription } = await supabase
     .from("subscriptions")
     .select("*")
     .eq("user_id", user.id)
-    .eq("status", "active")
-    .gte("expires_at", new Date().toISOString())
-    .order("expires_at", { ascending: false })
-    .limit(1)
     .single()
 
-  return (
-    <DashboardClient 
-      user={user} 
-      profile={profile}
-      subscription={subscription}
-    />
-  )
+  const currentPlan = subscription?.plan || "free"
+  const isExpired = subscription?.expires_at 
+    ? new Date(subscription.expires_at) < new Date() 
+    : true
+  const isActive = subscription?.is_active && !isExpired
+
+  return <LiveSwapClient isActive={isActive} currentPlan={currentPlan} />
 }
