@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
+import { createClient } from '@/lib/supabase/client'
 
 export default function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -12,7 +12,6 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
-  const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -25,53 +24,57 @@ export default function SignUpPage() {
       return
     }
 
-    if (password.length < 6) {
-      setError('Le mot de passe doit contenir au moins 6 caracteres')
+    if (password.length < 8) {
+      setError('Le mot de passe doit contenir au moins 8 caracteres')
       setLoading(false)
       return
     }
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!url || !key) {
-      setError('Configuration Supabase manquante')
+    try {
+      const supabase = createClient()
+
+      const { error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      })
+
+      if (signUpError) {
+        setError(signUpError.message)
+        setLoading(false)
+        return
+      }
+
+      setSuccess(true)
+    } catch (err) {
+      setError('Une erreur est survenue')
+    } finally {
       setLoading(false)
-      return
     }
-
-    const supabase = createBrowserClient(url, key)
-
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: 'https://chapcam.com/auth/callback',
-      },
-    })
-
-    if (signUpError) {
-      setError(signUpError.message)
-      setLoading(false)
-      return
-    }
-
-    setSuccess(true)
-    setLoading(false)
   }
 
   if (success) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] p-4">
-        <div className="w-full max-w-md rounded-lg border border-white/10 bg-[#111111] p-8 text-center">
-          <div className="mb-4 text-4xl">📧</div>
+        <div className="w-full max-w-md rounded-lg border border-[#00ff88]/30 bg-[#111111] p-8 text-center">
+          <div className="mb-4 mx-auto w-16 h-16 rounded-full bg-[#00ff88]/10 flex items-center justify-center">
+            <svg className="w-8 h-8 text-[#00ff88]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+          </div>
           <h1 className="mb-2 text-xl font-bold text-white">Verifie ton email</h1>
           <p className="mb-6 text-sm text-gray-400">
-            Un lien de confirmation a ete envoye a <span className="text-[#00ff88]">{email}</span>
+            Un lien de confirmation a ete envoye a{' '}
+            <span className="text-[#00ff88] font-medium">{email}</span>
+          </p>
+          <p className="mb-6 text-xs text-gray-500">
+            Clique sur le lien dans l&apos;email pour activer ton compte
           </p>
           <Link
             href="/auth/login"
-            className="text-sm text-[#00ff88] hover:underline"
+            className="inline-block px-6 py-2 rounded-lg bg-white/5 border border-white/10 text-sm text-white hover:bg-white/10 transition-colors"
           >
             Retour a la connexion
           </Link>
@@ -129,6 +132,7 @@ export default function SignUpPage() {
               placeholder="••••••••"
               className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-[#00ff88] focus:outline-none"
               required
+              minLength={8}
             />
           </div>
 
@@ -145,6 +149,7 @@ export default function SignUpPage() {
               placeholder="••••••••"
               className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-[#00ff88] focus:outline-none"
               required
+              minLength={8}
             />
           </div>
 

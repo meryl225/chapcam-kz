@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createBrowserClient } from '@supabase/ssr'
+import { createClient } from '@/lib/supabase/client'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -17,30 +17,32 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!url || !key) {
-      setError('Configuration Supabase manquante')
+    try {
+      const supabase = createClient()
+
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (loginError) {
+        if (loginError.message.includes('Invalid login credentials')) {
+          setError('Email ou mot de passe incorrect')
+        } else if (loginError.message.includes('Email not confirmed')) {
+          setError('Veuillez confirmer votre email avant de vous connecter')
+        } else {
+          setError(loginError.message)
+        }
+        setLoading(false)
+        return
+      }
+
+      router.push('/dashboard')
+      router.refresh()
+    } catch (err) {
+      setError('Une erreur est survenue')
       setLoading(false)
-      return
     }
-
-    const supabase = createBrowserClient(url, key)
-
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (loginError) {
-      setError(loginError.message)
-      setLoading(false)
-      return
-    }
-
-    router.push('/dashboard')
-    router.refresh()
   }
 
   return (
