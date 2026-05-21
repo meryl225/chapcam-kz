@@ -11,14 +11,18 @@ import {
   Sparkles,
   Plus,
   Check,
-  AlertCircle
+  AlertCircle,
+  Battery
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 import { createBrowserClient } from '@supabase/ssr'
 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
+
+const POINTS_PER_SECOND = 2
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
@@ -27,6 +31,12 @@ interface Avatar {
   name: string
   image_url: string
   is_active: boolean
+}
+
+interface Subscription {
+  points_remaining: number
+  points_total: number
+  plan: string
 }
 
 export default function DashboardPage() {
@@ -48,17 +58,17 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
-  const [debugLog, setDebugLog] = useState<string[]>([])
+  
+  // Points state
+  const [pointsRemaining, setPointsRemaining] = useState(0)
+  const [pointsTotal, setPointsTotal] = useState(0)
+  const [subscriptionId, setSubscriptionId] = useState<string | null>(null)
   
   // Refs for processing
   const streamRef = useRef<MediaStream | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const processingRef = useRef(false)
-
-  const addLog = (msg: string) => {
-    console.log('[v0]', msg)
-    setDebugLog(prev => [...prev.slice(-9), `${new Date().toLocaleTimeString()}: ${msg}`])
-  }
+  const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
@@ -71,10 +81,36 @@ export default function DashboardPage() {
     return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   }, [])
 
+  // Fetch subscription/points from Supabase
+  const fetchSubscription = useCallback(async (uid: string) => {
+    const supabase = getSupabase()
+    const { data, error } = await supabase
+      .from('subscriptions')
+      .select('id, points_remaining, points_total, plan')
+      .eq('user_id', uid)
+      .eq('is_active', true)
+      .single()
+
+    if (data) {
+      setPointsRemaining(data.points_remaining || 0)
+      setPointsTotal(data.points_total || 0)
+      setSubscriptionId(data.id)
+    }
+  }, [getSupabase])
+
+  // Update points in Supabase
+  const updatePointsInDb = useCallback(async (newPoints: number) => {
+    if (!subscriptionId) return
+    
+    const supabase = getSupabase()
+    await supabase
+      .from('subscriptions')
+      .update({ points_remaining: newPoints })
+      .eq('id', subscriptionId)
+  }, [getSupabase, subscriptionId])
+
   // Fetch avatars from Supabase
   const fetchAvatars = useCallback(async (uid: string) => {
-    addLog(`Fetching avatars for user: ${uid}`)
-    
     const supabase = getSupabase()
     const { data, error } = await supabase
       .from('user_avatars')
@@ -82,59 +118,69 @@ export default function DashboardPage() {
       .eq('user_id', uid)
       .order('created_at', { ascending: false })
 
-    addLog(`Avatars result: ${data?.length || 0} found, error: ${error?.message || 'none'}`)
-
-    if (error) {
-      addLog(`Error fetching avatars: ${error.message}`)
-      return
-    }
-
     if (data && data.length > 0) {
       setAvatars(data)
       const activeAvatar = data.find((a: Avatar) => a.is_active) || data[0]
       setSelectedAvatar(activeAvatar)
-      addLog(`Selected avatar: ${activeAvatar.name}`)
-    } else {
-      addLog('No avatars found')
     }
   }, [getSupabase])
 
-  // Check auth and fetch avatars
+  // Check auth and fetch data
   useEffect(() => {
     async function init() {
-      addLog('Initializing...')
       const supabase = getSupabase()
       const { data: { user } } = await supabase.auth.getUser()
       
       if (!user) {
-        addLog('No user found, redirecting to login')
         router.push('/auth/login')
         return
       }
       
-      addLog(`User authenticated: ${user.email}`)
       setUserId(user.id)
-      await fetchAvatars(user.id)
+      await Promise.all([
+        fetchAvatars(user.id),
+        fetchSubscription(user.id)
+      ])
       setIsLoading(false)
     }
     init()
-  }, [router, getSupabase, fetchAvatars])
+  }, [router, getSupabase, fetchAvatars, fetchSubscription])
 
-  // Session timer
+  // Session timer + points deduction
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
+    
     if (isActive && sessionStartTime) {
       interval = setInterval(() => {
         setSessionDuration(Math.floor((Date.now() - sessionStartTime) / 1000))
+        
+        // Deduct points
+        setPointsRemaining(prev => {
+          const newPoints = Math.max(0, prev - POINTS_PER_SECOND)
+          
+          // Update DB every 10 seconds to reduce API calls
+          if (newPoints % 20 === 0 || newPoints === 0) {
+            updatePointsInDb(newPoints)
+          }
+          
+          // Auto-stop when points reach 0
+          if (newPoints === 0) {
+            handleStopSwap()
+          }
+          
+          return newPoints
+        })
       }, 1000)
     }
-    return () => { if (interval) clearInterval(interval) }
-  }, [isActive, sessionStartTime])
+    
+    return () => { 
+      if (interval) clearInterval(interval)
+    }
+  }, [isActive, sessionStartTime, updatePointsInDb])
 
   // Select avatar
   const handleSelectAvatar = async (avatar: Avatar) => {
     setSelectedAvatar(avatar)
-    addLog(`Avatar selected: ${avatar.name}`)
     
     if (userId) {
       const supabase = getSupabase()
@@ -175,8 +221,6 @@ export default function DashboardPage() {
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       const frameDataUrl = canvas.toDataURL('image/jpeg', 0.7)
-
-      addLog('Calling swap API...')
       
       const response = await fetch('/api/swap', {
         method: 'POST',
@@ -192,10 +236,8 @@ export default function DashboardPage() {
       setLatency(elapsed)
 
       if (!response.ok) {
-        addLog(`Swap API error: ${result.error || response.status}`)
         setError(result.error || 'Swap failed')
       } else if (result.image_url) {
-        addLog(`Swap success in ${elapsed}ms`)
         setError(null)
         
         const img = new Image()
@@ -211,21 +253,14 @@ export default function DashboardPage() {
             }
           }
         }
-        img.onerror = () => {
-          addLog('Failed to load swapped image')
-        }
         img.src = result.image_url
-      } else {
-        addLog('No image_url in response')
       }
 
     } catch (err: any) {
-      addLog(`Swap error: ${err.message}`)
       setError(err.message)
     } finally {
       processingRef.current = false
       if (isActive) {
-        // Process every 200ms for better performance
         setTimeout(() => {
           animationFrameRef.current = requestAnimationFrame(processFrame)
         }, 200)
@@ -240,24 +275,25 @@ export default function DashboardPage() {
       return
     }
 
-    addLog('Starting swap...')
+    if (pointsRemaining <= 0) {
+      setError('Plus de points! Recharge ton compte')
+      return
+    }
+
     setConnectionStatus('connecting')
     setError(null)
 
     try {
-      addLog('Requesting camera access...')
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
         audio: false,
       })
 
       streamRef.current = stream
-      addLog('Camera access granted')
 
       if (webcamVideoRef.current) {
         webcamVideoRef.current.srcObject = stream
         await webcamVideoRef.current.play()
-        addLog('Video playing')
       }
 
       setIsActive(true)
@@ -265,19 +301,16 @@ export default function DashboardPage() {
       setSessionStartTime(Date.now())
       setSessionDuration(0)
 
-      addLog('Starting frame processing...')
       animationFrameRef.current = requestAnimationFrame(processFrame)
 
     } catch (err: any) {
-      addLog(`Camera error: ${err.message}`)
       setConnectionStatus('error')
       setError('Autorise la camera dans ton navigateur')
     }
   }
 
   // Stop swap
-  const handleStopSwap = () => {
-    addLog('Stopping swap...')
+  const handleStopSwap = useCallback(() => {
     setIsActive(false)
     setConnectionStatus('disconnected')
 
@@ -294,9 +327,11 @@ export default function DashboardPage() {
       webcamVideoRef.current.srcObject = null
     }
 
+    // Final points update
+    updatePointsInDb(pointsRemaining)
+    
     setLatency(0)
-    addLog(`Session ended, duration: ${formatTime(sessionDuration)}`)
-  }
+  }, [pointsRemaining, updatePointsInDb])
 
   const getStatusColor = (status: ConnectionStatus): string => {
     switch (status) {
@@ -316,6 +351,8 @@ export default function DashboardPage() {
     }
   }
 
+  const pointsPercentage = pointsTotal > 0 ? (pointsRemaining / pointsTotal) * 100 : 0
+
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -329,12 +366,35 @@ export default function DashboardPage() {
       <canvas ref={processCanvasRef} className="hidden" />
       
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="flex items-center gap-3 text-2xl font-bold text-white">
-          <Zap className="h-7 w-7 text-[#00ff88]" />
-          LIVE SWAP
-        </h1>
-        <p className="mt-1 text-gray-400">Camera reelle a gauche, visage swappe a droite en temps reel</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="flex items-center gap-3 text-2xl font-bold text-white">
+            <Zap className="h-7 w-7 text-[#00ff88]" />
+            LIVE SWAP
+          </h1>
+          <p className="mt-1 text-gray-400">Camera reelle a gauche, visage swappe a droite</p>
+        </div>
+        
+        {/* Points Display */}
+        <div className="flex items-center gap-4">
+          <div className="rounded-xl border border-white/10 bg-[#111] px-4 py-2">
+            <div className="flex items-center gap-3">
+              <Battery className="h-5 w-5 text-[#00ff88]" />
+              <div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-xl font-bold text-white">{pointsRemaining.toLocaleString()}</span>
+                  <span className="text-sm text-gray-500">/{pointsTotal.toLocaleString()}</span>
+                </div>
+                <Progress value={pointsPercentage} className="mt-1 h-1.5 w-24 bg-white/10" />
+              </div>
+            </div>
+          </div>
+          <Link href="/dashboard/plans">
+            <Button className="bg-orange-500 hover:bg-orange-600 text-white">
+              <Zap className="mr-1 h-4 w-4" /> Recharger
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Two Videos Side by Side */}
@@ -417,10 +477,16 @@ export default function DashboardPage() {
         )}
         <div className="flex items-center gap-4">
           {isActive && (
-            <div className="text-sm">
-              <span className="text-gray-400">Duree: </span>
-              <span className="font-mono text-white">{formatTime(sessionDuration)}</span>
-            </div>
+            <>
+              <div className="text-sm">
+                <span className="text-gray-400">Duree: </span>
+                <span className="font-mono text-white">{formatTime(sessionDuration)}</span>
+              </div>
+              <div className="text-sm">
+                <span className="text-gray-400">Cout: </span>
+                <span className="font-mono text-orange-400">-{sessionDuration * POINTS_PER_SECOND} pts</span>
+              </div>
+            </>
           )}
           <div className="text-sm">
             <span className="text-gray-400">Avatar: </span>
@@ -432,27 +498,37 @@ export default function DashboardPage() {
       {/* CTA Button */}
       <Button
         onClick={isActive ? handleStopSwap : handleStartSwap}
-        disabled={!selectedAvatar && !isActive}
+        disabled={(!selectedAvatar && !isActive) || (pointsRemaining <= 0 && !isActive)}
         className={`mt-4 h-14 w-full text-lg font-bold uppercase ${
           isActive 
             ? 'bg-red-600 hover:bg-red-700 text-white' 
             : connectionStatus === 'connecting'
               ? 'bg-yellow-500 text-black animate-pulse'
-              : 'bg-[#00ff88] hover:bg-[#00dd77] text-black shadow-[0_0_30px_rgba(0,255,136,0.3)]'
+              : pointsRemaining <= 0
+                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                : 'bg-[#00ff88] hover:bg-[#00dd77] text-black shadow-[0_0_30px_rgba(0,255,136,0.3)]'
         }`}
       >
         {isActive ? (
           <><Square className="mr-2 h-5 w-5" /> ARRETER LE SWAP</>
         ) : connectionStatus === 'connecting' ? (
           <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Connexion...</>
+        ) : pointsRemaining <= 0 ? (
+          <><Battery className="mr-2 h-5 w-5" /> RECHARGE NECESSAIRE</>
         ) : (
           <><Zap className="mr-2 h-5 w-5" /> DEMARRER LE SWAP</>
         )}
       </Button>
 
-      {!selectedAvatar && (
+      {!selectedAvatar && pointsRemaining > 0 && (
         <p className="mt-2 text-center text-sm text-gray-500">
           Selectionne un avatar ci-dessous pour commencer
+        </p>
+      )}
+      
+      {pointsRemaining <= 0 && (
+        <p className="mt-2 text-center text-sm text-orange-400">
+          Tu as epuise tes points. <Link href="/dashboard/plans" className="underline">Recharge maintenant</Link>
         </p>
       )}
 
@@ -506,21 +582,6 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Debug Logs */}
-      <div className="mt-4 rounded-xl border border-white/10 bg-[#0a0a0a] p-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-gray-500">Debug Logs</span>
-          <button onClick={() => setDebugLog([])} className="text-xs text-gray-600 hover:text-gray-400">Clear</button>
-        </div>
-        <div className="max-h-32 overflow-y-auto font-mono text-xs text-gray-400 space-y-1">
-          {debugLog.length === 0 ? (
-            <p className="text-gray-600">Aucun log</p>
-          ) : (
-            debugLog.map((log, i) => <p key={i}>{log}</p>)
-          )}
-        </div>
       </div>
     </div>
   )
