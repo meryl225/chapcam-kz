@@ -9,8 +9,6 @@ import {
   Check, 
   Plus, 
   Square, 
-  Play,
-  AlertCircle,
   Loader2,
   Monitor,
   Video,
@@ -38,7 +36,6 @@ interface Avatar {
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
-// Platform icons
 const platformShortcuts = [
   { id: 'obs', name: 'OBS', icon: Monitor, tooltip: 'Ajoute comme source camera virtuelle' },
   { id: 'zoom', name: 'Zoom', icon: Video, tooltip: 'Selectionne ChapCam Virtual Camera' },
@@ -69,12 +66,10 @@ export default function DashboardPage() {
   const router = useRouter()
   const supabase = createClient()
   
-  // Refs for videos
   const webcamVideoRef = useRef<HTMLVideoElement>(null)
   const swapVideoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   
-  // State
   const [userId, setUserId] = useState<string | null>(null)
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
@@ -86,19 +81,17 @@ export default function DashboardPage() {
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   
-  // Refs for swap processing
   const streamRef = useRef<MediaStream | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const processingRef = useRef(false)
 
-  // Format time
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Load user data
+  // ✅ FIXED: Load avatars from Supabase
   useEffect(() => {
     async function loadUserData() {
       try {
@@ -111,14 +104,28 @@ export default function DashboardPage() {
 
         setUserId(user.id)
 
-        // For now, use mock avatars since we don't have the table yet
-        // In production, fetch from supabase
-        setAvatars([])
+        // ✅ Fetch real avatars from Supabase
+        const { data: avatarsData, error: avatarsError } = await supabase
+          .from('user_avatars')
+          .select('id, name, url, thumbnail_url, created_at')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
 
-        // Restore selected avatar from localStorage
-        const savedAvatarId = localStorage.getItem('chapcam_active_avatar')
-        if (savedAvatarId) {
-          // Would fetch from DB
+        if (avatarsError) {
+          console.error('Error fetching avatars:', avatarsError)
+        } else {
+          setAvatars(avatarsData || [])
+
+          // ✅ Restore selected avatar from localStorage
+          const savedAvatarId = localStorage.getItem('chapcam_active_avatar')
+          if (savedAvatarId && avatarsData) {
+            const saved = avatarsData.find((a: Avatar) => a.id === savedAvatarId)
+            if (saved) setSelectedAvatar(saved)
+            else if (avatarsData.length > 0) setSelectedAvatar(avatarsData[0])
+          } else if (avatarsData && avatarsData.length > 0) {
+            // Auto-select first avatar
+            setSelectedAvatar(avatarsData[0])
+          }
         }
 
       } catch (err) {
@@ -134,23 +141,17 @@ export default function DashboardPage() {
   // Session timer
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null
-    
     if (isActive && sessionStartTime) {
       interval = setInterval(() => {
         setSessionDuration(Math.floor((Date.now() - sessionStartTime) / 1000))
       }, 1000)
     }
-
-    return () => {
-      if (interval) clearInterval(interval)
-    }
+    return () => { if (interval) clearInterval(interval) }
   }, [isActive, sessionStartTime])
 
-  // Process frame with fal.ai Lucy
+  // Process frame
   const processFrame = useCallback(async () => {
-    if (!isActive || !webcamVideoRef.current || !canvasRef.current || processingRef.current) {
-      return
-    }
+    if (!isActive || !webcamVideoRef.current || !canvasRef.current || processingRef.current) return
 
     const video = webcamVideoRef.current
     const canvas = canvasRef.current
@@ -173,7 +174,6 @@ export default function DashboardPage() {
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       const frameDataUrl = canvas.toDataURL('image/jpeg', 0.7)
 
-      // Call fal.ai face-swap API
       const response = await fetch('/api/swap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -184,11 +184,9 @@ export default function DashboardPage() {
       })
 
       const result = await response.json()
-      
       setLatency(Math.round(performance.now() - startTime))
 
       if (result.image_url && swapVideoRef.current) {
-        // Draw swapped image to swap canvas/video
         const img = new Image()
         img.crossOrigin = 'anonymous'
         img.onload = () => {
@@ -213,11 +211,10 @@ export default function DashboardPage() {
       console.error('Swap error:', err)
     } finally {
       processingRef.current = false
-      
       if (isActive) {
         setTimeout(() => {
           animationFrameRef.current = requestAnimationFrame(processFrame)
-        }, 100) // ~10 FPS to avoid rate limits
+        }, 100)
       }
     }
   }, [isActive, selectedAvatar])
@@ -245,7 +242,6 @@ export default function DashboardPage() {
         await webcamVideoRef.current.play()
       }
 
-      // Initially show webcam on both sides
       if (swapVideoRef.current) {
         swapVideoRef.current.srcObject = stream
         await swapVideoRef.current.play()
@@ -256,10 +252,8 @@ export default function DashboardPage() {
       setSessionStartTime(Date.now())
       setSessionDuration(0)
 
-      // Start processing
       animationFrameRef.current = requestAnimationFrame(processFrame)
-
-      toast({ title: 'Live Swap active!' })
+      toast({ title: '⚡ Live Swap active!' })
 
     } catch (err) {
       console.error('Start error:', err)
@@ -294,10 +288,11 @@ export default function DashboardPage() {
     toast({ title: 'Session terminee', description: `Duree: ${formatTime(sessionDuration)}` })
   }, [sessionDuration])
 
-  // Handle avatar selection
+  // ✅ Handle avatar selection
   const handleSelectAvatar = useCallback((avatar: Avatar) => {
     setSelectedAvatar(avatar)
     localStorage.setItem('chapcam_active_avatar', avatar.id)
+    toast({ title: `Avatar "${avatar.name}" selectionne` })
   }, [])
 
   if (isLoading) {
@@ -315,7 +310,6 @@ export default function DashboardPage() {
   return (
     <TooltipProvider>
       <div className="p-6">
-        {/* Hidden canvas for processing */}
         <canvas ref={canvasRef} className="hidden" />
 
         {/* Header */}
@@ -329,7 +323,7 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        {/* Main Layout - Two videos side by side */}
+        {/* Two videos side by side */}
         <div className="grid gap-4 lg:grid-cols-2">
           
           {/* LEFT - Real Camera */}
@@ -339,13 +333,7 @@ export default function DashboardPage() {
               <span className="font-semibold text-white">CAMERA REELLE</span>
             </div>
             <div className="relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-black">
-              <video
-                ref={webcamVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className="h-full w-full object-cover"
-              />
+              <video ref={webcamVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
               {!isActive && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a]">
                   <Camera className="mb-3 h-12 w-12 text-gray-600" />
@@ -363,21 +351,17 @@ export default function DashboardPage() {
 
           {/* RIGHT - Swapped Video */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[#00ff88]" />
-              <span className="font-semibold text-white">SWAP EN DIRECT</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-[#00ff88]" />
+                <span className="font-semibold text-white">SWAP EN DIRECT</span>
+              </div>
               {latency > 0 && (
-                <Badge className="ml-auto bg-[#00ff88]/20 text-[#00ff88]">{latency}ms</Badge>
+                <Badge className="bg-[#00ff88]/20 text-[#00ff88]">{latency}ms</Badge>
               )}
             </div>
             <div className={`relative aspect-video overflow-hidden rounded-2xl bg-black ${isActive ? 'border-2 border-[#00ff88]/50 shadow-[0_0_30px_rgba(0,255,136,0.2)]' : 'border border-white/10'}`}>
-              <video
-                ref={swapVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className="h-full w-full object-cover"
-              />
+              <video ref={swapVideoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
               {!isActive && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a]">
                   <Sparkles className="mb-3 h-12 w-12 text-[#00ff88]/30" />
@@ -420,7 +404,6 @@ export default function DashboardPage() {
 
         {/* Controls */}
         <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_300px]">
-          {/* CTA Button */}
           <Button
             onClick={isActive ? handleStopSwap : handleStartSwap}
             disabled={!selectedAvatar && !isActive}
@@ -429,7 +412,9 @@ export default function DashboardPage() {
                 ? 'bg-red-600 hover:bg-red-700 text-white' 
                 : connectionStatus === 'connecting'
                   ? 'bg-yellow-500 text-black animate-pulse'
-                  : 'bg-[#00ff88] hover:bg-[#00dd77] text-black shadow-[0_0_30px_rgba(0,255,136,0.3)]'
+                  : selectedAvatar
+                    ? 'bg-[#00ff88] hover:bg-[#00dd77] text-black shadow-[0_0_30px_rgba(0,255,136,0.3)]'
+                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'
             }`}
           >
             {isActive ? (
@@ -437,36 +422,33 @@ export default function DashboardPage() {
             ) : connectionStatus === 'connecting' ? (
               <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Connexion...</>
             ) : (
-              <><Zap className="mr-2 h-5 w-5" /> DEMARRER LE SWAP</>
+              <><Zap className="mr-2 h-5 w-5" /> {selectedAvatar ? 'DEMARRER LE SWAP' : 'Selectionne un avatar'}</>
             )}
           </Button>
 
-          {/* Avatar Quick Select */}
-          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#111] px-3">
-            <span className="text-sm text-gray-400">Avatar:</span>
+          {/* Selected Avatar Display */}
+          <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-[#111] px-4">
+            <span className="text-sm text-gray-400">Avatar actif:</span>
             {selectedAvatar ? (
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 overflow-hidden rounded-full border border-[#00ff88]">
-                  <Image src={selectedAvatar.thumbnail_url || selectedAvatar.url} alt={selectedAvatar.name} width={32} height={32} className="object-cover" />
+                <div className="h-9 w-9 overflow-hidden rounded-full border-2 border-[#00ff88]">
+                  <img src={selectedAvatar.thumbnail_url || selectedAvatar.url} alt={selectedAvatar.name} className="h-full w-full object-cover" />
                 </div>
-                <span className="text-sm text-white">{selectedAvatar.name}</span>
+                <span className="text-sm font-medium text-white truncate max-w-[80px]">{selectedAvatar.name}</span>
+                <Check className="h-4 w-4 text-[#00ff88] shrink-0" />
               </div>
             ) : (
-              <Link href="/dashboard/avatars">
-                <Button size="sm" variant="ghost" className="text-[#00ff88]">
-                  <Plus className="mr-1 h-4 w-4" /> Choisir
-                </Button>
-              </Link>
+              <span className="text-sm text-gray-500">Aucun</span>
             )}
           </div>
         </div>
 
-        {/* Avatars Grid */}
+        {/* ✅ Avatars Grid - loads from Supabase */}
         <Card className="mt-6 border-white/10 bg-[#111] p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-semibold text-white">MES AVATARS</h2>
             <Link href="/dashboard/avatars">
-              <Button size="sm" variant="outline" className="border-white/20 text-white">
+              <Button size="sm" variant="outline" className="border-white/20 text-white hover:bg-white/5">
                 <Plus className="mr-1 h-4 w-4" /> Ajouter
               </Button>
             </Link>
@@ -478,18 +460,25 @@ export default function DashboardPage() {
                 <button
                   key={avatar.id}
                   onClick={() => handleSelectAvatar(avatar)}
-                  className={`relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
+                  className={`relative aspect-square overflow-hidden rounded-xl border-2 transition-all hover:scale-105 ${
                     selectedAvatar?.id === avatar.id
-                      ? 'border-[#00ff88] ring-2 ring-[#00ff88]/30'
+                      ? 'border-[#00ff88] ring-2 ring-[#00ff88]/30 shadow-[0_0_15px_rgba(0,255,136,0.3)]'
                       : 'border-white/10 hover:border-white/30'
                   }`}
                 >
-                  <Image src={avatar.thumbnail_url || avatar.url} alt={avatar.name} fill className="object-cover" />
+                  <img 
+                    src={avatar.thumbnail_url || avatar.url} 
+                    alt={avatar.name} 
+                    className="h-full w-full object-cover" 
+                  />
                   {selectedAvatar?.id === avatar.id && (
                     <div className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#00ff88]">
                       <Check className="h-3 w-3 text-black" />
                     </div>
                   )}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1">
+                    <p className="truncate text-center text-xs text-white">{avatar.name}</p>
+                  </div>
                 </button>
               ))}
             </div>
@@ -513,7 +502,7 @@ export default function DashboardPage() {
             {platformShortcuts.map((platform) => (
               <Tooltip key={platform.id}>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2">
+                  <div className="flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 cursor-pointer hover:bg-white/10 transition-colors">
                     <platform.icon className="h-4 w-4 text-gray-400" />
                     <span className="text-sm text-gray-300">{platform.name}</span>
                   </div>
