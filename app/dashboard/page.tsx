@@ -1,16 +1,16 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback, ChangeEvent } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { 
   Zap, 
   Square, 
   Loader2,
   Camera,
   Sparkles,
-  Upload,
-  X,
-  Image as ImageIcon
+  Plus,
+  Check
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -18,6 +18,13 @@ import { createClient } from '@/lib/supabase/client'
 import { toast } from '@/hooks/use-toast'
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
+
+interface Avatar {
+  id: string
+  name: string
+  image_url: string
+  is_active: boolean
+}
 
 function getStatusColor(status: ConnectionStatus): string {
   switch (status) {
@@ -45,10 +52,10 @@ export default function DashboardPage() {
   const webcamVideoRef = useRef<HTMLVideoElement>(null)
   const swapCanvasRef = useRef<HTMLCanvasElement>(null)
   const processCanvasRef = useRef<HTMLCanvasElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   
   // State
-  const [avatarImage, setAvatarImage] = useState<string | null>(null)
+  const [avatars, setAvatars] = useState<Avatar[]>([])
+  const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected')
   const [isActive, setIsActive] = useState(false)
   const [latency, setLatency] = useState(0)
@@ -56,6 +63,7 @@ export default function DashboardPage() {
   const [sessionStartTime, setSessionStartTime] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [userId, setUserId] = useState<string | null>(null)
   
   // Refs for processing
   const streamRef = useRef<MediaStream | null>(null)
@@ -68,23 +76,49 @@ export default function DashboardPage() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
-  // Check auth
+  // Fetch avatars from Supabase
+  const fetchAvatars = useCallback(async (uid: string) => {
+    console.log('[v0] Fetching avatars for user:', uid)
+    
+    const { data, error } = await supabase
+      .from('user_avatars')
+      .select('*')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false })
+
+    console.log('[v0] Avatars fetch result:', { data, error })
+
+    if (error) {
+      console.error('[v0] Error fetching avatars:', error)
+      return
+    }
+
+    if (data && data.length > 0) {
+      setAvatars(data)
+      // Select the active avatar or the first one
+      const activeAvatar = data.find((a: Avatar) => a.is_active) || data[0]
+      setSelectedAvatar(activeAvatar)
+      console.log('[v0] Selected avatar:', activeAvatar)
+    }
+  }, [supabase])
+
+  // Check auth and fetch avatars
   useEffect(() => {
-    async function checkAuth() {
+    async function init() {
       const { data: { user } } = await supabase.auth.getUser()
+      console.log('[v0] Current user:', user)
+      
       if (!user) {
         router.push('/auth/login')
         return
       }
-      // Load saved avatar from localStorage
-      const savedAvatar = localStorage.getItem('chapcam_avatar')
-      if (savedAvatar) {
-        setAvatarImage(savedAvatar)
-      }
+      
+      setUserId(user.id)
+      await fetchAvatars(user.id)
       setIsLoading(false)
     }
-    checkAuth()
-  }, [router, supabase])
+    init()
+  }, [router, supabase, fetchAvatars])
 
   // Session timer
   useEffect(() => {
@@ -97,36 +131,37 @@ export default function DashboardPage() {
     return () => { if (interval) clearInterval(interval) }
   }, [isActive, sessionStartTime])
 
-  // Handle avatar upload
-  const handleAvatarUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (!file.type.startsWith('image/')) {
-      toast({ title: 'Fichier invalide', description: 'Choisis une image', variant: 'destructive' })
-      return
+  // Select avatar
+  const handleSelectAvatar = async (avatar: Avatar) => {
+    setSelectedAvatar(avatar)
+    
+    // Update is_active in database
+    if (userId) {
+      // Reset all avatars is_active to false
+      await supabase
+        .from('user_avatars')
+        .update({ is_active: false })
+        .eq('user_id', userId)
+      
+      // Set selected avatar as active
+      await supabase
+        .from('user_avatars')
+        .update({ is_active: true })
+        .eq('id', avatar.id)
+      
+      // Update local state
+      setAvatars(prev => prev.map(a => ({
+        ...a,
+        is_active: a.id === avatar.id
+      })))
     }
-
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string
-      setAvatarImage(dataUrl)
-      localStorage.setItem('chapcam_avatar', dataUrl)
-      toast({ title: 'Avatar charge!' })
-    }
-    reader.readAsDataURL(file)
-  }
-
-  // Remove avatar
-  const handleRemoveAvatar = () => {
-    setAvatarImage(null)
-    localStorage.removeItem('chapcam_avatar')
-    if (fileInputRef.current) fileInputRef.current.value = ''
+    
+    toast({ title: `Avatar "${avatar.name}" selectionne` })
   }
 
   // Process frame with fal.ai
   const processFrame = useCallback(async () => {
-    if (!isActive || !webcamVideoRef.current || !processCanvasRef.current || !swapCanvasRef.current || processingRef.current || !avatarImage) {
+    if (!isActive || !webcamVideoRef.current || !processCanvasRef.current || !swapCanvasRef.current || processingRef.current || !selectedAvatar) {
       if (isActive) {
         animationFrameRef.current = requestAnimationFrame(processFrame)
       }
@@ -159,7 +194,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           base_image: frameDataUrl,
-          swap_image: avatarImage,
+          swap_image: selectedAvatar.image_url,
         }),
       })
 
@@ -167,7 +202,6 @@ export default function DashboardPage() {
       setLatency(Math.round(performance.now() - startTime))
 
       if (result.image_url) {
-        // Draw swapped result
         const img = new Image()
         img.crossOrigin = 'anonymous'
         img.onload = () => {
@@ -191,15 +225,15 @@ export default function DashboardPage() {
       if (isActive) {
         setTimeout(() => {
           animationFrameRef.current = requestAnimationFrame(processFrame)
-        }, 150) // ~7 FPS
+        }, 150)
       }
     }
-  }, [isActive, avatarImage])
+  }, [isActive, selectedAvatar])
 
   // Start swap
   const handleStartSwap = async () => {
-    if (!avatarImage) {
-      toast({ title: 'Charge un avatar', description: 'Clique sur "Charger une photo"', variant: 'destructive' })
+    if (!selectedAvatar) {
+      toast({ title: 'Selectionne un avatar', description: 'Clique sur un avatar ou ajoutes-en un', variant: 'destructive' })
       return
     }
 
@@ -273,45 +307,7 @@ export default function DashboardPage() {
           <Zap className="h-7 w-7 text-[#00ff88]" />
           LIVE SWAP
         </h1>
-        <p className="mt-1 text-gray-400">Camera reelle a gauche, swap en direct a droite</p>
-      </div>
-
-      {/* Avatar Upload */}
-      <div className="mb-6 flex items-center gap-4 rounded-xl border border-white/10 bg-[#111] p-4">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleAvatarUpload}
-          className="hidden"
-        />
-        
-        {avatarImage ? (
-          <div className="flex items-center gap-4">
-            <div className="relative h-16 w-16 overflow-hidden rounded-xl border-2 border-[#00ff88]">
-              <img src={avatarImage} alt="Avatar" className="h-full w-full object-cover" />
-            </div>
-            <div>
-              <p className="font-medium text-white">Avatar charge</p>
-              <p className="text-sm text-gray-400">Pret pour le swap</p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRemoveAvatar}
-              className="ml-auto text-red-400 hover:text-red-300"
-            >
-              <X className="mr-1 h-4 w-4" /> Supprimer
-            </Button>
-          </div>
-        ) : (
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            className="bg-[#00ff88] text-black hover:bg-[#00dd77]"
-          >
-            <Upload className="mr-2 h-4 w-4" /> Charger une photo
-          </Button>
-        )}
+        <p className="mt-1 text-gray-400">Camera reelle a gauche, visage swappe a droite en temps reel</p>
       </div>
 
       {/* Two Videos Side by Side */}
@@ -387,20 +383,24 @@ export default function DashboardPage() {
           <span className="text-sm text-gray-400">{getStatusText(connectionStatus)}</span>
           {error && <span className="text-sm text-red-400">{error}</span>}
         </div>
-        {isActive && (
-          <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
+          {isActive && (
             <div className="text-sm">
               <span className="text-gray-400">Duree: </span>
               <span className="font-mono text-white">{formatTime(sessionDuration)}</span>
             </div>
+          )}
+          <div className="text-sm">
+            <span className="text-gray-400">Avatar actif: </span>
+            <span className="text-white">{selectedAvatar?.name || 'Aucun'}</span>
           </div>
-        )}
+        </div>
       </div>
 
       {/* CTA Button */}
       <Button
         onClick={isActive ? handleStopSwap : handleStartSwap}
-        disabled={!avatarImage && !isActive}
+        disabled={!selectedAvatar && !isActive}
         className={`mt-4 h-14 w-full text-lg font-bold uppercase ${
           isActive 
             ? 'bg-red-600 hover:bg-red-700 text-white' 
@@ -418,11 +418,63 @@ export default function DashboardPage() {
         )}
       </Button>
 
-      {!avatarImage && (
+      {!selectedAvatar && (
         <p className="mt-2 text-center text-sm text-gray-500">
-          Charge une photo pour commencer le swap
+          Selectionne un avatar ci-dessous pour commencer
         </p>
       )}
+
+      {/* Avatars Section */}
+      <div className="mt-8 rounded-xl border border-white/10 bg-[#111] p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-white">MES AVATARS</h2>
+          <Link href="/dashboard/avatars">
+            <Button size="sm" variant="outline" className="border-[#00ff88] text-[#00ff88] hover:bg-[#00ff88]/10">
+              <Plus className="mr-1 h-4 w-4" /> Ajouter
+            </Button>
+          </Link>
+        </div>
+
+        {avatars.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8">
+            <Zap className="mb-3 h-10 w-10 text-[#00ff88]/30" />
+            <p className="text-gray-500 mb-4">Aucun avatar</p>
+            <Link href="/dashboard/avatars">
+              <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77]">
+                <Plus className="mr-2 h-4 w-4" /> Creer mon premier avatar
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+            {avatars.map((avatar) => (
+              <button
+                key={avatar.id}
+                onClick={() => handleSelectAvatar(avatar)}
+                className={`relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
+                  selectedAvatar?.id === avatar.id
+                    ? 'border-[#00ff88] shadow-[0_0_15px_rgba(0,255,136,0.3)]'
+                    : 'border-white/10 hover:border-white/30'
+                }`}
+              >
+                <img
+                  src={avatar.image_url}
+                  alt={avatar.name}
+                  className="h-full w-full object-cover"
+                />
+                {selectedAvatar?.id === avatar.id && (
+                  <div className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#00ff88]">
+                    <Check className="h-3 w-3 text-black" />
+                  </div>
+                )}
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                  <p className="truncate text-xs text-white">{avatar.name}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
