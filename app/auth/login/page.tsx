@@ -12,26 +12,26 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const router = useRouter()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
 
     try {
       const supabase = createClient()
-
-      const { error: loginError } = await supabase.auth.signInWithPassword({
+      
+      const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      if (loginError) {
-        if (loginError.message.includes('Invalid login credentials')) {
+      if (signInError) {
+        if (signInError.message.includes('Invalid login credentials')) {
           setError('Email ou mot de passe incorrect')
-        } else if (loginError.message.includes('Email not confirmed')) {
+        } else if (signInError.message.includes('Email not confirmed')) {
           setError('Veuillez confirmer votre email avant de vous connecter')
         } else {
-          setError(loginError.message)
+          setError(signInError.message)
         }
         setLoading(false)
         return
@@ -41,85 +41,72 @@ export default function LoginPage() {
       router.refresh()
     } catch (err) {
       setError('Une erreur est survenue')
+    } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] p-4">
-      <div className="w-full max-w-md rounded-lg border border-white/10 bg-[#111111] p-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-2xl font-bold">
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
+      <div className="w-full max-w-md p-8 rounded-xl border border-[#222] bg-[#111]">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold">
             <span className="text-white">Chap</span>
             <span className="text-[#00ff88]">Cam</span>
           </h1>
-          <p className="mt-2 text-sm text-gray-400">
-            Connecte-toi pour acceder au dashboard
-          </p>
+          <p className="text-gray-400 mt-2">Connecte-toi a ton compte</p>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 p-3 text-sm text-red-400">
+          <div className="bg-red-500/10 border border-red-500/50 text-red-400 px-4 py-3 rounded-lg mb-6">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label htmlFor="email" className="mb-2 block text-sm font-bold uppercase text-gray-400">
-              Email
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">EMAIL</label>
             <input
               type="email"
-              id="email"
-              name="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="ton@email.com"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-[#00ff88] focus:outline-none"
               required
+              className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#333] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff88] transition-colors"
+              placeholder="ton@email.com"
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="mb-2 block text-sm font-bold uppercase text-gray-400">
-              Mot de passe
-            </label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">MOT DE PASSE</label>
             <input
               type="password"
-              id="password"
-              name="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-white placeholder-gray-500 focus:border-[#00ff88] focus:outline-none"
               required
+              className="w-full px-4 py-3 bg-[#1a1a1a] border border-[#333] rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff88] transition-colors"
+              placeholder="••••••••"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-[#00ff88] py-3 font-bold uppercase text-black transition-colors hover:bg-[#00cc6a] disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-4 bg-[#00ff88] hover:bg-[#00dd77] text-black font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'CONNEXION...' : 'SE CONNECTER'}
           </button>
         </form>
 
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-400">
-            Pas encore de compte ?{' '}
-            <Link href="/auth/sign-up" className="text-[#00ff88] hover:underline">
-              Creer un compte
-            </Link>
-          </p>
-        </div>
-
-        <div className="mt-4 text-center">
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-400">
-            ← Retour a l&apos;accueil
+        <p className="text-center text-gray-400 mt-6">
+          Pas encore de compte ?{' '}
+          <Link href="/auth/sign-up" className="text-[#00ff88] hover:underline">
+            S&apos;inscrire
           </Link>
-        </div>
+        </p>
+
+        <Link href="/" className="block text-center text-gray-500 hover:text-gray-400 mt-4">
+          ← Retour a l&apos;accueil
+        </Link>
       </div>
     </div>
   )
