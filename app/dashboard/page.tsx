@@ -10,12 +10,15 @@ import {
   Camera,
   Sparkles,
   Plus,
-  Check
+  Check,
+  AlertCircle
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { createClient } from '@/lib/supabase/client'
-import { toast } from '@/hooks/use-toast'
+import { createBrowserClient } from '@supabase/ssr'
+
+const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
 
 type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
@@ -26,27 +29,8 @@ interface Avatar {
   is_active: boolean
 }
 
-function getStatusColor(status: ConnectionStatus): string {
-  switch (status) {
-    case 'connected': return 'bg-[#00ff88]'
-    case 'connecting': return 'bg-yellow-500 animate-pulse'
-    case 'error': return 'bg-red-500'
-    default: return 'bg-gray-500'
-  }
-}
-
-function getStatusText(status: ConnectionStatus): string {
-  switch (status) {
-    case 'connected': return 'Connecte'
-    case 'connecting': return 'Connexion...'
-    case 'error': return 'Erreur'
-    default: return 'Deconnecte'
-  }
-}
-
 export default function DashboardPage() {
   const router = useRouter()
-  const supabase = createClient()
   
   // Refs
   const webcamVideoRef = useRef<HTMLVideoElement>(null)
@@ -64,11 +48,17 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [userId, setUserId] = useState<string | null>(null)
+  const [debugLog, setDebugLog] = useState<string[]>([])
   
   // Refs for processing
   const streamRef = useRef<MediaStream | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const processingRef = useRef(false)
+
+  const addLog = (msg: string) => {
+    console.log('[v0]', msg)
+    setDebugLog(prev => [...prev.slice(-9), `${new Date().toLocaleTimeString()}: ${msg}`])
+  }
 
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
@@ -76,49 +66,59 @@ export default function DashboardPage() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
   }
 
+  // Create Supabase client
+  const getSupabase = useCallback(() => {
+    return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  }, [])
+
   // Fetch avatars from Supabase
   const fetchAvatars = useCallback(async (uid: string) => {
-    console.log('[v0] Fetching avatars for user:', uid)
+    addLog(`Fetching avatars for user: ${uid}`)
     
+    const supabase = getSupabase()
     const { data, error } = await supabase
       .from('user_avatars')
       .select('*')
       .eq('user_id', uid)
       .order('created_at', { ascending: false })
 
-    console.log('[v0] Avatars fetch result:', { data, error })
+    addLog(`Avatars result: ${data?.length || 0} found, error: ${error?.message || 'none'}`)
 
     if (error) {
-      console.error('[v0] Error fetching avatars:', error)
+      addLog(`Error fetching avatars: ${error.message}`)
       return
     }
 
     if (data && data.length > 0) {
       setAvatars(data)
-      // Select the active avatar or the first one
       const activeAvatar = data.find((a: Avatar) => a.is_active) || data[0]
       setSelectedAvatar(activeAvatar)
-      console.log('[v0] Selected avatar:', activeAvatar)
+      addLog(`Selected avatar: ${activeAvatar.name}`)
+    } else {
+      addLog('No avatars found')
     }
-  }, [supabase])
+  }, [getSupabase])
 
   // Check auth and fetch avatars
   useEffect(() => {
     async function init() {
+      addLog('Initializing...')
+      const supabase = getSupabase()
       const { data: { user } } = await supabase.auth.getUser()
-      console.log('[v0] Current user:', user)
       
       if (!user) {
+        addLog('No user found, redirecting to login')
         router.push('/auth/login')
         return
       }
       
+      addLog(`User authenticated: ${user.email}`)
       setUserId(user.id)
       await fetchAvatars(user.id)
       setIsLoading(false)
     }
     init()
-  }, [router, supabase, fetchAvatars])
+  }, [router, getSupabase, fetchAvatars])
 
   // Session timer
   useEffect(() => {
@@ -134,29 +134,14 @@ export default function DashboardPage() {
   // Select avatar
   const handleSelectAvatar = async (avatar: Avatar) => {
     setSelectedAvatar(avatar)
+    addLog(`Avatar selected: ${avatar.name}`)
     
-    // Update is_active in database
     if (userId) {
-      // Reset all avatars is_active to false
-      await supabase
-        .from('user_avatars')
-        .update({ is_active: false })
-        .eq('user_id', userId)
-      
-      // Set selected avatar as active
-      await supabase
-        .from('user_avatars')
-        .update({ is_active: true })
-        .eq('id', avatar.id)
-      
-      // Update local state
-      setAvatars(prev => prev.map(a => ({
-        ...a,
-        is_active: a.id === avatar.id
-      })))
+      const supabase = getSupabase()
+      await supabase.from('user_avatars').update({ is_active: false }).eq('user_id', userId)
+      await supabase.from('user_avatars').update({ is_active: true }).eq('id', avatar.id)
+      setAvatars(prev => prev.map(a => ({ ...a, is_active: a.id === avatar.id })))
     }
-    
-    toast({ title: `Avatar "${avatar.name}" selectionne` })
   }
 
   // Process frame with fal.ai
@@ -183,12 +168,16 @@ export default function DashboardPage() {
       canvas.height = video.videoHeight || 480
 
       const ctx = canvas.getContext('2d')
-      if (!ctx) return
+      if (!ctx) {
+        processingRef.current = false
+        return
+      }
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
       const frameDataUrl = canvas.toDataURL('image/jpeg', 0.7)
 
-      // Call swap API
+      addLog('Calling swap API...')
+      
       const response = await fetch('/api/swap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -199,9 +188,16 @@ export default function DashboardPage() {
       })
 
       const result = await response.json()
-      setLatency(Math.round(performance.now() - startTime))
+      const elapsed = Math.round(performance.now() - startTime)
+      setLatency(elapsed)
 
-      if (result.image_url) {
+      if (!response.ok) {
+        addLog(`Swap API error: ${result.error || response.status}`)
+        setError(result.error || 'Swap failed')
+      } else if (result.image_url) {
+        addLog(`Swap success in ${elapsed}ms`)
+        setError(null)
+        
         const img = new Image()
         img.crossOrigin = 'anonymous'
         img.onload = () => {
@@ -215,17 +211,24 @@ export default function DashboardPage() {
             }
           }
         }
+        img.onerror = () => {
+          addLog('Failed to load swapped image')
+        }
         img.src = result.image_url
+      } else {
+        addLog('No image_url in response')
       }
 
-    } catch (err) {
-      console.error('[v0] Swap error:', err)
+    } catch (err: any) {
+      addLog(`Swap error: ${err.message}`)
+      setError(err.message)
     } finally {
       processingRef.current = false
       if (isActive) {
+        // Process every 200ms for better performance
         setTimeout(() => {
           animationFrameRef.current = requestAnimationFrame(processFrame)
-        }, 150)
+        }, 200)
       }
     }
   }, [isActive, selectedAvatar])
@@ -233,24 +236,28 @@ export default function DashboardPage() {
   // Start swap
   const handleStartSwap = async () => {
     if (!selectedAvatar) {
-      toast({ title: 'Selectionne un avatar', description: 'Clique sur un avatar ou ajoutes-en un', variant: 'destructive' })
+      setError('Selectionne un avatar')
       return
     }
 
+    addLog('Starting swap...')
     setConnectionStatus('connecting')
     setError(null)
 
     try {
+      addLog('Requesting camera access...')
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
         audio: false,
       })
 
       streamRef.current = stream
+      addLog('Camera access granted')
 
       if (webcamVideoRef.current) {
         webcamVideoRef.current.srcObject = stream
         await webcamVideoRef.current.play()
+        addLog('Video playing')
       }
 
       setIsActive(true)
@@ -258,11 +265,11 @@ export default function DashboardPage() {
       setSessionStartTime(Date.now())
       setSessionDuration(0)
 
+      addLog('Starting frame processing...')
       animationFrameRef.current = requestAnimationFrame(processFrame)
-      toast({ title: 'Live Swap actif!' })
 
-    } catch (err) {
-      console.error('[v0] Camera error:', err)
+    } catch (err: any) {
+      addLog(`Camera error: ${err.message}`)
       setConnectionStatus('error')
       setError('Autorise la camera dans ton navigateur')
     }
@@ -270,6 +277,7 @@ export default function DashboardPage() {
 
   // Stop swap
   const handleStopSwap = () => {
+    addLog('Stopping swap...')
     setIsActive(false)
     setConnectionStatus('disconnected')
 
@@ -282,10 +290,30 @@ export default function DashboardPage() {
       streamRef.current = null
     }
 
-    if (webcamVideoRef.current) webcamVideoRef.current.srcObject = null
+    if (webcamVideoRef.current) {
+      webcamVideoRef.current.srcObject = null
+    }
 
     setLatency(0)
-    toast({ title: 'Session terminee', description: `Duree: ${formatTime(sessionDuration)}` })
+    addLog(`Session ended, duration: ${formatTime(sessionDuration)}`)
+  }
+
+  const getStatusColor = (status: ConnectionStatus): string => {
+    switch (status) {
+      case 'connected': return 'bg-[#00ff88]'
+      case 'connecting': return 'bg-yellow-500 animate-pulse'
+      case 'error': return 'bg-red-500'
+      default: return 'bg-gray-500'
+    }
+  }
+
+  const getStatusText = (status: ConnectionStatus): string => {
+    switch (status) {
+      case 'connected': return 'Connecte'
+      case 'connecting': return 'Connexion...'
+      case 'error': return 'Erreur'
+      default: return 'Deconnecte'
+    }
   }
 
   if (isLoading) {
@@ -298,7 +326,6 @@ export default function DashboardPage() {
 
   return (
     <div className="p-4 lg:p-6">
-      {/* Hidden canvases */}
       <canvas ref={processCanvasRef} className="hidden" />
       
       {/* Header */}
@@ -377,12 +404,17 @@ export default function DashboardPage() {
       </div>
 
       {/* Status Bar */}
-      <div className="mt-4 flex items-center justify-between rounded-xl border border-white/10 bg-[#111] px-4 py-3">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#111] px-4 py-3">
         <div className="flex items-center gap-3">
           <div className={`h-3 w-3 rounded-full ${getStatusColor(connectionStatus)}`} />
           <span className="text-sm text-gray-400">{getStatusText(connectionStatus)}</span>
-          {error && <span className="text-sm text-red-400">{error}</span>}
         </div>
+        {error && (
+          <div className="flex items-center gap-2 text-sm text-red-400">
+            <AlertCircle className="h-4 w-4" />
+            {error}
+          </div>
+        )}
         <div className="flex items-center gap-4">
           {isActive && (
             <div className="text-sm">
@@ -391,7 +423,7 @@ export default function DashboardPage() {
             </div>
           )}
           <div className="text-sm">
-            <span className="text-gray-400">Avatar actif: </span>
+            <span className="text-gray-400">Avatar: </span>
             <span className="text-white">{selectedAvatar?.name || 'Aucun'}</span>
           </div>
         </div>
@@ -474,6 +506,21 @@ export default function DashboardPage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Debug Logs */}
+      <div className="mt-4 rounded-xl border border-white/10 bg-[#0a0a0a] p-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-gray-500">Debug Logs</span>
+          <button onClick={() => setDebugLog([])} className="text-xs text-gray-600 hover:text-gray-400">Clear</button>
+        </div>
+        <div className="max-h-32 overflow-y-auto font-mono text-xs text-gray-400 space-y-1">
+          {debugLog.length === 0 ? (
+            <p className="text-gray-600">Aucun log</p>
+          ) : (
+            debugLog.map((log, i) => <p key={i}>{log}</p>)
+          )}
+        </div>
       </div>
     </div>
   )
