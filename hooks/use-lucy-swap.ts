@@ -1,12 +1,6 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { fal } from '@fal-ai/client'
-
-// Configure fal client
-fal.config({
-  credentials: process.env.NEXT_PUBLIC_FAL_KEY || '',
-})
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
@@ -38,115 +32,106 @@ export function useLucySwap({
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected')
   const [latency, setLatency] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  
+
   const currentAvatarUrl = useRef(avatarUrl)
-  const animationFrameId = useRef<number | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const processingRef = useRef(false)
-  const lastFrameTime = useRef(0)
-  
-  // Update avatar URL
+  const activeRef = useRef(false)
+  const outputCanvasRef = useRef<HTMLCanvasElement | null>(null)
+
   const updateAvatar = useCallback((url: string) => {
     currentAvatarUrl.current = url
   }, [])
 
-  // Process frame with Lucy 2.1
-  const processFrame = useCallback(async () => {
-    if (!isActive || !videoRef.current || !outputRef.current || processingRef.current) {
-      return
-    }
-
-    const video = videoRef.current
-    const output = outputRef.current
-
-    // Skip if video not ready
-    if (video.readyState < 2) {
-      animationFrameId.current = requestAnimationFrame(processFrame)
-      return
-    }
-
-    processingRef.current = true
-    const startTime = performance.now()
-
-    try {
-      // Create canvas for frame capture
-      if (!canvasRef.current) {
-        canvasRef.current = document.createElement('canvas')
-      }
-      const canvas = canvasRef.current
-      canvas.width = video.videoWidth || 640
-      canvas.height = video.videoHeight || 480
-
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        throw new Error('Could not get canvas context')
+  // Main swap loop
+  const swapLoop = useCallback(async () => {
+    while (activeRef.current) {
+      if (!videoRef.current || processingRef.current) {
+        await new Promise(r => setTimeout(r, 100))
+        continue
       }
 
-      // Draw current video frame
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const video = videoRef.current
+      if (video.readyState < 2) {
+        await new Promise(r => setTimeout(r, 100))
+        continue
+      }
 
-      // Convert to base64
-      const frameDataUrl = canvas.toDataURL('image/jpeg', 0.8)
+      processingRef.current = true
+      const startTime = performance.now()
 
-      // Call Lucy 2.1 API via fal.ai
-      const result = await fal.subscribe('fal-ai/face-swap', {
-        input: {
-          base_image: frameDataUrl,
-          swap_image: currentAvatarUrl.current,
-        },
-      }) as { data?: { image?: { url: string } } }
+      try {
+        // Capture frame
+        if (!canvasRef.current) {
+          canvasRef.current = document.createElement('canvas')
+        }
+        const canvas = canvasRef.current
+        canvas.width = video.videoWidth || 640
+        canvas.height = video.videoHeight || 480
 
-      // Update latency
-      const endTime = performance.now()
-      setLatency(Math.round(endTime - startTime))
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { processingRef.current = false; continue }
 
-      // Display result
-      const imageUrl = result?.data?.image?.url || (result as unknown as { image?: { url: string } })?.image?.url
-      if (imageUrl) {
-        // Create image element and draw to output
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.onload = () => {
-          if (output && isActive) {
-            // Create a canvas for output
-            const outputCanvas = document.createElement('canvas')
-            outputCanvas.width = canvas.width
-            outputCanvas.height = canvas.height
-            const outputCtx = outputCanvas.getContext('2d')
-            if (outputCtx) {
-              outputCtx.drawImage(img, 0, 0, canvas.width, canvas.height)
-              // Stream canvas to video
-              const stream = outputCanvas.captureStream(30)
-              if (output.srcObject !== stream) {
-                output.srcObject = stream
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+        const frameDataUrl = canvas.toDataURL('image/jpeg', 0.7)
+
+        // Call swap API
+        const response = await fetch('/api/swap', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            base_image: frameDataUrl,
+            swap_image: currentAvatarUrl.current,
+          }),
+        })
+
+        if (!response.ok) {
+          processingRef.current = false
+          await new Promise(r => setTimeout(r, 200))
+          continue
+        }
+
+        const result = await response.json()
+        setLatency(Math.round(performance.now() - startTime))
+
+        if (result.image_url && outputRef.current) {
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          img.onload = () => {
+            if (!outputRef.current || !activeRef.current) return
+
+            if (!outputCanvasRef.current) {
+              outputCanvasRef.current = document.createElement('canvas')
+            }
+            const outCanvas = outputCanvasRef.current
+            outCanvas.width = canvas.width
+            outCanvas.height = canvas.height
+
+            const outCtx = outCanvas.getContext('2d')
+            if (outCtx) {
+              outCtx.drawImage(img, 0, 0, outCanvas.width, outCanvas.height)
+              const stream = outCanvas.captureStream(30)
+              if (outputRef.current.srcObject !== stream) {
+                outputRef.current.srcObject = stream
+                outputRef.current.play().catch(() => {})
               }
             }
           }
+          img.src = result.image_url
         }
-        img.src = imageUrl
+
+      } catch (err) {
+        console.error('[swap] Error:', err)
+      } finally {
+        processingRef.current = false
       }
 
-    } catch (err) {
-      console.error('[v0] Lucy swap error:', err)
-      // Don't set error for individual frame failures, just continue
-    } finally {
-      processingRef.current = false
-      
-      // Throttle to ~15 FPS to avoid API rate limits
-      const elapsed = performance.now() - lastFrameTime.current
-      const delay = Math.max(0, 66 - elapsed) // ~15 FPS
-      lastFrameTime.current = performance.now()
-      
-      if (isActive) {
-        setTimeout(() => {
-          animationFrameId.current = requestAnimationFrame(processFrame)
-        }, delay)
-      }
+      // ~3 FPS pour éviter les rate limits — 1 swap toutes les 300ms
+      await new Promise(r => setTimeout(r, 300))
     }
-  }, [isActive, videoRef, outputRef])
+  }, [videoRef, outputRef])
 
-  // Start swap
   const startSwap = useCallback(async () => {
     if (!currentAvatarUrl.current) {
       setError('Aucun avatar sélectionné')
@@ -158,91 +143,67 @@ export function useLucySwap({
     setError(null)
 
     try {
-      // Request camera access
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: 'user',
-        },
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
         audio: false,
       })
 
       streamRef.current = stream
 
-      // Attach stream to video element
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
       }
 
-      // Mirror output to show raw webcam initially
+      // Show webcam on output initially
       if (outputRef.current) {
         outputRef.current.srcObject = stream
         await outputRef.current.play()
       }
 
       setIsActive(true)
+      activeRef.current = true
       setIsConnecting(false)
       setConnectionStatus('connected')
 
-      // Start processing loop
-      lastFrameTime.current = performance.now()
-      animationFrameId.current = requestAnimationFrame(processFrame)
+      // Start swap loop
+      swapLoop()
 
     } catch (err) {
-      console.error('[v0] Failed to start swap:', err)
+      console.error('[swap] Start error:', err)
       setIsConnecting(false)
       setConnectionStatus('error')
-      
-      if (err instanceof Error) {
-        if (err.name === 'NotAllowedError') {
-          setError('Active la caméra dans ton navigateur')
-        } else {
-          setError(err.message)
-        }
+      if (err instanceof Error && err.name === 'NotAllowedError') {
+        setError('Active la caméra dans ton navigateur')
       } else {
-        setError('Erreur de connexion')
+        setError('Erreur de connexion caméra')
       }
     }
-  }, [videoRef, outputRef, processFrame])
+  }, [videoRef, outputRef, swapLoop])
 
-  // Stop swap
   const stopSwap = useCallback(() => {
+    activeRef.current = false
     setIsActive(false)
     setConnectionStatus('disconnected')
 
-    // Cancel animation frame
-    if (animationFrameId.current) {
-      cancelAnimationFrame(animationFrameId.current)
-      animationFrameId.current = null
-    }
-
-    // Stop media stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
 
-    // Clear video elements
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-    if (outputRef.current) {
-      outputRef.current.srcObject = null
-    }
+    if (videoRef.current) videoRef.current.srcObject = null
+    if (outputRef.current) outputRef.current.srcObject = null
 
     setLatency(0)
   }, [videoRef, outputRef])
 
-  // Update avatar ref when prop changes
   useEffect(() => {
     currentAvatarUrl.current = avatarUrl
   }, [avatarUrl])
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
+      activeRef.current = false
       stopSwap()
     }
   }, [stopSwap])
