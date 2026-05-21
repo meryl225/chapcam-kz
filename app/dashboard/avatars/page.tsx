@@ -3,30 +3,30 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { 
-  UserPlus, 
   Plus, 
   Trash2, 
   Upload, 
   Check, 
   X, 
   ImageIcon,
-  Sparkles
+  Sparkles,
+  Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
 interface Avatar {
   id: string
   name: string
-  url: string
+  image_url: string
   is_active: boolean
   created_at: string
 }
@@ -34,10 +34,12 @@ interface Avatar {
 export default function AvatarsPage() {
   const router = useRouter()
   const { toast } = useToast()
+  const supabase = createClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(true)
   const [avatars, setAvatars] = useState<Avatar[]>([])
+  const [userId, setUserId] = useState<string | null>(null)
   
   // Upload modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -49,26 +51,41 @@ export default function AvatarsPage() {
   // Delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Load avatars from localStorage on mount
+  // Fetch avatars from Supabase
+  const fetchAvatars = useCallback(async (uid: string) => {
+    const { data, error } = await supabase
+      .from('user_avatars')
+      .select('*')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching avatars:', error)
+      toast({ title: 'Erreur', description: 'Impossible de charger les avatars', variant: 'destructive' })
+      return
+    }
+
+    if (data) {
+      setAvatars(data)
+    }
+  }, [supabase, toast])
+
+  // Check auth and load avatars
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem("chapcam_avatars")
-      if (saved) {
-        setAvatars(JSON.parse(saved))
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) {
+        router.push('/auth/login')
+        return
       }
-    } catch (error) {
-      console.error("Error loading avatars:", error)
-    } finally {
+      
+      setUserId(user.id)
+      await fetchAvatars(user.id)
       setLoading(false)
     }
-  }, [])
-
-  // Save avatars to localStorage whenever they change
-  useEffect(() => {
-    if (!loading) {
-      localStorage.setItem("chapcam_avatars", JSON.stringify(avatars))
-    }
-  }, [avatars, loading])
+    init()
+  }, [router, supabase, fetchAvatars])
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -98,216 +115,198 @@ export default function AvatarsPage() {
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
-    const file = e.dataTransfer.files?.[0]
-    if (!file) return
-
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
-      toast({
-        title: "Format invalide",
-        description: "Seuls les formats JPG, PNG et WebP sont acceptes",
-        variant: "destructive",
-      })
-      return
+    const file = e.dataTransfer.files[0]
+    if (file) {
+      const input = fileInputRef.current
+      if (input) {
+        const dataTransfer = new DataTransfer()
+        dataTransfer.items.add(file)
+        input.files = dataTransfer.files
+        handleFileSelect({ target: input } as React.ChangeEvent<HTMLInputElement>)
+      }
     }
+  }, [handleFileSelect])
 
-    if (file.size > 15 * 1024 * 1024) {
-      toast({
-        title: "Fichier trop volumineux",
-        description: "La taille maximale est de 15 Mo",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setSelectedFile(file)
-    setPreviewUrl(URL.createObjectURL(file))
-  }, [toast])
-
-  const convertToBase64 = (file: File): Promise<string> => {
+  // Convert file to base64
+  const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.readAsDataURL(file)
       reader.onload = () => resolve(reader.result as string)
-      reader.onerror = (error) => reject(error)
+      reader.onerror = reject
     })
   }
 
-  const handleUpload = async () => {
-    if (!selectedFile || !avatarName.trim()) return
+  // Save avatar
+  const handleSaveAvatar = async () => {
+    if (!selectedFile || !avatarName.trim() || !userId) {
+      toast({ title: 'Erreur', description: 'Nom et photo requis', variant: 'destructive' })
+      return
+    }
 
     setUploading(true)
 
     try {
-      // Convert to base64 for localStorage storage
-      const base64 = await convertToBase64(selectedFile)
+      // Convert to base64 (for simplicity - in production use Supabase Storage)
+      const base64 = await fileToBase64(selectedFile)
 
-      const newAvatar: Avatar = {
-        id: crypto.randomUUID(),
-        name: avatarName.trim(),
-        url: base64,
-        is_active: avatars.length === 0,
-        created_at: new Date().toISOString(),
+      // Insert into database
+      const { data, error } = await supabase
+        .from('user_avatars')
+        .insert({
+          user_id: userId,
+          name: avatarName.trim(),
+          image_url: base64,
+          is_active: avatars.length === 0 // First avatar is active by default
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error saving avatar:', error)
+        toast({ title: 'Erreur', description: 'Impossible de sauvegarder', variant: 'destructive' })
+        return
       }
 
-      setAvatars((prev) => [newAvatar, ...prev])
-
-      toast({
-        title: "Avatar ajoute",
-        description: `"${avatarName}" a ete ajoute avec succes`,
-      })
-
+      // Update local state
+      setAvatars(prev => [data, ...prev])
+      
+      // Reset modal
       setIsModalOpen(false)
-      setAvatarName("")
       setSelectedFile(null)
       setPreviewUrl(null)
-    } catch (error) {
-      console.error("Upload error:", error)
-      toast({
-        title: "Erreur",
-        description: "Impossible d'ajouter l'avatar",
-        variant: "destructive",
-      })
+      setAvatarName("")
+
+      toast({ title: 'Avatar cree!', description: `"${avatarName}" a ete ajoute` })
+
+    } catch (err) {
+      console.error('Error:', err)
+      toast({ title: 'Erreur', description: 'Une erreur est survenue', variant: 'destructive' })
     } finally {
       setUploading(false)
     }
   }
 
-  const handleDelete = (avatar: Avatar) => {
-    setAvatars((prev) => prev.filter((a) => a.id !== avatar.id))
+  // Delete avatar
+  const handleDeleteAvatar = async (id: string) => {
+    const { error } = await supabase
+      .from('user_avatars')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      toast({ title: 'Erreur', description: 'Impossible de supprimer', variant: 'destructive' })
+      return
+    }
+
+    setAvatars(prev => prev.filter(a => a.id !== id))
     setDeletingId(null)
-    toast({
-      title: "Avatar supprime",
-      description: `"${avatar.name}" a ete supprime`,
-    })
+    toast({ title: 'Avatar supprime' })
   }
 
-  const handleSetActive = (avatar: Avatar) => {
-    setAvatars((prev) =>
-      prev.map((a) => ({
-        ...a,
-        is_active: a.id === avatar.id,
-      }))
-    )
-    toast({
-      title: "Avatar active",
-      description: `"${avatar.name}" est maintenant ton avatar actif`,
-    })
-  }
+  // Set active avatar
+  const handleSetActive = async (avatar: Avatar) => {
+    if (!userId) return
 
-  const closeModal = () => {
-    setIsModalOpen(false)
-    setAvatarName("")
-    setSelectedFile(null)
-    setPreviewUrl(null)
+    // Reset all to inactive
+    await supabase
+      .from('user_avatars')
+      .update({ is_active: false })
+      .eq('user_id', userId)
+
+    // Set selected as active
+    await supabase
+      .from('user_avatars')
+      .update({ is_active: true })
+      .eq('id', avatar.id)
+
+    // Update local state
+    setAvatars(prev => prev.map(a => ({
+      ...a,
+      is_active: a.id === avatar.id
+    })))
+
+    toast({ title: `"${avatar.name}" est maintenant actif` })
   }
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center p-6">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#00ff88] border-t-transparent" />
-          <p className="text-gray-400">Chargement...</p>
-        </div>
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-full p-4 md:p-6 lg:p-8">
+    <div className="p-4 lg:p-6">
       {/* Header */}
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-            MES AVATARS
-          </h1>
-          <p className="mt-2 text-sm text-gray-400 md:text-base">
-            Uploade la photo de la personne en qui tu veux te transformer en temps reel
-          </p>
+          <h1 className="text-2xl font-bold text-white">MES AVATARS</h1>
+          <p className="text-gray-400 mt-1">Uploade la photo de la personne en qui tu veux te transformer en temps reel</p>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30">
-            <ImageIcon className="h-4 w-4" />
-            <span>{avatars.length} avatar(s)</span>
-          </div>
-
-          <Button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-[#00ff88] font-bold uppercase text-black transition-all hover:bg-[#00ff88]/90 hover:shadow-[0_0_20px_rgba(0,255,136,0.4)]"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            AJOUTER UNE PHOTO
-          </Button>
-        </div>
+        <Button 
+          onClick={() => setIsModalOpen(true)}
+          className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-semibold"
+        >
+          <Plus className="mr-2 h-4 w-4" /> AJOUTER UNE PHOTO
+        </Button>
       </div>
 
-      {/* Content */}
+      {/* Avatars Grid */}
       {avatars.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-700 bg-[#111111] p-8 md:p-12">
-          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-800">
-            <UserPlus className="h-10 w-10 text-gray-500" />
-          </div>
-          <h2 className="mb-2 text-center text-xl font-bold text-white">
-            Aucun avatar pour l&apos;instant
-          </h2>
-          <p className="mb-6 max-w-md text-center text-gray-400">
-            Uploade ta premiere photo pour commencer a te transformer
-          </p>
-          <Button
+        <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/20 rounded-2xl bg-[#111]">
+          <Sparkles className="h-16 w-16 text-[#00ff88]/30 mb-4" />
+          <p className="text-gray-400 mb-4">Aucun avatar pour le moment</p>
+          <Button 
             onClick={() => setIsModalOpen(true)}
-            className="bg-[#00ff88] font-bold uppercase text-black hover:bg-[#00ff88]/90"
+            className="bg-[#00ff88] text-black hover:bg-[#00dd77]"
           >
-            <Plus className="mr-2 h-4 w-4" />
-            AJOUTER MA PREMIERE PHOTO
+            <Plus className="mr-2 h-4 w-4" /> Creer mon premier avatar
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {avatars.map((avatar) => (
             <div
               key={avatar.id}
-              className={`group relative overflow-hidden rounded-2xl bg-[#111111] transition-all ${
+              className={`relative group rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
                 avatar.is_active
-                  ? "ring-2 ring-[#00ff88] shadow-[0_0_20px_rgba(0,255,136,0.3)]"
-                  : "ring-1 ring-white/10 hover:ring-white/20"
+                  ? 'border-[#00ff88] shadow-[0_0_20px_rgba(0,255,136,0.3)]'
+                  : 'border-white/10 hover:border-white/30'
               }`}
+              onClick={() => handleSetActive(avatar)}
             >
-              <div className="aspect-[3/4] w-full overflow-hidden">
+              <div className="aspect-[3/4]">
                 <img
-                  src={avatar.url}
+                  src={avatar.image_url}
                   alt={avatar.name}
-                  className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  className="w-full h-full object-cover"
                 />
               </div>
-
+              
+              {/* Active badge */}
               {avatar.is_active && (
-                <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-[#00ff88] px-3 py-1 text-xs font-bold uppercase text-black">
-                  <Check className="h-3 w-3" />
-                  ACTIF
+                <div className="absolute top-3 right-3 bg-[#00ff88] text-black text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                  <Check className="h-3 w-3" /> ACTIF
                 </div>
               )}
 
+              {/* Name overlay */}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-4">
+                <p className="text-white font-semibold truncate">{avatar.name}</p>
+              </div>
+
+              {/* Delete button */}
               <button
-                onClick={() => setDeletingId(avatar.id)}
-                className="absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-red-500/80 text-white opacity-0 backdrop-blur-sm transition-all hover:bg-red-500 group-hover:opacity-100"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDeletingId(avatar.id)
+                }}
+                className="absolute top-3 left-3 bg-red-500/80 hover:bg-red-600 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
-
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 pt-12">
-                <p className="mb-3 truncate text-lg font-bold text-white">
-                  {avatar.name}
-                </p>
-                {!avatar.is_active && (
-                  <Button
-                    onClick={() => handleSetActive(avatar)}
-                    className="w-full bg-[#00ff88] font-bold uppercase text-black opacity-0 transition-all hover:bg-[#00ff88]/90 group-hover:opacity-100"
-                  >
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    UTILISER
-                  </Button>
-                )}
-              </div>
             </div>
           ))}
         </div>
@@ -315,69 +314,53 @@ export default function AvatarsPage() {
 
       {/* Upload Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto border-white/10 bg-[#0a0a0a] text-white sm:max-w-lg">
+        <DialogContent className="bg-[#111] border-white/10 text-white max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase">
-              AJOUTER UN AVATAR
-            </DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Uploade la photo de la personne en qui tu veux te transformer
-            </DialogDescription>
+            <DialogTitle>Ajouter un avatar</DialogTitle>
           </DialogHeader>
 
-          <div className="mt-4 space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-300">
-                Nom de l&apos;avatar
-              </label>
+          <div className="space-y-4">
+            {/* Name input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">Nom de l'avatar</label>
               <Input
                 value={avatarName}
-                onChange={(e) => setAvatarName(e.target.value.slice(0, 30))}
-                placeholder="Ex: Moi en costume, Sarah..."
-                className="border-white/10 bg-[#111111] text-white placeholder:text-gray-500 focus:border-[#00ff88] focus:ring-[#00ff88]/20"
+                onChange={(e) => setAvatarName(e.target.value)}
+                placeholder="Ex: John, Emma, etc."
+                className="bg-[#1a1a1a] border-white/10 text-white"
                 maxLength={30}
               />
-              <p className="text-right text-xs text-gray-500">
-                {avatarName.length}/30
-              </p>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-300">Photo</label>
+            {/* Upload area */}
+            <div
+              onDrop={handleDrop}
+              onDragOver={(e) => e.preventDefault()}
+              onClick={() => fileInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+                previewUrl ? 'border-[#00ff88]' : 'border-white/20 hover:border-white/40'
+              }`}
+            >
               {previewUrl ? (
                 <div className="relative">
-                  <div className="aspect-[3/4] w-full overflow-hidden rounded-xl">
-                    <img
-                      src={previewUrl}
-                      alt="Preview"
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
+                  <img src={previewUrl} alt="Preview" className="max-h-64 mx-auto rounded-lg" />
                   <button
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation()
                       setSelectedFile(null)
                       setPreviewUrl(null)
                     }}
-                    className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white transition-colors hover:bg-red-500"
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
               ) : (
-                <div
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-700 bg-[#111111] p-8 transition-colors hover:border-[#00ff88]/50 hover:bg-[#111111]/80"
-                >
-                  <Upload className="mb-4 h-12 w-12 text-gray-500" />
-                  <p className="mb-2 text-center font-medium text-white">
-                    Glisse ta photo ici ou clique pour parcourir
-                  </p>
-                  <p className="text-center text-sm text-gray-500">
-                    JPG, PNG ou WebP - Max 15 Mo
-                  </p>
-                </div>
+                <>
+                  <Upload className="h-12 w-12 text-gray-500 mx-auto mb-3" />
+                  <p className="text-gray-400">Glisse une photo ici ou clique pour selectionner</p>
+                  <p className="text-gray-500 text-sm mt-2">JPG, PNG ou WebP - Max 15 Mo</p>
+                </>
               )}
               <input
                 ref={fileInputRef}
@@ -388,20 +371,40 @@ export default function AvatarsPage() {
               />
             </div>
 
-            <div className="flex gap-3 pt-4">
+            {/* Tips */}
+            <div className="bg-[#00ff88]/10 border border-[#00ff88]/20 rounded-lg p-3">
+              <p className="text-[#00ff88] text-sm font-medium mb-1">Conseils pour un bon resultat:</p>
+              <ul className="text-gray-400 text-xs space-y-1">
+                <li>- Photo de face, bien eclairee</li>
+                <li>- Visage bien visible et centre</li>
+                <li>- Fond neutre de preference</li>
+              </ul>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={closeModal}
-                className="flex-1 border-white/10 bg-transparent text-white hover:bg-white/5"
+                onClick={() => {
+                  setIsModalOpen(false)
+                  setSelectedFile(null)
+                  setPreviewUrl(null)
+                  setAvatarName("")
+                }}
+                className="flex-1 border-white/20 text-white hover:bg-white/10"
               >
                 Annuler
               </Button>
               <Button
-                onClick={handleUpload}
+                onClick={handleSaveAvatar}
                 disabled={!selectedFile || !avatarName.trim() || uploading}
-                className="flex-1 bg-[#00ff88] font-bold text-black hover:bg-[#00ff88]/90 disabled:opacity-50"
+                className="flex-1 bg-[#00ff88] text-black hover:bg-[#00dd77] disabled:opacity-50"
               >
-                {uploading ? "Enregistrement..." : "Enregistrer l'avatar"}
+                {uploading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enregistrement...</>
+                ) : (
+                  "Enregistrer l'avatar"
+                )}
               </Button>
             </div>
           </div>
@@ -410,29 +413,22 @@ export default function AvatarsPage() {
 
       {/* Delete Confirmation Modal */}
       <Dialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
-        <DialogContent className="border-white/10 bg-[#0a0a0a] text-white sm:max-w-md">
+        <DialogContent className="bg-[#111] border-white/10 text-white max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
-              Supprimer cet avatar ?
-            </DialogTitle>
-            <DialogDescription className="text-gray-400">
-              Cette action est irreversible.
-            </DialogDescription>
+            <DialogTitle>Supprimer cet avatar ?</DialogTitle>
           </DialogHeader>
-          <div className="flex gap-3 pt-4">
+          <p className="text-gray-400">Cette action est irreversible.</p>
+          <div className="flex gap-3 mt-4">
             <Button
               variant="outline"
               onClick={() => setDeletingId(null)}
-              className="flex-1 border-white/10 bg-transparent text-white hover:bg-white/5"
+              className="flex-1 border-white/20 text-white hover:bg-white/10"
             >
               Annuler
             </Button>
             <Button
-              onClick={() => {
-                const avatar = avatars.find((a) => a.id === deletingId)
-                if (avatar) handleDelete(avatar)
-              }}
-              className="flex-1 bg-red-500 font-bold text-white hover:bg-red-600"
+              onClick={() => deletingId && handleDeleteAvatar(deletingId)}
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white"
             >
               Supprimer
             </Button>
