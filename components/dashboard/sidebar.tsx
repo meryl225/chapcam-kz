@@ -13,28 +13,6 @@ import {
 import { createClient } from '@/lib/supabase/client'
 import { useState } from 'react'
 
-/*
-subscriptions table schema:
-CREATE TABLE subscriptions (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users UNIQUE,
-  plan text CHECK (plan IN ('free','1day','30days','90days','365days')) DEFAULT 'free',
-  started_at timestamptz DEFAULT now(),
-  expires_at timestamptz,
-  is_active boolean DEFAULT true
-);
-
-user_avatars table schema:
-CREATE TABLE user_avatars (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users,
-  name text NOT NULL,
-  url text NOT NULL,
-  is_custom boolean DEFAULT true,
-  created_at timestamptz DEFAULT now()
-);
-*/
-
 const PLAN_LIMITS: Record<string, number> = {
   free: 0,
   '1day': 1,
@@ -165,12 +143,12 @@ function SidebarContent({
             <p className="mb-2 text-xs text-orange-300">
               ⚡ Upgrade pour accéder au swap
             </p>
-            <a
-              href="/#tarifs"
+            <Link
+              href="/dashboard/plans"
               className="block rounded-lg bg-orange-500 py-2 text-center text-xs font-bold uppercase text-white transition-colors hover:bg-orange-600"
             >
               UPGRADER
-            </a>
+            </Link>
           </div>
         )}
 
@@ -277,14 +255,12 @@ export function PlanGuardBanner({ plan, expiresAt, isActive }: PlanGuardBannerPr
       <p className="text-sm font-medium text-white">
         ⚡ Tu es sur le plan gratuit — Active un abonnement pour démarrer le swap
       </p>
-      <a
-        href="https://chapcam.com/#tarifs"
-        target="_blank"
-        rel="noopener noreferrer"
+      <Link
+        href="/dashboard/plans"
         className="rounded-lg bg-white px-4 py-1.5 text-xs font-bold uppercase text-orange-500 transition-colors hover:bg-gray-100"
       >
         VOIR LES OFFRES
-      </a>
+      </Link>
     </div>
   )
 }
