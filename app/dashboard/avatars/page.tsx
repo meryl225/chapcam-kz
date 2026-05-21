@@ -106,7 +106,6 @@ export default function AvatarsPage() {
   useEffect(() => {
     async function fetchData() {
       try {
-        // Get current user
         const { data: { user }, error: userError } = await supabase.auth.getUser()
         if (userError || !user) {
           router.push("/auth/login")
@@ -114,14 +113,12 @@ export default function AvatarsPage() {
         }
         setUserId(user.id)
 
-        // Fetch subscription
         const { data: subscription } = await supabase
           .from("subscriptions")
           .select("plan, expires_at, is_active")
           .eq("user_id", user.id)
           .single()
 
-        // Determine effective plan
         let effectivePlan = "free"
         if (subscription) {
           const isExpired = subscription.expires_at && new Date(subscription.expires_at) < new Date()
@@ -131,7 +128,6 @@ export default function AvatarsPage() {
         }
         setPlan(effectivePlan)
 
-        // Fetch avatars
         const { data: avatarsData, error: avatarsError } = await supabase
           .from("user_avatars")
           .select("*")
@@ -155,12 +151,10 @@ export default function AvatarsPage() {
     fetchData()
   }, [router, supabase, toast])
 
-  // Handle file selection
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // Validate file type
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       toast({
         title: "Format invalide",
@@ -170,7 +164,6 @@ export default function AvatarsPage() {
       return
     }
 
-    // Validate file size
     if (file.size > 15 * 1024 * 1024) {
       toast({
         title: "Fichier trop volumineux",
@@ -184,7 +177,6 @@ export default function AvatarsPage() {
     setPreviewUrl(URL.createObjectURL(file))
   }, [toast])
 
-  // Handle drag and drop
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     const file = e.dataTransfer.files?.[0]
@@ -212,7 +204,6 @@ export default function AvatarsPage() {
     setPreviewUrl(URL.createObjectURL(file))
   }, [toast])
 
-  // Compress image
   const compressImage = async (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const img = new Image()
@@ -225,7 +216,6 @@ export default function AvatarsPage() {
           return
         }
 
-        // Calculate new dimensions (max 1024x1024)
         const maxSize = 1024
         let { width, height } = img
         if (width > maxSize || height > maxSize) {
@@ -252,11 +242,9 @@ export default function AvatarsPage() {
     })
   }
 
-  // Handle upload
   const handleUpload = async () => {
     if (!selectedFile || !avatarName.trim() || !userId) return
 
-    // Check limit
     if (avatars.length >= limit) {
       toast({
         title: "Limite atteinte",
@@ -270,14 +258,11 @@ export default function AvatarsPage() {
     setUploadProgress(10)
 
     try {
-      // Compress image
       setUploadProgress(30)
       const compressedBlob = await compressImage(selectedFile)
 
-      // Generate unique filename
       const fileName = `${userId}/${crypto.randomUUID()}.jpg`
 
-      // Upload to Supabase Storage
       setUploadProgress(50)
       const { error: storageError } = await supabase.storage
         .from("avatars")
@@ -288,13 +273,11 @@ export default function AvatarsPage() {
 
       if (storageError) throw storageError
 
-      // Get public URL
       setUploadProgress(70)
       const { data: { publicUrl } } = supabase.storage
         .from("avatars")
         .getPublicUrl(fileName)
 
-      // Insert to database
       setUploadProgress(90)
       const { data: newAvatar, error: dbError } = await supabase
         .from("user_avatars")
@@ -302,7 +285,7 @@ export default function AvatarsPage() {
           user_id: userId,
           name: avatarName.trim(),
           url: publicUrl,
-          is_active: avatars.length === 0, // First avatar is active by default
+          is_active: avatars.length === 0,
         })
         .select()
         .single()
@@ -317,7 +300,6 @@ export default function AvatarsPage() {
         description: `"${avatarName}" a ete ajoute avec succes`,
       })
 
-      // Reset modal
       setIsModalOpen(false)
       setAvatarName("")
       setSelectedFile(null)
@@ -335,19 +317,15 @@ export default function AvatarsPage() {
     }
   }
 
-  // Handle delete
   const handleDelete = async (avatar: Avatar) => {
     try {
-      // Extract file path from URL
       const urlParts = avatar.url.split("/avatars/")
       const filePath = urlParts[1]
 
-      // Delete from storage
       if (filePath) {
         await supabase.storage.from("avatars").remove([filePath])
       }
 
-      // Delete from database
       const { error } = await supabase
         .from("user_avatars")
         .delete()
@@ -372,16 +350,13 @@ export default function AvatarsPage() {
     }
   }
 
-  // Set avatar as active
   const handleSetActive = async (avatar: Avatar) => {
     try {
-      // Deactivate all avatars
       await supabase
         .from("user_avatars")
         .update({ is_active: false })
         .eq("user_id", userId!)
 
-      // Activate selected avatar
       const { error } = await supabase
         .from("user_avatars")
         .update({ is_active: true })
@@ -410,7 +385,6 @@ export default function AvatarsPage() {
     }
   }
 
-  // Close modal and reset
   const closeModal = () => {
     setIsModalOpen(false)
     setAvatarName("")
@@ -443,9 +417,7 @@ export default function AvatarsPage() {
           </p>
         </div>
 
-        {/* Plan badge & Add button */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Plan badge */}
           <div className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${getSlotBadgeColor()}`}>
             <ImageIcon className="h-4 w-4" />
             <span>
@@ -453,7 +425,6 @@ export default function AvatarsPage() {
             </span>
           </div>
 
-          {/* Add button with tooltip */}
           {plan === "free" ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -498,7 +469,6 @@ export default function AvatarsPage() {
 
       {/* Content */}
       {avatars.length === 0 ? (
-        /* Empty State */
         <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-gray-700 bg-[#111111] p-8 md:p-12">
           <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gray-800">
             <UserPlus className="h-10 w-10 text-gray-500" />
@@ -513,7 +483,7 @@ export default function AvatarsPage() {
           </p>
           {plan === "free" ? (
             <Button
-              onClick={() => router.push("/pricing")}
+              onClick={() => router.push("/dashboard/plans")}
               className="bg-gradient-to-r from-[#7c3aed] to-[#00d4ff] font-bold uppercase text-white"
             >
               <Crown className="mr-2 h-4 w-4" />
@@ -530,7 +500,6 @@ export default function AvatarsPage() {
           )}
         </div>
       ) : (
-        /* Avatar Grid */
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-6">
           {avatars.map((avatar) => (
             <div
@@ -541,7 +510,6 @@ export default function AvatarsPage() {
                   : "ring-1 ring-white/10 hover:ring-white/20"
               }`}
             >
-              {/* Image */}
               <div className="aspect-[3/4] w-full overflow-hidden">
                 <img
                   src={avatar.url}
@@ -550,7 +518,6 @@ export default function AvatarsPage() {
                 />
               </div>
 
-              {/* Active badge */}
               {avatar.is_active && (
                 <div className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-[#00ff88] px-3 py-1 text-xs font-bold uppercase text-black">
                   <Check className="h-3 w-3" />
@@ -558,7 +525,6 @@ export default function AvatarsPage() {
                 </div>
               )}
 
-              {/* Delete button (on hover) */}
               <button
                 onClick={() => setDeletingId(avatar.id)}
                 className="absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-red-500/80 text-white opacity-0 backdrop-blur-sm transition-all hover:bg-red-500 group-hover:opacity-100"
@@ -566,7 +532,6 @@ export default function AvatarsPage() {
                 <Trash2 className="h-4 w-4" />
               </button>
 
-              {/* Bottom gradient overlay with name and button */}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-4 pt-12">
                 <p className="mb-3 truncate text-lg font-bold text-white">
                   {avatar.name}
@@ -599,7 +564,6 @@ export default function AvatarsPage() {
           </DialogHeader>
 
           <div className="mt-4 space-y-6">
-            {/* Name input */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-300">
                 Nom de l&apos;avatar
@@ -616,7 +580,6 @@ export default function AvatarsPage() {
               </p>
             </div>
 
-            {/* Upload zone */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-300">Photo</label>
               {previewUrl ? (
@@ -663,7 +626,6 @@ export default function AvatarsPage() {
               />
             </div>
 
-            {/* Tips card */}
             <div className="rounded-xl bg-[#111111] p-4">
               <p className="mb-3 text-sm font-medium text-gray-300">
                 Conseils pour de meilleurs resultats :
@@ -696,7 +658,6 @@ export default function AvatarsPage() {
               </ul>
             </div>
 
-            {/* Progress bar */}
             {uploading && (
               <div className="space-y-2">
                 <Progress 
@@ -709,7 +670,6 @@ export default function AvatarsPage() {
               </div>
             )}
 
-            {/* Actions */}
             <div className="flex gap-3">
               <Button
                 variant="outline"
