@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
 import { 
   UserPlus, 
   Plus, 
@@ -10,14 +9,11 @@ import {
   Upload, 
   Check, 
   X, 
-  AlertCircle,
   ImageIcon,
-  Sparkles,
-  Crown
+  Sparkles
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Progress } from "@/components/ui/progress"
 import {
   Dialog,
   DialogContent,
@@ -25,55 +21,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
-
-// Plan limits for avatars
-const PLAN_LIMITS: Record<string, number> = {
-  free: 0,
-  "1day": 1,
-  "30days": 3,
-  "90days": 10,
-  "365days": Infinity,
-}
-
-const PLAN_LABELS: Record<string, string> = {
-  free: "Gratuit",
-  "1day": "1 jour",
-  "30days": "30 jours",
-  "90days": "90 jours",
-  "365days": "365 jours",
-}
 
 interface Avatar {
   id: string
-  user_id: string
   name: string
   url: string
   is_active: boolean
   created_at: string
 }
 
-interface Subscription {
-  plan: string
-  expires_at: string | null
-  is_active: boolean
-}
-
 export default function AvatarsPage() {
   const router = useRouter()
-  const supabase = createClient()
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(true)
   const [avatars, setAvatars] = useState<Avatar[]>([])
-  const [plan, setPlan] = useState<string>("free")
-  const [userId, setUserId] = useState<string | null>(null)
   
   // Upload modal state
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -81,75 +45,30 @@ export default function AvatarsPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
-  const [uploadProgress, setUploadProgress] = useState(0)
   
   // Delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  // Computed values
-  const limit = PLAN_LIMITS[plan] ?? 0
-  const canUpload = plan !== "free" && avatars.length < limit
-  const slotsUsed = avatars.length
-  const slotsTotal = limit === Infinity ? "illimite" : limit
-
-  // Slot badge color
-  const getSlotBadgeColor = () => {
-    if (plan === "free") return "bg-gray-600 text-gray-300"
-    if (limit === Infinity) return "bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30"
-    const remaining = limit - slotsUsed
-    if (remaining === 0) return "bg-red-500/20 text-red-400 border border-red-500/30"
-    if (remaining === 1) return "bg-orange-500/20 text-orange-400 border border-orange-500/30"
-    return "bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30"
-  }
-
-  // Fetch user data on mount
+  // Load avatars from localStorage on mount
   useEffect(() => {
-    async function fetchData() {
-      try {
-        const { data: { user }, error: userError } = await supabase.auth.getUser()
-        if (userError || !user) {
-          router.push("/auth/login")
-          return
-        }
-        setUserId(user.id)
-
-        const { data: subscription } = await supabase
-          .from("subscriptions")
-          .select("plan, expires_at, is_active")
-          .eq("user_id", user.id)
-          .single()
-
-        let effectivePlan = "free"
-        if (subscription) {
-          const isExpired = subscription.expires_at && new Date(subscription.expires_at) < new Date()
-          if (subscription.is_active && !isExpired) {
-            effectivePlan = subscription.plan
-          }
-        }
-        setPlan(effectivePlan)
-
-        const { data: avatarsData, error: avatarsError } = await supabase
-          .from("user_avatars")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false })
-
-        if (avatarsError) throw avatarsError
-        setAvatars(avatarsData || [])
-      } catch (error) {
-        console.error("Error fetching data:", error)
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger vos donnees",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
+    try {
+      const saved = localStorage.getItem("chapcam_avatars")
+      if (saved) {
+        setAvatars(JSON.parse(saved))
       }
+    } catch (error) {
+      console.error("Error loading avatars:", error)
+    } finally {
+      setLoading(false)
     }
+  }, [])
 
-    fetchData()
-  }, [router, supabase, toast])
+  // Save avatars to localStorage whenever they change
+  useEffect(() => {
+    if (!loading) {
+      localStorage.setItem("chapcam_avatars", JSON.stringify(avatars))
+    }
+  }, [avatars, loading])
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -204,95 +123,32 @@ export default function AvatarsPage() {
     setPreviewUrl(URL.createObjectURL(file))
   }, [toast])
 
-  const compressImage = async (file: File): Promise<Blob> => {
+  const convertToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const img = new Image()
-      img.crossOrigin = "anonymous"
-      img.onload = () => {
-        const canvas = document.createElement("canvas")
-        const ctx = canvas.getContext("2d")
-        if (!ctx) {
-          reject(new Error("Could not get canvas context"))
-          return
-        }
-
-        const maxSize = 1024
-        let { width, height } = img
-        if (width > maxSize || height > maxSize) {
-          const ratio = Math.min(maxSize / width, maxSize / height)
-          width = Math.round(width * ratio)
-          height = Math.round(height * ratio)
-        }
-
-        canvas.width = width
-        canvas.height = height
-        ctx.drawImage(img, 0, 0, width, height)
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) resolve(blob)
-            else reject(new Error("Failed to compress image"))
-          },
-          "image/jpeg",
-          0.92
-        )
-      }
-      img.onerror = () => reject(new Error("Failed to load image"))
-      img.src = URL.createObjectURL(file)
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = (error) => reject(error)
     })
   }
 
   const handleUpload = async () => {
-    if (!selectedFile || !avatarName.trim() || !userId) return
-
-    if (avatars.length >= limit) {
-      toast({
-        title: "Limite atteinte",
-        description: "Tu as atteint le nombre maximum d'avatars pour ton plan",
-        variant: "destructive",
-      })
-      return
-    }
+    if (!selectedFile || !avatarName.trim()) return
 
     setUploading(true)
-    setUploadProgress(10)
 
     try {
-      setUploadProgress(30)
-      const compressedBlob = await compressImage(selectedFile)
+      // Convert to base64 for localStorage storage
+      const base64 = await convertToBase64(selectedFile)
 
-      const fileName = `${userId}/${crypto.randomUUID()}.jpg`
+      const newAvatar: Avatar = {
+        id: crypto.randomUUID(),
+        name: avatarName.trim(),
+        url: base64,
+        is_active: avatars.length === 0,
+        created_at: new Date().toISOString(),
+      }
 
-      setUploadProgress(50)
-      const { error: storageError } = await supabase.storage
-        .from("avatars")
-        .upload(fileName, compressedBlob, {
-          contentType: "image/jpeg",
-          upsert: false,
-        })
-
-      if (storageError) throw storageError
-
-      setUploadProgress(70)
-      const { data: { publicUrl } } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(fileName)
-
-      setUploadProgress(90)
-      const { data: newAvatar, error: dbError } = await supabase
-        .from("user_avatars")
-        .insert({
-          user_id: userId,
-          name: avatarName.trim(),
-          url: publicUrl,
-          is_active: avatars.length === 0,
-        })
-        .select()
-        .single()
-
-      if (dbError) throw dbError
-
-      setUploadProgress(100)
       setAvatars((prev) => [newAvatar, ...prev])
 
       toast({
@@ -308,81 +164,34 @@ export default function AvatarsPage() {
       console.error("Upload error:", error)
       toast({
         title: "Erreur",
-        description: "Impossible d'uploader l'avatar",
+        description: "Impossible d'ajouter l'avatar",
         variant: "destructive",
       })
     } finally {
       setUploading(false)
-      setUploadProgress(0)
     }
   }
 
-  const handleDelete = async (avatar: Avatar) => {
-    try {
-      const urlParts = avatar.url.split("/avatars/")
-      const filePath = urlParts[1]
-
-      if (filePath) {
-        await supabase.storage.from("avatars").remove([filePath])
-      }
-
-      const { error } = await supabase
-        .from("user_avatars")
-        .delete()
-        .eq("id", avatar.id)
-
-      if (error) throw error
-
-      setAvatars((prev) => prev.filter((a) => a.id !== avatar.id))
-      setDeletingId(null)
-
-      toast({
-        title: "Avatar supprime",
-        description: `"${avatar.name}" a ete supprime`,
-      })
-    } catch (error) {
-      console.error("Delete error:", error)
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer l'avatar",
-        variant: "destructive",
-      })
-    }
+  const handleDelete = (avatar: Avatar) => {
+    setAvatars((prev) => prev.filter((a) => a.id !== avatar.id))
+    setDeletingId(null)
+    toast({
+      title: "Avatar supprime",
+      description: `"${avatar.name}" a ete supprime`,
+    })
   }
 
-  const handleSetActive = async (avatar: Avatar) => {
-    try {
-      await supabase
-        .from("user_avatars")
-        .update({ is_active: false })
-        .eq("user_id", userId!)
-
-      const { error } = await supabase
-        .from("user_avatars")
-        .update({ is_active: true })
-        .eq("id", avatar.id)
-
-      if (error) throw error
-
-      setAvatars((prev) =>
-        prev.map((a) => ({
-          ...a,
-          is_active: a.id === avatar.id,
-        }))
-      )
-
-      toast({
-        title: "Avatar active",
-        description: `"${avatar.name}" est maintenant ton avatar actif`,
-      })
-    } catch (error) {
-      console.error("Set active error:", error)
-      toast({
-        title: "Erreur",
-        description: "Impossible d'activer l'avatar",
-        variant: "destructive",
-      })
-    }
+  const handleSetActive = (avatar: Avatar) => {
+    setAvatars((prev) =>
+      prev.map((a) => ({
+        ...a,
+        is_active: a.id === avatar.id,
+      }))
+    )
+    toast({
+      title: "Avatar active",
+      description: `"${avatar.name}" est maintenant ton avatar actif`,
+    })
   }
 
   const closeModal = () => {
@@ -390,7 +199,6 @@ export default function AvatarsPage() {
     setAvatarName("")
     setSelectedFile(null)
     setPreviewUrl(null)
-    setUploadProgress(0)
   }
 
   if (loading) {
@@ -418,52 +226,18 @@ export default function AvatarsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium ${getSlotBadgeColor()}`}>
+          <div className="flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium bg-[#00ff88]/20 text-[#00ff88] border border-[#00ff88]/30">
             <ImageIcon className="h-4 w-4" />
-            <span>
-              Plan {PLAN_LABELS[plan]} — {slotsUsed}/{slotsTotal} photos
-            </span>
+            <span>{avatars.length} avatar(s)</span>
           </div>
 
-          {plan === "free" ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  disabled
-                  className="cursor-not-allowed bg-gray-700 text-gray-400"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  AJOUTER UNE PHOTO
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="bg-gray-800 text-white">
-                <p>Upgrade pour ajouter des avatars</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : !canUpload ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  disabled
-                  className="cursor-not-allowed bg-gray-700 text-gray-400"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  AJOUTER UNE PHOTO
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="bg-gray-800 text-white">
-                <p>Limite atteinte — Upgrade ton plan</p>
-              </TooltipContent>
-            </Tooltip>
-          ) : (
-            <Button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-[#00ff88] font-bold uppercase text-black transition-all hover:bg-[#00ff88]/90 hover:shadow-[0_0_20px_rgba(0,255,136,0.4)]"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              AJOUTER UNE PHOTO
-            </Button>
-          )}
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-[#00ff88] font-bold uppercase text-black transition-all hover:bg-[#00ff88]/90 hover:shadow-[0_0_20px_rgba(0,255,136,0.4)]"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            AJOUTER UNE PHOTO
+          </Button>
         </div>
       </div>
 
@@ -477,27 +251,15 @@ export default function AvatarsPage() {
             Aucun avatar pour l&apos;instant
           </h2>
           <p className="mb-6 max-w-md text-center text-gray-400">
-            {plan === "free"
-              ? "Upgrade ton abonnement pour commencer a te transformer"
-              : "Uploade ta premiere photo pour commencer a te transformer"}
+            Uploade ta premiere photo pour commencer a te transformer
           </p>
-          {plan === "free" ? (
-            <Button
-              onClick={() => router.push("/dashboard/plans")}
-              className="bg-gradient-to-r from-[#7c3aed] to-[#00d4ff] font-bold uppercase text-white"
-            >
-              <Crown className="mr-2 h-4 w-4" />
-              VOIR LES PLANS
-            </Button>
-          ) : (
-            <Button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-[#00ff88] font-bold uppercase text-black hover:bg-[#00ff88]/90"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              AJOUTER MA PREMIERE PHOTO
-            </Button>
-          )}
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className="bg-[#00ff88] font-bold uppercase text-black hover:bg-[#00ff88]/90"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            AJOUTER MA PREMIERE PHOTO
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:gap-6">
@@ -626,88 +388,42 @@ export default function AvatarsPage() {
               />
             </div>
 
-            <div className="rounded-xl bg-[#111111] p-4">
-              <p className="mb-3 text-sm font-medium text-gray-300">
-                Conseils pour de meilleurs resultats :
-              </p>
-              <ul className="space-y-2 text-sm">
-                <li className="flex items-start gap-2 text-green-400">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0" />
-                  Photo nette et bien eclairee
-                </li>
-                <li className="flex items-start gap-2 text-green-400">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0" />
-                  Visage et corps entiers visibles
-                </li>
-                <li className="flex items-start gap-2 text-green-400">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0" />
-                  Une seule personne dans l&apos;image
-                </li>
-                <li className="flex items-start gap-2 text-green-400">
-                  <Check className="mt-0.5 h-4 w-4 shrink-0" />
-                  Fond neutre recommande
-                </li>
-                <li className="flex items-start gap-2 text-red-400">
-                  <X className="mt-0.5 h-4 w-4 shrink-0" />
-                  Evite les lunettes de soleil
-                </li>
-                <li className="flex items-start gap-2 text-red-400">
-                  <X className="mt-0.5 h-4 w-4 shrink-0" />
-                  Evite les groupes de personnes
-                </li>
-              </ul>
-            </div>
-
-            {uploading && (
-              <div className="space-y-2">
-                <Progress 
-                  value={uploadProgress} 
-                  className="h-2 bg-gray-800 [&>div]:bg-[#00ff88]" 
-                />
-                <p className="text-center text-sm text-gray-400">
-                  Upload en cours... {uploadProgress}%
-                </p>
-              </div>
-            )}
-
-            <div className="flex gap-3">
+            <div className="flex gap-3 pt-4">
               <Button
                 variant="outline"
                 onClick={closeModal}
-                disabled={uploading}
-                className="flex-1 border-white/10 bg-transparent text-white hover:bg-white/10"
+                className="flex-1 border-white/10 bg-transparent text-white hover:bg-white/5"
               >
                 Annuler
               </Button>
               <Button
                 onClick={handleUpload}
                 disabled={!selectedFile || !avatarName.trim() || uploading}
-                className="flex-1 bg-[#00ff88] font-bold uppercase text-black hover:bg-[#00ff88]/90 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-400"
+                className="flex-1 bg-[#00ff88] font-bold text-black hover:bg-[#00ff88]/90 disabled:opacity-50"
               >
-                {uploading ? "Upload..." : "ENREGISTRER L'AVATAR"}
+                {uploading ? "Enregistrement..." : "Enregistrer l'avatar"}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Delete Confirmation Modal */}
       <Dialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
         <DialogContent className="border-white/10 bg-[#0a0a0a] text-white sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-lg font-bold">
-              <AlertCircle className="h-5 w-5 text-red-500" />
+            <DialogTitle className="text-xl font-bold">
               Supprimer cet avatar ?
             </DialogTitle>
             <DialogDescription className="text-gray-400">
-              Cette action est irreversible. L&apos;avatar sera definitivement supprime.
+              Cette action est irreversible.
             </DialogDescription>
           </DialogHeader>
-          <div className="mt-4 flex gap-3">
+          <div className="flex gap-3 pt-4">
             <Button
               variant="outline"
               onClick={() => setDeletingId(null)}
-              className="flex-1 border-white/10 bg-transparent text-white hover:bg-white/10"
+              className="flex-1 border-white/10 bg-transparent text-white hover:bg-white/5"
             >
               Annuler
             </Button>
@@ -716,10 +432,9 @@ export default function AvatarsPage() {
                 const avatar = avatars.find((a) => a.id === deletingId)
                 if (avatar) handleDelete(avatar)
               }}
-              className="flex-1 bg-red-500 font-bold uppercase text-white hover:bg-red-600"
+              className="flex-1 bg-red-500 font-bold text-white hover:bg-red-600"
             >
-              <Trash2 className="mr-2 h-4 w-4" />
-              SUPPRIMER
+              Supprimer
             </Button>
           </div>
         </DialogContent>
