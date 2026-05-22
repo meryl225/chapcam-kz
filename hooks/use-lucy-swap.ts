@@ -35,102 +35,21 @@ export function useLucySwap({
 
   const currentAvatarUrl = useRef(avatarUrl)
   const streamRef = useRef<MediaStream | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const processingRef = useRef(false)
   const activeRef = useRef(false)
-  const outputCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const realtimeClientRef = useRef<any>(null)
+  const latencyIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const updateAvatar = useCallback((url: string) => {
     currentAvatarUrl.current = url
-  }, [])
-
-  // Main swap loop
-  const swapLoop = useCallback(async () => {
-    while (activeRef.current) {
-      if (!videoRef.current || processingRef.current) {
-        await new Promise(r => setTimeout(r, 100))
-        continue
-      }
-
-      const video = videoRef.current
-      if (video.readyState < 2) {
-        await new Promise(r => setTimeout(r, 100))
-        continue
-      }
-
-      processingRef.current = true
-      const startTime = performance.now()
-
-      try {
-        // Capture frame
-        if (!canvasRef.current) {
-          canvasRef.current = document.createElement('canvas')
-        }
-        const canvas = canvasRef.current
-        canvas.width = video.videoWidth || 640
-        canvas.height = video.videoHeight || 480
-
-        const ctx = canvas.getContext('2d')
-        if (!ctx) { processingRef.current = false; continue }
-
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        const frameDataUrl = canvas.toDataURL('image/jpeg', 0.7)
-
-        // Call swap API
-        const response = await fetch('/api/swap', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            base_image: frameDataUrl,
-            swap_image: currentAvatarUrl.current,
-          }),
-        })
-
-        if (!response.ok) {
-          processingRef.current = false
-          await new Promise(r => setTimeout(r, 200))
-          continue
-        }
-
-        const result = await response.json()
-        setLatency(Math.round(performance.now() - startTime))
-
-        if (result.image_url && outputRef.current) {
-          const img = new Image()
-          img.crossOrigin = 'anonymous'
-          img.onload = () => {
-            if (!outputRef.current || !activeRef.current) return
-
-            if (!outputCanvasRef.current) {
-              outputCanvasRef.current = document.createElement('canvas')
-            }
-            const outCanvas = outputCanvasRef.current
-            outCanvas.width = canvas.width
-            outCanvas.height = canvas.height
-
-            const outCtx = outCanvas.getContext('2d')
-            if (outCtx) {
-              outCtx.drawImage(img, 0, 0, outCanvas.width, outCanvas.height)
-              const stream = outCanvas.captureStream(30)
-              if (outputRef.current.srcObject !== stream) {
-                outputRef.current.srcObject = stream
-                outputRef.current.play().catch(() => {})
-              }
-            }
-          }
-          img.src = result.image_url
-        }
-
-      } catch (err) {
-        console.error('[swap] Error:', err)
-      } finally {
-        processingRef.current = false
-      }
-
-      // ~3 FPS pour éviter les rate limits — 1 swap toutes les 300ms
-      await new Promise(r => setTimeout(r, 300))
+    // Update avatar in active session
+    if (realtimeClientRef.current && url) {
+      realtimeClientRef.current.set({
+        prompt: "Transform into this person, keep all movements and expressions",
+        image: url,
+        enhance: true,
+      }).catch(console.error)
     }
-  }, [videoRef, outputRef])
+  }, [])
 
   const startSwap = useCallback(async () => {
     if (!currentAvatarUrl.current) {
@@ -143,54 +62,117 @@ export function useLucySwap({
     setError(null)
 
     try {
+      // Dynamically import Decart SDK
+      const { createDecartClient, models } = await import('@decartai/sdk')
+
+      const model = models.realtime('lucy-2.1')
+
+      // Get camera stream
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-        audio: false,
+        audio: true,
+        video: {
+          frameRate: model.fps,
+          width: model.width,
+          height: model.height,
+        },
       })
 
       streamRef.current = stream
 
+      // Show webcam on left side
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         await videoRef.current.play()
       }
 
-      // Show webcam on output initially
-      if (outputRef.current) {
-        outputRef.current.srcObject = stream
-        await outputRef.current.play()
-      }
+      // Create Decart client
+      const client = createDecartClient({
+        apiKey: process.env.NEXT_PUBLIC_DECART_API_KEY || '',
+      })
+
+      // Connect to Lucy 2.1
+      const realtimeClient = await client.realtime.connect(stream, {
+        model,
+        mirror: 'auto',
+        onRemoteStream: (editedStream: MediaStream) => {
+          // Show swapped video on right side
+          if (outputRef.current) {
+            outputRef.current.srcObject = editedStream
+            outputRef.current.play().catch(console.error)
+          }
+        },
+      })
+
+      realtimeClientRef.current = realtimeClient
+
+      // Set avatar as reference image
+      await realtimeClient.set({
+        prompt: "Transform into this person completely, maintain all movements and expressions naturally",
+        image: currentAvatarUrl.current,
+        enhance: true,
+      })
 
       setIsActive(true)
       activeRef.current = true
       setIsConnecting(false)
       setConnectionStatus('connected')
 
-      // Start swap loop
-      swapLoop()
+      // Track latency
+      let frameCount = 0
+      const startTime = Date.now()
+      latencyIntervalRef.current = setInterval(() => {
+        frameCount++
+        const elapsed = Date.now() - startTime
+        setLatency(Math.round(elapsed / frameCount))
+      }, 1000)
 
     } catch (err) {
-      console.error('[swap] Start error:', err)
+      console.error('[Decart] Start error:', err)
       setIsConnecting(false)
       setConnectionStatus('error')
-      if (err instanceof Error && err.name === 'NotAllowedError') {
-        setError('Active la caméra dans ton navigateur')
+
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError') {
+          setError('Active la caméra dans ton navigateur')
+        } else if (err.message.includes('API key')) {
+          setError('Clé API Decart invalide')
+        } else {
+          setError(err.message)
+        }
       } else {
-        setError('Erreur de connexion caméra')
+        setError('Erreur de connexion')
       }
     }
-  }, [videoRef, outputRef, swapLoop])
+  }, [videoRef, outputRef])
 
   const stopSwap = useCallback(() => {
     activeRef.current = false
     setIsActive(false)
     setConnectionStatus('disconnected')
 
+    // Clear latency interval
+    if (latencyIntervalRef.current) {
+      clearInterval(latencyIntervalRef.current)
+      latencyIntervalRef.current = null
+    }
+
+    // Disconnect Decart client
+    if (realtimeClientRef.current) {
+      try {
+        realtimeClientRef.current.disconnect?.()
+      } catch (e) {
+        console.error('[Decart] Disconnect error:', e)
+      }
+      realtimeClientRef.current = null
+    }
+
+    // Stop camera stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
 
+    // Clear video elements
     if (videoRef.current) videoRef.current.srcObject = null
     if (outputRef.current) outputRef.current.srcObject = null
 
@@ -199,6 +181,14 @@ export function useLucySwap({
 
   useEffect(() => {
     currentAvatarUrl.current = avatarUrl
+    // Update live if swap is active
+    if (realtimeClientRef.current && avatarUrl && activeRef.current) {
+      realtimeClientRef.current.set({
+        prompt: "Transform into this person completely, maintain all movements and expressions naturally",
+        image: avatarUrl,
+        enhance: true,
+      }).catch(console.error)
+    }
   }, [avatarUrl])
 
   useEffect(() => {
