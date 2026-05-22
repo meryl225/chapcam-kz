@@ -41,7 +41,6 @@ export function useLucySwap({
 
   const updateAvatar = useCallback((url: string) => {
     currentAvatarUrl.current = url
-    // Update avatar in active session
     if (realtimeClientRef.current && url) {
       realtimeClientRef.current.set({
         prompt: "Transform into this person, keep all movements and expressions",
@@ -62,6 +61,17 @@ export function useLucySwap({
     setError(null)
 
     try {
+      // Get API key securely from server
+      const tokenRes = await fetch('/api/decart-token')
+      if (!tokenRes.ok) {
+        throw new Error('Impossible de récupérer la clé API Decart')
+      }
+      const { apiKey } = await tokenRes.json()
+
+      if (!apiKey) {
+        throw new Error('Clé API Decart manquante')
+      }
+
       // Dynamically import Decart SDK
       const { createDecartClient, models } = await import('@decartai/sdk')
 
@@ -85,17 +95,14 @@ export function useLucySwap({
         await videoRef.current.play()
       }
 
-      // Create Decart client
-      const client = createDecartClient({
-        apiKey: process.env.NEXT_PUBLIC_DECART_API_KEY || '',
-      })
+      // Create Decart client with key from server
+      const client = createDecartClient({ apiKey })
 
       // Connect to Lucy 2.1
       const realtimeClient = await client.realtime.connect(stream, {
         model,
         mirror: 'auto',
         onRemoteStream: (editedStream: MediaStream) => {
-          // Show swapped video on right side
           if (outputRef.current) {
             outputRef.current.srcObject = editedStream
             outputRef.current.play().catch(console.error)
@@ -134,8 +141,6 @@ export function useLucySwap({
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
           setError('Active la caméra dans ton navigateur')
-        } else if (err.message.includes('API key')) {
-          setError('Clé API Decart invalide')
         } else {
           setError(err.message)
         }
@@ -150,13 +155,11 @@ export function useLucySwap({
     setIsActive(false)
     setConnectionStatus('disconnected')
 
-    // Clear latency interval
     if (latencyIntervalRef.current) {
       clearInterval(latencyIntervalRef.current)
       latencyIntervalRef.current = null
     }
 
-    // Disconnect Decart client
     if (realtimeClientRef.current) {
       try {
         realtimeClientRef.current.disconnect?.()
@@ -166,13 +169,11 @@ export function useLucySwap({
       realtimeClientRef.current = null
     }
 
-    // Stop camera stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
 
-    // Clear video elements
     if (videoRef.current) videoRef.current.srcObject = null
     if (outputRef.current) outputRef.current.srcObject = null
 
@@ -181,7 +182,6 @@ export function useLucySwap({
 
   useEffect(() => {
     currentAvatarUrl.current = avatarUrl
-    // Update live if swap is active
     if (realtimeClientRef.current && avatarUrl && activeRef.current) {
       realtimeClientRef.current.set({
         prompt: "Transform into this person completely, maintain all movements and expressions naturally",
