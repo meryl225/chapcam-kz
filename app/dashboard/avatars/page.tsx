@@ -26,7 +26,7 @@ import { createClient } from "@/lib/supabase/client"
 interface Avatar {
   id: string
   name: string
-  image_url: string
+  url: string
   is_active: boolean
   created_at: string
 }
@@ -166,7 +166,7 @@ export default function AvatarsPage() {
         .insert({
           user_id: userId,
           name: avatarName.trim(),
-          image_url: publicUrl,
+          url: publicUrl,
           is_active: avatars.length === 0
         })
         .select()
@@ -291,7 +291,7 @@ export default function AvatarsPage() {
             >
               <div className="aspect-[3/4]">
                 <img
-                  src={avatar.image_url}
+                  src={avatar.url}
                   alt={avatar.name}
                   className="w-full h-full object-cover"
                 />
