@@ -8,11 +8,11 @@ import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square } 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
 
-// Lucy 2.1 Realtime Settings - Optimized for low latency
-const TARGET_FPS = 20
-const CANVAS_WIDTH = 640
-const CANVAS_HEIGHT = 480
-const JPEG_QUALITY = 0.7
+// Lucy 2.1 Realtime Settings - Optimized for 720p full body swap
+const TARGET_FPS = 24
+const CANVAS_WIDTH = 1280
+const CANVAS_HEIGHT = 720
+const JPEG_QUALITY = 0.85
 
 interface Avatar {
   id: string
@@ -142,9 +142,12 @@ export default function DashboardPage() {
         connectionRef.current.send({
           image: frameData,
           reference_image: selectedAvatar.url,
-          num_inference_steps: 1,
-          strength: 0.8,
-          guidance_scale: 1.0,
+          // Full body + face swap optimized parameters
+          prompt: "full body transformation, complete character swap, same pose and gestures, high fidelity face swap, preserve body position",
+          negative_prompt: "blurry, distorted, artifacts, partial swap",
+          num_inference_steps: 2,
+          strength: 0.85,
+          guidance_scale: 1.2,
         })
       } catch (err) {
         console.error('Error sending frame:', err)
@@ -315,7 +318,7 @@ export default function DashboardPage() {
             <Zap className="w-6 h-6 text-[#00ff88]" />
             LIVE SWAP
           </h1>
-          <p className="text-gray-400 text-sm">Camera reelle a gauche, visage transforme par Lucy 2.1 a droite</p>
+          <p className="text-gray-400 text-sm">Camera reelle a gauche, full body swap par Lucy 2.1 a droite (720p, 24fps)</p>
         </div>
         <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2 flex items-center gap-2">
           <Coins className="w-4 h-4 text-yellow-500" />
@@ -368,7 +371,7 @@ export default function DashboardPage() {
         <div className="bg-[#111] border border-[#00ff88]/30 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(0,255,136,0.1)]">
           <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#00ff88]/30">
             <Zap className="w-4 h-4 text-[#00ff88]" />
-            <span className="text-white font-medium">LUCY 2.1 SWAP</span>
+            <span className="text-white font-medium">LUCY 2.1 FULL BODY</span>
             {latency > 0 && isSwapping && (
               <span className="ml-2 text-xs text-[#00ff88] bg-[#00ff88]/10 px-2 py-1 rounded">~{latency}ms</span>
             )}
