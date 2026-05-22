@@ -1,68 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { fal } from '@fal-ai/client'
+
+fal.config({
+  credentials: process.env.FAL_KEY,
+})
 
 export async function POST(request: NextRequest) {
   try {
-    const { base_image, swap_image } = await request.json()
+    const { sourceImage, targetImage } = await request.json()
 
-    if (!base_image || !swap_image) {
-      return NextResponse.json({ error: 'Missing images' }, { status: 400 })
+    if (!sourceImage || !targetImage) {
+      return NextResponse.json(
+        { error: 'sourceImage and targetImage are required' },
+        { status: 400 }
+      )
     }
 
-    const FAL_KEY = process.env.FAL_KEY
-    if (!FAL_KEY) {
-      return NextResponse.json({ error: 'FAL_KEY not configured' }, { status: 500 })
-    }
-
-    // Step 1: Upload webcam frame to fal storage
-    const base64Data = base_image.replace(/^data:image\/\w+;base64,/, '')
-    
-    const uploadResponse = await fetch('https://fal.run/fal-ai/storage/upload/base64', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Key ${FAL_KEY}`,
-        'Content-Type': 'application/json',
+    const result = await fal.subscribe('fal-ai/face-swap', {
+      input: {
+        base_image_url: sourceImage,
+        swap_image_url: targetImage,
       },
-      body: JSON.stringify({
-        image: base64Data,
-        content_type: 'image/jpeg',
-      }),
     })
 
-    if (!uploadResponse.ok) {
-      const err = await uploadResponse.text()
-      console.error('[swap] Upload error:', err)
-      return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
-    }
-
-    const { url: baseImageUrl } = await uploadResponse.json()
-
-    // Step 2: Call fal.ai face-swap
-    const swapResponse = await fetch('https://fal.run/fal-ai/face-swap', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Key ${FAL_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        base_image_url: baseImageUrl,
-        swap_image_url: swap_image,
-        result_type: 'url',
-      }),
+    return NextResponse.json({ 
+      success: true, 
+      image: (result as any).data?.image?.url || (result as any).image?.url 
     })
-
-    if (!swapResponse.ok) {
-      const errorText = await swapResponse.text()
-      console.error('[swap] Face-swap error:', errorText)
-      return NextResponse.json({ error: 'Swap failed' }, { status: 500 })
-    }
-
-    const result = await swapResponse.json()
-    const imageUrl = result.image?.url || result.images?.[0]?.url || null
-
-    return NextResponse.json({ image_url: imageUrl })
-
-  } catch (error) {
-    console.error('[swap] Internal error:', error)
-    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  } catch (error: any) {
+    console.error('Swap error:', error)
+    return NextResponse.json(
+      { error: error.message || 'Swap failed' },
+      { status: 500 }
+    )
   }
 }
