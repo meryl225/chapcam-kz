@@ -1,9 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { Check, Zap, Crown, Star, Loader2 } from "lucide-react"
+import { Check, Zap, Crown, Star, Loader2, Clock, Battery } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 
@@ -13,9 +12,12 @@ const plans = [
     duration: "1 JOUR",
     price: "10.000",
     currency: "FCFA",
+    points: 600,
+    swapMinutes: 5,
     features: [
-      "Acces complet a toutes les fonctionnalites",
-      "Face swap illimite",
+      "600 points inclus",
+      "5 minutes de swap",
+      "Face swap en temps reel",
       "Qualite HD 1080p"
     ],
     validity: "Valable 24 heures",
@@ -29,9 +31,12 @@ const plans = [
     duration: "30 JOURS",
     price: "50.000",
     currency: "FCFA",
+    points: 3000,
+    swapMinutes: 25,
     features: [
-      "Acces complet a toutes les fonctionnalites",
-      "Face swap illimite",
+      "3 000 points inclus",
+      "25 minutes de swap",
+      "Face swap en temps reel",
       "Qualite HD 1080p",
       "Support prioritaire"
     ],
@@ -46,9 +51,12 @@ const plans = [
     duration: "90 JOURS",
     price: "100.000",
     currency: "FCFA",
+    points: 7500,
+    swapMinutes: 62,
     features: [
-      "Acces complet a toutes les fonctionnalites",
-      "Face swap illimite",
+      "7 500 points inclus",
+      "62 minutes de swap",
+      "Face swap en temps reel",
       "Qualite 4K Ultra HD",
       "Support prioritaire",
       "Mises a jour exclusives"
@@ -64,13 +72,16 @@ const plans = [
     duration: "365 JOURS",
     price: "150.000",
     currency: "FCFA",
+    points: 15000,
+    swapMinutes: 125,
     features: [
-      "Acces complet a toutes les fonctionnalites",
-      "Face swap illimite",
+      "15 000 points inclus",
+      "125 minutes de swap",
+      "Face swap en temps reel",
       "Qualite 4K Ultra HD",
       "Support VIP 24/7",
       "Mises a jour exclusives",
-      "Acces beta aux nouvelles fonctionnalites"
+      "Acces beta nouvelles fonctionnalites"
     ],
     validity: "Valable 1 an",
     color: "#f97316",
@@ -81,7 +92,6 @@ const plans = [
 ]
 
 export default function PlansPage() {
-  const router = useRouter()
   const { toast } = useToast()
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
 
@@ -100,7 +110,6 @@ export default function PlansPage() {
         throw new Error(data.error || "Erreur lors de la creation du paiement")
       }
 
-      // Redirect to Stripe Checkout
       window.location.href = data.url
     } catch (error) {
       console.error("Checkout error:", error)
@@ -118,11 +127,15 @@ export default function PlansPage() {
       {/* Header */}
       <div className="mb-10 text-center">
         <h1 className="text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-          CHOISIR UN ABONNEMENT
+          RECHARGER MES POINTS
         </h1>
         <p className="mt-2 text-gray-400">
           Paiement <span className="font-semibold text-green-400">100% securise</span> · Acces instantane
         </p>
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#00ff88]/10 px-4 py-2 text-sm text-[#00ff88]">
+          <Battery className="h-4 w-4" />
+          <span>2 points = 1 seconde de swap</span>
+        </div>
       </div>
 
       {/* Plans Grid */}
@@ -155,7 +168,7 @@ export default function PlansPage() {
 
               <div className={`p-6 ${plan.popular ? "pt-14" : ""}`}>
                 {/* Icon + Duration */}
-                <div className="mb-6 flex items-center gap-2">
+                <div className="mb-4 flex items-center gap-2">
                   <div
                     className="flex h-10 w-10 items-center justify-center rounded-xl"
                     style={{ backgroundColor: `${plan.color}20` }}
@@ -168,6 +181,20 @@ export default function PlansPage() {
                   >
                     {plan.duration}
                   </span>
+                </div>
+
+                {/* Points Highlight */}
+                <div className="mb-4 rounded-xl bg-white/5 p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Battery className="h-5 w-5" style={{ color: plan.color }} />
+                      <span className="text-lg font-bold text-white">{plan.points.toLocaleString()} points</span>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
+                    <Clock className="h-4 w-4" />
+                    <span>= {plan.swapMinutes} min de swap</span>
+                  </div>
                 </div>
 
                 {/* Price */}
