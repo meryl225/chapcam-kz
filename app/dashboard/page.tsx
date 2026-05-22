@@ -187,25 +187,39 @@ export default function DashboardPage() {
         throttleInterval: 0,
 
         onResult: (result: any) => {
-          const now = performance.now()
+          console.log('[v0] Lucy result received:', result)
+          
           if (result.inference_time) {
             setLatency(Math.round(result.inference_time * 1000))
           }
 
+          // Handle different response formats from Lucy 2.1
+          const imageData = result.image?.url || result.image || result.output?.url || result.output
+          
+          if (!imageData) {
+            console.log('[v0] No image data in result:', Object.keys(result))
+            return
+          }
+
           // Draw result to swap canvas
-          const imageUrl = result.image?.url || result.image
-          if (imageUrl && swapCanvasRef.current) {
+          if (swapCanvasRef.current) {
             const img = new Image()
             img.crossOrigin = 'anonymous'
             img.onload = () => {
               const ctx = swapCanvasRef.current?.getContext('2d')
               if (ctx && swapCanvasRef.current) {
-                swapCanvasRef.current.width = img.width
-                swapCanvasRef.current.height = img.height
+                // Set canvas size to match image
+                swapCanvasRef.current.width = img.width || CANVAS_WIDTH
+                swapCanvasRef.current.height = img.height || CANVAS_HEIGHT
+                ctx.clearRect(0, 0, swapCanvasRef.current.width, swapCanvasRef.current.height)
                 ctx.drawImage(img, 0, 0)
+                console.log('[v0] Frame drawn to canvas:', img.width, 'x', img.height)
               }
             }
-            img.src = imageUrl
+            img.onerror = (err) => {
+              console.error('[v0] Error loading result image:', err)
+            }
+            img.src = imageData
           }
         },
 
@@ -383,12 +397,18 @@ export default function DashboardPage() {
           <div className="aspect-video bg-[#0a0a0a] relative flex items-center justify-center border-2 border-[#00ff88]/20">
             <canvas
               ref={swapCanvasRef}
-              className={`w-full h-full object-contain ${isSwapping ? 'block' : 'hidden'}`}
+              className="w-full h-full object-contain"
+              style={{ display: isSwapping ? 'block' : 'none' }}
             />
             {!isSwapping && (
               <div className="flex flex-col items-center justify-center text-gray-500">
                 <Zap className="w-12 h-12 mb-2 opacity-50" />
                 <p>Swap inactif</p>
+              </div>
+            )}
+            {isSwapping && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <span className="text-[#00ff88]/30 text-xs">En attente du flux Lucy 2.1...</span>
               </div>
             )}
           </div>
