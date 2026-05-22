@@ -7,11 +7,11 @@ import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square } 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
 
-// Settings for face swap - optimized for smooth experience
-const TARGET_FPS = 2 // 2 API calls per second for smooth swap
-const CANVAS_WIDTH = 512
-const CANVAS_HEIGHT = 512
-const JPEG_QUALITY = 0.8
+// Settings for face swap - optimized for speed and reliability
+const TARGET_FPS = 1 // 1 API call per second - more reliable
+const CANVAS_WIDTH = 384 // Smaller = faster upload
+const CANVAS_HEIGHT = 384
+const JPEG_QUALITY = 0.6 // Lower quality = smaller file = faster
 
 interface Avatar {
   id: string
@@ -160,11 +160,10 @@ export default function DashboardPage() {
         }
         img.src = result.image
         setSwapCount(prev => prev + 1)
-      } else if (result.error) {
-        console.error('Swap error:', result.error)
       }
-    } catch (err) {
-      console.error('Swap request failed:', err)
+      // Silently ignore errors to avoid spam
+    } catch {
+      // Silently ignore network errors
     } finally {
       isProcessingRef.current = false
     }
