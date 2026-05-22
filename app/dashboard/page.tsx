@@ -275,7 +275,36 @@ export default function DashboardPage() {
 
       {/* Video Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left - Webcam */}
+        {/* Left - Swap Output (Personne transformee) */}
+        <div className="bg-[#111] border border-[#00ff88]/30 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(0,255,136,0.1)]">
+          <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#00ff88]/30">
+            <Zap className="w-4 h-4 text-[#00ff88]" />
+            <span className="text-white font-medium">VISAGE TRANSFORME</span>
+            {latency > 0 && isSwapping && (
+              <span className="ml-auto text-xs text-[#00ff88]">{latency}ms</span>
+            )}
+            {isSwapping && (
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 bg-[#00ff88] rounded-full animate-pulse" />
+                <span className="text-[#00ff88] text-xs">ACTIF</span>
+              </span>
+            )}
+          </div>
+          <div className="aspect-video bg-[#0a0a0a] relative flex items-center justify-center border-2 border-[#00ff88]/20">
+            <canvas
+              ref={swapCanvasRef}
+              className={`w-full h-full object-contain ${isSwapping ? 'block' : 'hidden'}`}
+            />
+            {!isSwapping && (
+              <div className="flex flex-col items-center justify-center text-gray-500">
+                <Zap className="w-12 h-12 mb-2 opacity-50" />
+                <p>Swap inactif</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right - Webcam (Camera reelle) */}
         <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
           <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#222]">
             <Camera className="w-4 h-4 text-blue-500" />
@@ -303,35 +332,6 @@ export default function DashboardPage() {
             )}
           </div>
           <canvas ref={canvasRef} className="hidden" />
-        </div>
-
-        {/* Right - Swap Output */}
-        <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-          <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#222]">
-            <Zap className="w-4 h-4 text-[#00ff88]" />
-            <span className="text-white font-medium">SWAP EN DIRECT</span>
-            {latency > 0 && isSwapping && (
-              <span className="ml-auto text-xs text-[#00ff88]">{latency}ms</span>
-            )}
-            {isSwapping && (
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 bg-[#00ff88] rounded-full animate-pulse" />
-                <span className="text-[#00ff88] text-xs">ACTIF</span>
-              </span>
-            )}
-          </div>
-          <div className="aspect-video bg-[#0a0a0a] relative flex items-center justify-center border-2 border-[#00ff88]/20">
-            <canvas
-              ref={swapCanvasRef}
-              className={`w-full h-full object-contain ${isSwapping ? 'block' : 'hidden'}`}
-            />
-            {!isSwapping && (
-              <div className="flex flex-col items-center justify-center text-gray-500">
-                <Zap className="w-12 h-12 mb-2 opacity-50" />
-                <p>Swap inactif</p>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
