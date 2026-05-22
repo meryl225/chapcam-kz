@@ -26,7 +26,7 @@ import { createClient } from "@/lib/supabase/client"
 interface Avatar {
   id: string
   name: string
-  image_url: string
+  url: string
   is_active: boolean
   created_at: string
 }
@@ -127,17 +127,7 @@ export default function AvatarsPage() {
     }
   }, [handleFileSelect])
 
-  // Convert file to base64
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.readAsDataURL(file)
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-    })
-  }
-
-  // Save avatar
+  // Save avatar using Supabase Storage
   const handleSaveAvatar = async () => {
     if (!selectedFile || !avatarName.trim() || !userId) {
       toast({ title: 'Erreur', description: 'Nom et photo requis', variant: 'destructive' })
@@ -147,8 +137,28 @@ export default function AvatarsPage() {
     setUploading(true)
 
     try {
-      // Convert to base64 (for simplicity - in production use Supabase Storage)
-      const base64 = await fileToBase64(selectedFile)
+      // Generate unique filename
+      const fileExt = selectedFile.name.split('.').pop()
+      const fileName = `${userId}/${Date.now()}.${fileExt}`
+
+      // Upload to Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, selectedFile, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError)
+        toast({ title: 'Erreur', description: 'Impossible d\'uploader l\'image. Verifiez que le bucket "avatars" existe dans Supabase Storage.', variant: 'destructive' })
+        return
+      }
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(fileName)
 
       // Insert into database
       const { data, error } = await supabase
@@ -156,14 +166,16 @@ export default function AvatarsPage() {
         .insert({
           user_id: userId,
           name: avatarName.trim(),
-          image_url: base64,
-          is_active: avatars.length === 0 // First avatar is active by default
+          url: publicUrl,
+          is_active: avatars.length === 0
         })
         .select()
         .single()
 
       if (error) {
         console.error('Error saving avatar:', error)
+        // Delete uploaded file if DB insert fails
+        await supabase.storage.from('avatars').remove([fileName])
         toast({ title: 'Erreur', description: 'Impossible de sauvegarder', variant: 'destructive' })
         return
       }
@@ -279,7 +291,7 @@ export default function AvatarsPage() {
             >
               <div className="aspect-[3/4]">
                 <img
-                  src={avatar.image_url}
+                  src={avatar.url}
                   alt={avatar.name}
                   className="w-full h-full object-cover"
                 />

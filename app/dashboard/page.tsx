@@ -10,7 +10,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 interface Avatar {
   id: string
   name: string
-  image_url: string
+  url: string
   is_active: boolean
 }
 
@@ -138,7 +138,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sourceImage: frameDataUrl,
-          targetImage: selectedAvatar.image_url,
+          targetImage: selectedAvatar.url,
         }),
       })
 
@@ -389,7 +389,7 @@ export default function DashboardPage() {
                     : 'border-[#333] hover:border-[#555]'
                 }`}
               >
-                <img src={avatar.image_url} alt={avatar.name} className="w-full h-full object-cover" />
+                <img src={avatar.url} alt={avatar.name} className="w-full h-full object-cover" />
                 {selectedAvatar?.id === avatar.id && (
                   <div className="absolute top-2 right-2 w-6 h-6 bg-[#00ff88] rounded-full flex items-center justify-center">
                     <Check className="w-4 h-4 text-black" />
