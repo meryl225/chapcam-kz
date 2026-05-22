@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Call fal.ai face-swap API directly
-    const response = await fetch('https://queue.fal.run/fal-ai/face-swap', {
+    // Use fal.run for synchronous execution (not queue.fal.run)
+    const response = await fetch('https://fal.run/fal-ai/face-swap', {
       method: 'POST',
       headers: {
         'Authorization': `Key ${FAL_KEY}`,
@@ -39,19 +39,36 @@ export async function POST(request: NextRequest) {
       }),
     })
 
+    const responseText = await response.text()
+    console.log('[v0] Fal.ai response status:', response.status)
+    console.log('[v0] Fal.ai response:', responseText)
+
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('Fal.ai error:', errorText)
       return NextResponse.json(
-        { error: 'Face swap failed', details: errorText },
+        { error: 'Face swap failed', details: responseText },
         { status: response.status }
       )
     }
 
-    const result = await response.json()
+    let result
+    try {
+      result = JSON.parse(responseText)
+    } catch (e) {
+      return NextResponse.json(
+        { error: 'Invalid JSON response', details: responseText },
+        { status: 500 }
+      )
+    }
     
     // Handle different response formats from fal.ai
-    const imageUrl = result.image?.url || result.images?.[0]?.url || result.output?.url
+    const imageUrl = result.image?.url || 
+                     result.image || 
+                     result.images?.[0]?.url || 
+                     result.output?.url ||
+                     result.output ||
+                     result.url
+
+    console.log('[v0] Extracted image URL:', imageUrl)
 
     if (!imageUrl) {
       return NextResponse.json(
@@ -66,7 +83,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error: any) {
-    console.error('Swap error:', error)
+    console.error('[v0] Swap error:', error)
     return NextResponse.json(
       { error: error.message || 'Swap failed' },
       { status: 500 }
