@@ -2,22 +2,16 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { fal } from '@fal-ai/client'
 import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square } from 'lucide-react'
 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
 
-// Configure fal.ai with token provider
-fal.config({
-  proxyUrl: '/api/fal-proxy',
-})
-
-// Lucy 2.1 Realtime Settings - Ultra low latency (TikTok filter style)
-const TARGET_FPS = 15
+// Settings for face swap - optimized for smooth experience
+const TARGET_FPS = 2 // 2 API calls per second for smooth swap
 const CANVAS_WIDTH = 512
 const CANVAS_HEIGHT = 512
-const JPEG_QUALITY = 0.7
+const JPEG_QUALITY = 0.8
 
 interface Avatar {
   id: string
@@ -37,16 +31,16 @@ export default function DashboardPage() {
   const [userPoints, setUserPoints] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [latency, setLatency] = useState(0)
+  const [swapCount, setSwapCount] = useState(0)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const swapCanvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const connectionRef = useRef<any>(null)
-  const frameLoopRef = useRef<number | null>(null)
+  const swapIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const durationIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const lastFrameTimeRef = useRef<number>(0)
+  const isProcessingRef = useRef(false)
 
   // Load user data
   useEffect(() => {
@@ -88,7 +82,7 @@ export default function DashboardPage() {
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: CANVAS_WIDTH, height: CANVAS_HEIGHT, facingMode: 'user', frameRate: TARGET_FPS }
+        video: { width: 640, height: 480, facingMode: 'user' }
       })
       if (videoRef.current) {
         videoRef.current.srcObject = stream
@@ -125,42 +119,58 @@ export default function DashboardPage() {
     return canvas.toDataURL('image/jpeg', JPEG_QUALITY)
   }, [])
 
-  // Frame send loop for Lucy 2.1 realtime
-  const sendFrameLoop = useCallback(() => {
-    if (!connectionRef.current || !selectedAvatar) {
-      frameLoopRef.current = requestAnimationFrame(sendFrameLoop)
-      return
-    }
+  // Perform face swap via API
+  const performSwap = useCallback(async () => {
+    if (isProcessingRef.current || !selectedAvatar) return
+    
+    isProcessingRef.current = true
+    const startTime = performance.now()
 
-    const now = performance.now()
-    const frameInterval = 1000 / TARGET_FPS
-
-    if (now - lastFrameTimeRef.current < frameInterval) {
-      frameLoopRef.current = requestAnimationFrame(sendFrameLoop)
-      return
-    }
-    lastFrameTimeRef.current = now
-
-    const frameData = captureFrame()
-    if (frameData) {
-      try {
-        connectionRef.current.send({
-          image: frameData,
-          reference_image: selectedAvatar.url,
-          // Ultra fast inference for realtime
-          num_inference_steps: 1,
-          strength: 0.75,
-          guidance_scale: 0.8,
-        })
-      } catch (err) {
-        console.error('Error sending frame:', err)
+    try {
+      const frameData = captureFrame()
+      if (!frameData) {
+        isProcessingRef.current = false
+        return
       }
-    }
 
-    frameLoopRef.current = requestAnimationFrame(sendFrameLoop)
+      const response = await fetch('/api/swap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceImage: frameData,
+          targetImage: selectedAvatar.url,
+        }),
+      })
+
+      const result = await response.json()
+      const endTime = performance.now()
+      setLatency(Math.round(endTime - startTime))
+
+      if (result.success && result.image && swapCanvasRef.current) {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          const ctx = swapCanvasRef.current?.getContext('2d')
+          if (ctx && swapCanvasRef.current) {
+            swapCanvasRef.current.width = img.width || CANVAS_WIDTH
+            swapCanvasRef.current.height = img.height || CANVAS_HEIGHT
+            ctx.clearRect(0, 0, swapCanvasRef.current.width, swapCanvasRef.current.height)
+            ctx.drawImage(img, 0, 0)
+          }
+        }
+        img.src = result.image
+        setSwapCount(prev => prev + 1)
+      } else if (result.error) {
+        console.error('Swap error:', result.error)
+      }
+    } catch (err) {
+      console.error('Swap request failed:', err)
+    } finally {
+      isProcessingRef.current = false
+    }
   }, [selectedAvatar, captureFrame])
 
-  // Start swap with Lucy 2.1 realtime
+  // Start swap loop
   const handleStart = async () => {
     if (!selectedAvatar) {
       setError("Selectionne un avatar d'abord")
@@ -175,6 +185,7 @@ export default function DashboardPage() {
     setIsConnecting(true)
     setDuration(0)
     setPointsUsed(0)
+    setSwapCount(0)
 
     const cameraStarted = await startCamera()
     if (!cameraStarted) {
@@ -185,92 +196,35 @@ export default function DashboardPage() {
     // Wait for camera to be ready
     await new Promise(resolve => setTimeout(resolve, 500))
 
-    try {
-      // Connect to Lucy 2.1 realtime via fal.ai
-      const connection = fal.realtime.connect('decart/lucy2-vton/realtime', {
-        connectionKey: 'chapcam-lucy-session',
-        throttleInterval: 0,
+    setIsConnecting(false)
+    setIsSwapping(true)
 
-        onResult: (result: any) => {
-          console.log('[v0] Lucy result received:', result)
-          
-          if (result.inference_time) {
-            setLatency(Math.round(result.inference_time * 1000))
-          }
+    // Start swap interval (2 swaps per second)
+    swapIntervalRef.current = setInterval(performSwap, 1000 / TARGET_FPS)
 
-          // Handle different response formats from Lucy 2.1
-          const imageData = result.image?.url || result.image || result.output?.url || result.output
-          
-          if (!imageData) {
-            console.log('[v0] No image data in result:', Object.keys(result))
-            return
-          }
+    // Start duration counter
+    durationIntervalRef.current = setInterval(() => {
+      setDuration(prev => prev + 1)
+    }, 1000)
 
-          // Draw result to swap canvas
-          if (swapCanvasRef.current) {
-            const img = new Image()
-            img.crossOrigin = 'anonymous'
-            img.onload = () => {
-              const ctx = swapCanvasRef.current?.getContext('2d')
-              if (ctx && swapCanvasRef.current) {
-                // Set canvas size to match image
-                swapCanvasRef.current.width = img.width || CANVAS_WIDTH
-                swapCanvasRef.current.height = img.height || CANVAS_HEIGHT
-                ctx.clearRect(0, 0, swapCanvasRef.current.width, swapCanvasRef.current.height)
-                ctx.drawImage(img, 0, 0)
-                console.log('[v0] Frame drawn to canvas:', img.width, 'x', img.height)
-              }
-            }
-            img.onerror = (err) => {
-              console.error('[v0] Error loading result image:', err)
-            }
-            img.src = imageData
-          }
-        },
-
-        onError: (err: any) => {
-          console.error('Lucy realtime error:', err)
-          setError(err.message || 'Erreur connexion Lucy 2.1')
-        },
+    // Start points deduction (2 points per second)
+    pointsIntervalRef.current = setInterval(() => {
+      setPointsUsed(prev => prev + 2)
+      setUserPoints(prev => {
+        const newPoints = Math.max(0, prev - 2)
+        if (newPoints === 0) {
+          handleStop()
+        }
+        return newPoints
       })
-
-      connectionRef.current = connection
-      setIsConnecting(false)
-      setIsSwapping(true)
-
-      // Start frame loop
-      frameLoopRef.current = requestAnimationFrame(sendFrameLoop)
-
-      // Start duration counter
-      durationIntervalRef.current = setInterval(() => {
-        setDuration(prev => prev + 1)
-      }, 1000)
-
-      // Start points deduction (2 points per second)
-      pointsIntervalRef.current = setInterval(() => {
-        setPointsUsed(prev => prev + 2)
-        setUserPoints(prev => {
-          const newPoints = Math.max(0, prev - 2)
-          if (newPoints === 0) {
-            handleStop()
-          }
-          return newPoints
-        })
-      }, 1000)
-
-    } catch (err: any) {
-      console.error('Failed to connect to Lucy:', err)
-      setError('Impossible de se connecter a Lucy 2.1')
-      setIsConnecting(false)
-      stopCamera()
-    }
+    }, 1000)
   }
 
   // Stop swap
   const handleStop = async () => {
-    if (frameLoopRef.current) {
-      cancelAnimationFrame(frameLoopRef.current)
-      frameLoopRef.current = null
+    if (swapIntervalRef.current) {
+      clearInterval(swapIntervalRef.current)
+      swapIntervalRef.current = null
     }
     if (durationIntervalRef.current) {
       clearInterval(durationIntervalRef.current)
@@ -279,10 +233,6 @@ export default function DashboardPage() {
     if (pointsIntervalRef.current) {
       clearInterval(pointsIntervalRef.current)
       pointsIntervalRef.current = null
-    }
-    if (connectionRef.current) {
-      try { connectionRef.current.close() } catch (e) {}
-      connectionRef.current = null
     }
 
     setIsSwapping(false)
@@ -335,7 +285,7 @@ export default function DashboardPage() {
             <Zap className="w-6 h-6 text-[#00ff88]" />
             LIVE SWAP
           </h1>
-          <p className="text-gray-400 text-sm">Camera reelle a gauche, full body swap Lucy 2.1 a droite (512p, 15fps, low latency)</p>
+          <p className="text-gray-400 text-sm">Camera reelle a gauche, face swap a droite (512p, ~2fps)</p>
         </div>
         <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2 flex items-center gap-2">
           <Coins className="w-4 h-4 text-yellow-500" />
@@ -384,18 +334,18 @@ export default function DashboardPage() {
           <canvas ref={canvasRef} className="hidden" />
         </div>
 
-        {/* RIGHT - Swap Lucy 2.1 */}
+        {/* RIGHT - Swap Result */}
         <div className="bg-[#111] border border-[#00ff88]/30 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(0,255,136,0.1)]">
           <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#00ff88]/30">
             <Zap className="w-4 h-4 text-[#00ff88]" />
-            <span className="text-white font-medium">LUCY 2.1 SWAP</span>
+            <span className="text-white font-medium">FACE SWAP</span>
             {latency > 0 && isSwapping && (
               <span className="ml-2 text-xs text-[#00ff88] bg-[#00ff88]/10 px-2 py-1 rounded">~{latency}ms</span>
             )}
             {isSwapping && (
               <span className="ml-auto flex items-center gap-1">
                 <span className="w-2 h-2 bg-[#00ff88] rounded-full animate-pulse" />
-                <span className="text-[#00ff88] text-xs">ACTIF</span>
+                <span className="text-[#00ff88] text-xs">ACTIF ({swapCount} swaps)</span>
               </span>
             )}
           </div>
@@ -403,17 +353,12 @@ export default function DashboardPage() {
             <canvas
               ref={swapCanvasRef}
               className="w-full h-full object-contain"
-              style={{ display: isSwapping ? 'block' : 'none' }}
+              style={{ display: isSwapping || swapCount > 0 ? 'block' : 'none' }}
             />
-            {!isSwapping && (
+            {!isSwapping && swapCount === 0 && (
               <div className="flex flex-col items-center justify-center text-gray-500">
                 <Zap className="w-12 h-12 mb-2 opacity-50" />
                 <p>Swap inactif</p>
-              </div>
-            )}
-            {isSwapping && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <span className="text-[#00ff88]/30 text-xs">En attente du flux Lucy 2.1...</span>
               </div>
             )}
           </div>
@@ -426,7 +371,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full ${isSwapping ? 'bg-[#00ff88]' : isConnecting ? 'bg-yellow-500 animate-pulse' : 'bg-gray-500'}`} />
             <span className="text-gray-400 text-sm">
-              {isSwapping ? 'Connecte a Lucy 2.1' : isConnecting ? 'Connexion...' : 'Deconnecte'}
+              {isSwapping ? 'Swap actif' : isConnecting ? 'Demarrage...' : 'Inactif'}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -460,7 +405,7 @@ export default function DashboardPage() {
         {isSwapping ? (
           <><Square className="w-5 h-5" /> ARRETER LE SWAP</>
         ) : isConnecting ? (
-          <><Loader2 className="w-5 h-5 animate-spin" /> Connexion a Lucy 2.1...</>
+          <><Loader2 className="w-5 h-5 animate-spin" /> Demarrage...</>
         ) : (
           <><Zap className="w-5 h-5" /> {selectedAvatar ? 'DEMARRER LE SWAP' : 'SELECTIONNE UN AVATAR'}</>
         )}
