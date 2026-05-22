@@ -8,10 +8,10 @@ import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square } 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
 
-// Lucy 2.1 Realtime Settings - Optimized for low latency
-const TARGET_FPS = 20
-const CANVAS_WIDTH = 640
-const CANVAS_HEIGHT = 480
+// Lucy 2.1 Realtime Settings - Ultra low latency (TikTok filter style)
+const TARGET_FPS = 15
+const CANVAS_WIDTH = 512
+const CANVAS_HEIGHT = 512
 const JPEG_QUALITY = 0.7
 
 interface Avatar {
@@ -142,9 +142,10 @@ export default function DashboardPage() {
         connectionRef.current.send({
           image: frameData,
           reference_image: selectedAvatar.url,
+          // Ultra fast inference for realtime
           num_inference_steps: 1,
-          strength: 0.8,
-          guidance_scale: 1.0,
+          strength: 0.75,
+          guidance_scale: 0.8,
         })
       } catch (err) {
         console.error('Error sending frame:', err)
@@ -315,7 +316,7 @@ export default function DashboardPage() {
             <Zap className="w-6 h-6 text-[#00ff88]" />
             LIVE SWAP
           </h1>
-          <p className="text-gray-400 text-sm">Camera reelle a gauche, visage transforme par Lucy 2.1 a droite</p>
+          <p className="text-gray-400 text-sm">Camera reelle a gauche, full body swap Lucy 2.1 a droite (512p, 15fps, low latency)</p>
         </div>
         <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2 flex items-center gap-2">
           <Coins className="w-4 h-4 text-yellow-500" />
