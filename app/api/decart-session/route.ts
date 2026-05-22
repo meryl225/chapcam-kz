@@ -1,3 +1,4 @@
+import { createDecartClient } from '@decartai/sdk'
 import { NextResponse } from 'next/server'
 
 export const runtime = 'nodejs'
@@ -8,23 +9,27 @@ export async function POST() {
     const apiKey = process.env.DECART_API_KEY
     
     if (!apiKey) {
-      console.error('[Decart] DECART_API_KEY is not set in environment variables')
       return NextResponse.json(
         { error: 'DECART_API_KEY not configured' },
         { status: 500 }
       )
     }
 
-    // Return the API key for client-side WebRTC connection
-    // The Decart SDK on the client will use this to authenticate
-    return NextResponse.json({
+    const client = createDecartClient({
       apiKey: apiKey,
-      expiresAt: Date.now() + 300000, // 5 minutes from now
     })
+
+    // Create a short-lived client token for frontend use
+    const token = await client.tokens.create({
+      expiresIn: 300, // 5 minutes
+      allowedModels: ['lucy-2.1'],
+    })
+
+    return NextResponse.json(token)
   } catch (error: any) {
-    console.error('[Decart] Session error:', error)
+    console.error('[Decart] Token generation error:', error)
     return NextResponse.json(
-      { error: 'Failed to create session', details: error.message },
+      { error: 'Failed to generate token', details: error.message },
       { status: 500 }
     )
   }
