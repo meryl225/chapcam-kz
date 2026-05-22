@@ -8,6 +8,11 @@ import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square } 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
 
+// Configure fal.ai with token provider
+fal.config({
+  proxyUrl: '/api/fal-proxy',
+})
+
 // Lucy 2.1 Realtime Settings - Ultra low latency (TikTok filter style)
 const TARGET_FPS = 15
 const CANVAS_WIDTH = 512
