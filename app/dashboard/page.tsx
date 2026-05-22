@@ -23,7 +23,9 @@ export default function DashboardPage() {
   const [duration, setDuration] = useState(0)
   const [pointsUsed, setPointsUsed] = useState(0)
   const [userPoints, setUserPoints] = useState(0)
+  const [userPointsTotal, setUserPointsTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
   
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -33,23 +35,27 @@ export default function DashboardPage() {
   const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    const loadAvatars = async () => {
+    const loadData = async () => {
       try {
         const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
         const { data: { user } } = await supabase.auth.getUser()
         
         if (!user) return
+        setUserId(user.id)
 
-        const { data: userData } = await supabase
-          .from('users')
-          .select('points')
-          .eq('id', user.id)
+        // ✅ Lire les points depuis la table subscriptions
+        const { data: subscription } = await supabase
+          .from('subscriptions')
+          .select('points_remaining, points_total')
+          .eq('user_id', user.id)
           .single()
         
-        if (userData) {
-          setUserPoints(userData.points || 0)
+        if (subscription) {
+          setUserPoints(subscription.points_remaining || 0)
+          setUserPointsTotal(subscription.points_total || 0)
         }
 
+        // Charger les avatars
         const { data, error } = await supabase
           .from('user_avatars')
           .select('*')
@@ -60,17 +66,19 @@ export default function DashboardPage() {
         
         if (data && data.length > 0) {
           setAvatars(data)
-          const activeAvatar = data.find(a => a.is_active)
+          const activeAvatar = data.find((a: Avatar) => a.is_active)
           if (activeAvatar) {
             setSelectedAvatar(activeAvatar)
+          } else {
+            setSelectedAvatar(data[0])
           }
         }
       } catch (err) {
-        console.error('Error loading avatars:', err)
+        console.error('Error loading data:', err)
       }
     }
 
-    loadAvatars()
+    loadData()
   }, [])
 
   const startCamera = async () => {
@@ -84,7 +92,7 @@ export default function DashboardPage() {
         setCameraActive(true)
       }
     } catch (err) {
-      setError('Impossible d\'acceder a la camera')
+      setError("Impossible d'acceder a la camera")
     }
   }
 
@@ -93,8 +101,38 @@ export default function DashboardPage() {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
+    if (videoRef.current) videoRef.current.srcObject = null
     setCameraActive(false)
   }
+
+  const stopSwap = useCallback(async () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    if (pointsIntervalRef.current) {
+      clearInterval(pointsIntervalRef.current)
+      pointsIntervalRef.current = null
+    }
+
+    // ✅ Sauvegarder les points dans subscriptions
+    try {
+      const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase
+          .from('subscriptions')
+          .update({ points_remaining: userPoints })
+          .eq('user_id', user.id)
+      }
+    } catch (err) {
+      console.error('Error saving points:', err)
+    }
+
+    setSwapActive(false)
+    setIsSwapping(false)
+    stopCamera()
+  }, [userPoints])
 
   useEffect(() => {
     if (swapActive && userPoints > 0) {
@@ -116,7 +154,7 @@ export default function DashboardPage() {
         clearInterval(pointsIntervalRef.current)
       }
     }
-  }, [swapActive])
+  }, [swapActive, stopSwap])
 
   const captureAndSwap = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || !selectedAvatar) return
@@ -137,14 +175,14 @@ export default function DashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sourceImage: frameDataUrl,
-          targetImage: selectedAvatar.url,
+          base_image: frameDataUrl,
+          swap_image: selectedAvatar.url,
         }),
       })
 
       const result = await response.json()
       
-      if (result.success && result.image && swapCanvasRef.current) {
+      if (result.image_url && swapCanvasRef.current) {
         const img = new Image()
         img.crossOrigin = 'anonymous'
         img.onload = () => {
@@ -155,7 +193,7 @@ export default function DashboardPage() {
             swapCtx.drawImage(img, 0, 0)
           }
         }
-        img.src = result.image
+        img.src = result.image_url
       }
     } catch (err) {
       console.error('Swap error:', err)
@@ -164,7 +202,7 @@ export default function DashboardPage() {
 
   const startSwap = async () => {
     if (!selectedAvatar) {
-      setError('Selectionne un avatar d\'abord')
+      setError("Selectionne un avatar d'abord")
       return
     }
     if (userPoints < 2) {
@@ -180,34 +218,6 @@ export default function DashboardPage() {
     setDuration(0)
 
     intervalRef.current = setInterval(captureAndSwap, 500)
-  }
-
-  const stopSwap = async () => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-    if (pointsIntervalRef.current) {
-      clearInterval(pointsIntervalRef.current)
-      pointsIntervalRef.current = null
-    }
-
-    try {
-      const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        await supabase
-          .from('users')
-          .update({ points: userPoints })
-          .eq('id', user.id)
-      }
-    } catch (err) {
-      console.error('Error saving points:', err)
-    }
-
-    setSwapActive(false)
-    setIsSwapping(false)
-    stopCamera()
   }
 
   const selectAvatar = async (avatar: Avatar) => {
@@ -243,6 +253,8 @@ export default function DashboardPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  const pointsPercentage = userPointsTotal > 0 ? (userPoints / userPointsTotal) * 100 : 0
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -256,7 +268,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-4">
           <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2 flex items-center gap-2">
             <Coins className="w-4 h-4 text-yellow-500" />
-            <span className="text-white font-bold">{userPoints}</span>
+            <span className="text-white font-bold">{userPoints.toLocaleString()}</span>
             <span className="text-gray-400 text-sm">points</span>
           </div>
         </div>
@@ -351,7 +363,7 @@ export default function DashboardPage() {
         className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
           isSwapping
             ? 'bg-red-500 hover:bg-red-600 text-white'
-            : selectedAvatar
+            : selectedAvatar && userPoints >= 2
               ? 'bg-[#00ff88] hover:bg-[#00dd77] text-black'
               : 'bg-gray-700 text-gray-400 cursor-not-allowed'
         }`}
