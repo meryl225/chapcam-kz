@@ -1,30 +1,11 @@
 'use client'
 
-import { useEffect, useState, useRef, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import { 
-  Zap, 
-  Square, 
-  Loader2,
-  Camera,
-  Sparkles,
-  Plus,
-  Check,
-  AlertCircle,
-  Battery
-} from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Progress } from '@/components/ui/progress'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle } from 'lucide-react'
 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
-
-const POINTS_PER_SECOND = 2
-
-type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
 interface Avatar {
   id: string
@@ -33,550 +14,389 @@ interface Avatar {
   is_active: boolean
 }
 
-interface Subscription {
-  points_remaining: number
-  points_total: number
-  plan: string
-}
-
 export default function DashboardPage() {
-  const router = useRouter()
-  
-  // Refs
-  const webcamVideoRef = useRef<HTMLVideoElement>(null)
-  const swapCanvasRef = useRef<HTMLCanvasElement>(null)
-  const processCanvasRef = useRef<HTMLCanvasElement>(null)
-  
-  // State
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
-  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected')
-  const [isActive, setIsActive] = useState(false)
-  const [latency, setLatency] = useState(0)
-  const [sessionDuration, setSessionDuration] = useState(0)
-  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null)
+  const [isSwapping, setIsSwapping] = useState(false)
+  const [cameraActive, setCameraActive] = useState(false)
+  const [swapActive, setSwapActive] = useState(false)
+  const [duration, setDuration] = useState(0)
+  const [pointsUsed, setPointsUsed] = useState(0)
+  const [userPoints, setUserPoints] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [userId, setUserId] = useState<string | null>(null)
   
-  // Points state
-  const [pointsRemaining, setPointsRemaining] = useState(0)
-  const [pointsTotal, setPointsTotal] = useState(0)
-  const [subscriptionId, setSubscriptionId] = useState<string | null>(null)
-  
-  // Refs for processing
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const swapCanvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const animationFrameRef = useRef<number | null>(null)
-  const processingRef = useRef(false)
+  const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-
-  // Create Supabase client
-  const getSupabase = useCallback(() => {
-    return createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  }, [])
-
-  // Fetch subscription/points from Supabase
-  const fetchSubscription = useCallback(async (uid: string) => {
-    const supabase = getSupabase()
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .select('id, points_remaining, points_total, plan')
-      .eq('user_id', uid)
-      .eq('is_active', true)
-      .single()
-
-    if (data) {
-      setPointsRemaining(data.points_remaining || 0)
-      setPointsTotal(data.points_total || 0)
-      setSubscriptionId(data.id)
-    }
-  }, [getSupabase])
-
-  // Update points in Supabase
-  const updatePointsInDb = useCallback(async (newPoints: number) => {
-    if (!subscriptionId) return
-    
-    const supabase = getSupabase()
-    await supabase
-      .from('subscriptions')
-      .update({ points_remaining: newPoints })
-      .eq('id', subscriptionId)
-  }, [getSupabase, subscriptionId])
-
-  // Fetch avatars from Supabase
-  const fetchAvatars = useCallback(async (uid: string) => {
-    const supabase = getSupabase()
-    const { data, error } = await supabase
-      .from('user_avatars')
-      .select('*')
-      .eq('user_id', uid)
-      .order('created_at', { ascending: false })
-
-    if (data && data.length > 0) {
-      setAvatars(data)
-      const activeAvatar = data.find((a: Avatar) => a.is_active) || data[0]
-      setSelectedAvatar(activeAvatar)
-    }
-  }, [getSupabase])
-
-  // Check auth and fetch data
   useEffect(() => {
-    async function init() {
-      const supabase = getSupabase()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-      
-      setUserId(user.id)
-      await Promise.all([
-        fetchAvatars(user.id),
-        fetchSubscription(user.id)
-      ])
-      setIsLoading(false)
-    }
-    init()
-  }, [router, getSupabase, fetchAvatars, fetchSubscription])
-
-  // Session timer + points deduction
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-    
-    if (isActive && sessionStartTime) {
-      interval = setInterval(() => {
-        setSessionDuration(Math.floor((Date.now() - sessionStartTime) / 1000))
+    const loadAvatars = async () => {
+      try {
+        const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+        const { data: { user } } = await supabase.auth.getUser()
         
-        // Deduct points
-        setPointsRemaining(prev => {
-          const newPoints = Math.max(0, prev - POINTS_PER_SECOND)
-          
-          // Update DB every 10 seconds to reduce API calls
-          if (newPoints % 20 === 0 || newPoints === 0) {
-            updatePointsInDb(newPoints)
-          }
-          
-          // Auto-stop when points reach 0
-          if (newPoints === 0) {
-            handleStopSwap()
-          }
-          
-          return newPoints
-        })
-      }, 1000)
-    }
-    
-    return () => { 
-      if (interval) clearInterval(interval)
-    }
-  }, [isActive, sessionStartTime, updatePointsInDb])
+        if (!user) return
 
-  // Select avatar
-  const handleSelectAvatar = async (avatar: Avatar) => {
-    setSelectedAvatar(avatar)
-    
-    if (userId) {
-      const supabase = getSupabase()
-      await supabase.from('user_avatars').update({ is_active: false }).eq('user_id', userId)
-      await supabase.from('user_avatars').update({ is_active: true }).eq('id', avatar.id)
-      setAvatars(prev => prev.map(a => ({ ...a, is_active: a.id === avatar.id })))
-    }
-  }
-
-  // Process frame with fal.ai
-  const processFrame = useCallback(async () => {
-    if (!isActive || !webcamVideoRef.current || !processCanvasRef.current || !swapCanvasRef.current || processingRef.current || !selectedAvatar) {
-      if (isActive) {
-        animationFrameRef.current = requestAnimationFrame(processFrame)
-      }
-      return
-    }
-
-    const video = webcamVideoRef.current
-    if (video.readyState < 2) {
-      animationFrameRef.current = requestAnimationFrame(processFrame)
-      return
-    }
-
-    processingRef.current = true
-    const startTime = performance.now()
-
-    try {
-      const canvas = processCanvasRef.current
-      canvas.width = video.videoWidth || 640
-      canvas.height = video.videoHeight || 480
-
-      const ctx = canvas.getContext('2d')
-      if (!ctx) {
-        processingRef.current = false
-        return
-      }
-
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const frameDataUrl = canvas.toDataURL('image/jpeg', 0.7)
-      
-      const response = await fetch('/api/swap', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          base_image: frameDataUrl,
-          swap_image: selectedAvatar.image_url,
-        }),
-      })
-
-      const result = await response.json()
-      const elapsed = Math.round(performance.now() - startTime)
-      setLatency(elapsed)
-
-      if (!response.ok) {
-        setError(result.error || 'Swap failed')
-      } else if (result.image_url) {
-        setError(null)
+        const { data: userData } = await supabase
+          .from('users')
+          .select('points')
+          .eq('id', user.id)
+          .single()
         
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.onload = () => {
-          const swapCanvas = swapCanvasRef.current
-          if (swapCanvas) {
-            swapCanvas.width = canvas.width
-            swapCanvas.height = canvas.height
-            const swapCtx = swapCanvas.getContext('2d')
-            if (swapCtx) {
-              swapCtx.drawImage(img, 0, 0, canvas.width, canvas.height)
-            }
+        if (userData) {
+          setUserPoints(userData.points || 0)
+        }
+
+        const { data, error } = await supabase
+          .from('user_avatars')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+        
+        if (data && data.length > 0) {
+          setAvatars(data)
+          const activeAvatar = data.find(a => a.is_active)
+          if (activeAvatar) {
+            setSelectedAvatar(activeAvatar)
           }
         }
-        img.src = result.image_url
-      }
-
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      processingRef.current = false
-      if (isActive) {
-        setTimeout(() => {
-          animationFrameRef.current = requestAnimationFrame(processFrame)
-        }, 200)
+      } catch (err) {
+        console.error('Error loading avatars:', err)
       }
     }
-  }, [isActive, selectedAvatar])
 
-  // Start swap
-  const handleStartSwap = async () => {
-    if (!selectedAvatar) {
-      setError('Selectionne un avatar')
-      return
-    }
+    loadAvatars()
+  }, [])
 
-    if (pointsRemaining <= 0) {
-      setError('Plus de points! Recharge ton compte')
-      return
-    }
-
-    setConnectionStatus('connecting')
-    setError(null)
-
+  const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' },
-        audio: false,
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: 640, height: 480, facingMode: 'user' } 
       })
-
-      streamRef.current = stream
-
-      if (webcamVideoRef.current) {
-        webcamVideoRef.current.srcObject = stream
-        await webcamVideoRef.current.play()
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        streamRef.current = stream
+        setCameraActive(true)
       }
-
-      setIsActive(true)
-      setConnectionStatus('connected')
-      setSessionStartTime(Date.now())
-      setSessionDuration(0)
-
-      animationFrameRef.current = requestAnimationFrame(processFrame)
-
-    } catch (err: any) {
-      setConnectionStatus('error')
-      setError('Autorise la camera dans ton navigateur')
+    } catch (err) {
+      setError('Impossible d\'acceder a la camera')
     }
   }
 
-  // Stop swap
-  const handleStopSwap = useCallback(() => {
-    setIsActive(false)
-    setConnectionStatus('disconnected')
-
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-    }
-
+  const stopCamera = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
+    setCameraActive(false)
+  }
 
-    if (webcamVideoRef.current) {
-      webcamVideoRef.current.srcObject = null
+  useEffect(() => {
+    if (swapActive && userPoints > 0) {
+      pointsIntervalRef.current = setInterval(() => {
+        setPointsUsed(prev => prev + 2)
+        setUserPoints(prev => {
+          const newPoints = Math.max(0, prev - 2)
+          if (newPoints === 0) {
+            stopSwap()
+          }
+          return newPoints
+        })
+        setDuration(prev => prev + 1)
+      }, 1000)
     }
 
-    // Final points update
-    updatePointsInDb(pointsRemaining)
+    return () => {
+      if (pointsIntervalRef.current) {
+        clearInterval(pointsIntervalRef.current)
+      }
+    }
+  }, [swapActive])
+
+  const captureAndSwap = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current || !selectedAvatar) return
+
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    ctx.drawImage(video, 0, 0)
+
+    const frameDataUrl = canvas.toDataURL('image/jpeg', 0.8)
+
+    try {
+      const response = await fetch('/api/swap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sourceImage: frameDataUrl,
+          targetImage: selectedAvatar.image_url,
+        }),
+      })
+
+      const result = await response.json()
+      
+      if (result.success && result.image && swapCanvasRef.current) {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = () => {
+          const swapCtx = swapCanvasRef.current?.getContext('2d')
+          if (swapCtx && swapCanvasRef.current) {
+            swapCanvasRef.current.width = img.width
+            swapCanvasRef.current.height = img.height
+            swapCtx.drawImage(img, 0, 0)
+          }
+        }
+        img.src = result.image
+      }
+    } catch (err) {
+      console.error('Swap error:', err)
+    }
+  }, [selectedAvatar])
+
+  const startSwap = async () => {
+    if (!selectedAvatar) {
+      setError('Selectionne un avatar d\'abord')
+      return
+    }
+    if (userPoints < 2) {
+      setError('Pas assez de points. Recharge ton compte.')
+      return
+    }
+
+    await startCamera()
+    setSwapActive(true)
+    setIsSwapping(true)
+    setError(null)
+    setPointsUsed(0)
+    setDuration(0)
+
+    intervalRef.current = setInterval(captureAndSwap, 500)
+  }
+
+  const stopSwap = async () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current)
+      intervalRef.current = null
+    }
+    if (pointsIntervalRef.current) {
+      clearInterval(pointsIntervalRef.current)
+      pointsIntervalRef.current = null
+    }
+
+    try {
+      const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase
+          .from('users')
+          .update({ points: userPoints })
+          .eq('id', user.id)
+      }
+    } catch (err) {
+      console.error('Error saving points:', err)
+    }
+
+    setSwapActive(false)
+    setIsSwapping(false)
+    stopCamera()
+  }
+
+  const selectAvatar = async (avatar: Avatar) => {
+    setSelectedAvatar(avatar)
     
-    setLatency(0)
-  }, [pointsRemaining, updatePointsInDb])
+    try {
+      const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
-  const getStatusColor = (status: ConnectionStatus): string => {
-    switch (status) {
-      case 'connected': return 'bg-[#00ff88]'
-      case 'connecting': return 'bg-yellow-500 animate-pulse'
-      case 'error': return 'bg-red-500'
-      default: return 'bg-gray-500'
+      await supabase
+        .from('user_avatars')
+        .update({ is_active: false })
+        .eq('user_id', user.id)
+
+      await supabase
+        .from('user_avatars')
+        .update({ is_active: true })
+        .eq('id', avatar.id)
+
+      setAvatars(prev => prev.map(a => ({
+        ...a,
+        is_active: a.id === avatar.id
+      })))
+    } catch (err) {
+      console.error('Error selecting avatar:', err)
     }
   }
 
-  const getStatusText = (status: ConnectionStatus): string => {
-    switch (status) {
-      case 'connected': return 'Connecte'
-      case 'connecting': return 'Connexion...'
-      case 'error': return 'Erreur'
-      default: return 'Deconnecte'
-    }
-  }
-
-  const pointsPercentage = pointsTotal > 0 ? (pointsRemaining / pointsTotal) * 100 : 0
-
-  if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
-      </div>
-    )
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
   return (
-    <div className="p-4 lg:p-6">
-      <canvas ref={processCanvasRef} className="hidden" />
-      
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-3 text-2xl font-bold text-white">
-            <Zap className="h-7 w-7 text-[#00ff88]" />
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Zap className="w-6 h-6 text-[#00ff88]" />
             LIVE SWAP
           </h1>
-          <p className="mt-1 text-gray-400">Camera reelle a gauche, visage swappe a droite</p>
+          <p className="text-gray-400 text-sm">Camera reelle a gauche, visage swappe a droite en temps reel</p>
         </div>
-        
-        {/* Points Display */}
         <div className="flex items-center gap-4">
-          <div className="rounded-xl border border-white/10 bg-[#111] px-4 py-2">
-            <div className="flex items-center gap-3">
-              <Battery className="h-5 w-5 text-[#00ff88]" />
-              <div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-white">{pointsRemaining.toLocaleString()}</span>
-                  <span className="text-sm text-gray-500">/{pointsTotal.toLocaleString()}</span>
-                </div>
-                <Progress value={pointsPercentage} className="mt-1 h-1.5 w-24 bg-white/10" />
-              </div>
-            </div>
+          <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2 flex items-center gap-2">
+            <Coins className="w-4 h-4 text-yellow-500" />
+            <span className="text-white font-bold">{userPoints}</span>
+            <span className="text-gray-400 text-sm">points</span>
           </div>
-          <Link href="/dashboard/plans">
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white">
-              <Zap className="mr-1 h-4 w-4" /> Recharger
-            </Button>
-          </Link>
         </div>
       </div>
 
-      {/* Two Videos Side by Side */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* LEFT - Real Camera */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Camera className="h-5 w-5 text-blue-400" />
-            <span className="font-semibold text-white">CAMERA REELLE</span>
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-500" />
+          <span className="text-red-500">{error}</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#222]">
+            <Camera className="w-4 h-4 text-blue-500" />
+            <span className="text-white font-medium">CAMERA REELLE</span>
+            {cameraActive && (
+              <span className="ml-auto flex items-center gap-1">
+                <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                <span className="text-blue-500 text-xs">LIVE</span>
+              </span>
+            )}
           </div>
-          <div className="relative aspect-video overflow-hidden rounded-2xl border border-white/10 bg-black">
+          <div className="aspect-video bg-[#0a0a0a] relative flex items-center justify-center">
             <video
-              ref={webcamVideoRef}
+              ref={videoRef}
               autoPlay
               playsInline
               muted
-              className="h-full w-full object-cover"
+              className={`w-full h-full object-cover ${cameraActive ? 'block' : 'hidden'}`}
             />
-            {!isActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a]">
-                <Camera className="mb-3 h-12 w-12 text-gray-600" />
-                <p className="text-gray-500">Camera inactive</p>
-              </div>
-            )}
-            {isActive && (
-              <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-blue-500/80 px-3 py-1">
-                <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
-                <span className="text-xs font-medium text-white">LIVE</span>
+            {!cameraActive && (
+              <div className="text-center text-gray-500">
+                <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>Camera inactive</p>
               </div>
             )}
           </div>
+          <canvas ref={canvasRef} className="hidden" />
         </div>
 
-        {/* RIGHT - Swapped Video */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-[#00ff88]" />
-              <span className="font-semibold text-white">SWAP EN DIRECT</span>
-            </div>
-            {latency > 0 && (
-              <Badge className="bg-[#00ff88]/20 text-[#00ff88]">{latency}ms</Badge>
+        <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
+          <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#222]">
+            <Zap className="w-4 h-4 text-[#00ff88]" />
+            <span className="text-white font-medium">SWAP EN DIRECT</span>
+            {swapActive && (
+              <span className="ml-auto flex items-center gap-1">
+                <span className="w-2 h-2 bg-[#00ff88] rounded-full animate-pulse" />
+                <span className="text-[#00ff88] text-xs">ACTIF</span>
+              </span>
             )}
           </div>
-          <div className={`relative aspect-video overflow-hidden rounded-2xl bg-black ${isActive ? 'border-2 border-[#00ff88]/50 shadow-[0_0_30px_rgba(0,255,136,0.2)]' : 'border border-white/10'}`}>
+          <div className="aspect-video bg-[#0a0a0a] relative flex items-center justify-center border-2 border-[#00ff88]/20">
             <canvas
               ref={swapCanvasRef}
-              className="h-full w-full object-cover"
+              className={`w-full h-full object-cover ${swapActive ? 'block' : 'hidden'}`}
             />
-            {!isActive && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a]">
-                <Sparkles className="mb-3 h-12 w-12 text-[#00ff88]/30" />
-                <p className="text-gray-500">Swap inactif</p>
-              </div>
-            )}
-            {isActive && (
-              <div className="absolute left-3 top-3 flex items-center gap-2 rounded-full bg-[#00ff88]/80 px-3 py-1">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute h-full w-full animate-ping rounded-full bg-white opacity-75" />
-                  <span className="h-2 w-2 rounded-full bg-white" />
-                </span>
-                <span className="text-xs font-bold text-black">SWAP</span>
+            {!swapActive && (
+              <div className="text-center text-gray-500">
+                <Zap className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>Swap inactif</p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Status Bar */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-[#111] px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className={`h-3 w-3 rounded-full ${getStatusColor(connectionStatus)}`} />
-          <span className="text-sm text-gray-400">{getStatusText(connectionStatus)}</span>
+      <div className="bg-[#111] border border-[#222] rounded-lg p-4 flex items-center justify-between">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${swapActive ? 'bg-[#00ff88]' : 'bg-gray-500'}`} />
+            <span className="text-gray-400 text-sm">{swapActive ? 'Connecte' : 'Deconnecte'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-gray-400" />
+            <span className="text-white">{formatDuration(duration)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Coins className="w-4 h-4 text-yellow-500" />
+            <span className="text-white">{pointsUsed} pts utilises</span>
+          </div>
         </div>
-        {error && (
-          <div className="flex items-center gap-2 text-sm text-red-400">
-            <AlertCircle className="h-4 w-4" />
-            {error}
-          </div>
-        )}
-        <div className="flex items-center gap-4">
-          {isActive && (
-            <>
-              <div className="text-sm">
-                <span className="text-gray-400">Duree: </span>
-                <span className="font-mono text-white">{formatTime(sessionDuration)}</span>
-              </div>
-              <div className="text-sm">
-                <span className="text-gray-400">Cout: </span>
-                <span className="font-mono text-orange-400">-{sessionDuration * POINTS_PER_SECOND} pts</span>
-              </div>
-            </>
-          )}
-          <div className="text-sm">
-            <span className="text-gray-400">Avatar: </span>
-            <span className="text-white">{selectedAvatar?.name || 'Aucun'}</span>
-          </div>
+        <div className="text-gray-400 text-sm">
+          Avatar actif: <span className="text-white">{selectedAvatar?.name || 'Aucun'}</span>
         </div>
       </div>
 
-      {/* CTA Button */}
-      <Button
-        onClick={isActive ? handleStopSwap : handleStartSwap}
-        disabled={(!selectedAvatar && !isActive) || (pointsRemaining <= 0 && !isActive)}
-        className={`mt-4 h-14 w-full text-lg font-bold uppercase ${
-          isActive 
-            ? 'bg-red-600 hover:bg-red-700 text-white' 
-            : connectionStatus === 'connecting'
-              ? 'bg-yellow-500 text-black animate-pulse'
-              : pointsRemaining <= 0
-                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                : 'bg-[#00ff88] hover:bg-[#00dd77] text-black shadow-[0_0_30px_rgba(0,255,136,0.3)]'
+      <button
+        onClick={isSwapping ? stopSwap : startSwap}
+        disabled={!selectedAvatar && !isSwapping}
+        className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${
+          isSwapping
+            ? 'bg-red-500 hover:bg-red-600 text-white'
+            : selectedAvatar
+              ? 'bg-[#00ff88] hover:bg-[#00dd77] text-black'
+              : 'bg-gray-700 text-gray-400 cursor-not-allowed'
         }`}
       >
-        {isActive ? (
-          <><Square className="mr-2 h-5 w-5" /> ARRETER LE SWAP</>
-        ) : connectionStatus === 'connecting' ? (
-          <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Connexion...</>
-        ) : pointsRemaining <= 0 ? (
-          <><Battery className="mr-2 h-5 w-5" /> RECHARGE NECESSAIRE</>
-        ) : (
-          <><Zap className="mr-2 h-5 w-5" /> DEMARRER LE SWAP</>
-        )}
-      </Button>
+        {isSwapping ? 'ARRETER LE SWAP' : selectedAvatar ? 'DEMARRER LE SWAP' : 'SELECTIONNE UN AVATAR'}
+      </button>
 
-      {!selectedAvatar && pointsRemaining > 0 && (
-        <p className="mt-2 text-center text-sm text-gray-500">
-          Selectionne un avatar ci-dessous pour commencer
-        </p>
-      )}
-      
-      {pointsRemaining <= 0 && (
-        <p className="mt-2 text-center text-sm text-orange-400">
-          Tu as epuise tes points. <Link href="/dashboard/plans" className="underline">Recharge maintenant</Link>
-        </p>
-      )}
-
-      {/* Avatars Section */}
-      <div className="mt-8 rounded-xl border border-white/10 bg-[#111] p-4">
+      <div className="bg-[#111] border border-[#222] rounded-xl p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-white">MES AVATARS</h2>
-          <Link href="/dashboard/avatars">
-            <Button size="sm" variant="outline" className="border-[#00ff88] text-[#00ff88] hover:bg-[#00ff88]/10">
-              <Plus className="mr-1 h-4 w-4" /> Ajouter
-            </Button>
-          </Link>
+          <h2 className="text-white font-bold">MES AVATARS</h2>
+          <a href="/dashboard/avatars" className="flex items-center gap-1 text-[#00ff88] hover:underline text-sm">
+            <Plus className="w-4 h-4" />
+            Ajouter
+          </a>
         </div>
 
         {avatars.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-8">
-            <Zap className="mb-3 h-10 w-10 text-[#00ff88]/30" />
-            <p className="text-gray-500 mb-4">Aucun avatar</p>
-            <Link href="/dashboard/avatars">
-              <Button className="bg-[#00ff88] text-black hover:bg-[#00dd77]">
-                <Plus className="mr-2 h-4 w-4" /> Creer mon premier avatar
-              </Button>
-            </Link>
+          <div className="text-center py-12">
+            <Zap className="w-12 h-12 mx-auto mb-3 text-gray-600" />
+            <p className="text-gray-400 mb-4">Aucun avatar</p>
+            <a href="/dashboard/avatars" className="inline-flex items-center gap-2 bg-[#00ff88] hover:bg-[#00dd77] text-black px-4 py-2 rounded-lg font-medium">
+              <Plus className="w-4 h-4" />
+              Creer mon premier avatar
+            </a>
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {avatars.map((avatar) => (
               <button
                 key={avatar.id}
-                onClick={() => handleSelectAvatar(avatar)}
-                className={`relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
+                onClick={() => selectAvatar(avatar)}
+                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
                   selectedAvatar?.id === avatar.id
-                    ? 'border-[#00ff88] shadow-[0_0_15px_rgba(0,255,136,0.3)]'
-                    : 'border-white/10 hover:border-white/30'
+                    ? 'border-[#00ff88] shadow-[0_0_20px_rgba(0,255,136,0.3)]'
+                    : 'border-[#333] hover:border-[#555]'
                 }`}
               >
-                <img
-                  src={avatar.image_url}
-                  alt={avatar.name}
-                  className="h-full w-full object-cover"
-                />
+                <img src={avatar.image_url} alt={avatar.name} className="w-full h-full object-cover" />
                 {selectedAvatar?.id === avatar.id && (
-                  <div className="absolute top-1 right-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#00ff88]">
-                    <Check className="h-3 w-3 text-black" />
+                  <div className="absolute top-2 right-2 w-6 h-6 bg-[#00ff88] rounded-full flex items-center justify-center">
+                    <Check className="w-4 h-4 text-black" />
                   </div>
                 )}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                  <p className="truncate text-xs text-white">{avatar.name}</p>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                  <p className="text-white text-xs font-medium truncate">{avatar.name}</p>
                 </div>
               </button>
             ))}
