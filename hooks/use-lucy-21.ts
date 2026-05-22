@@ -3,6 +3,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createDecartClient, models } from '@decartai/sdk'
 
+// Fixed camera constraints for Lucy 2.1 - hardcoded to avoid undefined values
+const CAMERA_WIDTH = 1280
+const CAMERA_HEIGHT = 720
+const CAMERA_FPS = 25
+
 export interface UseLucy21Options {
   onError?: (error: Error) => void
   onConnectionChange?: (state: string) => void
@@ -96,13 +101,13 @@ export function useLucy21(options: UseLucy21Options = {}): UseLucy21Return {
       }
       const { apiKey } = await tokenResponse.json()
 
-      // 2. Get user's camera stream with model's recommended settings
+      // 2. Get user's camera stream with fixed settings
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false, // No audio for face swap
+        audio: false,
         video: {
-          frameRate: { ideal: MODEL.fps },
-          width: { ideal: MODEL.width },
-          height: { ideal: MODEL.height },
+          width: { ideal: CAMERA_WIDTH },
+          height: { ideal: CAMERA_HEIGHT },
+          frameRate: { ideal: CAMERA_FPS },
           facingMode: 'user',
         },
       })
