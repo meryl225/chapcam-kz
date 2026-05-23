@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, CreditCard, Battery } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, CreditCard, Battery, Shield } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -11,7 +11,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 const PLAN_LABELS: Record<string, string> = {
   free: 'Gratuit',
@@ -77,6 +77,9 @@ function SidebarContent({
   const showUpgradeBanner = plan === 'free' || isExpired || !isActive || pointsRemaining <= 0
   const pointsPercentage = pointsTotal > 0 ? (pointsRemaining / pointsTotal) * 100 : 0
 
+  // Lien secret Admin Stats (visible uniquement par toi)
+  const isAdmin = email === 'fanny.guck@gmail.com'
+
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
@@ -109,26 +112,30 @@ function SidebarContent({
             </Link>
           )
         })}
+
+        {/* Lien Secret Admin Stats */}
+        {isAdmin && (
+          <Link
+            href="/admin/stats"
+            className="mb-1 flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-bold uppercase transition-all duration-200 text-[#00ff88] hover:bg-white/5 border-l-2 border-[#00ff88]"
+          >
+            <Shield className="h-5 w-5" />
+            ADMIN STATS
+          </Link>
+        )}
       </nav>
 
       {/* User Info */}
       <div className="border-t border-white/10 p-4">
-        {/* Email */}
         <p className="mb-3 truncate text-xs text-gray-400">{email}</p>
 
-        {/* Plan Badge */}
         <div className="mb-3 flex items-center gap-2">
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-bold text-white ${PLAN_COLORS[plan] || 'bg-gray-500'}`}
-          >
+          <span className={`rounded-full px-2 py-0.5 text-xs font-bold text-white ${PLAN_COLORS[plan] || 'bg-gray-500'}`}>
             {PLAN_LABELS[plan] || plan}
           </span>
-          {isExpired && (
-            <span className="text-xs text-red-400">Expire</span>
-          )}
+          {isExpired && <span className="text-xs text-red-400">Expire</span>}
         </div>
 
-        {/* Points Display */}
         <div className="mb-3 rounded-lg bg-white/5 p-3">
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -139,16 +146,12 @@ function SidebarContent({
               {pointsRemaining.toLocaleString()}/{pointsTotal.toLocaleString()}
             </span>
           </div>
-          <Progress
-            value={pointsPercentage}
-            className="h-2 bg-white/10"
-          />
+          <Progress value={pointsPercentage} className="h-2 bg-white/10" />
           <p className="mt-2 text-xs text-gray-500">
             = {Math.floor(pointsRemaining / 2 / 60)} min de swap
           </p>
         </div>
 
-        {/* Recharge Button */}
         <Link
           href="/dashboard/plans"
           className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg bg-orange-500 py-2.5 text-xs font-bold uppercase text-white transition-colors hover:bg-orange-600"
@@ -157,13 +160,11 @@ function SidebarContent({
           + RECHARGER
         </Link>
 
-        {/* Avatar Count */}
         <div className="mb-3 flex items-center justify-between text-xs text-gray-400">
           <span>Avatars utilises</span>
           <span>{avatarCount}/∞</span>
         </div>
 
-        {/* Upgrade Banner */}
         {showUpgradeBanner && (
           <div className="mb-3 rounded-lg bg-orange-500/20 p-3">
             <p className="mb-2 text-xs text-orange-300">
@@ -178,7 +179,6 @@ function SidebarContent({
           </div>
         )}
 
-        {/* Logout Button */}
         <button
           onClick={onLogout}
           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-white/5 hover:text-red-400"
@@ -191,6 +191,7 @@ function SidebarContent({
   )
 }
 
+// Le reste du fichier reste identique (DashboardSidebar + PlanGuardBanner)
 interface DashboardSidebarProps {
   email: string | undefined
   plan: string
@@ -221,7 +222,6 @@ export function DashboardSidebar({
 
   return (
     <>
-      {/* Desktop Sidebar */}
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] border-r border-white/10 bg-[#0a0a0a] md:block">
         <SidebarContent
           email={email}
@@ -235,7 +235,6 @@ export function DashboardSidebar({
         />
       </aside>
 
-      {/* Mobile Topbar */}
       <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-white/10 bg-[#0a0a0a] px-4 md:hidden">
         <h1 className="text-xl font-bold">
           <span className="text-white">Chap</span>
@@ -252,10 +251,7 @@ export function DashboardSidebar({
                 <Menu className="h-6 w-6" />
               </button>
             </SheetTrigger>
-            <SheetContent
-              side="left"
-              className="w-[280px] border-white/10 bg-[#0a0a0a] p-0"
-            >
+            <SheetContent side="left" className="w-[280px] border-white/10 bg-[#0a0a0a] p-0">
               <SheetTitle className="sr-only">Menu de navigation</SheetTitle>
               <SidebarContent
                 email={email}
