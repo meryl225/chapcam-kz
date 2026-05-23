@@ -5,7 +5,7 @@ import { createDecartClient, models } from '@decartai/sdk'
 
 const CAMERA_WIDTH = 1280
 const CAMERA_HEIGHT = 720
-const CAMERA_FPS = 30  // Augmenté pour plus de fluidité
+const CAMERA_FPS = 30
 
 export interface UseLucy21Options {
   onError?: (error: Error) => void
@@ -64,60 +64,57 @@ export function useLucy21(options: UseLucy21Options = {}): UseLucy21Return {
 
   const connect = useCallback(async (avatarImageUrl: string) => {
     disconnect()
-
     setIsConnecting(true)
     setError(null)
     setConnectionState('connecting')
     onConnectionChange?.('connecting')
 
     try {
-      // 1. Récupération du token sécurisé
       const tokenResponse = await fetch('/api/decart-token')
-      if (!tokenResponse.ok) throw new Error('Failed to get token')
-      
+      if (!tokenResponse.ok) throw new Error('Token error')
       const { token: clientToken } = await tokenResponse.json()
-      if (!clientToken) throw new Error('No token received')
 
-      // 2. Webcam avec paramètres optimisés pour fluidité
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
-          width: { ideal: CAMERA_WIDTH, max: 1280 },
-          height: { ideal: CAMERA_HEIGHT, max: 720 },
-          frameRate: { ideal: CAMERA_FPS, max: 30 },
+          width: { ideal: CAMERA_WIDTH },
+          height: { ideal: CAMERA_HEIGHT },
+          frameRate: { ideal: CAMERA_FPS },
           facingMode: 'user',
         },
       })
       streamRef.current = stream
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream
 
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream
-      }
-
-      // 3. Avatar
+      // === Amélioration importante : Chargement de l'image ===
       const avatarResponse = await fetch(avatarImageUrl)
+      if (!avatarResponse.ok) throw new Error('Failed to load avatar')
       const avatarBlob = await avatarResponse.blob()
 
-      // 4. Client Decart
       const client = createDecartClient({ apiKey: clientToken })
 
-      // 5. Connexion Realtime optimisée
       const realtimeClient = await client.realtime.connect(stream, {
         model: MODEL,
         mirror: 'auto',
-        quality: 'high',           // ← Important pour fluidité
-        latencyMode: 'low',        // ← Priorité faible latence
+        quality: 'high',
+        latencyMode: 'low',
 
-        onRemoteStream: (transformedStream: MediaStream) => {
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = transformedStream
-          }
+        onRemoteStream: (stream) => {
+          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = stream
         },
       })
 
       realtimeClientRef.current = realtimeClient
 
-      // Event listeners
+      // Envoi explicite de l'image de référence
+      await realtimeClient.set({
+        image: avatarBlob,
+        prompt: {
+          text: "Transform the person in the video into the person in the reference image. Keep natural face, expressions and movements. Full body if visible.",
+          enhance: true,
+        }
+      })
+
       realtimeClient.on('connectionChange', (state: string) => {
         setConnectionState(state)
         onConnectionChange?.(state)
@@ -128,7 +125,7 @@ export function useLucy21(options: UseLucy21Options = {}): UseLucy21Return {
       })
 
       realtimeClient.on('error', (err: any) => {
-        console.error('[Lucy 2.1] Error:', err)
+        console.error(err)
         setError(err.message)
         onError?.(err)
       })
@@ -138,8 +135,8 @@ export function useLucy21(options: UseLucy21Options = {}): UseLucy21Return {
       setConnectionState('connected')
 
     } catch (err: any) {
-      console.error('[Lucy 2.1] Failed:', err)
-      setError(err.message || 'Connection failed')
+      console.error(err)
+      setError(err.message || 'Failed to start Lucy')
       setIsConnecting(false)
       setConnectionState('disconnected')
       onError?.(err)
@@ -148,14 +145,9 @@ export function useLucy21(options: UseLucy21Options = {}): UseLucy21Return {
 
   const updateAvatar = useCallback(async (avatarImageUrl: string) => {
     if (!realtimeClientRef.current) throw new Error('Not connected')
-
     const avatarResponse = await fetch(avatarImageUrl)
     const avatarBlob = await avatarResponse.blob()
-
-    await realtimeClientRef.current.set({
-      image: avatarBlob,
-      enhance: true,
-    })
+    await realtimeClientRef.current.set({ image: avatarBlob })
   }, [])
 
   return {
