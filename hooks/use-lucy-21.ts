@@ -3,10 +3,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createDecartClient, models } from '@decartai/sdk'
 
-const CAMERA_WIDTH = 1280
-const CAMERA_HEIGHT = 720
-const CAMERA_FPS = 30
-
 export function useLucy21() {
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -47,35 +43,26 @@ export function useLucy21() {
     setConnectionState('connecting')
 
     try {
-      // 1. Token
       const tokenRes = await fetch('/api/decart-token')
       const { token: clientToken } = await tokenRes.json()
 
-      // 2. Webcam
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { 
-          width: { ideal: CAMERA_WIDTH }, 
-          height: { ideal: CAMERA_HEIGHT }, 
-          frameRate: { ideal: CAMERA_FPS } 
-        }
+        video: { width: 1280, height: 720, frameRate: 30 }
       })
       streamRef.current = stream
       if (localVideoRef.current) localVideoRef.current.srcObject = stream
 
-      // 3. Avatar
       const avatarRes = await fetch(avatarImageUrl)
       const avatarBlob = await avatarRes.blob()
 
       const client = createDecartClient({ apiKey: clientToken })
 
-      // 4. Connexion Realtime
       const realtimeClient = await client.realtime.connect(stream, {
         model: models.realtime('lucy-2.1'),
         mirror: 'auto',
         quality: 'high',
         latencyMode: 'low',
 
-        // IMPORTANT : onRemoteStream doit être une fonction directe
         onRemoteStream: (transformedStream: MediaStream) => {
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = transformedStream
@@ -85,16 +72,38 @@ export function useLucy21() {
 
       realtimeClientRef.current = realtimeClient
 
-      // 5. Appliquer l'image de référence
       await realtimeClient.set({
         image: avatarBlob,
-        prompt: "Full body swap. Replace the person with the one in the reference image. Keep natural movements, face and expressions.",
+        prompt: "Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.",
         enhance: true,
       })
 
-      // Events
       realtimeClient.on('connectionChange', (state: string) => {
         setConnectionState(state)
         if (state === 'connected' || state === 'generating') {
           setIsConnected(true)
           setIsConnecting(false)
+        }
+      })
+
+      setIsConnected(true)
+      setIsConnecting(false)
+
+    } catch (err: any) {
+      console.error('[Lucy 2.1]', err)
+      setError(err.message || 'Erreur de connexion')
+      setIsConnecting(false)
+    }
+  }, [disconnect])
+
+  return {
+    isConnected,
+    isConnecting,
+    connectionState,
+    error,
+    localVideoRef,
+    remoteVideoRef,
+    connect,
+    disconnect,
+  }
+}
