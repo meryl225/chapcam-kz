@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
 import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
@@ -85,6 +85,29 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [isConnected, disconnect])
 
+  // === TRACKING UTILISATEURS ACTIFS ===
+  useEffect(() => {
+    const trackActivity = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      await supabase
+        .from('user_activity')
+        .upsert({
+          user_id: user.id,
+          last_active: new Date().toISOString(),
+          current_page: window.location.pathname,
+        }, { 
+          onConflict: 'user_id' 
+        })
+    }
+
+    trackActivity()
+    const interval = setInterval(trackActivity, 30000)
+
+    return () => clearInterval(interval)
+  }, [])
+
   const handleStartSwap = async () => {
     if (!selectedAvatar || userPoints < POINTS_PER_SECOND) return
     setDuration(0)
@@ -147,7 +170,6 @@ export default function DashboardPage() {
 
       {/* Video Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* CAMERA REELLE */}
         <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
           <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#222]">
             <Camera className="w-4 h-4 text-blue-500" />
@@ -172,7 +194,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* CAMÉRA CHAPCAM */}
         <div className="bg-[#111] border border-[#00ff88]/30 rounded-xl overflow-hidden">
           <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#00ff88]/30">
             <Zap className="w-4 h-4 text-[#00ff88]" />
@@ -188,7 +209,6 @@ export default function DashboardPage() {
               className="w-full h-full object-cover"
             />
             
-            {/* ChapCam Live Watermark */}
             <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md text-white text-xs px-3 py-1 rounded-md flex items-center gap-1.5 z-20">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
               ChapCam • Live
