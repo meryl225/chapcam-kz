@@ -27,9 +27,10 @@ export function useLucy21() {
       try { realtimeClientRef.current.disconnect() } catch {}
       realtimeClientRef.current = null
     }
-    streamRef.current?.getTracks().forEach(t => t.stop())
-    streamRef.current = null
-
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current = null
+    }
     if (localVideoRef.current) localVideoRef.current.srcObject = null
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
 
@@ -43,13 +44,14 @@ export function useLucy21() {
     disconnect()
     setIsConnecting(true)
     setError(null)
+    setConnectionState('connecting')
 
     try {
-      // Token
+      // 1. Token
       const tokenRes = await fetch('/api/decart-token')
       const { token: clientToken } = await tokenRes.json()
 
-      // Webcam
+      // 2. Webcam
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { 
           width: { ideal: CAMERA_WIDTH }, 
@@ -60,59 +62,39 @@ export function useLucy21() {
       streamRef.current = stream
       if (localVideoRef.current) localVideoRef.current.srcObject = stream
 
-      // Avatar
+      // 3. Avatar
       const avatarRes = await fetch(avatarImageUrl)
       const avatarBlob = await avatarRes.blob()
 
       const client = createDecartClient({ apiKey: clientToken })
 
+      // 4. Connexion Realtime
       const realtimeClient = await client.realtime.connect(stream, {
         model: models.realtime('lucy-2.1'),
         mirror: 'auto',
         quality: 'high',
         latencyMode: 'low',
+
+        // IMPORTANT : onRemoteStream doit être une fonction directe
+        onRemoteStream: (transformedStream: MediaStream) => {
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = transformedStream
+          }
+        },
       })
 
       realtimeClientRef.current = realtimeClient
 
-      // Application de l'image de référence (version corrigée)
+      // 5. Appliquer l'image de référence
       await realtimeClient.set({
         image: avatarBlob,
-        prompt: "Full body swap. Replace the person with the one in the reference image. Keep natural movements, face, and expressions.",
+        prompt: "Full body swap. Replace the person with the one in the reference image. Keep natural movements, face and expressions.",
         enhance: true,
       })
 
+      // Events
       realtimeClient.on('connectionChange', (state: string) => {
         setConnectionState(state)
         if (state === 'connected' || state === 'generating') {
           setIsConnected(true)
           setIsConnecting(false)
-        }
-      })
-
-      realtimeClient.on('error', (e: any) => {
-        console.error(e)
-        setError(e.message)
-      })
-
-      setIsConnected(true)
-      setIsConnecting(false)
-
-    } catch (err: any) {
-      console.error(err)
-      setError(err.message || 'Erreur de connexion')
-      setIsConnecting(false)
-    }
-  }, [disconnect])
-
-  return {
-    isConnected,
-    isConnecting,
-    connectionState,
-    error,
-    localVideoRef,
-    remoteVideoRef,
-    connect,
-    disconnect,
-  }
-}
