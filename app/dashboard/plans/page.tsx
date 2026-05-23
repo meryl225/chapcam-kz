@@ -1,284 +1,114 @@
-"use client"
-
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Check, Zap, Crown, Star, Loader2, Clock, Battery } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/hooks/use-toast"
-
-const plans = [
-  {
-    id: "1day",
-    duration: "1 JOUR",
-    price: "10.000",
-    currency: "FCFA",
-    points: 600,
-    swapMinutes: 5,
-    features: [
-      "600 points inclus",
-      "5 minutes de swap",
-      "Face swap en temps reel",
-      "Qualite HD 1080p"
-    ],
-    validity: "Valable 24 heures",
-    color: "#00d4ff",
-    bgGradient: "from-cyan-500/20 to-blue-600/5",
-    popular: false,
-    icon: Zap
-  },
-  {
-    id: "30days",
-    duration: "30 JOURS",
-    price: "50.000",
-    currency: "FCFA",
-    points: 3000,
-    swapMinutes: 25,
-    features: [
-      "3 000 points inclus",
-      "25 minutes de swap",
-      "Face swap en temps reel",
-      "Qualite HD 1080p",
-      "Support prioritaire"
-    ],
-    validity: "Valable 1 mois",
-    color: "#a855f7",
-    bgGradient: "from-purple-500/20 to-purple-600/5",
-    popular: false,
-    icon: Star
-  },
-  {
-    id: "90days",
-    duration: "90 JOURS",
-    price: "100.000",
-    currency: "FCFA",
-    points: 7500,
-    swapMinutes: 62,
-    features: [
-      "7 500 points inclus",
-      "62 minutes de swap",
-      "Face swap en temps reel",
-      "Qualite 4K Ultra HD",
-      "Support prioritaire",
-      "Mises a jour exclusives"
-    ],
-    validity: "Valable 3 mois",
-    color: "#22c55e",
-    bgGradient: "from-green-500/20 to-green-600/5",
-    popular: false,
-    icon: Star
-  },
-  {
-    id: "365days",
-    duration: "365 JOURS",
-    price: "150.000",
-    currency: "FCFA",
-    points: 15000,
-    swapMinutes: 125,
-    features: [
-      "15 000 points inclus",
-      "125 minutes de swap",
-      "Face swap en temps reel",
-      "Qualite 4K Ultra HD",
-      "Support VIP 24/7",
-      "Mises a jour exclusives",
-      "Acces beta nouvelles fonctionnalites"
-    ],
-    validity: "Valable 1 an",
-    color: "#f97316",
-    bgGradient: "from-orange-500/20 to-yellow-500/5",
-    popular: true,
-    icon: Crown
-  }
-]
+'use client'
 
 export default function PlansPage() {
-  const { toast } = useToast()
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
-
-  const handleChoosePlan = async (planId: string) => {
-    setLoadingPlan(planId)
-    try {
-      const response = await fetch("/api/stripe/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la creation du paiement")
-      }
-
-      window.location.href = data.url
-    } catch (error) {
-      console.error("Checkout error:", error)
-      toast({
-        title: "Erreur",
-        description: "Impossible de lancer le paiement. Reessaie.",
-        variant: "destructive",
-      })
-      setLoadingPlan(null)
-    }
-  }
-
   return (
-    <div className="min-h-full p-4 md:p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-10 text-center">
-        <h1 className="text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-          RECHARGER MES POINTS
-        </h1>
-        <p className="mt-2 text-gray-400">
-          Paiement <span className="font-semibold text-green-400">100% securise</span> · Acces instantane
-        </p>
-        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#00ff88]/10 px-4 py-2 text-sm text-[#00ff88]">
-          <Battery className="h-4 w-4" />
-          <span>2 points = 1 seconde de swap</span>
+    <div className="min-h-screen bg-[#050505] py-12 px-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-16">
+          <h1 className="text-5xl font-bold text-white mb-4 tracking-tight">
+            Changez d’apparence en live
+          </h1>
+          <p className="text-3xl text-emerald-400 font-medium">avec ChapCam</p>
+          <p className="text-gray-400 mt-6 text-lg">
+            2 points = 1 seconde de transformation du visage et corps entier
+          </p>
         </div>
-      </div>
 
-      {/* Plans Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        {plans.map((plan, index) => {
-          const Icon = plan.icon
-          const isLoading = loadingPlan === plan.id
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
 
-          return (
-            <motion.div
-              key={plan.id}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className={`relative overflow-hidden rounded-3xl border bg-gradient-to-b ${plan.bgGradient} backdrop-blur-xl ${
-                plan.popular
-                  ? "border-[#f97316] shadow-xl shadow-[#f97316]/30"
-                  : "border-white/10"
-              }`}
-            >
-              {/* Popular badge */}
-              {plan.popular && (
-                <div className="absolute left-0 right-0 top-0 bg-gradient-to-r from-[#f97316] to-[#fbbf24] py-2 text-center">
-                  <span className="flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider text-black">
-                    <Crown className="h-4 w-4" />
-                    MEILLEUR CHOIX
-                  </span>
-                </div>
-              )}
-
-              <div className={`p-6 ${plan.popular ? "pt-14" : ""}`}>
-                {/* Icon + Duration */}
-                <div className="mb-4 flex items-center gap-2">
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-xl"
-                    style={{ backgroundColor: `${plan.color}20` }}
-                  >
-                    <Icon className="h-5 w-5" style={{ color: plan.color }} />
-                  </div>
-                  <span
-                    className="text-sm font-bold uppercase tracking-wider"
-                    style={{ color: plan.color }}
-                  >
-                    {plan.duration}
-                  </span>
-                </div>
-
-                {/* Points Highlight */}
-                <div className="mb-4 rounded-xl bg-white/5 p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Battery className="h-5 w-5" style={{ color: plan.color }} />
-                      <span className="text-lg font-bold text-white">{plan.points.toLocaleString()} points</span>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
-                    <Clock className="h-4 w-4" />
-                    <span>= {plan.swapMinutes} min de swap</span>
-                  </div>
-                </div>
-
-                {/* Price */}
-                <div className="mb-6">
-                  <div className="flex items-baseline gap-1">
-                    <span
-                      className="text-4xl font-black tracking-tight"
-                      style={{ color: plan.color }}
-                    >
-                      {plan.price}
-                    </span>
-                    <span className="text-sm font-medium text-gray-400">
-                      {plan.currency}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-sm text-gray-500">{plan.validity}</p>
-                </div>
-
-                {/* Features */}
-                <div className="mb-8 space-y-3">
-                  {plan.features.map((feature, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div
-                        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-                        style={{ backgroundColor: `${plan.color}30` }}
-                      >
-                        <Check className="h-3 w-3" style={{ color: plan.color }} />
-                      </div>
-                      <span className="text-sm leading-relaxed text-gray-300">
-                        {feature}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* CTA Button */}
-                <Button
-                  onClick={() => handleChoosePlan(plan.id)}
-                  disabled={!!loadingPlan}
-                  className={`w-full rounded-full py-6 text-base font-bold transition-all duration-300 hover:scale-105 ${
-                    plan.popular
-                      ? "bg-gradient-to-r from-[#f97316] to-[#fbbf24] text-black hover:shadow-lg hover:shadow-[#f97316]/50"
-                      : ""
-                  }`}
-                  style={
-                    !plan.popular
-                      ? {
-                          backgroundColor: `${plan.color}20`,
-                          color: plan.color,
-                          border: `1px solid ${plan.color}50`,
-                        }
-                      : {}
-                  }
-                >
-                  {isLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  {isLoading ? "Chargement..." : "Choisir ce plan"}
-                </Button>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
-
-      {/* Trust badges */}
-      <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-sm text-gray-500">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20">
-            <Check className="h-4 w-4 text-green-400" />
+          {/* Starter - 1 Jour */}
+          <div className="bg-[#111] border border-gray-800 rounded-3xl p-8 hover:border-[#00ff88]/70 transition-all group">
+            <div className="text-emerald-400 text-sm font-medium mb-2">1 JOUR</div>
+            <h3 className="text-2xl font-bold text-white">Starter</h3>
+            
+            <div className="mt-8">
+              <span className="text-5xl font-bold text-white">10.000</span>
+              <span className="text-gray-400"> FCFA</span>
+            </div>
+            
+            <ul className="mt-10 space-y-4 text-gray-300">
+              <li>• Transformation du visage et corps entier</li>
+              <li>• 500 points (4 min 10 sec)</li>
+              <li>• Qualité HD</li>
+            </ul>
+            
+            <button className="mt-12 w-full py-4 bg-white text-black font-semibold rounded-2xl hover:bg-gray-200 transition-all">
+              Choisir ce plan
+            </button>
           </div>
-          <span>Paiement securise SSL</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/20">
-            <Zap className="h-4 w-4 text-blue-400" />
+
+          {/* Popular - 30 Jours */}
+          <div className="bg-[#111] border-2 border-[#00ff88] rounded-3xl p-8 relative scale-105 shadow-2xl">
+            <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#00ff88] text-black text-sm font-bold px-6 py-1 rounded-full">
+              MEILLEUR CHOIX
+            </div>
+            
+            <div className="text-emerald-400 text-sm font-medium mb-2">30 JOURS</div>
+            <h3 className="text-2xl font-bold text-white">Popular</h3>
+            
+            <div className="mt-8">
+              <span className="text-5xl font-bold text-white">90.000</span>
+              <span className="text-gray-400"> FCFA</span>
+            </div>
+            
+            <ul className="mt-10 space-y-4 text-gray-300">
+              <li>• Transformation du visage et corps entier</li>
+              <li>• 6 000 points (50 minutes)</li>
+              <li>• Qualité HD 1080p</li>
+              <li className="text-emerald-400">• Support prioritaire</li>
+            </ul>
+            
+            <button className="mt-12 w-full py-4 bg-[#00ff88] text-black font-bold rounded-2xl hover:bg-[#00dd77] transition-all">
+              Choisir ce plan
+            </button>
           </div>
-          <span>Activation instantanee</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500/20">
-            <Crown className="h-4 w-4 text-purple-400" />
+
+          {/* Pro - 90 Jours */}
+          <div className="bg-[#111] border border-gray-800 rounded-3xl p-8 hover:border-[#00ff88]/70 transition-all group">
+            <div className="text-emerald-400 text-sm font-medium mb-2">90 JOURS</div>
+            <h3 className="text-2xl font-bold text-white">Pro</h3>
+            
+            <div className="mt-8">
+              <span className="text-5xl font-bold text-white">220.000</span>
+              <span className="text-gray-400"> FCFA</span>
+            </div>
+            
+            <ul className="mt-10 space-y-4 text-gray-300">
+              <li>• Transformation du visage et corps entier</li>
+              <li>• 16 000 points (133 minutes)</li>
+              <li>• Qualité 4K Ultra HD</li>
+              <li>• Support prioritaire</li>
+            </ul>
+            
+            <button className="mt-12 w-full py-4 bg-white text-black font-semibold rounded-2xl hover:bg-gray-200 transition-all">
+              Choisir ce plan
+            </button>
           </div>
-          <span>Satisfait ou rembourse</span>
+
+          {/* Ultimate - 365 Jours */}
+          <div className="bg-[#111] border border-gray-800 rounded-3xl p-8 hover:border-[#00ff88]/70 transition-all group">
+            <div className="text-emerald-400 text-sm font-medium mb-2">365 JOURS</div>
+            <h3 className="text-2xl font-bold text-white">Ultimate</h3>
+            
+            <div className="mt-8">
+              <span className="text-5xl font-bold text-white">550.000</span>
+              <span className="text-gray-400"> FCFA</span>
+            </div>
+            
+            <ul className="mt-10 space-y-4 text-gray-300">
+              <li>• Transformation du visage et corps entier</li>
+              <li>• 45 000 points (375 minutes)</li>
+              <li>• Qualité 4K Ultra HD</li>
+              <li>• Support VIP 24/7</li>
+              <li className="text-emerald-400">• Accès aux nouveautés</li>
+            </ul>
+            
+            <button className="mt-12 w-full py-4 bg-white text-black font-semibold rounded-2xl hover:bg-gray-200 transition-all">
+              Choisir ce plan
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
