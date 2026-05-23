@@ -7,7 +7,7 @@ import { ChevronDown, HelpCircle } from "lucide-react"
 const faqs = [
   {
     question: "Comment fonctionne ChapCam ?",
-    answer: "ChapCam utilise une technologie IA avancee (Lucy 2.1) pour remplacer votre visage en temps reel par un avatar de votre choix. Il vous suffit de selectionner un avatar, d'activer votre webcam et de lancer le swap. Le resultat est instantane et fonctionne avec toutes vos applications video."
+    answer: "ChapCam utilise une technologie IA exclusive pour remplacer votre visage en temps reel par un avatar de votre choix. Il vous suffit de selectionner un avatar, d'activer votre webcam et de lancer le swap. Le resultat est instantane et fonctionne avec toutes vos applications video."
   },
   {
     question: "Est-ce que ca fonctionne avec WhatsApp, Zoom, Teams ?",
@@ -15,23 +15,23 @@ const faqs = [
   },
   {
     question: "Quelle est la qualite du swap en temps reel ?",
-    answer: "Notre technologie offre un swap ultra-realiste avec une latence moyenne de 50-100ms. La qualite depend de votre connexion internet et de la luminosite de votre environnement, mais nos utilisateurs obtiennent generalement des resultats impressionnants."
+    answer: "Notre technologie offre un swap ultra-realiste avec une latence minimale. La qualite depend de votre connexion internet et de la luminosite de votre environnement, mais nos utilisateurs obtiennent generalement des resultats impressionnants."
   },
   {
     question: "Combien d'avatars puis-je creer ?",
-    answer: "Le nombre d'avatars depend de votre plan : Free (1 avatar), Starter (3 avatars), Pro (10 avatars), Business (25 avatars), Enterprise (avatars illimites). Vous pouvez upgrader a tout moment."
+    answer: "Le nombre d'avatars depend de votre plan : Starter (3 avatars), Pro (10 avatars), Business (25 avatars), Enterprise (avatars illimites). Vous pouvez upgrader a tout moment pour debloquer plus de fonctionnalites."
   },
   {
     question: "Mes donnees sont-elles securisees ?",
     answer: "Absolument. Vos photos d'avatars sont stockees de maniere securisee et chiffree. Nous ne partageons jamais vos donnees avec des tiers. Le traitement du swap se fait en temps reel sans stockage des flux video."
   },
   {
-    question: "Puis-je annuler mon abonnement ?",
-    answer: "Oui, vous pouvez annuler votre abonnement a tout moment depuis votre tableau de bord. Vous conserverez l'acces jusqu'a la fin de votre periode de facturation en cours."
+    question: "Comment fonctionnent les points ?",
+    answer: "Les points ChapCam permettent d'utiliser le swap en temps reel. Chaque plan inclut un nombre de points mensuel. Vous pouvez acheter des points supplementaires a tout moment via la page Recharge si vous en avez besoin."
   },
   {
-    question: "Y a-t-il un essai gratuit ?",
-    answer: "Oui ! Le plan Free vous permet de tester ChapCam gratuitement avec 1 avatar et 30 minutes de swap par mois. Aucune carte bancaire requise pour commencer."
+    question: "Quel plan choisir ?",
+    answer: "Le plan Starter est ideal pour debuter (3 avatars, 1000 pts). Le plan Pro convient aux utilisateurs reguliers (10 avatars, 5000 pts). Business et Enterprise sont concus pour les professionnels et equipes avec des besoins avances."
   },
   {
     question: "Comment contacter le support ?",
