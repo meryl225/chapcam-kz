@@ -59,6 +59,19 @@ export default function SignUpPage() {
       }
 
       if (data?.user) {
+        // Envoyer l'email de bienvenue via notre API
+        try {
+          await fetch('/api/email/welcome', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: email,
+              name: email.split('@')[0]
+            })
+          })
+        } catch (emailError) {
+          console.error('Erreur envoi email bienvenue:', emailError)
+        }
         setSuccess(true)
       }
     } catch {
