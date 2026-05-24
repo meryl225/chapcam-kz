@@ -17,30 +17,47 @@ export default function AdminStatsPage() {
 
   const loadStats = async () => {
     try {
+      // Total utilisateurs (table profiles)
       const { count: totalUsers } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*', { count: 'exact', head: true })
 
+      // Inscriptions aujourd'hui
       const today = new Date().toISOString().split('T')[0]
       const { count: todayRegistrations } = await supabase
-        .from('users')
+        .from('profiles')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', today)
 
+      // Utilisateurs en ligne (via user_activity created_at)
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
       const { count: onlineUsers } = await supabase
         .from('user_activity')
+        .select('user_id', { count: 'exact', head: true })
+        .gte('created_at', fiveMinAgo)
+
+      // Swaps en cours (sessions recentes)
+      const { count: activeSwaps } = await supabase
+        .from('swap_sessions')
         .select('*', { count: 'exact', head: true })
-        .gte('last_active', fiveMinAgo)
+        .gte('created_at', fiveMinAgo)
+
+      // Subscriptions actives
+      const { count: activeSubscriptions } = await supabase
+        .from('subscriptions')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .gt('points', 0)
 
       setStats({
         totalUsers: totalUsers || 0,
         todayRegistrations: todayRegistrations || 0,
         onlineUsers: onlineUsers || 0,
-        activeSwaps: 0,
+        activeSwaps: activeSwaps || 0,
+        activeSubscriptions: activeSubscriptions || 0,
       })
     } catch (error) {
-      console.error(error)
+      console.error('Erreur chargement stats:', error)
     } finally {
       setLoading(false)
     }
