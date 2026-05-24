@@ -46,7 +46,7 @@ const paymentMethods = [
   {
     id: "orange",
     name: "Orange Money",
-    icon: "/images/orange-money.png",
+    logo: "/images/orange-money-logo.jpg",
     color: "#FF6600",
     bgColor: "bg-orange-500/10",
     borderColor: "border-orange-500",
@@ -54,7 +54,7 @@ const paymentMethods = [
   {
     id: "mtn",
     name: "MTN Mobile Money",
-    icon: "/images/mtn-momo.png",
+    logo: "/images/mtn-momo-logo.jpg",
     color: "#FFCC00",
     bgColor: "bg-yellow-500/10",
     borderColor: "border-yellow-500",
@@ -62,7 +62,7 @@ const paymentMethods = [
   {
     id: "wave",
     name: "Wave",
-    icon: "/images/wave.png",
+    logo: "/images/wave-logo.jpg",
     color: "#1DC8FF",
     bgColor: "bg-cyan-500/10",
     borderColor: "border-cyan-500",
@@ -70,7 +70,7 @@ const paymentMethods = [
   {
     id: "djamo",
     name: "Djamo",
-    icon: "/images/djamo.png",
+    logo: "/images/djamo-logo.jpg",
     color: "#6366F1",
     bgColor: "bg-indigo-500/10",
     borderColor: "border-indigo-500",
@@ -214,11 +214,14 @@ export default function RechargePage() {
                     key={method.id}
                     className={`p-3 rounded-xl ${method.bgColor} border border-white/10 flex items-center gap-3`}
                   >
-                    <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-xl font-bold"
-                      style={{ backgroundColor: method.color + '20', color: method.color }}
-                    >
-                      {method.name.charAt(0)}
+                    <div className="w-10 h-10 rounded-lg overflow-hidden">
+                      <Image 
+                        src={method.logo} 
+                        alt={method.name}
+                        width={40}
+                        height={40}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                     <span className="text-sm font-medium">{method.name}</span>
                   </div>
@@ -309,11 +312,16 @@ export default function RechargePage() {
                   {paymentMethods.map((method) => (
                     <div 
                       key={method.id}
-                      className="w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold"
-                      style={{ backgroundColor: method.color + '20', color: method.color }}
+                      className="w-8 h-8 rounded-md overflow-hidden"
                       title={method.name}
                     >
-                      {method.name.split(' ')[0].charAt(0)}
+                      <Image 
+                        src={method.logo} 
+                        alt={method.name}
+                        width={32}
+                        height={32}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   ))}
                 </div>
