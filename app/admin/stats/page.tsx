@@ -10,6 +10,7 @@ export default function AdminStatsPage() {
     todayRegistrations: 0,
     onlineUsers: 0,
     activeSwaps: 0,
+    activeSubscriptions: 0,
   })
   const [loading, setLoading] = useState(true)
 
@@ -115,6 +116,12 @@ export default function AdminStatsPage() {
           <div className="bg-[#111] border border-gray-800 rounded-3xl p-10">
             <p className="text-gray-400 text-lg">Swaps en cours</p>
             <p className="text-7xl font-bold text-orange-400 mt-4">{stats.activeSwaps}</p>
+          </div>
+
+          <div className="bg-[#111] border border-gray-800 rounded-3xl p-10">
+            <p className="text-gray-400 text-lg">Abonnements actifs</p>
+            <p className="text-7xl font-bold text-purple-400 mt-4">{stats.activeSubscriptions}</p>
+            <p className="text-sm text-gray-500 mt-3">avec points restants</p>
           </div>
         </div>
 
