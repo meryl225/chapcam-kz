@@ -405,14 +405,25 @@ export default function DashboardPage() {
             )}
           </div>
           
-          <div className="relative aspect-video bg-[#0a0a0a]">
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
+          {/* Container avec overflow hidden pour cacher le watermark */}
+          <div className="relative aspect-video bg-[#0a0a0a] overflow-hidden">
+            {/* Wrapper qui scale la video pour cropper les bords */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <video
+                ref={remoteVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="w-[103%] h-[103%] object-cover"
+                style={{ 
+                  objectPosition: 'center bottom',
+                  marginTop: '3%'
+                }}
+              />
+            </div>
+            
+            {/* Masque supplementaire sur le coin en haut a droite */}
+            <div className="absolute top-0 right-0 w-40 h-8 bg-gradient-to-l from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent z-10" />
             
             <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md text-white text-xs px-3 py-1 rounded-md flex items-center gap-1.5 z-20">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
