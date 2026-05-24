@@ -1,34 +1,41 @@
 "use client"
 
-import { motion, useMotionValue, useTransform, animate } from "framer-motion"
-import { useState, useEffect } from "react"
-import Image from "next/image"
+import { motion } from "framer-motion"
+import { useRef, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Play, ArrowRight } from "lucide-react"
+import { Play, ArrowRight, Volume2, VolumeX, Maximize2 } from "lucide-react"
 
 export function InActionSection() {
-  const [isHovering, setIsHovering] = useState(false)
-  const sliderPosition = useMotionValue(50)
-  const clipPath = useTransform(sliderPosition, (value) => `inset(0 ${100 - value}% 0 0)`)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [isPlaying, setIsPlaying] = useState(true)
+  const [isMuted, setIsMuted] = useState(true)
 
-  // Auto-animate the slider
-  useEffect(() => {
-    if (!isHovering) {
-      const animation = animate(sliderPosition, [30, 70, 30], {
-        duration: 4,
-        repeat: Infinity,
-        ease: "easeInOut",
-      })
-      return () => animation.stop()
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause()
+      } else {
+        videoRef.current.play()
+      }
+      setIsPlaying(!isPlaying)
     }
-  }, [isHovering, sliderPosition])
+  }
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isHovering) {
-      const rect = e.currentTarget.getBoundingClientRect()
-      const x = ((e.clientX - rect.left) / rect.width) * 100
-      sliderPosition.set(Math.max(10, Math.min(90, x)))
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted
+      setIsMuted(!isMuted)
+    }
+  }
+
+  const toggleFullscreen = () => {
+    if (videoRef.current) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen()
+      } else {
+        videoRef.current.requestFullscreen()
+      }
     }
   }
 
@@ -84,7 +91,7 @@ export function InActionSection() {
           </p>
         </motion.div>
 
-        {/* Split-screen transformation visual */}
+        {/* Video container */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -107,69 +114,73 @@ export function InActionSection() {
               className="absolute inset-0 rounded-3xl"
             />
 
-            {/* Image container */}
-            <div
-              className="relative aspect-[16/10] rounded-3xl overflow-hidden border border-[#00ff88]/30 bg-black cursor-ew-resize"
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}
-              onMouseMove={handleMouseMove}
-            >
-              {/* AFTER image (bottom layer) */}
-              <div className="absolute inset-0">
-                <Image
-                  src="/images/transform-after.jpg"
-                  alt="Apres transformation"
-                  fill
-                  className="object-cover"
-                  priority
-                />
-                {/* AFTER label */}
-                <div className="absolute top-6 right-6 bg-[#00ff88] text-black px-4 py-2 rounded-full font-bold text-sm">
-                  APRES
+            {/* Video container */}
+            <div className="relative aspect-video rounded-3xl overflow-hidden border border-[#00ff88]/30 bg-black group">
+              <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+                poster="/images/transform-before.jpg"
+              >
+                <source src="/videos/chapcam-demo.mp4" type="video/mp4" />
+                Votre navigateur ne supporte pas la lecture de videos.
+              </video>
+
+              {/* Video controls overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                {/* Play/Pause button center */}
+                <button
+                  onClick={togglePlay}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-[#00ff88]/90 flex items-center justify-center hover:bg-[#00ff88] transition-colors"
+                >
+                  {isPlaying ? (
+                    <div className="flex gap-1">
+                      <div className="w-2 h-8 bg-black rounded-full" />
+                      <div className="w-2 h-8 bg-black rounded-full" />
+                    </div>
+                  ) : (
+                    <Play className="w-8 h-8 text-black fill-black ml-1" />
+                  )}
+                </button>
+
+                {/* Bottom controls */}
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {/* Mute button */}
+                    <button
+                      onClick={toggleMute}
+                      className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-colors"
+                    >
+                      {isMuted ? (
+                        <VolumeX className="w-5 h-5 text-white" />
+                      ) : (
+                        <Volume2 className="w-5 h-5 text-white" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Fullscreen button */}
+                  <button
+                    onClick={toggleFullscreen}
+                    className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-colors"
+                  >
+                    <Maximize2 className="w-5 h-5 text-white" />
+                  </button>
                 </div>
               </div>
 
-              {/* BEFORE image (top layer with clip) */}
-              <motion.div className="absolute inset-0" style={{ clipPath }}>
-                <Image
-                  src="/images/transform-before.jpg"
-                  alt="Avant transformation"
-                  fill
-                  className="object-cover"
-                  priority
+              {/* Live badge */}
+              <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
+                <motion.div
+                  animate={{ opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  className="w-2 h-2 rounded-full bg-red-500"
                 />
-                {/* AVANT label */}
-                <div className="absolute top-6 left-6 bg-white/90 text-black px-4 py-2 rounded-full font-bold text-sm">
-                  AVANT
-                </div>
-              </motion.div>
-
-              {/* Slider line */}
-              <motion.div
-                className="absolute top-0 bottom-0 w-1 bg-[#00ff88] z-10"
-                style={{ left: useTransform(sliderPosition, (v) => `${v}%`) }}
-              >
-                {/* Slider handle */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 bg-[#00ff88] rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(0,255,136,0.6)]">
-                  <div className="flex items-center gap-1">
-                    <div className="w-0 h-0 border-t-[6px] border-b-[6px] border-r-[8px] border-transparent border-r-black" />
-                    <div className="w-0 h-0 border-t-[6px] border-b-[6px] border-l-[8px] border-transparent border-l-black" />
-                  </div>
-                </div>
-
-                {/* Glow effect on line */}
-                <div className="absolute inset-0 w-1 bg-[#00ff88] blur-md" />
-              </motion.div>
-
-              {/* Scan line effect */}
-              <motion.div
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  background: `linear-gradient(90deg, transparent, rgba(0,255,136,0.1), transparent)`,
-                  left: useTransform(sliderPosition, (v) => `${v - 10}%`),
-                  width: "20%",
-                }}
-              />
+                <span className="text-white text-sm font-medium">DEMO LIVE</span>
+              </div>
             </div>
 
             {/* Instruction text */}
@@ -180,7 +191,7 @@ export function InActionSection() {
               transition={{ delay: 1 }}
               className="text-center text-gray-500 text-sm mt-4"
             >
-              Survolez et deplacez pour comparer
+              Survolez pour afficher les controles
             </motion.p>
           </div>
         </motion.div>
