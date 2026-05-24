@@ -3,9 +3,11 @@
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Check, Zap, Crown, Star } from "lucide-react"
+import Link from "next/link"
 
 const plans = [
   {
+    id: "starter",
     name: "Starter",
     duration: "1 JOUR",
     price: "10.000",
@@ -13,7 +15,7 @@ const plans = [
     features: [
       "Transformation du visage et corps entier",
       "500 points (4 min 10 sec)",
-      "Qualité HD 1080p"
+      "Qualite HD 1080p"
     ],
     validity: "Valable 24 heures",
     color: "#00d4ff",
@@ -22,6 +24,7 @@ const plans = [
     icon: Zap
   },
   {
+    id: "popular",
     name: "Popular",
     duration: "30 JOURS",
     price: "90.000",
@@ -29,7 +32,7 @@ const plans = [
     features: [
       "Transformation du visage et corps entier",
       "6 000 points (50 minutes)",
-      "Qualité HD 1080p",
+      "Qualite HD 1080p",
       "Support prioritaire"
     ],
     validity: "Valable 1 mois",
@@ -39,6 +42,7 @@ const plans = [
     icon: Star
   },
   {
+    id: "pro",
     name: "Pro",
     duration: "90 JOURS",
     price: "220.000",
@@ -46,7 +50,7 @@ const plans = [
     features: [
       "Transformation du visage et corps entier",
       "16 000 points (133 minutes)",
-      "Qualité 4K Ultra HD",
+      "Qualite 4K Ultra HD",
       "Support prioritaire"
     ],
     validity: "Valable 3 mois",
@@ -56,6 +60,7 @@ const plans = [
     icon: Star
   },
   {
+    id: "ultimate",
     name: "Ultimate",
     duration: "365 JOURS",
     price: "550.000",
@@ -63,9 +68,9 @@ const plans = [
     features: [
       "Transformation du visage et corps entier",
       "45 000 points (375 minutes)",
-      "Qualité 4K Ultra HD",
+      "Qualite 4K Ultra HD",
       "Support VIP 24/7",
-      "Accès aux nouveautés en avant-première"
+      "Acces aux nouveautes en avant-premiere"
     ],
     validity: "Valable 1 an",
     color: "#f97316",
@@ -144,15 +149,17 @@ export function PricingSection() {
                   ))}
                 </ul>
 
-                <Button 
-                  className={`w-full py-6 text-base font-bold rounded-2xl transition-all ${
-                    plan.popular 
-                      ? "bg-[#00ff88] text-black hover:bg-[#00dd77]" 
-                      : "bg-white text-black hover:bg-gray-200"
-                  }`}
-                >
-                  Choisir ce plan
-                </Button>
+                <Link href={`/dashboard/recharge?plan=${plan.id}`}>
+                  <Button 
+                    className={`w-full py-6 text-base font-bold rounded-2xl transition-all ${
+                      plan.popular 
+                        ? "bg-[#00ff88] text-black hover:bg-[#00dd77]" 
+                        : "bg-white text-black hover:bg-gray-200"
+                    }`}
+                  >
+                    Choisir ce plan
+                  </Button>
+                </Link>
               </motion.div>
             )
           })}

@@ -4,54 +4,54 @@ import { Zap, Check, Crown } from 'lucide-react'
 
 const plans = [
   {
-    id: 1,
+    id: "starter",
     name: "Starter",
     duration: "1 Jour",
     price: 10000,
     points: 500,
     minutes: "4 min 10 sec",
-    features: ["Transformation du visage et corps entier", "Qualité HD"],
+    features: ["Transformation du visage et corps entier", "Qualite HD"],
     buttonText: "Choisir ce plan",
     popular: false,
   },
   {
-    id: 2,
+    id: "popular",
     name: "Popular",
     duration: "30 Jours",
     price: 90000,
     points: 6000,
     minutes: "50 minutes",
-    features: ["Transformation du visage et corps entier", "Qualité HD 1080p", "Support prioritaire"],
+    features: ["Transformation du visage et corps entier", "Qualite HD 1080p", "Support prioritaire"],
     buttonText: "Choisir ce plan",
     popular: true,
   },
   {
-    id: 3,
+    id: "pro",
     name: "Pro",
     duration: "90 Jours",
     price: 220000,
     points: 16000,
     minutes: "133 minutes",
-    features: ["Transformation du visage et corps entier", "Qualité 4K Ultra HD", "Support prioritaire"],
+    features: ["Transformation du visage et corps entier", "Qualite 4K Ultra HD", "Support prioritaire"],
     buttonText: "Choisir ce plan",
     popular: false,
   },
   {
-    id: 4,
+    id: "ultimate",
     name: "Ultimate",
     duration: "365 Jours",
     price: 550000,
     points: 45000,
     minutes: "375 minutes",
-    features: ["Transformation du visage et corps entier", "Qualité 4K Ultra HD", "Support VIP 24/7", "Accès aux nouveautés"],
+    features: ["Transformation du visage et corps entier", "Qualite 4K Ultra HD", "Support VIP 24/7", "Acces aux nouveautes"],
     buttonText: "Choisir ce plan",
     popular: false,
   },
 ]
 
 export default function PlansPage() {
-  const handleChoosePlan = (planId: number) => {
-    // Redirection vers la page de paiement avec le plan sélectionné
+  const handleChoosePlan = (planId: string) => {
+    // Redirection vers la page de paiement avec le plan selectionne
     window.location.href = `/dashboard/recharge?plan=${planId}`
   }
 
