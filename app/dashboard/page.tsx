@@ -408,22 +408,39 @@ export default function DashboardPage() {
           {/* Container avec overflow hidden pour cacher le watermark */}
           <div className="relative aspect-video bg-[#0a0a0a] overflow-hidden">
             {/* Wrapper qui scale la video pour cropper les bords */}
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
               <video
                 ref={remoteVideoRef}
                 autoPlay
                 playsInline
                 muted
-                className="w-[103%] h-[103%] object-cover"
+                className="w-[106%] h-[106%] object-cover"
                 style={{ 
                   objectPosition: 'center bottom',
-                  marginTop: '3%'
+                  marginTop: '6%'
                 }}
               />
             </div>
             
-            {/* Masque supplementaire sur le coin en haut a droite */}
-            <div className="absolute top-0 right-0 w-40 h-8 bg-gradient-to-l from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent z-10" />
+            {/* Masque opaque large sur le coin superieur droit pour cacher le watermark */}
+            <div 
+              className="absolute top-0 right-0 z-10 pointer-events-none"
+              style={{
+                width: '220px',
+                height: '50px',
+                background: 'linear-gradient(to left, #0a0a0a 60%, #0a0a0a 40%, transparent)',
+              }}
+            />
+            
+            {/* Deuxieme masque plus subtil qui s'etend */}
+            <div 
+              className="absolute top-0 right-0 z-10 pointer-events-none"
+              style={{
+                width: '280px',
+                height: '60px',
+                background: 'linear-gradient(135deg, transparent 30%, #0a0a0a 70%)',
+              }}
+            />
             
             <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md text-white text-xs px-3 py-1 rounded-md flex items-center gap-1.5 z-20">
               <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
