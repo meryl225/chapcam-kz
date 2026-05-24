@@ -4,6 +4,7 @@ import { InActionSection } from "@/components/in-action-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
 import { PricingSection } from "@/components/pricing-section"
 import { FAQSection } from "@/components/faq-section"
+import { TutorialSection } from "@/components/tutorial-section"
 import { AnimatedBackground } from "@/components/animated-background"
 
 export default function Home() {
@@ -24,6 +25,7 @@ export default function Home() {
         <HowItWorksSection />
         <PricingSection />
         <FAQSection />
+        <TutorialSection />
       </div>
     </main>
   )
