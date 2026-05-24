@@ -16,12 +16,29 @@ export async function POST(request: NextRequest) {
     const body: PaymentRequest = await request.json()
     const { plan, amount, points, duration, userEmail, userName } = body
 
+    // Verifier les cles API
+    const masterKey = process.env.PAYDUNYA_MASTER_KEY
+    const privateKey = process.env.PAYDUNYA_PRIVATE_KEY
+    const token = process.env.PAYDUNYA_TOKEN
+
+    if (!masterKey || !privateKey || !token) {
+      console.error('[PayDunya] Missing API keys:', {
+        hasMasterKey: !!masterKey,
+        hasPrivateKey: !!privateKey,
+        hasToken: !!token
+      })
+      return NextResponse.json(
+        { success: false, error: 'Configuration PayDunya incomplete. Contactez le support.' },
+        { status: 500 }
+      )
+    }
+
     // Configuration PayDunya
     const headers = {
       'Content-Type': 'application/json',
-      'PAYDUNYA-MASTER-KEY': process.env.PAYDUNYA_MASTER_KEY || '',
-      'PAYDUNYA-PRIVATE-KEY': process.env.PAYDUNYA_PRIVATE_KEY || '',
-      'PAYDUNYA-TOKEN': process.env.PAYDUNYA_TOKEN || '',
+      'PAYDUNYA-MASTER-KEY': masterKey,
+      'PAYDUNYA-PRIVATE-KEY': privateKey,
+      'PAYDUNYA-TOKEN': token,
     }
 
     // Creer la facture PayDunya
@@ -52,6 +69,8 @@ export async function POST(request: NextRequest) {
       },
     }
 
+    console.log('[PayDunya] Creating invoice with URL:', `${PAYDUNYA_BASE_URL}/checkout-invoice/create`)
+
     const response = await fetch(`${PAYDUNYA_BASE_URL}/checkout-invoice/create`, {
       method: 'POST',
       headers,
@@ -59,6 +78,7 @@ export async function POST(request: NextRequest) {
     })
 
     const data = await response.json()
+    console.log('[PayDunya] Response:', data)
 
     if (data.response_code === '00') {
       return NextResponse.json({
