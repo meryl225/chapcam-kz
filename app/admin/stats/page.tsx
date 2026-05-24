@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Shield, Users, Clock, Zap } from 'lucide-react'
+import { Shield, RefreshCw } from 'lucide-react'
 
 export default function AdminStatsPage() {
   const [stats, setStats] = useState({
@@ -10,41 +10,72 @@ export default function AdminStatsPage() {
     todayRegistrations: 0,
     onlineUsers: 0,
     activeSwaps: 0,
+    activeSubscriptions: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const supabase = createClient()
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
+    const supabase = createClient()
+    setRefreshing(true)
+    
     try {
-      const { count: totalUsers } = await supabase
-        .from('users')
+      // Total utilisateurs (table profiles)
+      const { count: totalUsers, error: usersError } = await supabase
+        .from('profiles')
         .select('*', { count: 'exact', head: true })
+      
+      if (usersError) console.error('Erreur profiles:', usersError)
 
+      // Inscriptions aujourd'hui
       const today = new Date().toISOString().split('T')[0]
-      const { count: todayRegistrations } = await supabase
-        .from('users')
+      const { count: todayRegistrations, error: todayError } = await supabase
+        .from('profiles')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', today)
+      
+      if (todayError) console.error('Erreur today:', todayError)
 
+      // Utilisateurs en ligne (via user_activity created_at)
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-      const { count: onlineUsers } = await supabase
+      const { count: onlineUsers, error: onlineError } = await supabase
         .from('user_activity')
+        .select('user_id', { count: 'exact', head: true })
+        .gte('created_at', fiveMinAgo)
+      
+      if (onlineError) console.error('Erreur online:', onlineError)
+
+      // Swaps en cours (sessions recentes)
+      const { count: activeSwaps, error: swapsError } = await supabase
+        .from('swap_sessions')
         .select('*', { count: 'exact', head: true })
-        .gte('last_active', fiveMinAgo)
+        .gte('created_at', fiveMinAgo)
+      
+      if (swapsError) console.error('Erreur swaps:', swapsError)
+
+      // Subscriptions actives
+      const { count: activeSubscriptions, error: subsError } = await supabase
+        .from('subscriptions')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .gt('points', 0)
+      
+      if (subsError) console.error('Erreur subscriptions:', subsError)
 
       setStats({
         totalUsers: totalUsers || 0,
         todayRegistrations: todayRegistrations || 0,
         onlineUsers: onlineUsers || 0,
-        activeSwaps: 0,
+        activeSwaps: activeSwaps || 0,
+        activeSubscriptions: activeSubscriptions || 0,
       })
     } catch (error) {
-      console.error(error)
+      console.error('Erreur chargement stats:', error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     loadStats()
@@ -52,9 +83,10 @@ export default function AdminStatsPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // Protection stricte - Seul toi peux accéder
+  // Protection stricte - Seul toi peux acceder
   useEffect(() => {
     const checkAccess = async () => {
+      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || user.email !== 'fanny.guck@gmail.com') {
         window.location.href = '/dashboard'
@@ -99,13 +131,21 @@ export default function AdminStatsPage() {
             <p className="text-gray-400 text-lg">Swaps en cours</p>
             <p className="text-7xl font-bold text-orange-400 mt-4">{stats.activeSwaps}</p>
           </div>
+
+          <div className="bg-[#111] border border-gray-800 rounded-3xl p-10">
+            <p className="text-gray-400 text-lg">Abonnements actifs</p>
+            <p className="text-7xl font-bold text-purple-400 mt-4">{stats.activeSubscriptions}</p>
+            <p className="text-sm text-gray-500 mt-3">avec points restants</p>
+          </div>
         </div>
 
         <button
           onClick={loadStats}
-          className="mt-10 px-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-gray-200 transition"
+          disabled={refreshing}
+          className="mt-10 px-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-gray-200 transition flex items-center gap-3 disabled:opacity-50"
         >
-          Rafraîchir les statistiques
+          <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Chargement...' : 'Rafraichir les statistiques'}
         </button>
       </div>
     </div>
