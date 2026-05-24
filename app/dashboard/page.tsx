@@ -53,12 +53,22 @@ export default function DashboardPage() {
       const caps = await detectHardwareCapabilities()
       setHardware(caps)
       
-      const mode = determineProcessingMode(caps, preferences, networkQuality)
-      setProcessingMode(mode.mode)
-      setStats(prev => ({ ...prev, resolution: mode.resolution, fps: mode.fps }))
+      // Si PC gamer detecte, forcer le mode local obligatoirement
+      if (caps.isGamingPC) {
+        setProcessingMode('local')
+        const forcedPrefs = { ...preferences, mode: 'local' as const }
+        setPreferences(forcedPrefs)
+        saveProcessingPreferences(forcedPrefs)
+        setStats(prev => ({ ...prev, resolution: caps.gpuTier === 'high' ? '1080p' : '720p', fps: caps.gpuTier === 'high' ? 30 : 25 }))
+      } else {
+        // PC classique: determiner le mode optimal (cloud par defaut)
+        const mode = determineProcessingMode(caps, preferences, networkQuality)
+        setProcessingMode(mode.mode)
+        setStats(prev => ({ ...prev, resolution: mode.resolution, fps: mode.fps }))
+      }
     }
     detectHardware()
-  }, [preferences, networkQuality])
+  }, [networkQuality])
 
   // Surveiller la qualite reseau
   useEffect(() => {
@@ -176,6 +186,11 @@ export default function DashboardPage() {
   }
 
   const handleModeChange = useCallback((mode: 'auto' | 'local' | 'cloud') => {
+    // Si PC gamer, ignorer tout changement et rester en local
+    if (hardware?.isGamingPC) {
+      return
+    }
+    
     const newPrefs = { ...preferences, mode }
     setPreferences(newPrefs)
     saveProcessingPreferences(newPrefs)
@@ -256,27 +271,46 @@ export default function DashboardPage() {
             {showModeSettings && (
               <div className="absolute top-full right-0 mt-2 w-64 p-4 rounded-xl bg-[#111] border border-[#333] z-50">
                 <h4 className="text-sm font-medium text-white mb-3">Mode de traitement</h4>
-                <div className="space-y-2">
-                  {[
-                    { id: 'auto', label: 'Automatique', desc: 'Choisit le meilleur mode' },
-                    { id: 'local', label: 'Local (GPU)', desc: hardware?.gpuName || 'Non disponible', disabled: !hardware?.isGamingPC },
-                    { id: 'cloud', label: 'Cloud', desc: 'Serveurs haute performance' }
-                  ].map(option => (
-                    <button
-                      key={option.id}
-                      onClick={() => handleModeChange(option.id as 'auto' | 'local' | 'cloud')}
-                      disabled={option.disabled}
-                      className={`w-full p-3 rounded-lg text-left transition-all ${
-                        preferences.mode === option.id 
-                          ? 'bg-[#00ff88]/20 border border-[#00ff88]/50' 
-                          : 'bg-white/5 border border-transparent hover:bg-white/10'
-                      } ${option.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      <p className="text-sm font-medium text-white">{option.label}</p>
-                      <p className="text-xs text-white/50">{option.desc}</p>
-                    </button>
-                  ))}
-                </div>
+                
+                {/* PC Gamer: Afficher uniquement le mode local force */}
+                {hardware?.isGamingPC ? (
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-lg bg-green-500/20 border border-green-500/50">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Monitor className="w-4 h-4 text-green-400" />
+                        <p className="text-sm font-medium text-green-400">Mode Local Active</p>
+                      </div>
+                      <p className="text-xs text-white/60">
+                        PC Gaming detecte. Le traitement s&apos;effectue directement sur votre GPU pour des performances optimales.
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white/5">
+                      <p className="text-xs text-white/70 font-medium">{hardware.gpuName}</p>
+                      <p className="text-xs text-white/40">{hardware.vramEstimate}GB VRAM</p>
+                    </div>
+                  </div>
+                ) : (
+                  /* PC classique: Afficher Auto et Cloud uniquement */
+                  <div className="space-y-2">
+                    {[
+                      { id: 'auto', label: 'Automatique', desc: 'Choisit le meilleur mode' },
+                      { id: 'cloud', label: 'Cloud', desc: 'Serveurs haute performance' }
+                    ].map(option => (
+                      <button
+                        key={option.id}
+                        onClick={() => handleModeChange(option.id as 'auto' | 'local' | 'cloud')}
+                        className={`w-full p-3 rounded-lg text-left transition-all ${
+                          preferences.mode === option.id 
+                            ? 'bg-[#00ff88]/20 border border-[#00ff88]/50' 
+                            : 'bg-white/5 border border-transparent hover:bg-white/10'
+                        }`}
+                      >
+                        <p className="text-sm font-medium text-white">{option.label}</p>
+                        <p className="text-xs text-white/50">{option.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
