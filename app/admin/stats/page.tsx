@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Shield, Users, Clock, Zap } from 'lucide-react'
+import { Shield, RefreshCw } from 'lucide-react'
 
 export default function AdminStatsPage() {
   const [stats, setStats] = useState({
@@ -13,42 +13,54 @@ export default function AdminStatsPage() {
     activeSubscriptions: 0,
   })
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const supabase = createClient()
-
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
+    const supabase = createClient()
+    setRefreshing(true)
+    
     try {
       // Total utilisateurs (table profiles)
-      const { count: totalUsers } = await supabase
+      const { count: totalUsers, error: usersError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
+      
+      if (usersError) console.error('Erreur profiles:', usersError)
 
       // Inscriptions aujourd'hui
       const today = new Date().toISOString().split('T')[0]
-      const { count: todayRegistrations } = await supabase
+      const { count: todayRegistrations, error: todayError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', today)
+      
+      if (todayError) console.error('Erreur today:', todayError)
 
       // Utilisateurs en ligne (via user_activity created_at)
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-      const { count: onlineUsers } = await supabase
+      const { count: onlineUsers, error: onlineError } = await supabase
         .from('user_activity')
         .select('user_id', { count: 'exact', head: true })
         .gte('created_at', fiveMinAgo)
+      
+      if (onlineError) console.error('Erreur online:', onlineError)
 
       // Swaps en cours (sessions recentes)
-      const { count: activeSwaps } = await supabase
+      const { count: activeSwaps, error: swapsError } = await supabase
         .from('swap_sessions')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', fiveMinAgo)
+      
+      if (swapsError) console.error('Erreur swaps:', swapsError)
 
       // Subscriptions actives
-      const { count: activeSubscriptions } = await supabase
+      const { count: activeSubscriptions, error: subsError } = await supabase
         .from('subscriptions')
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true)
         .gt('points', 0)
+      
+      if (subsError) console.error('Erreur subscriptions:', subsError)
 
       setStats({
         totalUsers: totalUsers || 0,
@@ -61,8 +73,9 @@ export default function AdminStatsPage() {
       console.error('Erreur chargement stats:', error)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     loadStats()
@@ -70,9 +83,10 @@ export default function AdminStatsPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // Protection stricte - Seul toi peux accéder
+  // Protection stricte - Seul toi peux acceder
   useEffect(() => {
     const checkAccess = async () => {
+      const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user || user.email !== 'fanny.guck@gmail.com') {
         window.location.href = '/dashboard'
@@ -127,9 +141,11 @@ export default function AdminStatsPage() {
 
         <button
           onClick={loadStats}
-          className="mt-10 px-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-gray-200 transition"
+          disabled={refreshing}
+          className="mt-10 px-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-gray-200 transition flex items-center gap-3 disabled:opacity-50"
         >
-          Rafraîchir les statistiques
+          <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+          {refreshing ? 'Chargement...' : 'Rafraichir les statistiques'}
         </button>
       </div>
     </div>
