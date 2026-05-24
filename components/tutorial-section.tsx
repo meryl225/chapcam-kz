@@ -130,7 +130,7 @@ export function TutorialSection() {
   const downloadText = activeTab === 'obs' ? 'Telecharger OBS Studio' : 'Telecharger NDI Tools'
 
   return (
-    <section className="py-24 relative" id="tutoriel">
+    <section className="py-24 relative" id="guide">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
         <motion.div
