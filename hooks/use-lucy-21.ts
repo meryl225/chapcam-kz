@@ -3,137 +3,43 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createDecartClient, models } from '@decartai/sdk'
 
-// Fonction pour masquer le watermark en temps reel via Canvas
-function createWatermarkRemovalStream(
+// Fonction pour cropper la video et eliminer les bords ou le watermark peut apparaitre
+function createCroppedStream(
   sourceVideo: HTMLVideoElement,
   outputCanvas: HTMLCanvasElement
 ): MediaStream {
-  const ctx = outputCanvas.getContext('2d', { willReadFrequently: true })!
+  const ctx = outputCanvas.getContext('2d')!
   
-  // Zone de recherche du watermark (scan toute la video)
-  const scanRegions = [
-    { x: 0.6, y: 0, w: 0.4, h: 0.15 },      // Haut droite
-    { x: 0, y: 0, w: 0.4, h: 0.15 },         // Haut gauche
-    { x: 0.3, y: 0, w: 0.4, h: 0.15 },       // Haut centre
-    { x: 0.6, y: 0.85, w: 0.4, h: 0.15 },    // Bas droite
-    { x: 0, y: 0.85, w: 0.4, h: 0.15 },      // Bas gauche
-  ]
-
-  let lastWatermarkRegion: { x: number, y: number, w: number, h: number } | null = null
-  let frameCount = 0
+  // Pourcentage a cropper de chaque cote (12% = elimine le watermark partout)
+  const cropPercent = 0.12
 
   function processFrame() {
-    if (sourceVideo.paused || sourceVideo.ended) {
+    if (sourceVideo.paused || sourceVideo.ended || !sourceVideo.videoWidth) {
       requestAnimationFrame(processFrame)
       return
     }
 
-    const vw = sourceVideo.videoWidth || 640
-    const vh = sourceVideo.videoHeight || 480
+    const vw = sourceVideo.videoWidth
+    const vh = sourceVideo.videoHeight
     
-    if (outputCanvas.width !== vw) outputCanvas.width = vw
-    if (outputCanvas.height !== vh) outputCanvas.height = vh
+    // Zone source a extraire (sans les bords)
+    const cropX = Math.floor(vw * cropPercent)
+    const cropY = Math.floor(vh * cropPercent)
+    const cropW = Math.floor(vw * (1 - 2 * cropPercent))
+    const cropH = Math.floor(vh * (1 - 2 * cropPercent))
+    
+    // Taille du canvas de sortie
+    if (outputCanvas.width !== cropW) outputCanvas.width = cropW
+    if (outputCanvas.height !== cropH) outputCanvas.height = cropH
 
-    // Dessiner la frame originale
-    ctx.drawImage(sourceVideo, 0, 0, vw, vh)
-
-    // Detecter le watermark toutes les 10 frames pour economiser les performances
-    frameCount++
-    if (frameCount % 10 === 0 || !lastWatermarkRegion) {
-      lastWatermarkRegion = detectWatermark(ctx, vw, vh, scanRegions)
-    }
-
-    // Masquer le watermark si detecte
-    if (lastWatermarkRegion) {
-      applyBlur(ctx, lastWatermarkRegion, vw, vh)
-    }
-
-    requestAnimationFrame(processFrame)
-  }
-
-  function detectWatermark(
-    ctx: CanvasRenderingContext2D, 
-    vw: number, 
-    vh: number,
-    regions: Array<{ x: number, y: number, w: number, h: number }>
-  ): { x: number, y: number, w: number, h: number } | null {
-    // Chercher le texte blanc/gris clair sur fond variable
-    for (const region of regions) {
-      const rx = Math.floor(region.x * vw)
-      const ry = Math.floor(region.y * vh)
-      const rw = Math.floor(region.w * vw)
-      const rh = Math.floor(region.h * vh)
-
-      try {
-        const imageData = ctx.getImageData(rx, ry, rw, rh)
-        const data = imageData.data
-
-        // Detecter des pixels clairs (texte blanc/gris)
-        let lightPixelCount = 0
-        let lightPixelSum = { x: 0, y: 0 }
-        let minX = rw, maxX = 0, minY = rh, maxY = 0
-
-        for (let y = 0; y < rh; y++) {
-          for (let x = 0; x < rw; x++) {
-            const i = (y * rw + x) * 4
-            const r = data[i], g = data[i + 1], b = data[i + 2]
-            
-            // Detecter les pixels gris/blanc (texte du watermark)
-            const brightness = (r + g + b) / 3
-            const isGrayish = Math.abs(r - g) < 30 && Math.abs(g - b) < 30 && Math.abs(r - b) < 30
-            
-            if (brightness > 180 && isGrayish) {
-              lightPixelCount++
-              lightPixelSum.x += x
-              lightPixelSum.y += y
-              minX = Math.min(minX, x)
-              maxX = Math.max(maxX, x)
-              minY = Math.min(minY, y)
-              maxY = Math.max(maxY, y)
-            }
-          }
-        }
-
-        // Si on detecte assez de pixels clairs alignes (potentiel texte)
-        if (lightPixelCount > 50 && (maxX - minX) > 50 && (maxY - minY) < 40) {
-          return {
-            x: rx + minX - 10,
-            y: ry + minY - 5,
-            w: (maxX - minX) + 20,
-            h: (maxY - minY) + 15
-          }
-        }
-      } catch (e) {
-        // Ignore les erreurs de getImageData
-      }
-    }
-    return null
-  }
-
-  function applyBlur(
-    ctx: CanvasRenderingContext2D,
-    region: { x: number, y: number, w: number, h: number },
-    vw: number,
-    vh: number
-  ) {
-    // Clamp les valeurs
-    const x = Math.max(0, region.x)
-    const y = Math.max(0, region.y)
-    const w = Math.min(region.w, vw - x)
-    const h = Math.min(region.h, vh - y)
-
-    // Sauvegarder le contexte
-    ctx.save()
-
-    // Appliquer un flou sur la zone detectee
-    ctx.filter = 'blur(8px)'
+    // Dessiner seulement la partie centrale de la video (sans watermark)
     ctx.drawImage(
-      ctx.canvas,
-      x, y, w, h,
-      x, y, w, h
+      sourceVideo,
+      cropX, cropY, cropW, cropH,  // Source: zone centrale
+      0, 0, cropW, cropH           // Destination: canvas entier
     )
 
-    ctx.restore()
+    requestAnimationFrame(processFrame)
   }
 
   // Demarrer le traitement
@@ -251,8 +157,8 @@ export function useLucy21() {
           hiddenVideoRef.current.onloadedmetadata = () => {
             hiddenVideoRef.current!.play()
             
-            // Creer le flux "propre" via canvas
-            const cleanStream = createWatermarkRemovalStream(
+            // Creer le flux "propre" via canvas (crop les bords)
+            const cleanStream = createCroppedStream(
               hiddenVideoRef.current!,
               canvasRef.current!
             )
