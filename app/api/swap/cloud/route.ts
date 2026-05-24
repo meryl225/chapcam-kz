@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { gpuPoolManager } from '@/lib/gpu-pool'
+import { getGPUPoolManager } from '@/lib/gpu-pool'
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,8 +8,9 @@ export async function POST(request: NextRequest) {
       userId, 
       sessionId,
       avatarUrl,
-      quality = 'medium',
-      processingMode = 'cloud'
+      quality = '720p',
+      processingMode = 'cloud',
+      tier = 'free'
     } = body
 
     // Verifier si l'utilisateur veut du traitement local
@@ -21,14 +22,24 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Acquerir une instance GPU pour le traitement cloud
-    const gpuInstance = await gpuPoolManager.acquireInstance(userId, quality as 'low' | 'medium' | 'high')
+    const gpuPool = getGPUPoolManager()
 
-    if (!gpuInstance) {
+    // Acquerir une instance GPU pour le traitement cloud
+    const allocation = await gpuPool.allocateGPU({
+      userId,
+      tier: tier as 'free' | 'premium',
+      avatarUrl,
+      quality: quality as '480p' | '720p' | '1080p',
+      fps: tier === 'premium' ? 30 : 15
+    })
+
+    if (!allocation.success) {
       return NextResponse.json({
         success: false,
-        error: 'Aucune instance GPU disponible. Veuillez reessayer.',
-        fallbackToLocal: true
+        error: allocation.error || 'Aucune instance GPU disponible. Veuillez reessayer.',
+        fallbackToLocal: true,
+        queuePosition: allocation.queuePosition,
+        estimatedWaitTime: allocation.estimatedWaitTime
       }, { status: 503 })
     }
 
@@ -36,10 +47,11 @@ export async function POST(request: NextRequest) {
     const swapSession = {
       sessionId: sessionId || `swap-${userId}-${Date.now()}`,
       userId,
-      gpuInstanceId: gpuInstance.id,
-      gpuEndpoint: gpuInstance.endpoint,
+      gpuWorkerId: allocation.workerId,
+      gpuEndpoint: allocation.endpoint,
       avatarUrl,
       quality,
+      tier,
       startedAt: Date.now(),
       status: 'active'
     }
@@ -48,8 +60,8 @@ export async function POST(request: NextRequest) {
       success: true,
       mode: 'cloud',
       session: swapSession,
-      gpuEndpoint: gpuInstance.endpoint,
-      estimatedLatency: gpuInstance.region === 'eu-west' ? 50 : 100 // ms
+      gpuEndpoint: allocation.endpoint,
+      estimatedLatency: 50 // ms
     })
   } catch (error) {
     console.error('[CloudSwap] Error starting session:', error)
@@ -73,8 +85,10 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    const gpuPool = getGPUPoolManager()
+    
     // Liberer l'instance GPU
-    gpuPoolManager.releaseInstance(userId)
+    await gpuPool.releaseGPU(userId)
 
     return NextResponse.json({
       success: true,
@@ -92,15 +106,17 @@ export async function DELETE(request: NextRequest) {
 
 export async function GET() {
   try {
-    const stats = gpuPoolManager.getPoolStats()
+    const gpuPool = getGPUPoolManager()
+    const status = await gpuPool.getGPUStatus()
     
     return NextResponse.json({
       success: true,
       stats: {
-        totalInstances: stats.total,
-        availableInstances: stats.available,
-        inUseInstances: stats.inUse,
-        utilizationPercent: stats.total > 0 ? Math.round((stats.inUse / stats.total) * 100) : 0
+        freeWorkers: status.freeWorkers,
+        premiumWorkers: status.premiumWorkers,
+        activeSessions: status.activeSessions,
+        totalLoad: status.totalLoad,
+        utilizationPercent: status.totalLoad
       }
     })
   } catch (error) {
