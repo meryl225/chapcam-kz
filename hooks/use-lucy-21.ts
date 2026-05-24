@@ -46,9 +46,23 @@ export function useLucy21() {
       const tokenRes = await fetch('/api/decart-token')
       const { token: clientToken } = await tokenRes.json()
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 720, frameRate: 30 }
-      })
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 1280, height: 720, frameRate: 30 }
+        })
+      } catch (camError: any) {
+        if (camError.name === 'NotAllowedError') {
+          throw new Error('Acces camera refuse. Autorise ChapCam a acceder a ta camera dans les parametres du navigateur.')
+        } else if (camError.name === 'NotFoundError') {
+          throw new Error('Aucune camera detectee. Connecte une webcam et reessaie.')
+        } else if (camError.name === 'NotReadableError') {
+          throw new Error('Camera deja utilisee par une autre application. Ferme les autres apps utilisant la camera.')
+        } else {
+          throw new Error('Impossible de demarrer la camera: ' + camError.message)
+        }
+      }
+      
       streamRef.current = stream
       if (localVideoRef.current) localVideoRef.current.srcObject = stream
 

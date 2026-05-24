@@ -41,10 +41,10 @@ export default async function DashboardLayout({
     redirect('/auth/login')
   }
 
-  // Fetch subscription data
+  // Fetch subscription data avec points
   const { data: subscription } = await supabase
     .from('subscriptions')
-    .select('plan, expires_at, is_active')
+    .select('plan, expires_at, is_active, points, max_points')
     .eq('user_id', user.id)
     .single()
 
@@ -57,6 +57,8 @@ export default async function DashboardLayout({
   const plan = subscription?.plan ?? 'free'
   const expiresAt = subscription?.expires_at ?? null
   const isActive = subscription?.is_active ?? false
+  const pointsRemaining = subscription?.points ?? 0
+  const pointsTotal = subscription?.max_points ?? 0
 
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
@@ -66,12 +68,15 @@ export default async function DashboardLayout({
         expiresAt={expiresAt}
         isActive={isActive}
         avatarCount={avatarCount ?? 0}
+        pointsRemaining={pointsRemaining}
+        pointsTotal={pointsTotal}
       />
       
       <PlanGuardBanner
         plan={plan}
         expiresAt={expiresAt}
         isActive={isActive}
+        pointsRemaining={pointsRemaining}
       />
 
       {/* Main Content Area */}
