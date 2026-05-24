@@ -1,5 +1,6 @@
 import { Header } from "@/components/header"
 import { HeroSection } from "@/components/hero-section"
+import { InActionSection } from "@/components/in-action-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
 import { PricingSection } from "@/components/pricing-section"
 import { FAQSection } from "@/components/faq-section"
@@ -19,6 +20,7 @@ export default function Home() {
       <div className="relative z-10">
         <Header />
         <HeroSection />
+        <InActionSection />
         <HowItWorksSection />
         <PricingSection />
         <FAQSection />
