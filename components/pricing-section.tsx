@@ -4,6 +4,7 @@ import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Check, Zap, Crown, Star } from "lucide-react"
 import Link from "next/link"
+import Image from "next/image"
 
 const plans = [
   {
@@ -164,6 +165,55 @@ export function PricingSection() {
             )
           })}
         </div>
+
+        {/* Payment Methods */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-16 text-center"
+        >
+          <p className="text-gray-400 mb-6">Moyens de paiement acceptes</p>
+          <div className="flex items-center justify-center gap-6 flex-wrap">
+            <div className="bg-white rounded-xl p-3 w-20 h-14 flex items-center justify-center">
+              <Image 
+                src="/images/orange-money-logo.png" 
+                alt="Orange Money" 
+                width={60} 
+                height={40}
+                className="object-contain"
+              />
+            </div>
+            <div className="bg-white rounded-xl p-3 w-20 h-14 flex items-center justify-center">
+              <Image 
+                src="/images/mtn-momo-logo.jpg" 
+                alt="MTN Mobile Money" 
+                width={60} 
+                height={40}
+                className="object-contain"
+              />
+            </div>
+            <div className="bg-[#1DC8FF] rounded-xl p-2 w-20 h-14 flex items-center justify-center">
+              <Image 
+                src="/images/wave-logo.png" 
+                alt="Wave" 
+                width={50} 
+                height={40}
+                className="object-contain"
+              />
+            </div>
+            <div className="bg-white rounded-xl p-3 w-20 h-14 flex items-center justify-center">
+              <Image 
+                src="/images/djamo-logo.png" 
+                alt="Djamo" 
+                width={60} 
+                height={40}
+                className="object-contain"
+              />
+            </div>
+          </div>
+          <p className="text-gray-500 text-sm mt-4">Paiement securise via PayDunya</p>
+        </motion.div>
       </div>
     </section>
   )
