@@ -22,9 +22,11 @@ export default function DashboardPage() {
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
   const [userPoints, setUserPoints] = useState(0)
+  const [maxPoints, setMaxPoints] = useState(0)
   const [userId, setUserId] = useState<string | null>(null)
   const [duration, setDuration] = useState(0)
   const [pointsUsed, setPointsUsed] = useState(0)
+  const [isSyncingPoints, setIsSyncingPoints] = useState(false)
 
   // Nouveau: Detection hardware et mode de traitement
   const [hardware, setHardware] = useState<HardwareCapabilities | null>(null)
@@ -96,13 +98,17 @@ export default function DashboardPage() {
 
       setUserId(user.id)
 
-      const { data: subscription } = await supabase
-        .from('subscriptions')
-        .select('points_remaining')
-        .eq('user_id', user.id)
-        .single()
-
-      if (subscription) setUserPoints(subscription.points_remaining || 0)
+      // Charger les points via l'API
+      try {
+        const pointsRes = await fetch('/api/points')
+        const pointsData = await pointsRes.json()
+        if (pointsData.success) {
+          setUserPoints(pointsData.points)
+          setMaxPoints(pointsData.maxPoints)
+        }
+      } catch (err) {
+        console.error('Erreur chargement points:', err)
+      }
 
       const { data: avatarsData } = await supabase
         .from('user_avatars')
@@ -120,7 +126,7 @@ export default function DashboardPage() {
     loadData()
   }, [])
 
-  // Track points usage
+  // Track points usage en temps reel (localement)
   useEffect(() => {
     if (!isConnected) return
     const interval = setInterval(() => {
@@ -128,12 +134,48 @@ export default function DashboardPage() {
       setPointsUsed(prev => prev + POINTS_PER_SECOND)
       setUserPoints(prev => {
         const newPoints = Math.max(0, prev - POINTS_PER_SECOND)
-        if (newPoints === 0) disconnect()
+        if (newPoints === 0) {
+          // Plus de points - arreter le swap et sauvegarder
+          handleStopSwapAndSave()
+        }
         return newPoints
       })
     }, 1000)
     return () => clearInterval(interval)
-  }, [isConnected, disconnect])
+  }, [isConnected])
+
+  // Fonction pour arreter le swap et sauvegarder les points
+  const handleStopSwapAndSave = async () => {
+    disconnect()
+    
+    // Sauvegarder les points utilises dans Supabase
+    if (pointsUsed > 0 && !isSyncingPoints) {
+      setIsSyncingPoints(true)
+      try {
+        const res = await fetch('/api/points', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            pointsToDeduct: pointsUsed,
+            sessionDuration: duration 
+          })
+        })
+        const data = await res.json()
+        if (data.success) {
+          setUserPoints(data.currentPoints)
+          setMaxPoints(data.maxPoints)
+        }
+      } catch (err) {
+        console.error('Erreur sauvegarde points:', err)
+      } finally {
+        setIsSyncingPoints(false)
+      }
+    }
+    
+    // Reset les compteurs
+    setPointsUsed(0)
+    setDuration(0)
+  }
 
   // === TRACKING UTILISATEURS ACTIFS ===
   useEffect(() => {
@@ -165,7 +207,7 @@ export default function DashboardPage() {
     await connect(selectedAvatar.url)
   }
 
-  const handleStopSwap = () => disconnect()
+  const handleStopSwap = () => handleStopSwapAndSave()
 
   const handleSelectAvatar = async (avatar: Avatar) => {
     setSelectedAvatar(avatar)
