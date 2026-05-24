@@ -7,48 +7,48 @@ import { useState } from "react"
 const steps = [
   {
     id: 1,
-    title: "Telecharger OBS Studio",
-    description: "Installez OBS Studio gratuitement sur votre PC. C'est le logiciel qui permet de creer une camera virtuelle.",
+    title: "Telecharger NDI Tools",
+    description: "Installez NDI Tools gratuitement. C'est le logiciel qui cree une camera virtuelle compatible WhatsApp.",
     icon: Monitor,
     details: [
-      "Allez sur obsproject.com",
-      "Telechargez la version pour votre systeme (Windows/Mac)",
-      "Installez OBS Studio"
+      "Allez sur ndi.tv/tools",
+      "Telechargez 'NDI Tools' pour Windows ou Mac",
+      "Installez NDI Tools (inclut NDI Virtual Input)"
     ]
   },
   {
     id: 2,
-    title: "Configurer ChapCam dans OBS",
-    description: "Ajoutez votre flux ChapCam comme source video dans OBS.",
+    title: "Lancer ChapCam en mode NDI",
+    description: "Activez la sortie NDI dans ChapCam pour diffuser votre visage transforme.",
     icon: Video,
     details: [
-      "Ouvrez OBS Studio",
-      "Cliquez sur '+' dans Sources",
-      "Selectionnez 'Capture de fenetre'",
-      "Choisissez la fenetre ChapCam"
+      "Ouvrez ChapCam et demarrez votre swap",
+      "Dans les parametres, activez 'Sortie NDI'",
+      "ChapCam diffuse maintenant en NDI"
     ]
   },
   {
     id: 3,
-    title: "Demarrer la Camera Virtuelle",
-    description: "Activez la camera virtuelle OBS pour l'utiliser dans vos appels.",
+    title: "Configurer NDI Virtual Input",
+    description: "Selectionnez ChapCam comme source dans NDI Virtual Input.",
     icon: Play,
     details: [
-      "Dans OBS, cliquez sur 'Demarrer la camera virtuelle'",
-      "La camera virtuelle est maintenant active",
-      "Elle apparaitra dans vos applications"
+      "Ouvrez 'NDI Virtual Input' (dans la barre des taches)",
+      "Cliquez droit sur l'icone NDI",
+      "Selectionnez 'ChapCam' comme source",
+      "La camera virtuelle NDI est maintenant active"
     ]
   },
   {
     id: 4,
     title: "Utiliser dans WhatsApp, Telegram, Zoom...",
-    description: "Selectionnez la camera virtuelle OBS dans vos applications d'appel video.",
+    description: "Selectionnez la camera NDI dans vos applications d'appel video.",
     icon: Smartphone,
     details: [
-      "Ouvrez WhatsApp/Telegram/Zoom/Teams",
-      "Allez dans les parametres video",
-      "Selectionnez 'OBS Virtual Camera'",
-      "Lancez votre appel video avec votre nouveau visage!"
+      "Ouvrez WhatsApp Desktop/Web ou Telegram",
+      "Lancez un appel video",
+      "Dans les parametres camera, selectionnez 'NDI Video'",
+      "Votre visage transforme apparait dans l'appel!"
     ]
   }
 ]
@@ -83,10 +83,10 @@ export function TutorialSection() {
           </div>
           
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Comment utiliser ChapCam ?
+            Comment utiliser ChapCam avec WhatsApp ?
           </h2>
           <p className="text-xl text-white/60 max-w-2xl mx-auto">
-            Configurez ChapCam en 4 etapes simples pour l&apos;utiliser avec WhatsApp, Telegram, Zoom et toutes vos applications d&apos;appel video
+            Utilisez NDI pour creer une camera virtuelle compatible WhatsApp, Telegram et toutes vos applications d&apos;appel video
           </p>
         </motion.div>
 
@@ -227,6 +227,20 @@ export function TutorialSection() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* NDI Download Link */}
+            <div className="mt-4 p-4 rounded-2xl bg-[#00ff88]/10 border border-[#00ff88]/30 text-center">
+              <p className="text-sm text-white/80 mb-3">Telecharger NDI Tools gratuitement:</p>
+              <a 
+                href="https://ndi.tv/tools/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#00ff88] text-black font-semibold rounded-xl hover:bg-[#00dd77] transition-colors"
+              >
+                <Monitor className="w-5 h-5" />
+                Telecharger NDI Tools
+              </a>
             </div>
           </motion.div>
         </div>
