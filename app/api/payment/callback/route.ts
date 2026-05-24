@@ -29,31 +29,59 @@ export async function POST(request: NextRequest) {
       try {
         const supabase = await createClient()
         
-        // Recuperer l'utilisateur par email
-        const { data: userData, error: userError } = await supabase
+        // Recuperer l'utilisateur par email depuis profiles
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
-          .select('id, points, plan')
+          .select('id')
           .eq('email', userEmail)
           .single()
         
-        if (userData && !userError) {
+        if (profileData && !profileError) {
+          const userId = profileData.id
+          
           // Calculer la date d'expiration du plan
           const durationDays = parseInt(duration) || 30
           const expiresAt = new Date()
           expiresAt.setDate(expiresAt.getDate() + durationDays)
           
-          // Mettre a jour les points et le plan
-          const newPoints = (userData.points || 0) + points
-          await supabase
-            .from('profiles')
-            .update({ 
-              points: newPoints, 
-              plan: plan,
-              plan_expires_at: expiresAt.toISOString()
-            })
-            .eq('id', userData.id)
+          // Verifier si l'utilisateur a deja une subscription
+          const { data: existingSub } = await supabase
+            .from('subscriptions')
+            .select('id, points')
+            .eq('user_id', userId)
+            .single()
           
-          console.log(`[PayDunya] Updated user ${userEmail}: +${points} points, plan: ${plan}`)
+          if (existingSub) {
+            // Mettre a jour la subscription existante
+            const newPoints = (existingSub.points || 0) + points
+            await supabase
+              .from('subscriptions')
+              .update({ 
+                points: newPoints,
+                max_points: newPoints, // Reset max_points au nouveau total
+                plan: plan,
+                expires_at: expiresAt.toISOString(),
+                is_active: true,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', existingSub.id)
+            
+            console.log(`[PayDunya] Updated subscription for ${userEmail}: +${points} points (total: ${newPoints}), plan: ${plan}`)
+          } else {
+            // Creer une nouvelle subscription
+            await supabase
+              .from('subscriptions')
+              .insert({ 
+                user_id: userId,
+                points: points,
+                max_points: points,
+                plan: plan,
+                expires_at: expiresAt.toISOString(),
+                is_active: true
+              })
+            
+            console.log(`[PayDunya] Created subscription for ${userEmail}: ${points} points, plan: ${plan}`)
+          }
         }
       } catch (dbError) {
         console.error('[PayDunya] Database update error:', dbError)
