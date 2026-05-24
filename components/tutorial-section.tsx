@@ -1,15 +1,66 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Monitor, Video, Smartphone, CheckCircle, ArrowRight, Play } from "lucide-react"
+import { Monitor, Video, Smartphone, CheckCircle, ArrowRight, Play, Download } from "lucide-react"
 import { useState } from "react"
 
-const steps = [
+// Guide OBS - Pour Zoom, Teams, Discord, TikTok Live, etc.
+const obsSteps = [
+  {
+    id: 1,
+    title: "Telecharger OBS Studio",
+    description: "Installez OBS Studio gratuitement sur votre PC.",
+    icon: Download,
+    details: [
+      "Allez sur obsproject.com",
+      "Telechargez la version pour votre systeme (Windows/Mac)",
+      "Installez OBS Studio"
+    ]
+  },
+  {
+    id: 2,
+    title: "Configurer ChapCam dans OBS",
+    description: "Ajoutez votre flux ChapCam comme source video.",
+    icon: Monitor,
+    details: [
+      "Ouvrez OBS Studio",
+      "Cliquez sur '+' dans Sources",
+      "Selectionnez 'Capture de fenetre'",
+      "Choisissez la fenetre ChapCam"
+    ]
+  },
+  {
+    id: 3,
+    title: "Demarrer la Camera Virtuelle",
+    description: "Activez la camera virtuelle OBS.",
+    icon: Play,
+    details: [
+      "Dans OBS, cliquez sur 'Demarrer la camera virtuelle'",
+      "La camera virtuelle est maintenant active",
+      "Elle apparaitra dans vos applications"
+    ]
+  },
+  {
+    id: 4,
+    title: "Utiliser dans Zoom, Teams, Discord...",
+    description: "Selectionnez 'OBS Virtual Camera' dans vos apps.",
+    icon: Video,
+    details: [
+      "Ouvrez Zoom, Teams, Discord ou TikTok Live",
+      "Allez dans les parametres video",
+      "Selectionnez 'OBS Virtual Camera'",
+      "Lancez votre appel avec votre nouveau visage!"
+    ]
+  }
+]
+
+// Guide NDI - Specifique pour WhatsApp et Telegram
+const ndiSteps = [
   {
     id: 1,
     title: "Telecharger NDI Tools",
-    description: "Installez NDI Tools gratuitement. C'est le logiciel qui cree une camera virtuelle compatible WhatsApp.",
-    icon: Monitor,
+    description: "NDI cree une camera virtuelle compatible WhatsApp.",
+    icon: Download,
     details: [
       "Allez sur ndi.tv/tools",
       "Telechargez 'NDI Tools' pour Windows ou Mac",
@@ -19,8 +70,8 @@ const steps = [
   {
     id: 2,
     title: "Lancer ChapCam en mode NDI",
-    description: "Activez la sortie NDI dans ChapCam pour diffuser votre visage transforme.",
-    icon: Video,
+    description: "Activez la sortie NDI dans ChapCam.",
+    icon: Monitor,
     details: [
       "Ouvrez ChapCam et demarrez votre swap",
       "Dans les parametres, activez 'Sortie NDI'",
@@ -30,22 +81,22 @@ const steps = [
   {
     id: 3,
     title: "Configurer NDI Virtual Input",
-    description: "Selectionnez ChapCam comme source dans NDI Virtual Input.",
+    description: "Selectionnez ChapCam comme source NDI.",
     icon: Play,
     details: [
-      "Ouvrez 'NDI Virtual Input' (dans la barre des taches)",
+      "Ouvrez 'NDI Virtual Input' (barre des taches)",
       "Cliquez droit sur l'icone NDI",
       "Selectionnez 'ChapCam' comme source",
-      "La camera virtuelle NDI est maintenant active"
+      "La camera virtuelle NDI est active"
     ]
   },
   {
     id: 4,
-    title: "Utiliser dans WhatsApp, Telegram, Zoom...",
-    description: "Selectionnez la camera NDI dans vos applications d'appel video.",
+    title: "Utiliser dans WhatsApp ou Telegram",
+    description: "Selectionnez 'NDI Video' dans vos apps.",
     icon: Smartphone,
     details: [
-      "Ouvrez WhatsApp Desktop/Web ou Telegram",
+      "Ouvrez WhatsApp Desktop ou Telegram",
       "Lancez un appel video",
       "Dans les parametres camera, selectionnez 'NDI Video'",
       "Votre visage transforme apparait dans l'appel!"
@@ -53,18 +104,30 @@ const steps = [
   }
 ]
 
-const apps = [
-  { name: "WhatsApp", color: "#25D366" },
-  { name: "Telegram", color: "#0088cc" },
+const obsApps = [
   { name: "Zoom", color: "#2D8CFF" },
   { name: "Teams", color: "#6264A7" },
   { name: "Discord", color: "#5865F2" },
   { name: "TikTok Live", color: "#ff0050" },
+  { name: "Google Meet", color: "#00897B" },
+  { name: "Skype", color: "#00AFF0" },
+]
+
+const ndiApps = [
+  { name: "WhatsApp", color: "#25D366" },
+  { name: "Telegram", color: "#0088cc" },
+  { name: "Signal", color: "#3A76F0" },
+  { name: "Messenger", color: "#0084FF" },
 ]
 
 export function TutorialSection() {
+  const [activeTab, setActiveTab] = useState<'obs' | 'ndi'>('ndi')
   const [activeStep, setActiveStep] = useState(1)
-  const [showVideo, setShowVideo] = useState(false)
+
+  const currentSteps = activeTab === 'obs' ? obsSteps : ndiSteps
+  const currentApps = activeTab === 'obs' ? obsApps : ndiApps
+  const downloadUrl = activeTab === 'obs' ? 'https://obsproject.com' : 'https://ndi.tv/tools/'
+  const downloadText = activeTab === 'obs' ? 'Telecharger OBS Studio' : 'Telecharger NDI Tools'
 
   return (
     <section className="py-24 relative" id="tutoriel">
@@ -75,18 +138,84 @@ export function TutorialSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 mb-6">
             <Video className="w-4 h-4 text-[#00ff88]" />
-            <span className="text-sm text-[#00ff88] font-medium">Guide d&apos;installation</span>
+            <span className="text-sm text-[#00ff88] font-medium">Guides d&apos;installation</span>
           </div>
           
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Comment utiliser ChapCam avec WhatsApp ?
+            Comment utiliser ChapCam ?
           </h2>
           <p className="text-xl text-white/60 max-w-2xl mx-auto">
-            Utilisez NDI pour creer une camera virtuelle compatible WhatsApp, Telegram et toutes vos applications d&apos;appel video
+            Choisissez le guide adapte a votre utilisation
+          </p>
+        </motion.div>
+
+        {/* Tab Selector */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="flex justify-center mb-12"
+        >
+          <div className="inline-flex bg-white/5 rounded-2xl p-2 border border-white/10">
+            <button
+              onClick={() => { setActiveTab('ndi'); setActiveStep(1); }}
+              className={`px-6 py-4 rounded-xl font-semibold transition-all ${
+                activeTab === 'ndi'
+                  ? 'bg-[#25D366] text-white'
+                  : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Smartphone className="w-5 h-5" />
+                <div className="text-left">
+                  <div className="text-sm font-bold">Guide WhatsApp</div>
+                  <div className={`text-xs ${activeTab === 'ndi' ? 'text-white/80' : 'text-white/40'}`}>
+                    Avec NDI (Recommande)
+                  </div>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => { setActiveTab('obs'); setActiveStep(1); }}
+              className={`px-6 py-4 rounded-xl font-semibold transition-all ${
+                activeTab === 'obs'
+                  ? 'bg-[#2D8CFF] text-white'
+                  : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Monitor className="w-5 h-5" />
+                <div className="text-left">
+                  <div className="text-sm font-bold">Guide General</div>
+                  <div className={`text-xs ${activeTab === 'obs' ? 'text-white/80' : 'text-white/40'}`}>
+                    Avec OBS Studio
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Info Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          key={activeTab}
+          className={`max-w-3xl mx-auto mb-12 p-4 rounded-2xl border ${
+            activeTab === 'ndi' 
+              ? 'bg-[#25D366]/10 border-[#25D366]/30' 
+              : 'bg-[#2D8CFF]/10 border-[#2D8CFF]/30'
+          }`}
+        >
+          <p className={`text-center ${activeTab === 'ndi' ? 'text-[#25D366]' : 'text-[#2D8CFF]'}`}>
+            {activeTab === 'ndi' 
+              ? "NDI est recommande pour WhatsApp et Telegram car OBS Virtual Camera n'est pas compatible avec ces applications."
+              : "OBS est ideal pour les appels video sur Zoom, Teams, Discord et le streaming sur TikTok Live."
+            }
           </p>
         </motion.div>
 
@@ -99,43 +228,51 @@ export function TutorialSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
             className="space-y-4"
+            key={`steps-${activeTab}`}
           >
-            {steps.map((step, index) => (
+            {currentSteps.map((step, index) => (
               <motion.div
                 key={step.id}
                 initial={{ opacity: 0, y: 10 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: index * 0.1 }}
                 onClick={() => setActiveStep(step.id)}
                 className={`p-6 rounded-2xl cursor-pointer transition-all duration-300 ${
                   activeStep === step.id
-                    ? 'bg-[#00ff88]/10 border-2 border-[#00ff88]/50'
+                    ? activeTab === 'ndi'
+                      ? 'bg-[#25D366]/10 border-2 border-[#25D366]/50'
+                      : 'bg-[#2D8CFF]/10 border-2 border-[#2D8CFF]/50'
                     : 'bg-white/5 border border-white/10 hover:bg-white/10'
                 }`}
               >
                 <div className="flex items-start gap-4">
                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                    activeStep === step.id ? 'bg-[#00ff88] text-black' : 'bg-white/10 text-white'
+                    activeStep === step.id 
+                      ? activeTab === 'ndi' ? 'bg-[#25D366] text-white' : 'bg-[#2D8CFF] text-white'
+                      : 'bg-white/10 text-white'
                   }`}>
                     <step.icon className="w-6 h-6" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <span className={`text-sm font-bold ${
-                        activeStep === step.id ? 'text-[#00ff88]' : 'text-white/40'
+                        activeStep === step.id 
+                          ? activeTab === 'ndi' ? 'text-[#25D366]' : 'text-[#2D8CFF]'
+                          : 'text-white/40'
                       }`}>
                         ETAPE {step.id}
                       </span>
                       {activeStep > step.id && (
-                        <CheckCircle className="w-4 h-4 text-[#00ff88]" />
+                        <CheckCircle className={`w-4 h-4 ${activeTab === 'ndi' ? 'text-[#25D366]' : 'text-[#2D8CFF]'}`} />
                       )}
                     </div>
                     <h3 className="text-lg font-semibold text-white mb-1">{step.title}</h3>
                     <p className="text-white/60 text-sm">{step.description}</p>
                   </div>
                   <ArrowRight className={`w-5 h-5 transition-transform ${
-                    activeStep === step.id ? 'text-[#00ff88] translate-x-1' : 'text-white/30'
+                    activeStep === step.id 
+                      ? activeTab === 'ndi' ? 'text-[#25D366] translate-x-1' : 'text-[#2D8CFF] translate-x-1'
+                      : 'text-white/30'
                   }`} />
                 </div>
               </motion.div>
@@ -149,22 +286,26 @@ export function TutorialSection() {
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
             className="sticky top-24"
+            key={`details-${activeTab}`}
           >
             <div className="bg-gradient-to-br from-[#1a1f35] to-[#0d1117] rounded-3xl border border-white/10 overflow-hidden">
               {/* Video/Image Preview */}
               <div className="aspect-video bg-black/50 relative flex items-center justify-center">
-                <div className="absolute inset-0 bg-gradient-to-br from-[#00ff88]/10 to-transparent" />
+                <div className={`absolute inset-0 ${
+                  activeTab === 'ndi' ? 'bg-gradient-to-br from-[#25D366]/10 to-transparent' : 'bg-gradient-to-br from-[#2D8CFF]/10 to-transparent'
+                }`} />
                 
-                {/* Placeholder for tutorial visual */}
                 <div className="text-center p-8 relative z-10">
-                  <div className="w-20 h-20 rounded-full bg-[#00ff88]/20 flex items-center justify-center mx-auto mb-4">
+                  <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                    activeTab === 'ndi' ? 'bg-[#25D366]/20' : 'bg-[#2D8CFF]/20'
+                  }`}>
                     {(() => {
-                      const StepIcon = steps[activeStep - 1].icon
-                      return <StepIcon className="w-10 h-10 text-[#00ff88]" />
+                      const StepIcon = currentSteps[activeStep - 1].icon
+                      return <StepIcon className={`w-10 h-10 ${activeTab === 'ndi' ? 'text-[#25D366]' : 'text-[#2D8CFF]'}`} />
                     })()}
                   </div>
                   <h4 className="text-xl font-bold text-white mb-2">
-                    Etape {activeStep}: {steps[activeStep - 1].title}
+                    Etape {activeStep}: {currentSteps[activeStep - 1].title}
                   </h4>
                 </div>
               </div>
@@ -173,7 +314,7 @@ export function TutorialSection() {
               <div className="p-6">
                 <h4 className="text-lg font-semibold text-white mb-4">Instructions:</h4>
                 <ul className="space-y-3">
-                  {steps[activeStep - 1].details.map((detail, index) => (
+                  {currentSteps[activeStep - 1].details.map((detail, index) => (
                     <motion.li
                       key={index}
                       initial={{ opacity: 0, x: -10 }}
@@ -181,8 +322,12 @@ export function TutorialSection() {
                       transition={{ delay: index * 0.1 }}
                       className="flex items-start gap-3"
                     >
-                      <div className="w-6 h-6 rounded-full bg-[#00ff88]/20 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <span className="text-xs font-bold text-[#00ff88]">{index + 1}</span>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                        activeTab === 'ndi' ? 'bg-[#25D366]/20' : 'bg-[#2D8CFF]/20'
+                      }`}>
+                        <span className={`text-xs font-bold ${activeTab === 'ndi' ? 'text-[#25D366]' : 'text-[#2D8CFF]'}`}>
+                          {index + 1}
+                        </span>
                       </div>
                       <span className="text-white/80">{detail}</span>
                     </motion.li>
@@ -190,19 +335,27 @@ export function TutorialSection() {
                 </ul>
 
                 {/* Next Step Button */}
-                {activeStep < steps.length && (
+                {activeStep < currentSteps.length && (
                   <button
                     onClick={() => setActiveStep(activeStep + 1)}
-                    className="w-full mt-6 py-3 rounded-xl bg-[#00ff88] text-black font-semibold hover:bg-[#00dd77] transition-colors flex items-center justify-center gap-2"
+                    className={`w-full mt-6 py-3 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 ${
+                      activeTab === 'ndi' 
+                        ? 'bg-[#25D366] text-white hover:bg-[#20bd5a]' 
+                        : 'bg-[#2D8CFF] text-white hover:bg-[#2577e0]'
+                    }`}
                   >
                     Etape suivante
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 )}
 
-                {activeStep === steps.length && (
-                  <div className="mt-6 p-4 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/30">
-                    <p className="text-[#00ff88] text-center font-medium">
+                {activeStep === currentSteps.length && (
+                  <div className={`mt-6 p-4 rounded-xl border ${
+                    activeTab === 'ndi' 
+                      ? 'bg-[#25D366]/10 border-[#25D366]/30' 
+                      : 'bg-[#2D8CFF]/10 border-[#2D8CFF]/30'
+                  }`}>
+                    <p className={`text-center font-medium ${activeTab === 'ndi' ? 'text-[#25D366]' : 'text-[#2D8CFF]'}`}>
                       Vous etes pret a utiliser ChapCam!
                     </p>
                   </div>
@@ -212,9 +365,11 @@ export function TutorialSection() {
 
             {/* Compatible Apps */}
             <div className="mt-6 p-6 rounded-2xl bg-white/5 border border-white/10">
-              <p className="text-sm text-white/60 mb-4 text-center">Fonctionne avec toutes ces applications:</p>
+              <p className="text-sm text-white/60 mb-4 text-center">
+                {activeTab === 'ndi' ? 'Compatible avec:' : 'Ideal pour:'}
+              </p>
               <div className="flex flex-wrap justify-center gap-3">
-                {apps.map((app) => (
+                {currentApps.map((app) => (
                   <div
                     key={app.name}
                     className="px-4 py-2 rounded-full bg-white/5 border border-white/10 flex items-center gap-2"
@@ -229,17 +384,25 @@ export function TutorialSection() {
               </div>
             </div>
 
-            {/* NDI Download Link */}
-            <div className="mt-4 p-4 rounded-2xl bg-[#00ff88]/10 border border-[#00ff88]/30 text-center">
-              <p className="text-sm text-white/80 mb-3">Telecharger NDI Tools gratuitement:</p>
+            {/* Download Link */}
+            <div className={`mt-4 p-4 rounded-2xl border text-center ${
+              activeTab === 'ndi' 
+                ? 'bg-[#25D366]/10 border-[#25D366]/30' 
+                : 'bg-[#2D8CFF]/10 border-[#2D8CFF]/30'
+            }`}>
+              <p className="text-sm text-white/80 mb-3">Telecharger gratuitement:</p>
               <a 
-                href="https://ndi.tv/tools/" 
+                href={downloadUrl}
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#00ff88] text-black font-semibold rounded-xl hover:bg-[#00dd77] transition-colors"
+                className={`inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-xl transition-colors ${
+                  activeTab === 'ndi' 
+                    ? 'bg-[#25D366] text-white hover:bg-[#20bd5a]' 
+                    : 'bg-[#2D8CFF] text-white hover:bg-[#2577e0]'
+                }`}
               >
-                <Monitor className="w-5 h-5" />
-                Telecharger NDI Tools
+                <Download className="w-5 h-5" />
+                {downloadText}
               </a>
             </div>
           </motion.div>
