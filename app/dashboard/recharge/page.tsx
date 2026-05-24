@@ -46,7 +46,7 @@ const paymentMethods = [
   {
     id: "orange",
     name: "Orange Money",
-    logo: "/images/orange-money-logo.jpg",
+    logo: "/images/orange-money-logo.png",
     color: "#FF6600",
     bgColor: "bg-orange-500/10",
     borderColor: "border-orange-500",
@@ -62,7 +62,7 @@ const paymentMethods = [
   {
     id: "wave",
     name: "Wave",
-    logo: "/images/wave-logo.jpg",
+    logo: "/images/wave-logo.png",
     color: "#1DC8FF",
     bgColor: "bg-cyan-500/10",
     borderColor: "border-cyan-500",
@@ -70,7 +70,7 @@ const paymentMethods = [
   {
     id: "djamo",
     name: "Djamo",
-    logo: "/images/djamo-logo.jpg",
+    logo: "/images/djamo-logo.png",
     color: "#6366F1",
     bgColor: "bg-indigo-500/10",
     borderColor: "border-indigo-500",
