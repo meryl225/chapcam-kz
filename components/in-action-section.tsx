@@ -59,7 +59,7 @@ export function InActionSection() {
           </p>
         </motion.div>
 
-        {/* Image container */}
+        {/* Before/After Demo with Einstein */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -82,16 +82,60 @@ export function InActionSection() {
               className="absolute inset-0 rounded-3xl"
             />
 
-            {/* Image container */}
+            {/* Before/After container */}
             <div className="relative rounded-3xl overflow-hidden border border-[#00ff88]/30 bg-black">
-              <Image
-                src="/images/chapcam-swap-demo.jpg"
-                alt="ChapCam Face Swap Demo - Transformation en temps reel"
-                width={1200}
-                height={675}
-                className="w-full h-auto object-cover"
-                priority
-              />
+              <div className="grid grid-cols-2">
+                {/* Before - Original face */}
+                <div className="relative aspect-[3/4]">
+                  <Image
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=800&fit=crop&crop=face"
+                    alt="Visage original"
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute bottom-4 left-4 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
+                    <span className="text-white text-sm font-bold">AVANT</span>
+                  </div>
+                </div>
+
+                {/* After - Einstein swap */}
+                <div className="relative aspect-[3/4]">
+                  <Image
+                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Einstein_1921_by_F_Schmutzer_-_restoration.jpg/800px-Einstein_1921_by_F_Schmutzer_-_restoration.jpg"
+                    alt="Transformation Einstein"
+                    fill
+                    className="object-cover"
+                    priority
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                  <div className="absolute bottom-4 right-4 bg-[#00ff88] px-4 py-2 rounded-full">
+                    <span className="text-black text-sm font-bold">APRES</span>
+                  </div>
+                  
+                  {/* Scanning effect overlay */}
+                  <motion.div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background: "linear-gradient(180deg, transparent 0%, rgba(0,255,136,0.1) 50%, transparent 100%)",
+                    }}
+                    animate={{ y: ["-100%", "100%"] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                  />
+                </div>
+
+                {/* Center divider with arrow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                  <motion.div
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 1.5, repeat: Infinity }}
+                    className="w-16 h-16 rounded-full bg-[#00ff88] flex items-center justify-center shadow-lg shadow-[#00ff88]/50"
+                  >
+                    <ArrowRight className="w-8 h-8 text-black" />
+                  </motion.div>
+                </div>
+              </div>
 
               {/* Live badge */}
               <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
@@ -103,12 +147,9 @@ export function InActionSection() {
                 <span className="text-white text-sm font-medium">TEMPS REEL</span>
               </div>
 
-              {/* Before/After labels */}
-              <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                <span className="text-white text-sm font-medium">Visage original</span>
-              </div>
-              <div className="absolute bottom-4 right-4 bg-[#00ff88]/80 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                <span className="text-black text-sm font-bold">Visage transforme</span>
+              {/* Einstein label */}
+              <div className="absolute top-4 right-4 bg-[#00ff88]/20 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#00ff88]/50">
+                <span className="text-[#00ff88] text-sm font-bold">Albert Einstein</span>
               </div>
             </div>
           </div>
