@@ -103,11 +103,12 @@ export function InActionSection() {
                 {/* After - Einstein swap */}
                 <div className="relative aspect-[3/4]">
                   <Image
-                    src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Einstein_1921_by_F_Schmutzer_-_restoration.jpg/800px-Einstein_1921_by_F_Schmutzer_-_restoration.jpg"
+                    src="https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=600&h=800&fit=crop&crop=face"
                     alt="Transformation Einstein"
                     fill
                     className="object-cover"
                     priority
+                    unoptimized
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                   <div className="absolute bottom-4 right-4 bg-[#00ff88] px-4 py-2 rounded-full">
@@ -149,7 +150,7 @@ export function InActionSection() {
 
               {/* Einstein label */}
               <div className="absolute top-4 right-4 bg-[#00ff88]/20 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#00ff88]/50">
-                <span className="text-[#00ff88] text-sm font-bold">Albert Einstein</span>
+                <span className="text-[#00ff88] text-sm font-bold">Nouveau visage</span>
               </div>
             </div>
           </div>
