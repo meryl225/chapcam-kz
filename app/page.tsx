@@ -2,6 +2,7 @@ import { Header } from "@/components/header"
 import { HeroSection } from "@/components/hero-section"
 import { InActionSection } from "@/components/in-action-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
+import { LaunchCountdown } from "@/components/launch-countdown"
 import { PricingSection } from "@/components/pricing-section"
 import { FAQSection } from "@/components/faq-section"
 import { TutorialSection } from "@/components/tutorial-section"
@@ -24,6 +25,7 @@ export default function Home() {
         <HeroSection />
         <InActionSection />
         <HowItWorksSection />
+        <LaunchCountdown />
         <PricingSection />
         <FAQSection />
         <TutorialSection />
