@@ -28,11 +28,11 @@ const plans = [
     id: "popular",
     name: "Popular",
     duration: "30 JOURS",
-    price: "90.000",
+    price: "25.000",
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "6 000 points (50 minutes)",
+      "1 250 points (10 min 25 sec)",
       "Qualite HD 1080p",
       "Support prioritaire"
     ],
@@ -46,11 +46,11 @@ const plans = [
     id: "pro",
     name: "Pro",
     duration: "90 JOURS",
-    price: "220.000",
+    price: "50.000",
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "16 000 points (133 minutes)",
+      "2 500 points (20 min 50 sec)",
       "Qualite 4K Ultra HD",
       "Support prioritaire"
     ],
@@ -61,14 +61,14 @@ const plans = [
     icon: Star
   },
   {
-    id: "ultimate",
-    name: "Ultimate",
+    id: "vip",
+    name: "VIP Annuel",
     duration: "365 JOURS",
-    price: "550.000",
+    price: "85.000",
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "45 000 points (375 minutes)",
+      "4 250 points (35 min 25 sec)",
       "Qualite 4K Ultra HD",
       "Support VIP 24/7",
       "Acces aux nouveautes en avant-premiere"
