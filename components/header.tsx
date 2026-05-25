@@ -44,7 +44,7 @@ export function Header() {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          {["Accueil", "Comment ca marche", "Tarifs", "FAQ", "Guide"].map((item) => (
+          {["Accueil", "Comment ca marche", "Tarifs", "FAQ", "Guide", "Founder"].map((item) => (
             <Link 
               key={item}
               href={item === "Accueil" ? "/" : `#${item.toLowerCase().replace(/ /g, "-")}`} 
