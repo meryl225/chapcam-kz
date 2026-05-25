@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { ArrowLeft, Check, CreditCard, Smartphone, Loader2, Shield, Zap } from "lucide-react"
+import { ArrowLeft, Check, CreditCard, Smartphone, Loader2, Shield, Zap, Clock, Sparkles } from "lucide-react"
 import Link from "next/link"
 import { useSearchParams } from "next/navigation"
 import Image from "next/image"
@@ -12,32 +12,44 @@ const plans = [
     id: "starter",
     name: "Starter",
     price: 10000,
+    oldPrice: 12000,
+    discount: 17,
     points: 500,
     duration: "1 jour",
+    timeEstimate: "4 min 10 sec",
     popular: false,
   },
   {
     id: "popular",
     name: "Popular",
     price: 25000,
+    oldPrice: 35000,
+    discount: 29,
     points: 1250,
     duration: "30 jours",
+    timeEstimate: "10 min 25 sec",
     popular: true,
   },
   {
     id: "pro",
     name: "Pro",
     price: 50000,
+    oldPrice: 65000,
+    discount: 23,
     points: 2500,
     duration: "90 jours",
+    timeEstimate: "20 min 50 sec",
     popular: false,
   },
   {
     id: "vip",
     name: "VIP Annuel",
     price: 85000,
+    oldPrice: 110000,
+    discount: 23,
     points: 4250,
     duration: "365 jours",
+    timeEstimate: "35 min 25 sec",
     popular: false,
   },
 ]
@@ -149,6 +161,24 @@ export default function RechargePage() {
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Plans Selection */}
           <div className="space-y-6">
+            {/* Launch Offer Banner */}
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-r from-[#00ff88]/20 via-[#00ff88]/10 to-[#00ff88]/20 border border-[#00ff88]/50 rounded-xl p-4"
+            >
+              <div className="flex items-center justify-center gap-2 text-center">
+                <Sparkles className="w-5 h-5 text-[#00ff88]" />
+                <span className="text-[#00ff88] font-bold">OFFRE DE LANCEMENT</span>
+                <span className="text-white">- Jusqu&apos;a -29% !</span>
+                <Sparkles className="w-5 h-5 text-[#00ff88]" />
+              </div>
+              <div className="flex items-center justify-center gap-2 mt-2 text-yellow-400 text-sm">
+                <Clock className="w-4 h-4" />
+                <span>Valable jusqu&apos;au 1er Juin 2026</span>
+              </div>
+            </motion.div>
+
             <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10">
               <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <Zap className="w-5 h-5 text-[#00ff88]" />
@@ -168,9 +198,14 @@ export default function RechargePage() {
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                   >
+                    {/* Discount Badge */}
+                    <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                      -{plan.discount}%
+                    </span>
+                    
                     {plan.popular && (
-                      <span className="absolute -top-2 right-4 bg-[#00ff88] text-black text-xs font-bold px-2 py-0.5 rounded-full">
-                        POPULAIRE
+                      <span className="absolute -top-2 left-4 bg-[#00ff88] text-black text-xs font-bold px-2 py-0.5 rounded-full">
+                        MEILLEUR CHOIX
                       </span>
                     )}
                     
@@ -178,10 +213,13 @@ export default function RechargePage() {
                       <div>
                         <div className="font-semibold text-lg">{plan.name}</div>
                         <div className="text-sm text-gray-400">
-                          {plan.points.toLocaleString()} points - {plan.duration}
+                          {plan.points.toLocaleString()} points ({plan.timeEstimate}) - {plan.duration}
                         </div>
                       </div>
                       <div className="text-right">
+                        <div className="text-sm text-gray-500 line-through">
+                          {plan.oldPrice.toLocaleString()} FCFA
+                        </div>
                         <div className="text-xl font-bold text-[#00ff88]">
                           {plan.price.toLocaleString()} FCFA
                         </div>
@@ -259,18 +297,27 @@ export default function RechargePage() {
                 </div>
                 <div className="flex justify-between items-center py-3 border-b border-white/10">
                   <span className="text-gray-400">Temps de transformation</span>
-                  <span className="font-semibold">
-                    ~{Math.floor(selectedPlan.points / 2 / 60)} minutes
-                  </span>
+                  <span className="font-semibold">{selectedPlan.timeEstimate}</span>
                 </div>
               </div>
 
               <div className="bg-black/30 rounded-xl p-4 mb-6">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-gray-400">Prix normal</span>
+                  <span className="text-gray-500 line-through">
+                    {selectedPlan.oldPrice.toLocaleString()} FCFA
+                  </span>
+                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-lg">Total a payer</span>
-                  <span className="text-2xl font-bold text-[#00ff88]">
-                    {selectedPlan.price.toLocaleString()} FCFA
-                  </span>
+                  <div className="text-right">
+                    <span className="text-2xl font-bold text-[#00ff88]">
+                      {selectedPlan.price.toLocaleString()} FCFA
+                    </span>
+                    <span className="ml-2 text-sm text-red-400 font-semibold">
+                      (-{selectedPlan.discount}%)
+                    </span>
+                  </div>
                 </div>
               </div>
 
