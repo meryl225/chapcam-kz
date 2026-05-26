@@ -2,11 +2,43 @@
 
 import { motion } from "framer-motion"
 import Link from "next/link"
-import Image from "next/image"
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Play, ArrowRight } from "lucide-react"
+import { Play, ArrowRight, Pause, Volume2, VolumeX, Maximize2 } from "lucide-react"
 
 export function InActionSection() {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [isPlaying, setIsPlaying] = useState(true)
+  const [isMuted, setIsMuted] = useState(true)
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause()
+      } else {
+        videoRef.current.play()
+      }
+      setIsPlaying(!isPlaying)
+    }
+  }
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !isMuted
+      setIsMuted(!isMuted)
+    }
+  }
+
+  const toggleFullscreen = () => {
+    if (videoRef.current) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen()
+      } else {
+        videoRef.current.requestFullscreen()
+      }
+    }
+  }
+
   // Platform logos as SVG components
   const platforms = [
     { name: "WhatsApp", color: "#25D366" },
@@ -59,7 +91,7 @@ export function InActionSection() {
           </p>
         </motion.div>
 
-        {/* Before/After Demo with Einstein */}
+        {/* Video Demo */}
         <motion.div
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -82,59 +114,57 @@ export function InActionSection() {
               className="absolute inset-0 rounded-3xl"
             />
 
-            {/* Before/After container */}
-            <div className="relative rounded-3xl overflow-hidden border border-[#00ff88]/30 bg-black">
-              <div className="grid grid-cols-2">
-                {/* Before - Original face */}
-                <div className="relative aspect-[3/4]">
-                  <Image
-                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=800&fit=crop&crop=face"
-                    alt="Visage original"
-                    fill
-                    className="object-cover"
-                    priority
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  <div className="absolute bottom-4 left-4 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <span className="text-white text-sm font-bold">AVANT</span>
-                  </div>
-                </div>
+            {/* Video container */}
+            <div className="relative aspect-video rounded-3xl overflow-hidden border border-[#00ff88]/30 bg-black group">
+              <video
+                ref={videoRef}
+                className="w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+              >
+                <source src="/videos/chapcam-demo.mp4" type="video/mp4" />
+                Votre navigateur ne supporte pas la lecture de videos.
+              </video>
 
-                {/* After - Einstein swap */}
-                <div className="relative aspect-[3/4]">
-                  <Image
-                    src="https://images.unsplash.com/photo-1568602471122-7832951cc4c5?w=600&h=800&fit=crop&crop=face"
-                    alt="Transformation Einstein"
-                    fill
-                    className="object-cover"
-                    priority
-                    unoptimized
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                  <div className="absolute bottom-4 right-4 bg-[#00ff88] px-4 py-2 rounded-full">
-                    <span className="text-black text-sm font-bold">APRES</span>
-                  </div>
-                  
-                  {/* Scanning effect overlay */}
-                  <motion.div
-                    className="absolute inset-0 pointer-events-none"
-                    style={{
-                      background: "linear-gradient(180deg, transparent 0%, rgba(0,255,136,0.1) 50%, transparent 100%)",
-                    }}
-                    animate={{ y: ["-100%", "100%"] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                  />
-                </div>
+              {/* Video controls overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                {/* Play/Pause button center */}
+                <button
+                  onClick={togglePlay}
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-[#00ff88]/90 flex items-center justify-center hover:bg-[#00ff88] transition-colors"
+                >
+                  {isPlaying ? (
+                    <Pause className="w-8 h-8 text-black" />
+                  ) : (
+                    <Play className="w-8 h-8 text-black fill-black ml-1" />
+                  )}
+                </button>
 
-                {/* Center divider with arrow */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="w-16 h-16 rounded-full bg-[#00ff88] flex items-center justify-center shadow-lg shadow-[#00ff88]/50"
+                {/* Bottom controls */}
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {/* Mute button */}
+                    <button
+                      onClick={toggleMute}
+                      className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-colors"
+                    >
+                      {isMuted ? (
+                        <VolumeX className="w-5 h-5 text-white" />
+                      ) : (
+                        <Volume2 className="w-5 h-5 text-white" />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Fullscreen button */}
+                  <button
+                    onClick={toggleFullscreen}
+                    className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-colors"
                   >
-                    <ArrowRight className="w-8 h-8 text-black" />
-                  </motion.div>
+                    <Maximize2 className="w-5 h-5 text-white" />
+                  </button>
                 </div>
               </div>
 
@@ -145,14 +175,25 @@ export function InActionSection() {
                   transition={{ duration: 1, repeat: Infinity }}
                   className="w-2 h-2 rounded-full bg-[#00ff88]"
                 />
-                <span className="text-white text-sm font-medium">TEMPS REEL</span>
+                <span className="text-white text-sm font-medium">DEMO LIVE</span>
               </div>
 
-              {/* Einstein label */}
+              {/* Nouveau visage label */}
               <div className="absolute top-4 right-4 bg-[#00ff88]/20 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#00ff88]/50">
-                <span className="text-[#00ff88] text-sm font-bold">Nouveau visage</span>
+                <span className="text-[#00ff88] text-sm font-bold">Face Swap en Direct</span>
               </div>
             </div>
+
+            {/* Instruction text */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 1 }}
+              className="text-center text-gray-500 text-sm mt-4"
+            >
+              Survolez pour afficher les controles
+            </motion.p>
           </div>
         </motion.div>
 
