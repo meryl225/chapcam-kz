@@ -11,10 +11,10 @@
     "start": "next start",
     "lint": "eslint .",
     "electron:dev": "NODE_ENV=development electron .",
-    "electron:build": "ELECTRON_BUILD=true next build && electron-builder",
-    "electron:build:mac": "ELECTRON_BUILD=true next build && electron-builder --mac",
-    "electron:build:win": "set ELECTRON_BUILD=true && next build && electron-builder --win",
-    "electron:build:linux": "ELECTRON_BUILD=true next build && electron-builder --linux",
+    "electron:build": "next build && electron-builder",
+    "electron:build:mac": "next build && electron-builder --mac",
+    "electron:build:win": "next build && electron-builder --win",
+    "electron:build:linux": "next build && electron-builder --linux",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
