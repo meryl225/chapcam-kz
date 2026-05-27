@@ -17,7 +17,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 768,
     title: 'ChapCam - Face Swap en Temps Reel',
-    icon: path.join(__dirname, '../public/icons/icon.png'),
+    icon: path.join(__dirname, '../public/icons/icon.jpg'),
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -82,7 +82,7 @@ async function requestCameraAccess() {
 
 // Create system tray
 function createTray() {
-  const iconPath = path.join(__dirname, '../public/icons/tray-icon.png')
+  const iconPath = path.join(__dirname, '../public/icons/tray-icon.jpg')
   const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
   
   tray = new Tray(icon)
