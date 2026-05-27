@@ -242,32 +242,83 @@ function loadApp() {
     log(`Loading dev URL: ${devUrl}`)
     mainWindow.loadURL(devUrl)
   } else {
-    // Production: try multiple paths for the built files
-    const possiblePaths = [
-      path.join(__dirname, '../out/index.html'),
-      path.join(process.resourcesPath, 'out/index.html'),
-      path.join(app.getAppPath(), 'out/index.html'),
-      path.join(__dirname, '..', 'out', 'index.html')
-    ]
+    // Production: Start local Next.js server and load from localhost
+    startProductionServer()
+  }
+}
 
-    let loadedPath = null
-    for (const filePath of possiblePaths) {
-      log(`Checking path: ${filePath}`)
-      if (fs.existsSync(filePath)) {
-        loadedPath = filePath
-        break
-      }
-    }
-
-    if (loadedPath) {
-      log(`Loading file: ${loadedPath}`)
-      mainWindow.loadFile(loadedPath)
-    } else {
-      log('No valid path found, trying web URL')
-      // Fallback to web version
-      mainWindow.loadURL('https://chapcam.com/dashboard')
+// Start production Next.js server
+function startProductionServer() {
+  log('Starting Next.js production server...')
+  
+  // Find the correct paths
+  const appPath = app.getAppPath()
+  const resourcesPath = process.resourcesPath || appPath
+  
+  // Possible locations for the Next.js build
+  const possibleBasePaths = [
+    appPath,
+    resourcesPath,
+    path.join(resourcesPath, 'app'),
+    path.dirname(appPath)
+  ]
+  
+  let workingDir = null
+  for (const basePath of possibleBasePaths) {
+    const nextDir = path.join(basePath, '.next')
+    log(`Checking for .next at: ${nextDir}`)
+    if (fs.existsSync(nextDir)) {
+      workingDir = basePath
+      log(`Found Next.js build at: ${workingDir}`)
+      break
     }
   }
+  
+  if (!workingDir) {
+    log('Next.js build not found, loading web version')
+    mainWindow.loadURL('https://chapcam.com/dashboard')
+    return
+  }
+  
+  // Try to start the server using npx next start
+  const isWin = process.platform === 'win32'
+  const npmCmd = isWin ? 'npx.cmd' : 'npx'
+  
+  nextServer = spawn(npmCmd, ['next', 'start', '-p', PORT.toString()], {
+    cwd: workingDir,
+    shell: true,
+    stdio: 'pipe',
+    env: { ...process.env, NODE_ENV: 'production' }
+  })
+  
+  nextServer.stdout.on('data', (data) => {
+    const output = data.toString()
+    log(`[Next.js] ${output}`)
+    
+    // Once server is ready, load the URL
+    if (output.includes('Ready') || output.includes('started') || output.includes(`:${PORT}`)) {
+      setTimeout(() => {
+        mainWindow.loadURL(`http://localhost:${PORT}`)
+      }, 500)
+    }
+  })
+  
+  nextServer.stderr.on('data', (data) => {
+    log(`[Next.js Error] ${data}`)
+  })
+  
+  nextServer.on('error', (error) => {
+    log(`Failed to start Next.js server: ${error.message}`)
+    mainWindow.loadURL('https://chapcam.com/dashboard')
+  })
+  
+  // Set a timeout to load web version if server doesn't start
+  setTimeout(() => {
+    if (mainWindow && !mainWindow.webContents.getURL().includes('localhost')) {
+      log('Server timeout, loading web version')
+      mainWindow.loadURL('https://chapcam.com/dashboard')
+    }
+  }, 10000)
 }
 
 // Load fallback page when main content fails

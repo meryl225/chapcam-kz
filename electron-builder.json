@@ -7,9 +7,10 @@
     "buildResources": "build"
   },
   "files": [
-    "out/**/*",
+    ".next/**/*",
     "electron/**/*",
-    "public/icons/**/*",
+    "public/**/*",
+    "package.json",
     "!**/*.map",
     "!**/node_modules/.cache/**"
   ],
@@ -18,16 +19,22 @@
   },
   "extraResources": [
     {
-      "from": "out",
-      "to": "out",
+      "from": ".next",
+      "to": ".next",
       "filter": ["**/*"]
     },
     {
-      "from": "public/icons",
-      "to": "public/icons",
+      "from": "public",
+      "to": "public",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "node_modules",
+      "to": "node_modules",
       "filter": ["**/*"]
     }
   ],
+  "asar": false,
   "mac": {
     "category": "public.app-category.video",
     "icon": "public/icons/icon.jpg",
