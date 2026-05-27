@@ -9,21 +9,31 @@
   "files": [
     "out/**/*",
     "electron/**/*",
-    "public/icons/**/*"
+    "public/icons/**/*",
+    "!**/*.map",
+    "!**/node_modules/.cache/**"
   ],
   "extraMetadata": {
     "main": "electron/main.js"
   },
+  "extraResources": [
+    {
+      "from": "out",
+      "to": "out",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "public/icons",
+      "to": "public/icons",
+      "filter": ["**/*"]
+    }
+  ],
   "mac": {
     "category": "public.app-category.video",
     "icon": "public/icons/icon.jpg",
     "target": [
       {
         "target": "dmg",
-        "arch": ["x64", "arm64"]
-      },
-      {
-        "target": "zip",
         "arch": ["x64", "arm64"]
       }
     ],
@@ -37,7 +47,7 @@
     }
   },
   "dmg": {
-    "title": "ChapCam",
+    "title": "ChapCam Installer",
     "icon": "public/icons/icon.jpg",
     "contents": [
       {
@@ -63,14 +73,19 @@
         "target": "portable",
         "arch": ["x64"]
       }
-    ]
+    ],
+    "publisherName": "ChapCam",
+    "legalTrademarks": "ChapCam - Face Swap en Temps Reel"
   },
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
-    "shortcutName": "ChapCam"
+    "shortcutName": "ChapCam",
+    "uninstallDisplayName": "ChapCam",
+    "installerLanguages": ["fr", "en"],
+    "language": "1036"
   },
   "linux": {
     "icon": "public/icons",
@@ -79,11 +94,16 @@
       "deb"
     ],
     "category": "Video",
-    "maintainer": "ChapCam <support@chapcam.com>"
+    "maintainer": "ChapCam <support@chapcam.com>",
+    "desktop": {
+      "Name": "ChapCam",
+      "Comment": "Face Swap en Temps Reel",
+      "Keywords": "face;swap;video;camera"
+    }
   },
   "publish": {
     "provider": "github",
     "owner": "meryl225",
-    "repo": "chapcam-desktop"
+    "repo": "chapcam-kz"
   }
 }
