@@ -2,6 +2,7 @@ import { Header } from "@/components/header"
 import { HeroSection } from "@/components/hero-section"
 import { InActionSection } from "@/components/in-action-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
+import { RoadmapSection } from "@/components/roadmap-section"
 import { LaunchCountdown } from "@/components/launch-countdown"
 import { PricingSection } from "@/components/pricing-section"
 import { FAQSection } from "@/components/faq-section"
@@ -26,6 +27,7 @@ export default function Home() {
         <HeroSection />
         <InActionSection />
         <HowItWorksSection />
+        <RoadmapSection />
         <LaunchCountdown />
         <PricingSection />
         <FAQSection />
