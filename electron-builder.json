@@ -16,7 +16,7 @@
   },
   "mac": {
     "category": "public.app-category.video",
-    "icon": "public/icons/icon.icns",
+    "icon": "public/icons/icon.jpg",
     "target": [
       {
         "target": "dmg",
@@ -38,8 +38,7 @@
   },
   "dmg": {
     "title": "ChapCam",
-    "icon": "public/icons/icon.icns",
-    "background": "build/dmg-background.png",
+    "icon": "public/icons/icon.jpg",
     "contents": [
       {
         "x": 130,
@@ -54,7 +53,7 @@
     ]
   },
   "win": {
-    "icon": "public/icons/icon.ico",
+    "icon": "public/icons/icon.jpg",
     "target": [
       {
         "target": "nsis",
@@ -69,9 +68,6 @@
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
-    "installerIcon": "public/icons/icon.ico",
-    "uninstallerIcon": "public/icons/icon.ico",
-    "installerHeaderIcon": "public/icons/icon.ico",
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
     "shortcutName": "ChapCam"
