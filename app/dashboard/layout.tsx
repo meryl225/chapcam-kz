@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardSidebar, PlanGuardBanner } from '@/components/dashboard/sidebar'
+import { TelegramSupport } from '@/components/telegram-support'
 
 /*
 subscriptions table schema:
@@ -87,6 +88,8 @@ export default async function DashboardLayout({
         </div>
       </main>
 
+      {/* Telegram Support Button */}
+      <TelegramSupport />
     </div>
   )
 }
