@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import Link from "next/link"
 
-const TELEGRAM_LINK = "https://t.me/chapcam_support"
+const TELEGRAM_LINK = "https://t.me/chapcam1"
 
 export function TelegramSupport() {
   return (
