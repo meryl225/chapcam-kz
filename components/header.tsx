@@ -44,13 +44,21 @@ export function Header() {
 
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          {["Accueil", "Comment ca marche", "Tarifs", "FAQ", "Guide", "Founder"].map((item) => (
+          {[
+            { name: "Accueil", href: "/" },
+            { name: "Comment ca marche", href: "#comment-ca-marche" },
+            { name: "Tarifs", href: "#tarifs" },
+            { name: "FAQ", href: "#faq" },
+            { name: "Guide", href: "#guide" },
+            { name: "Telecharger", href: "/download" },
+            { name: "Founder", href: "#founder" }
+          ].map((item) => (
             <Link 
-              key={item}
-              href={item === "Accueil" ? "/" : `#${item.toLowerCase().replace(/ /g, "-")}`} 
-              className="text-white/70 hover:text-white transition-colors text-sm font-medium relative group"
+              key={item.name}
+              href={item.href} 
+              className={`text-white/70 hover:text-white transition-colors text-sm font-medium relative group ${item.name === "Telecharger" ? "text-[#00ff88]" : ""}`}
             >
-              {item}
+              {item.name}
               <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-[#e91e8c] group-hover:w-full transition-all duration-300" />
             </Link>
           ))}
