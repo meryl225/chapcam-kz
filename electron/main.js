@@ -3,6 +3,11 @@ const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
 
+// Set app user model ID for Windows (must be called early)
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.chapcam.desktop')
+}
+
 let mainWindow
 let splashWindow
 let tray
@@ -200,23 +205,34 @@ function createWindow() {
 
 // Get the correct icon path based on platform
 function getIconPath() {
-  const iconName = process.platform === 'win32' ? 'icon.ico' : 'icon.jpg'
+  // For Windows, try .ico first, then fall back to .jpg
+  // For other platforms, use .jpg
+  const iconNames = process.platform === 'win32' 
+    ? ['icon.ico', 'icon-512.jpg', 'icon.jpg'] 
+    : ['icon.jpg', 'icon-512.jpg']
   
-  // Try multiple paths
-  const paths = [
-    path.join(__dirname, '../public/icons', iconName),
-    path.join(__dirname, '../public/icons/icon.jpg'),
-    path.join(process.resourcesPath, 'public/icons', iconName),
-    path.join(app.getAppPath(), 'public/icons', iconName)
+  // Try multiple paths with multiple icon names
+  const basePaths = [
+    path.join(__dirname, '../public/icons'),
+    path.join(process.resourcesPath || '', 'public/icons'),
+    path.join(app.getAppPath(), 'public/icons'),
+    path.join(__dirname, '..', 'public', 'icons')
   ]
 
-  for (const p of paths) {
-    if (fs.existsSync(p)) {
-      return p
+  for (const basePath of basePaths) {
+    for (const iconName of iconNames) {
+      const fullPath = path.join(basePath, iconName)
+      if (fs.existsSync(fullPath)) {
+        log(`Found icon at: ${fullPath}`)
+        return fullPath
+      }
     }
   }
 
-  return paths[0] // Fallback to first option
+  // Ultimate fallback
+  const fallback = path.join(__dirname, '../public/icons/icon.jpg')
+  log(`Using fallback icon: ${fallback}`)
+  return fallback
 }
 
 // Load the application
@@ -610,6 +626,12 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
 // Set app user model ID for Windows
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.chapcam.desktop')
+  
+  // Also set the icon explicitly for the taskbar
+  const iconPath = path.join(__dirname, '../public/icons/icon-512.jpg')
+  if (fs.existsSync(iconPath)) {
+    app.setAsDefaultProtocolClient('chapcam')
+  }
 }
 
 log('Main process initialized')
