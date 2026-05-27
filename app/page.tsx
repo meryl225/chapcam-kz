@@ -26,8 +26,8 @@ export default function Home() {
         <Header />
         <HeroSection />
         <InActionSection />
-        <HowItWorksSection />
         <RoadmapSection />
+        <HowItWorksSection />
         <LaunchCountdown />
         <PricingSection />
         <FAQSection />
