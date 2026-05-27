@@ -8,6 +8,7 @@ import { FAQSection } from "@/components/faq-section"
 import { TutorialSection } from "@/components/tutorial-section"
 import { FounderSection } from "@/components/founder-section"
 import { AnimatedBackground } from "@/components/animated-background"
+import { TelegramSupport } from "@/components/telegram-support"
 
 export default function Home() {
   return (
@@ -31,6 +32,9 @@ export default function Home() {
         <TutorialSection />
         <FounderSection />
       </div>
+
+      {/* Telegram Support Button */}
+      <TelegramSupport />
     </main>
   )
 }
