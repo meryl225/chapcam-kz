@@ -1,6 +1,7 @@
 "use client"
 
-import { motion } from "framer-motion"
+import { useState } from "react"
+import { motion, AnimatePresence } from "framer-motion"
 import { User, Smile, Mic, Star, Infinity, Shield, Users, Zap, Heart } from "lucide-react"
 
 const phases = [
@@ -18,7 +19,6 @@ const phases = [
     tagline: "LE DEBUT DE TA NOUVELLE IDENTITE.",
     color: "#e91e8c",
     glowColor: "rgba(233,30,140,0.6)",
-    isActive: true,
   },
   {
     number: "02",
@@ -130,11 +130,28 @@ function Target({ className, style }: { className?: string; style?: React.CSSPro
   )
 }
 
-// Glowing Ring Component
-function GlowingRing({ number, color, glowColor, isActive }: { number: string; color: string; glowColor: string; isActive?: boolean }) {
+// Glowing Ring Component - Clickable
+function GlowingRing({ 
+  number, 
+  color, 
+  glowColor, 
+  isSelected,
+  onClick 
+}: { 
+  number: string
+  color: string
+  glowColor: string
+  isSelected: boolean
+  onClick: () => void
+}) {
   return (
-    <div className="relative w-20 h-20 mx-auto mb-4">
-      {/* Outer glow ring */}
+    <motion.button
+      onClick={onClick}
+      className="relative w-20 h-20 cursor-pointer focus:outline-none"
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.95 }}
+    >
+      {/* Outer glow ring - constant rotation */}
       <motion.div
         className="absolute inset-0 rounded-full"
         style={{
@@ -151,15 +168,15 @@ function GlowingRing({ number, color, glowColor, isActive }: { number: string; c
         }}
       />
       
-      {/* Pulsing glow */}
+      {/* Pulsing glow - constant */}
       <motion.div
         className="absolute inset-[-4px] rounded-full"
         style={{
           background: `radial-gradient(circle, ${glowColor} 0%, transparent 70%)`,
         }}
         animate={{
-          opacity: [0.5, 1, 0.5],
-          scale: [1, 1.1, 1],
+          opacity: isSelected ? [0.8, 1, 0.8] : [0.3, 0.6, 0.3],
+          scale: isSelected ? [1, 1.15, 1] : [1, 1.05, 1],
         }}
         transition={{
           duration: 2,
@@ -173,11 +190,17 @@ function GlowingRing({ number, color, glowColor, isActive }: { number: string; c
         className="absolute inset-1 rounded-full border-2"
         style={{ borderColor: color }}
         animate={{
-          boxShadow: [
-            `0 0 10px ${glowColor}, inset 0 0 10px ${glowColor}`,
-            `0 0 25px ${glowColor}, inset 0 0 15px ${glowColor}`,
-            `0 0 10px ${glowColor}, inset 0 0 10px ${glowColor}`,
-          ],
+          boxShadow: isSelected 
+            ? [
+                `0 0 15px ${glowColor}, inset 0 0 15px ${glowColor}`,
+                `0 0 35px ${glowColor}, inset 0 0 25px ${glowColor}`,
+                `0 0 15px ${glowColor}, inset 0 0 15px ${glowColor}`,
+              ]
+            : [
+                `0 0 8px ${glowColor}, inset 0 0 8px ${glowColor}`,
+                `0 0 20px ${glowColor}, inset 0 0 12px ${glowColor}`,
+                `0 0 8px ${glowColor}, inset 0 0 8px ${glowColor}`,
+              ],
         }}
         transition={{
           duration: 2,
@@ -198,148 +221,140 @@ function GlowingRing({ number, color, glowColor, isActive }: { number: string; c
         </span>
       </div>
       
-      {/* Active indicator arrow */}
-      {isActive && (
+      {/* Selected indicator */}
+      {isSelected && (
         <motion.div
-          className="absolute -bottom-2 left-1/2 -translate-x-1/2"
-          animate={{ y: [0, 3, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
+          className="absolute -bottom-3 left-1/2 -translate-x-1/2"
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
         >
           <div 
-            className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent"
+            className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent"
             style={{ borderTopColor: color }}
           />
         </motion.div>
       )}
-    </div>
+    </motion.button>
   )
 }
 
 export function RoadmapSection() {
+  const [selectedPhase, setSelectedPhase] = useState(0)
+  const currentPhase = phases[selectedPhase]
+
   return (
-    <section id="roadmap" className="relative py-24 px-4 overflow-hidden">
+    <section id="roadmap" className="relative py-20 px-4 overflow-hidden">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0d1117]/80 to-transparent" />
       
       {/* Background glow effects */}
       <div className="absolute top-1/4 left-0 w-96 h-96 bg-[#e91e8c]/10 rounded-full blur-[150px] pointer-events-none" />
       <div className="absolute top-1/2 right-0 w-96 h-96 bg-[#00d4ff]/10 rounded-full blur-[150px] pointer-events-none" />
-      <div className="absolute bottom-1/4 left-1/3 w-96 h-96 bg-[#8b5cf6]/10 rounded-full blur-[150px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto relative z-10">
+      <div className="max-w-6xl mx-auto relative z-10">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-16"
+          className="text-center mb-12"
         >
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-wider">
-            CHAPCAM<span className="text-[#00d4ff]">.COM</span>
+          <p className="text-gray-400 text-sm tracking-widest mb-2">ROADMAP</p>
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
+            <span className="text-[#00d4ff]">5 PHASES</span> POUR TRANSFORMER
           </h2>
-          <p className="text-gray-400 text-lg tracking-widest">
-            ROADMAP - <span className="text-[#00d4ff]">5 PHASES</span> POUR TRANSFORMER TON IDENTITE, TON STYLE, TON MONDE.
+          <p className="text-gray-400 text-sm tracking-wide">
+            TON IDENTITE, TON STYLE, TON MONDE.
           </p>
         </motion.div>
 
-        {/* Timeline connector line */}
-        <div className="hidden lg:block absolute top-[280px] left-[10%] right-[10%] h-[2px]">
-          <motion.div
-            className="h-full bg-gradient-to-r from-[#e91e8c] via-[#00d4ff] to-[#8b5cf6]"
-            initial={{ scaleX: 0 }}
-            whileInView={{ scaleX: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1.5, ease: "easeOut" }}
-            style={{ transformOrigin: "left" }}
-          />
-        </div>
-
-        {/* Phases Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+        {/* Phase Selector - Rings */}
+        <div className="flex justify-center items-center gap-4 md:gap-8 mb-8 flex-wrap">
           {phases.map((phase, index) => (
-            <motion.div
-              key={phase.number}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: index * 0.15 }}
-              className="relative"
-            >
-              {/* Glowing Ring */}
+            <div key={phase.number} className="flex flex-col items-center">
               <GlowingRing 
                 number={phase.number} 
                 color={phase.color} 
                 glowColor={phase.glowColor}
-                isActive={phase.isActive}
+                isSelected={selectedPhase === index}
+                onClick={() => setSelectedPhase(index)}
               />
-              
-              {/* Phase label */}
-              <p className="text-center text-gray-500 text-sm font-medium mb-4 tracking-wider">
+              <p 
+                className={`text-xs font-medium mt-4 transition-colors ${
+                  selectedPhase === index ? 'text-white' : 'text-gray-500'
+                }`}
+                style={{ color: selectedPhase === index ? phase.color : undefined }}
+              >
                 {phase.phase}
               </p>
+            </div>
+          ))}
+        </div>
 
-              {/* Card */}
+        {/* Timeline connector line */}
+        <div className="hidden md:block relative h-1 mx-auto max-w-3xl mb-10">
+          <div className="absolute inset-0 bg-gray-800 rounded-full" />
+          <motion.div
+            className="absolute inset-y-0 left-0 rounded-full"
+            style={{
+              background: `linear-gradient(90deg, ${phases.map(p => p.color).join(', ')})`,
+              width: `${((selectedPhase + 1) / phases.length) * 100}%`,
+            }}
+            transition={{ duration: 0.5 }}
+          />
+        </div>
+
+        {/* Selected Phase Content */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={selectedPhase}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.4 }}
+            className="max-w-4xl mx-auto"
+          >
+            {/* Card */}
+            <div className="relative rounded-2xl overflow-hidden">
+              {/* Animated border */}
               <motion.div
-                className="relative rounded-xl overflow-hidden h-full"
-                whileHover={{ scale: 1.02, y: -5 }}
-                transition={{ duration: 0.3 }}
-              >
-                {/* Card border glow */}
-                <motion.div
-                  className="absolute inset-0 rounded-xl p-[1px]"
-                  style={{
-                    background: `linear-gradient(135deg, ${phase.color}50, transparent 50%, ${phase.color}30)`,
-                  }}
-                  animate={{
-                    opacity: [0.5, 1, 0.5],
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
+                className="absolute inset-0 rounded-2xl p-[2px]"
+                style={{
+                  background: `linear-gradient(135deg, ${currentPhase.color}, transparent 50%, ${currentPhase.color}50)`,
+                }}
+                animate={{
+                  opacity: [0.5, 1, 0.5],
+                }}
+                transition={{
+                  duration: 3,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
 
-                <div className="relative m-[1px] rounded-xl bg-[#0d1525]/95 backdrop-blur-xl p-5 h-full">
-                  {/* Title */}
+              <div className="relative m-[2px] rounded-2xl bg-[#0d1525]/95 backdrop-blur-xl p-8 md:p-10">
+                {/* Title & Timeline */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                   <h3 
-                    className="text-sm font-bold mb-3 leading-tight"
-                    style={{ color: phase.color }}
+                    className="text-xl md:text-2xl font-bold"
+                    style={{ color: currentPhase.color }}
                   >
-                    {phase.title}
+                    {currentPhase.title}
                   </h3>
-
-                  {/* Description */}
-                  <p className="text-gray-400 text-xs leading-relaxed mb-4">
-                    {phase.description}
-                  </p>
-
-                  {/* Features */}
-                  <div className="space-y-2 mb-4">
-                    {phase.features.map((feature, i) => (
-                      <div key={i} className="flex items-center gap-2">
-                        <feature.icon 
-                          className="w-4 h-4 flex-shrink-0" 
-                          style={{ color: phase.color }} 
-                        />
-                        <span className="text-gray-300 text-xs">{feature.text}</span>
-                      </div>
-                    ))}
-                  </div>
-
+                  
                   {/* Timeline badge */}
                   <motion.div
-                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold mb-3"
+                    className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold self-start"
                     style={{ 
-                      backgroundColor: `${phase.color}20`,
-                      color: phase.color,
-                      border: `1px solid ${phase.color}40`,
+                      backgroundColor: `${currentPhase.color}20`,
+                      color: currentPhase.color,
+                      border: `1px solid ${currentPhase.color}40`,
                     }}
                     animate={{
                       boxShadow: [
-                        `0 0 5px ${phase.glowColor}`,
-                        `0 0 15px ${phase.glowColor}`,
-                        `0 0 5px ${phase.glowColor}`,
+                        `0 0 10px ${currentPhase.glowColor}`,
+                        `0 0 25px ${currentPhase.glowColor}`,
+                        `0 0 10px ${currentPhase.glowColor}`,
                       ],
                     }}
                     transition={{
@@ -348,29 +363,70 @@ export function RoadmapSection() {
                       ease: "easeInOut",
                     }}
                   >
-                    {phase.timeline}
+                    {currentPhase.timeline}
                   </motion.div>
                 </div>
-              </motion.div>
 
-              {/* Tagline */}
-              <p 
-                className="text-center text-xs font-medium mt-4 px-2"
-                style={{ color: phase.color }}
-              >
-                {phase.tagline}
-              </p>
-            </motion.div>
-          ))}
-        </div>
+                {/* Description */}
+                <p className="text-gray-300 text-base md:text-lg leading-relaxed mb-8">
+                  {currentPhase.description}
+                </p>
+
+                {/* Features */}
+                <div className="grid md:grid-cols-3 gap-4 mb-8">
+                  {currentPhase.features.map((feature, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      className="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10"
+                    >
+                      <div 
+                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ backgroundColor: `${currentPhase.color}20` }}
+                      >
+                        <feature.icon 
+                          className="w-5 h-5" 
+                          style={{ color: currentPhase.color }} 
+                        />
+                      </div>
+                      <span className="text-gray-200 text-sm">{feature.text}</span>
+                    </motion.div>
+                  ))}
+                </div>
+
+                {/* Tagline */}
+                <motion.p 
+                  className="text-center text-lg md:text-xl font-bold tracking-wide"
+                  style={{ color: currentPhase.color }}
+                  animate={{
+                    textShadow: [
+                      `0 0 10px ${currentPhase.glowColor}`,
+                      `0 0 30px ${currentPhase.glowColor}`,
+                      `0 0 10px ${currentPhase.glowColor}`,
+                    ],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                >
+                  {currentPhase.tagline}
+                </motion.p>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
 
         {/* Mission Section */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, delay: 0.5 }}
-          className="mt-20"
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="mt-16"
         >
           <div className="relative rounded-2xl overflow-hidden">
             {/* Animated border */}
@@ -384,26 +440,24 @@ export function RoadmapSection() {
               transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
             />
 
-            <div className="relative m-[1px] rounded-2xl bg-[#0d1525]/95 backdrop-blur-xl p-8">
-              <div className="flex flex-col lg:flex-row items-center gap-8">
+            <div className="relative m-[1px] rounded-2xl bg-[#0d1525]/95 backdrop-blur-xl p-6 md:p-8">
+              <div className="flex flex-col lg:flex-row items-center gap-6">
                 {/* Mission icon and title */}
                 <div className="flex items-center gap-4">
                   <motion.div
-                    className="w-16 h-16 rounded-full bg-gradient-to-br from-[#00d4ff]/20 to-[#22c55e]/20 flex items-center justify-center border border-[#00d4ff]/30"
+                    className="w-14 h-14 rounded-full bg-gradient-to-br from-[#00d4ff]/20 to-[#22c55e]/20 flex items-center justify-center border border-[#00d4ff]/30"
                     animate={{
                       boxShadow: [
-                        "0 0 20px rgba(0,212,255,0.3)",
-                        "0 0 40px rgba(0,212,255,0.5)",
-                        "0 0 20px rgba(0,212,255,0.3)",
+                        "0 0 15px rgba(0,212,255,0.3)",
+                        "0 0 30px rgba(0,212,255,0.5)",
+                        "0 0 15px rgba(0,212,255,0.3)",
                       ],
                     }}
                     transition={{ duration: 3, repeat: Infinity }}
                   >
-                    <Target className="w-8 h-8 text-[#00d4ff]" />
+                    <Target className="w-7 h-7 text-[#00d4ff]" />
                   </motion.div>
-                  <div>
-                    <h3 className="text-white font-bold text-xl">NOTRE MISSION</h3>
-                  </div>
+                  <h3 className="text-white font-bold text-lg">NOTRE MISSION</h3>
                 </div>
 
                 {/* Mission text */}
@@ -414,7 +468,7 @@ export function RoadmapSection() {
                 </div>
 
                 {/* Mission values */}
-                <div className="flex flex-wrap justify-center gap-6">
+                <div className="flex flex-wrap justify-center gap-4">
                   {missionValues.map((value, index) => (
                     <motion.div
                       key={index}
@@ -422,16 +476,16 @@ export function RoadmapSection() {
                       initial={{ opacity: 0, scale: 0.8 }}
                       whileInView={{ opacity: 1, scale: 1 }}
                       viewport={{ once: true }}
-                      transition={{ delay: 0.8 + index * 0.1 }}
+                      transition={{ delay: 0.5 + index * 0.1 }}
                     >
                       <motion.div
                         className="w-10 h-10 rounded-full flex items-center justify-center"
                         style={{ backgroundColor: `${value.color}20` }}
                         animate={{
                           boxShadow: [
-                            `0 0 10px ${value.color}30`,
-                            `0 0 20px ${value.color}50`,
-                            `0 0 10px ${value.color}30`,
+                            `0 0 8px ${value.color}30`,
+                            `0 0 18px ${value.color}50`,
+                            `0 0 8px ${value.color}30`,
                           ],
                         }}
                         transition={{ duration: 2, repeat: Infinity, delay: index * 0.3 }}
