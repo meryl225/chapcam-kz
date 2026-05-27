@@ -1,0 +1,36 @@
+FROM python:3.10-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    wget \
+    ffmpeg \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+RUN pip install --no-cache-dir \
+    runpod \
+    opencv-python-headless \
+    numpy \
+    onnxruntime-gpu \
+    insightface \
+    pillow \
+    requests
+
+# Create workspace
+WORKDIR /workspace
+
+# Download InsightFace models
+RUN mkdir -p /root/.insightface/models && \
+    wget -q https://github.com/deepinsight/insightface/releases/download/v0.7/inswapper_128.onnx -O /root/.insightface/models/inswapper_128.onnx
+
+# Copy handler
+COPY runpod_handler.py /workspace/handler.py
+
+# Start the handler
+CMD ["python", "-u", "/workspace/handler.py"]
