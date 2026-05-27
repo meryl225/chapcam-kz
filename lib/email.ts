@@ -1,21 +1,29 @@
-import { Resend } from 'resend'
+// Dynamic import to avoid build-time errors when API key is not set
+let resend: any = null
 
-// Only initialize Resend if API key is available
-const resend = process.env.RESEND_API_KEY 
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null
+async function getResendClient() {
+  if (resend) return resend
+  if (!process.env.RESEND_API_KEY) {
+    console.warn('[Email] RESEND_API_KEY not configured')
+    return null
+  }
+  const { Resend } = await import('resend')
+  resend = new Resend(process.env.RESEND_API_KEY)
+  return resend
+}
 
 const FROM_EMAIL = 'ChapCam <noreply@chapcam.com>'
 
 // Template email de bienvenue / confirmation d'inscription
 export async function sendWelcomeEmail(to: string, userName: string) {
-  if (!resend) {
+  const client = await getResendClient()
+  if (!client) {
     console.warn('[Email] Resend not configured - skipping email')
     return { success: false, error: 'Email service not configured' }
   }
   
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await client.emails.send({
       from: FROM_EMAIL,
       to: [to],
       subject: 'Bienvenue sur ChapCam - Votre compte est pret!',
@@ -86,13 +94,14 @@ export async function sendWelcomeEmail(to: string, userName: string) {
 
 // Template email de reinitialisation de mot de passe
 export async function sendPasswordResetEmail(to: string, resetLink: string) {
-  if (!resend) {
+  const client = await getResendClient()
+  if (!client) {
     console.warn('[Email] Resend not configured - skipping email')
     return { success: false, error: 'Email service not configured' }
   }
   
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await client.emails.send({
       from: FROM_EMAIL,
       to: [to],
       subject: 'ChapCam - Reinitialisation de votre mot de passe',
@@ -165,13 +174,14 @@ export async function sendPaymentConfirmationEmail(
   duration: string,
   transactionId: string
 ) {
-  if (!resend) {
+  const client = await getResendClient()
+  if (!client) {
     console.warn('[Email] Resend not configured - skipping email')
     return { success: false, error: 'Email service not configured' }
   }
   
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await client.emails.send({
       from: FROM_EMAIL,
       to: [to],
       subject: `ChapCam - Confirmation de paiement - Plan ${plan}`,
@@ -275,7 +285,8 @@ export async function sendBatchEmails(
     html: string
   }>
 ) {
-  if (!resend) {
+  const client = await getResendClient()
+  if (!client) {
     console.warn('[Email] Resend not configured - skipping batch emails')
     return [{ batch: 0, success: false, error: 'Email service not configured' }]
   }
@@ -288,7 +299,7 @@ export async function sendBatchEmails(
     const batch = emails.slice(i, i + BATCH_SIZE)
     
     try {
-      const { data, error } = await resend.batch.send(
+      const { data, error } = await client.batch.send(
         batch.map((email) => ({
           from: FROM_EMAIL,
           to: [email.to],
