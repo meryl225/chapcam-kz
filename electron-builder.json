@@ -7,34 +7,15 @@
     "buildResources": "build"
   },
   "files": [
-    ".next/**/*",
     "electron/**/*",
     "public/**/*",
     "package.json",
-    "!**/*.map",
-    "!**/node_modules/.cache/**"
+    "!**/*.map"
   ],
   "extraMetadata": {
     "main": "electron/main.js"
   },
-  "extraResources": [
-    {
-      "from": ".next",
-      "to": ".next",
-      "filter": ["**/*"]
-    },
-    {
-      "from": "public",
-      "to": "public",
-      "filter": ["**/*"]
-    },
-    {
-      "from": "node_modules",
-      "to": "node_modules",
-      "filter": ["**/*"]
-    }
-  ],
-  "asar": false,
+  "asar": true,
   "mac": {
     "category": "public.app-category.video",
     "icon": "public/icons/icon.jpg",
