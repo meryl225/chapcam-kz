@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // Lazy initialization to avoid build-time errors
 function getResend() {
@@ -160,16 +161,30 @@ export async function POST(request: Request) {
       })
     }
 
-    // Get all users with email from Supabase
-    const { data: allUsers, error: dbError } = await supabase
-      .from('users')
-      .select('email, name')
-    
-    if (dbError) {
-      return NextResponse.json({ error: dbError.message }, { status: 500 })
+    // Get all users via admin client (service_role), emails from auth.users
+    const admin = createAdminClient()
+    const usersWithEmail: { email: string; name: string }[] = []
+
+    let page = 1
+    const perPage = 1000
+    while (true) {
+      const { data: listData, error: dbError } = await admin.auth.admin.listUsers({ page, perPage })
+
+      if (dbError) {
+        return NextResponse.json({ error: dbError.message }, { status: 500 })
+      }
+
+      const batchUsers = listData?.users ?? []
+      for (const u of batchUsers) {
+        if (u.email) {
+          const name = (u.user_metadata?.name as string) || u.email.split('@')[0]
+          usersWithEmail.push({ email: u.email, name })
+        }
+      }
+
+      if (batchUsers.length < perPage) break
+      page++
     }
-    
-    const usersWithEmail = (allUsers || []).filter(u => u.email)
 
     if (usersWithEmail.length === 0) {
       return NextResponse.json({ 
