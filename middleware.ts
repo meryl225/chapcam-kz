@@ -24,7 +24,6 @@ const BLOCKED_PATTERNS = [
   /secrets/i,
   /\.sql/i,
   /backup/i,
-  /admin(?!\/stats)/i, // block /admin except /admin/stats
 ]
 
 // Suspicious user agents (bots, scrapers)
@@ -194,6 +193,19 @@ export async function middleware(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/auth/login'
     return addSecurityHeaders(NextResponse.redirect(url))
+  }
+
+  // Protect admin routes - only admin can access
+  if (pathname.startsWith('/admin')) {
+    if (!user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/login'
+      return addSecurityHeaders(NextResponse.redirect(url))
+    }
+    // Only allow admin email
+    if (user.email !== 'fanny.guck@gmail.com') {
+      return new NextResponse('Forbidden', { status: 403 })
+    }
   }
 
   // Redirect logged-in users away from auth pages
