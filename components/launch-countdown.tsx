@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { Clock, Sparkles } from "lucide-react"
+import { Clock, Sparkles, Rocket } from "lucide-react"
 
-// Date de fin du compte a rebours (4 jours a partir du deploiement)
-const LAUNCH_END_DATE = new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).getTime()
+// Date de lancement: Samedi 30 Mai 2026 a 19h00 GMT
+const LAUNCH_DATE = new Date('2026-05-30T19:00:00Z').getTime()
 
 interface TimeLeft {
   days: number
@@ -15,7 +15,7 @@ interface TimeLeft {
 }
 
 function calculateTimeLeft(): TimeLeft {
-  const difference = LAUNCH_END_DATE - Date.now()
+  const difference = LAUNCH_DATE - Date.now()
   
   if (difference <= 0) {
     return { days: 0, hours: 0, minutes: 0, seconds: 0 }
@@ -118,23 +118,27 @@ export function LaunchCountdown() {
                 animate={{ rotate: [0, 360] }}
                 transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
               >
-                <Sparkles className="w-4 h-4 text-[#00ff88]" />
+                <Rocket className="w-4 h-4 text-[#00ff88]" />
               </motion.div>
-              <span className="text-[#00ff88] font-bold text-sm tracking-wide">OFFRE DE LANCEMENT</span>
+              <span className="text-[#00ff88] font-bold text-sm tracking-wide">LANCEMENT OFFICIEL - SAMEDI 30 MAI 19H GMT</span>
             </motion.div>
 
             {/* Title */}
             <h2 className="text-2xl md:text-4xl font-black text-white mb-2">
               {isExpired ? (
-                "L'offre est terminee !"
+                "ChapCam est maintenant disponible !"
               ) : (
                 <>
-                  L&apos;offre se termine dans
+                  Lancement dans
                 </>
               )}
             </h2>
             <p className="text-gray-400 mb-8">
-              Profitez de jusqu&apos;a <span className="text-[#00ff88] font-bold">-29%</span> sur tous les plans
+              {isExpired ? (
+                "Telecharge l'application et commence ton experience"
+              ) : (
+                <>Profitez de jusqu&apos;a <span className="text-[#00ff88] font-bold">-29%</span> sur tous les plans a l&apos;occasion du lancement</>
+              )}
             </p>
 
             {/* Countdown */}
