@@ -6,11 +6,11 @@ import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Apple, Monitor, ArrowLeft, Download, Shield, Zap, Cpu, CheckCircle } from "lucide-react"
 
-// URLs des fichiers - A METTRE A JOUR apres upload sur GitHub Releases
+// URLs des fichiers - GitHub Releases v1.0.0
 const DOWNLOAD_URLS = {
-  mac: "https://github.com/meryl225/chapcam-kz/releases/latest/download/ChapCam-1.0.0.dmg",
-  macArm: "https://github.com/meryl225/chapcam-kz/releases/latest/download/ChapCam-1.0.0-arm64.dmg",
-  windows: "https://github.com/meryl225/chapcam-kz/releases/latest/download/ChapCam-Setup-1.0.0.exe",
+  mac: "https://github.com/meryl225/chapcam-kz/releases/download/v1.0.0/ChapCam-1.0.0.dmg",
+  macArm: "https://github.com/meryl225/chapcam-kz/releases/download/v1.0.0/ChapCam-1.0.0-arm64.dmg",
+  windows: "https://github.com/meryl225/chapcam-kz/releases/download/v1.0.0/ChapCam.Setup.1.0.0.exe",
 }
 
 const features = [
