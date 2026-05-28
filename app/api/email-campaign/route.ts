@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 // Lazy initialization to avoid build-time errors
 function getResend() {
@@ -118,12 +122,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Type invalide. Utilise D2, D1 ou DJ' }, { status: 400 })
     }
     
-    // Recuperer tous les utilisateurs avec email depuis Supabase
-    const { data: allUsers, error: dbError } = await supabase
-      .from('users')
-      .select('email, name')
-    
-    if (dbError || !allUsers?.length) {
+    // Recuperer TOUS les utilisateurs via le client admin (service_role)
+    // On lit les emails directement depuis auth.users (toujours rempli)
+    const admin = createAdminClient()
+    const allUsers: { email: string; name: string }[] = []
+
+    let page = 1
+    const perPage = 1000
+    // Pagination pour recuperer tous les utilisateurs
+    while (true) {
+      const { data, error: listError } = await admin.auth.admin.listUsers({ page, perPage })
+
+      if (listError) {
+        console.error('[Email Campaign] Erreur listUsers:', listError)
+        return NextResponse.json({ error: 'Impossible de recuperer les utilisateurs' }, { status: 500 })
+      }
+
+      const batch = data?.users ?? []
+      for (const u of batch) {
+        if (u.email) {
+          const name = (u.user_metadata?.name as string) || u.email.split('@')[0]
+          allUsers.push({ email: u.email, name })
+        }
+      }
+
+      if (batch.length < perPage) break
+      page++
+    }
+
+    if (!allUsers.length) {
       return NextResponse.json({ error: 'Aucun utilisateur trouve' }, { status: 404 })
     }
     
