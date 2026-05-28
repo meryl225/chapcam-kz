@@ -8,6 +8,47 @@ export const dynamic = 'force-dynamic'
 // Laisse le temps d'envoyer tous les batches (Vercel: max 300s en Pro)
 export const maxDuration = 300
 
+// Validation stricte du format d'adresse email.
+// Resend rejette TOUT un batch si une seule adresse est mal formee,
+// donc on filtre les adresses invalides en amont.
+function isValidEmail(email: string): boolean {
+  if (!email) return false
+  // Pas d'espace, un seul @, un domaine avec un point et une extension
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return re.test(email)
+}
+
+// Envoi un-par-un (filet de securite si un batch entier est rejete).
+// Isole les adresses fautives pour ne pas perdre les valides.
+async function sendIndividually(
+  resend: ReturnType<typeof getResend>,
+  payload: { from: string; to: string; subject: string; html: string }[],
+  errorSamples: { email: string; error: string }[],
+): Promise<{ sent: number; failed: number }> {
+  let sent = 0
+  let failed = 0
+  for (const msg of payload) {
+    try {
+      const { data, error } = await resend.emails.send(msg)
+      if (error) {
+        failed++
+        const m = typeof error === 'string' ? error : (error.message || JSON.stringify(error))
+        if (errorSamples.length < 20) errorSamples.push({ email: msg.to, error: m })
+      } else if (data?.id) {
+        sent++
+      } else {
+        failed++
+      }
+    } catch (err: any) {
+      failed++
+      if (errorSamples.length < 20) errorSamples.push({ email: msg.to, error: err?.message || String(err) })
+    }
+    // Respecte la limite de 5 req/s de Resend
+    await new Promise((r) => setTimeout(r, 250))
+  }
+  return { sent, failed }
+}
+
 // Lazy initialization to avoid build-time errors
 function getResend() {
   const apiKey = process.env.RESEND_API_KEY
@@ -128,6 +169,8 @@ export async function POST(request: NextRequest) {
     // On lit les emails directement depuis auth.users (toujours rempli)
     const admin = createAdminClient()
     const allUsers: { email: string; name: string }[] = []
+    let skippedInvalid = 0
+    const invalidSamples: string[] = []
 
     let page = 1
     const perPage = 1000
@@ -142,10 +185,17 @@ export async function POST(request: NextRequest) {
 
       const batch = data?.users ?? []
       for (const u of batch) {
-        if (u.email) {
-          const name = (u.user_metadata?.name as string) || u.email.split('@')[0]
-          allUsers.push({ email: u.email, name })
+        if (!u.email) continue
+        // Nettoyage + validation stricte de l'adresse.
+        // Une seule adresse invalide fait echouer TOUT le batch Resend, on les exclut donc ici.
+        const email = u.email.trim().toLowerCase()
+        if (!isValidEmail(email)) {
+          skippedInvalid++
+          if (invalidSamples.length < 20) invalidSamples.push(u.email)
+          continue
         }
+        const name = (u.user_metadata?.name as string) || email.split('@')[0]
+        allUsers.push({ email, name })
       }
 
       if (batch.length < perPage) break
@@ -153,10 +203,13 @@ export async function POST(request: NextRequest) {
     }
 
     // 4) Nombre exact d'utilisateurs trouves
-    console.log(`[Email Campaign] ${allUsers.length} utilisateurs trouves dans auth.users`)
+    console.log(`[Email Campaign] ${allUsers.length} adresses valides retenues (${skippedInvalid} adresses invalides ignorees)`)
+    if (skippedInvalid > 0) {
+      console.log('[Email Campaign] Exemples d\'adresses invalides ignorees:', invalidSamples.join(', '))
+    }
 
     if (!allUsers.length) {
-      return NextResponse.json({ error: 'Aucun utilisateur trouve' }, { status: 404 })
+      return NextResponse.json({ error: 'Aucun utilisateur valide trouve' }, { status: 404 })
     }
 
     let successCount = 0
@@ -192,13 +245,12 @@ export async function POST(request: NextRequest) {
         const { data, error } = await resend.batch.send(payload)
 
         if (error) {
-          // Tout le batch a echoue
-          errorCount += payload.length
-          const msg = typeof error === 'string' ? error : (error.message || JSON.stringify(error))
-          console.error(`[Email Campaign] Echec batch ${batchIndex}/${totalBatches}:`, msg)
-          if (errorSamples.length < 20) {
-            errorSamples.push({ email: `batch ${batchIndex} (${payload.length} emails)`, error: msg })
-          }
+          // Le batch a echoue en bloc -> on retombe sur un envoi un-par-un
+          // pour que les adresses valides partent quand meme.
+          console.warn(`[Email Campaign] Batch ${batchIndex} rejete (${error.message || error}). Fallback individuel...`)
+          const { sent, failed } = await sendIndividually(resend, payload, errorSamples)
+          successCount += sent
+          errorCount += failed
         } else {
           // data.data = tableau d'objets { id } pour chaque email accepte
           const accepted = data?.data?.length ?? 0
@@ -208,12 +260,11 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (err: any) {
-        errorCount += payload.length
         const msg = err?.message || String(err)
-        console.error(`[Email Campaign] Exception batch ${batchIndex}/${totalBatches}:`, msg)
-        if (errorSamples.length < 20) {
-          errorSamples.push({ email: `batch ${batchIndex} (${payload.length} emails)`, error: msg })
-        }
+        console.warn(`[Email Campaign] Exception batch ${batchIndex} (${msg}). Fallback individuel...`)
+        const { sent, failed } = await sendIndividually(resend, payload, errorSamples)
+        successCount += sent
+        errorCount += failed
       }
 
       console.log(`[Email Campaign] Batch ${batchIndex}/${totalBatches} traite (succes cumules: ${successCount}, erreurs: ${errorCount})`)
@@ -229,11 +280,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       sent: successCount,
-      message: `Campagne ${type}: ${successCount} email(s) envoye(s) sur ${allUsers.length} utilisateur(s)`,
+      message: `Campagne ${type}: ${successCount} email(s) envoye(s) sur ${allUsers.length} adresse(s) valide(s)${
+        skippedInvalid > 0 ? ` (${skippedInvalid} adresse(s) invalide(s) ignoree(s))` : ''
+      }`,
       stats: {
         total: allUsers.length,
         success: successCount,
         errors: errorCount,
+        skippedInvalid,
       },
       // 6) Echantillon d'erreurs Resend pour diagnostic immediat dans l'UI
       errorSamples,
