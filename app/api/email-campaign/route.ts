@@ -147,6 +147,7 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
+      sent: successCount,
       message: `Campagne ${type} envoyee`,
       stats: {
         total: allUsers.length,
