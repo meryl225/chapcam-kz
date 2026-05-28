@@ -2,14 +2,14 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Mail, Send, Users, Calendar, Clock, CheckCircle, XCircle, Loader2, Rocket, Bell } from "lucide-react"
+import { Mail, Send, Users, Calendar, Clock, CheckCircle, XCircle, Loader2, Rocket, Bell, CalendarDays } from "lucide-react"
 import Link from "next/link"
 
 export default function AdminCampaignPage() {
   const [sending, setSending] = useState<string | null>(null)
   const [results, setResults] = useState<{ type: string; success: boolean; message: string }[]>([])
 
-  const sendCampaign = async (type: "D1" | "DJ") => {
+  const sendCampaign = async (type: "D2" | "D1" | "DJ") => {
     setSending(type)
     
     try {
@@ -80,7 +80,58 @@ export default function AdminCampaignPage() {
         </div>
 
         {/* Campaign Cards */}
-        <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto mb-12">
+        <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto mb-12">
+          {/* Jeudi J-2 */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gradient-to-br from-[#1a1f35] to-[#0f1420] border border-white/10 rounded-2xl p-6 hover:border-[#a855f7]/30 transition-all"
+          >
+            <div className="flex items-start gap-4 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-[#a855f7]/20 flex items-center justify-center flex-shrink-0">
+                <CalendarDays className="w-6 h-6 text-[#a855f7]" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white mb-1">Rappel J-2</h3>
+                <p className="text-gray-400 text-sm">Jeudi 28 Mai</p>
+              </div>
+            </div>
+            
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center gap-2 text-gray-300 text-sm">
+                <Calendar className="w-4 h-4 text-[#a855f7]" />
+                <span>Email de teasing</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-300 text-sm">
+                <Users className="w-4 h-4 text-[#a855f7]" />
+                <span>Tous les utilisateurs inscrits</span>
+              </div>
+              <div className="flex items-center gap-2 text-gray-300 text-sm">
+                <Clock className="w-4 h-4 text-[#a855f7]" />
+                <span>Sujet: &quot;J-2 Lancement ChapCam&quot;</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => sendCampaign("D2")}
+              disabled={sending !== null}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#a855f7] to-[#6366f1] text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {sending === "D2" ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Envoi en cours...
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5" />
+                  Envoyer le rappel J-2
+                </>
+              )}
+            </button>
+          </motion.div>
+
           {/* Vendredi D-1 */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -212,7 +263,7 @@ export default function AdminCampaignPage() {
                   )}
                   <div>
                     <span className="text-white font-medium">
-                      {result.type === "D1" ? "Rappel J-1" : "Lancement Jour J"}
+                      {result.type === "D2" ? "Rappel J-2" : result.type === "D1" ? "Rappel J-1" : "Lancement Jour J"}
                     </span>
                     <span className="text-gray-400 mx-2">-</span>
                     <span className={result.success ? "text-[#00ff88]" : "text-red-400"}>
@@ -235,19 +286,19 @@ export default function AdminCampaignPage() {
           <h4 className="text-white font-bold mb-3">Information</h4>
           <ul className="space-y-2 text-gray-400 text-sm">
             <li className="flex items-start gap-2">
-              <span className="text-[#00d4ff]">1.</span>
-              <span>Les emails sont envoyes a tous les utilisateurs qui ont un compte ChapCam</span>
+              <span className="text-[#a855f7]">1.</span>
+              <span>Envoie le rappel J-2 le <strong className="text-white">Jeudi 28 Mai</strong> dans la journee</span>
             </li>
             <li className="flex items-start gap-2">
               <span className="text-[#00d4ff]">2.</span>
               <span>Envoie le rappel J-1 le <strong className="text-white">Vendredi 29 Mai</strong> dans la journee</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-[#00d4ff]">3.</span>
+              <span className="text-[#e91e8c]">3.</span>
               <span>Envoie l&apos;email de lancement le <strong className="text-white">Samedi 30 Mai</strong> vers 18h30 GMT</span>
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-[#00d4ff]">4.</span>
+              <span className="text-[#00ff88]">4.</span>
               <span>Les emails contiennent le lien vers le site et les offres de lancement (-29%)</span>
             </li>
           </ul>

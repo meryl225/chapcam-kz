@@ -8,10 +8,26 @@ import { users } from '@/lib/db/schema'
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 // Template email pour le rappel de lancement
-function getLaunchReminderEmail(userName: string, isD1: boolean) {
-  const subject = isD1 
-    ? "DEMAIN - Lancement ChapCam a 19h GMT !"
-    : "AUJOURD'HUI - ChapCam lance a 19h GMT !"
+function getLaunchReminderEmail(userName: string, type: 'D2' | 'D1' | 'DJ') {
+  const subjects = {
+    D2: "J-2 - Lancement ChapCam Samedi a 19h GMT !",
+    D1: "DEMAIN - Lancement ChapCam a 19h GMT !",
+    DJ: "MAINTENANT - ChapCam est LIVE !"
+  }
+  
+  const titles = {
+    D2: "Plus que 2 jours !",
+    D1: "C'est DEMAIN !",
+    DJ: "C'est MAINTENANT !"
+  }
+  
+  const messages = {
+    D2: "arrive dans 2 jours",
+    D1: "arrive demain",
+    DJ: "c'est maintenant"
+  }
+  
+  const subject = subjects[type]
   
   const html = `
 <!DOCTYPE html>
@@ -35,7 +51,7 @@ function getLaunchReminderEmail(userName: string, isD1: boolean) {
       <div style="font-size: 60px; margin-bottom: 20px;">🚀</div>
       
       <h2 style="color: #ffffff; font-size: 24px; margin: 0 0 10px 0;">
-        ${isD1 ? 'C\'est DEMAIN !' : 'C\'est AUJOURD\'HUI !'}
+        ${titles[type]}
       </h2>
       
       <p style="color: #00ff88; font-size: 20px; font-weight: bold; margin: 0 0 20px 0;">
@@ -43,7 +59,7 @@ function getLaunchReminderEmail(userName: string, isD1: boolean) {
       </p>
       
       <p style="color: #cccccc; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
-        Salut ${userName || 'toi'} ! Le lancement officiel de ChapCam ${isD1 ? 'arrive demain' : 'c\'est maintenant'}. 
+        Salut ${userName || 'toi'} ! Le lancement officiel de ChapCam ${messages[type]}. 
         Ne rate pas les offres exceptionnelles de lancement !
       </p>
       
@@ -95,8 +111,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { type } = body // 'D1' (demain) ou 'DJ' (jour J)
     
-    if (!type || !['D1', 'DJ'].includes(type)) {
-      return NextResponse.json({ error: 'Type invalide. Utilise D1 ou DJ' }, { status: 400 })
+    if (!type || !['D2', 'D1', 'DJ'].includes(type)) {
+      return NextResponse.json({ error: 'Type invalide. Utilise D2, D1 ou DJ' }, { status: 400 })
     }
     
     // Recuperer tous les utilisateurs avec email
@@ -109,7 +125,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Aucun utilisateur trouve' }, { status: 404 })
     }
     
-    const isD1 = type === 'D1'
     let successCount = 0
     let errorCount = 0
     
@@ -121,7 +136,7 @@ export async function POST(request: NextRequest) {
       const promises = batch.map(async (user) => {
         if (!user.email) return
         
-        const { subject, html } = getLaunchReminderEmail(user.name || '', isD1)
+        const { subject, html } = getLaunchReminderEmail(user.name || '', type as 'D2' | 'D1' | 'DJ')
         
         try {
           await resend.emails.send({
