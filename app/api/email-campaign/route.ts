@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+// Laisse le temps d'envoyer tous les batches (Vercel: max 300s en Pro)
+export const maxDuration = 300
 
 // Lazy initialization to avoid build-time errors
 function getResend() {
@@ -164,59 +166,61 @@ export async function POST(request: NextRequest) {
 
     const resend = getResend()
 
-    // 5) Envoyer les emails par batch de 50
-    const batchSize = 50
+    // 5) Envoyer via l'API BATCH de Resend : jusqu'a 100 emails en 1 seule requete.
+    // Cela contourne la limite "5 requetes/seconde" (un batch = 1 requete).
+    const batchSize = 100
     const totalBatches = Math.ceil(allUsers.length / batchSize)
 
     for (let i = 0; i < allUsers.length; i += batchSize) {
       const batchIndex = Math.floor(i / batchSize) + 1
       const batch = allUsers.slice(i, i + batchSize)
 
-      const promises = batch.map(async (user) => {
-        if (!user.email) return
-
-        const { subject, html } = getLaunchReminderEmail(user.name || '', type as 'D2' | 'D1' | 'DJ')
-
-        try {
-          // IMPORTANT: Resend ne "throw" pas en cas d'echec, il renvoie { data, error }.
-          // Il faut donc verifier explicitement `error`.
-          const { data, error } = await resend.emails.send({
+      // Construit le payload du batch
+      const payload = batch
+        .filter((u) => u.email)
+        .map((user) => {
+          const { subject, html } = getLaunchReminderEmail(user.name || '', type as 'D2' | 'D1' | 'DJ')
+          return {
             from: 'ChapCam <noreply@chapcam.com>',
             to: user.email,
             subject,
             html,
-          })
-
-          if (error) {
-            errorCount++
-            const msg = typeof error === 'string' ? error : (error.message || JSON.stringify(error))
-            console.error(`[Email Campaign] Echec Resend pour ${user.email}:`, msg)
-            if (errorSamples.length < 20) errorSamples.push({ email: user.email, error: msg })
-            return
           }
+        })
 
-          // 7) Succes reel uniquement si Resend renvoie un id
-          if (data?.id) {
-            successCount++
-          } else {
-            errorCount++
-            console.error(`[Email Campaign] Reponse Resend sans id pour ${user.email}:`, JSON.stringify(data))
-            if (errorSamples.length < 20) errorSamples.push({ email: user.email, error: 'Pas d\'id retourne par Resend' })
+      try {
+        const { data, error } = await resend.batch.send(payload)
+
+        if (error) {
+          // Tout le batch a echoue
+          errorCount += payload.length
+          const msg = typeof error === 'string' ? error : (error.message || JSON.stringify(error))
+          console.error(`[Email Campaign] Echec batch ${batchIndex}/${totalBatches}:`, msg)
+          if (errorSamples.length < 20) {
+            errorSamples.push({ email: `batch ${batchIndex} (${payload.length} emails)`, error: msg })
           }
-        } catch (err: any) {
-          errorCount++
-          const msg = err?.message || String(err)
-          console.error(`[Email Campaign] Exception envoi a ${user.email}:`, msg)
-          if (errorSamples.length < 20) errorSamples.push({ email: user.email, error: msg })
+        } else {
+          // data.data = tableau d'objets { id } pour chaque email accepte
+          const accepted = data?.data?.length ?? 0
+          successCount += accepted
+          if (accepted < payload.length) {
+            errorCount += payload.length - accepted
+          }
         }
-      })
+      } catch (err: any) {
+        errorCount += payload.length
+        const msg = err?.message || String(err)
+        console.error(`[Email Campaign] Exception batch ${batchIndex}/${totalBatches}:`, msg)
+        if (errorSamples.length < 20) {
+          errorSamples.push({ email: `batch ${batchIndex} (${payload.length} emails)`, error: msg })
+        }
+      }
 
-      await Promise.all(promises)
       console.log(`[Email Campaign] Batch ${batchIndex}/${totalBatches} traite (succes cumules: ${successCount}, erreurs: ${errorCount})`)
 
-      // Pause entre les batches pour eviter le rate limiting
+      // Petite pause entre les batches pour rester sous la limite de debit
       if (i + batchSize < allUsers.length) {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
+        await new Promise((resolve) => setTimeout(resolve, 600))
       }
     }
 
