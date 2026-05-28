@@ -150,55 +150,89 @@ export async function POST(request: NextRequest) {
       page++
     }
 
+    // 4) Nombre exact d'utilisateurs trouves
+    console.log(`[Email Campaign] ${allUsers.length} utilisateurs trouves dans auth.users`)
+
     if (!allUsers.length) {
       return NextResponse.json({ error: 'Aucun utilisateur trouve' }, { status: 404 })
     }
-    
+
     let successCount = 0
     let errorCount = 0
-    
-    // Envoyer les emails par batch de 10
-    const batchSize = 10
+    // 6) Logs detailles des erreurs Resend (echantillon renvoye au client)
+    const errorSamples: { email: string; error: string }[] = []
+
+    const resend = getResend()
+
+    // 5) Envoyer les emails par batch de 50
+    const batchSize = 50
+    const totalBatches = Math.ceil(allUsers.length / batchSize)
+
     for (let i = 0; i < allUsers.length; i += batchSize) {
+      const batchIndex = Math.floor(i / batchSize) + 1
       const batch = allUsers.slice(i, i + batchSize)
-      
+
       const promises = batch.map(async (user) => {
         if (!user.email) return
-        
+
         const { subject, html } = getLaunchReminderEmail(user.name || '', type as 'D2' | 'D1' | 'DJ')
-        
+
         try {
-          const resend = getResend()
-          await resend.emails.send({
+          // IMPORTANT: Resend ne "throw" pas en cas d'echec, il renvoie { data, error }.
+          // Il faut donc verifier explicitement `error`.
+          const { data, error } = await resend.emails.send({
             from: 'ChapCam <noreply@chapcam.com>',
             to: user.email,
             subject,
-            html
+            html,
           })
-          successCount++
-        } catch (err) {
-          console.error(`Erreur envoi email a ${user.email}:`, err)
+
+          if (error) {
+            errorCount++
+            const msg = typeof error === 'string' ? error : (error.message || JSON.stringify(error))
+            console.error(`[Email Campaign] Echec Resend pour ${user.email}:`, msg)
+            if (errorSamples.length < 20) errorSamples.push({ email: user.email, error: msg })
+            return
+          }
+
+          // 7) Succes reel uniquement si Resend renvoie un id
+          if (data?.id) {
+            successCount++
+          } else {
+            errorCount++
+            console.error(`[Email Campaign] Reponse Resend sans id pour ${user.email}:`, JSON.stringify(data))
+            if (errorSamples.length < 20) errorSamples.push({ email: user.email, error: 'Pas d\'id retourne par Resend' })
+          }
+        } catch (err: any) {
           errorCount++
+          const msg = err?.message || String(err)
+          console.error(`[Email Campaign] Exception envoi a ${user.email}:`, msg)
+          if (errorSamples.length < 20) errorSamples.push({ email: user.email, error: msg })
         }
       })
-      
+
       await Promise.all(promises)
-      
-      // Pause entre les batches pour eviter rate limiting
+      console.log(`[Email Campaign] Batch ${batchIndex}/${totalBatches} traite (succes cumules: ${successCount}, erreurs: ${errorCount})`)
+
+      // Pause entre les batches pour eviter le rate limiting
       if (i + batchSize < allUsers.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise((resolve) => setTimeout(resolve, 1000))
       }
     }
-    
+
+    console.log(`[Email Campaign] TERMINE - total: ${allUsers.length}, succes: ${successCount}, erreurs: ${errorCount}`)
+
     return NextResponse.json({
       success: true,
       sent: successCount,
-      message: `Campagne ${type} envoyee`,
+      message: `Campagne ${type}: ${successCount} email(s) envoye(s) sur ${allUsers.length} utilisateur(s)`,
       stats: {
         total: allUsers.length,
         success: successCount,
-        errors: errorCount
-      }
+        errors: errorCount,
+      },
+      // 6) Echantillon d'erreurs Resend pour diagnostic immediat dans l'UI
+      errorSamples,
     })
     
   } catch (error: any) {

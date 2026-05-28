@@ -7,33 +7,51 @@ import Link from "next/link"
 
 export default function AdminCampaignPage() {
   const [sending, setSending] = useState<string | null>(null)
-  const [results, setResults] = useState<{ type: string; success: boolean; message: string }[]>([])
+  const [results, setResults] = useState<
+    {
+      type: string
+      success: boolean
+      message: string
+      stats?: { total: number; success: number; errors: number }
+      errorSamples?: { email: string; error: string }[]
+    }[]
+  >([])
 
   const sendCampaign = async (type: "D2" | "D1" | "DJ") => {
     setSending(type)
-    
+
     try {
       const res = await fetch("/api/email-campaign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type })
+        body: JSON.stringify({ type }),
       })
-      
+
       const data = await res.json()
-      
-      setResults(prev => [{
-        type,
-        success: data.success,
-        message: data.success 
-          ? `${data.sent} emails envoyes avec succes!` 
-          : data.error || "Erreur lors de l'envoi"
-      }, ...prev])
+
+      setResults((prev) => [
+        {
+          type,
+          success: data.success && (data.stats?.success ?? 0) > 0,
+          message: data.success
+            ? `${data.stats?.success ?? data.sent} email(s) envoye(s) sur ${data.stats?.total ?? "?"} utilisateur(s)${
+                data.stats?.errors ? ` - ${data.stats.errors} echec(s)` : ""
+              }`
+            : data.error || "Erreur lors de l'envoi",
+          stats: data.stats,
+          errorSamples: data.errorSamples,
+        },
+        ...prev,
+      ])
     } catch (error: any) {
-      setResults(prev => [{
-        type,
-        success: false,
-        message: error.message || "Erreur de connexion"
-      }, ...prev])
+      setResults((prev) => [
+        {
+          type,
+          success: false,
+          message: error.message || "Erreur de connexion",
+        },
+        ...prev,
+      ])
     } finally {
       setSending(null)
     }
@@ -250,26 +268,62 @@ export default function AdminCampaignPage() {
               {results.map((result, index) => (
                 <div
                   key={index}
-                  className={`p-4 rounded-xl border flex items-center gap-3 ${
+                  className={`p-4 rounded-xl border ${
                     result.success
                       ? "bg-[#00ff88]/10 border-[#00ff88]/30"
                       : "bg-red-500/10 border-red-500/30"
                   }`}
                 >
-                  {result.success ? (
-                    <CheckCircle className="w-5 h-5 text-[#00ff88] flex-shrink-0" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                  )}
-                  <div>
-                    <span className="text-white font-medium">
-                      {result.type === "D2" ? "Rappel J-2" : result.type === "D1" ? "Rappel J-1" : "Lancement Jour J"}
-                    </span>
-                    <span className="text-gray-400 mx-2">-</span>
-                    <span className={result.success ? "text-[#00ff88]" : "text-red-400"}>
-                      {result.message}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    {result.success ? (
+                      <CheckCircle className="w-5 h-5 text-[#00ff88] flex-shrink-0" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                    )}
+                    <div>
+                      <span className="text-white font-medium">
+                        {result.type === "D2" ? "Rappel J-2" : result.type === "D1" ? "Rappel J-1" : "Lancement Jour J"}
+                      </span>
+                      <span className="text-gray-400 mx-2">-</span>
+                      <span className={result.success ? "text-[#00ff88]" : "text-red-400"}>
+                        {result.message}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Stats detaillees */}
+                  {result.stats && (
+                    <div className="mt-3 grid grid-cols-3 gap-2 pl-8">
+                      <div className="rounded-lg bg-white/5 px-3 py-2 text-center">
+                        <p className="text-lg font-bold text-white">{result.stats.total}</p>
+                        <p className="text-xs text-gray-400">Utilisateurs</p>
+                      </div>
+                      <div className="rounded-lg bg-[#00ff88]/10 px-3 py-2 text-center">
+                        <p className="text-lg font-bold text-[#00ff88]">{result.stats.success}</p>
+                        <p className="text-xs text-gray-400">Envoyes</p>
+                      </div>
+                      <div className="rounded-lg bg-red-500/10 px-3 py-2 text-center">
+                        <p className="text-lg font-bold text-red-400">{result.stats.errors}</p>
+                        <p className="text-xs text-gray-400">Echecs</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Erreurs Resend detaillees */}
+                  {result.errorSamples && result.errorSamples.length > 0 && (
+                    <div className="mt-3 pl-8">
+                      <p className="text-xs font-bold text-red-400 mb-1">
+                        Detail des erreurs Resend (echantillon):
+                      </p>
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        {result.errorSamples.map((e, i) => (
+                          <p key={i} className="text-xs text-red-300/80 font-mono break-all">
+                            {e.email}: {e.error}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
