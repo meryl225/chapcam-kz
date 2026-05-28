@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy initialization to avoid build-time errors
+function getResend() {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY not configured')
+  }
+  return new Resend(apiKey)
+}
 
 // Template email pour le rappel de lancement
 function getLaunchReminderEmail(userName: string, isReminder: 'friday' | 'saturday') {
@@ -119,15 +123,14 @@ function getLaunchReminderEmail(userName: string, isReminder: 'friday' | 'saturd
 export async function POST(request: Request) {
   try {
     // Verify admin or internal call
-    const session = await auth.api.getSession({
-      headers: await headers()
-    })
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
     
     const internalSecret = request.headers.get('x-internal-secret')
     const isInternalCall = internalSecret === process.env.INTERNAL_API_SECRET
     
     // Only admin or internal calls can trigger mass emails
-    if (!session?.user?.email?.includes('admin') && !isInternalCall) {
+    if (!user?.email?.includes('admin') && !isInternalCall) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -137,6 +140,7 @@ export async function POST(request: Request) {
     // If test email, only send to that address
     if (testEmail) {
       const emailContent = getLaunchReminderEmail('Testeur', type)
+      const resend = getResend()
       
       const { data, error } = await resend.emails.send({
         from: 'ChapCam <noreply@chapcam.com>',
@@ -156,9 +160,16 @@ export async function POST(request: Request) {
       })
     }
 
-    // Get all users with email
-    const allUsers = await db.select().from(users)
-    const usersWithEmail = allUsers.filter(u => u.email)
+    // Get all users with email from Supabase
+    const { data: allUsers, error: dbError } = await supabase
+      .from('users')
+      .select('email, name')
+    
+    if (dbError) {
+      return NextResponse.json({ error: dbError.message }, { status: 500 })
+    }
+    
+    const usersWithEmail = (allUsers || []).filter(u => u.email)
 
     if (usersWithEmail.length === 0) {
       return NextResponse.json({ 
@@ -177,6 +188,7 @@ export async function POST(request: Request) {
       
       const promises = batch.map(async (user) => {
         const emailContent = getLaunchReminderEmail(user.name || 'ami', type)
+        const resend = getResend()
         
         try {
           await resend.emails.send({

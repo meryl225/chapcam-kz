@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
-import { db } from '@/lib/db'
-import { users } from '@/lib/db/schema'
+import { createClient } from '@/lib/supabase/server'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy initialization to avoid build-time errors
+function getResend() {
+  const apiKey = process.env.RESEND_API_KEY
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY not configured')
+  }
+  return new Resend(apiKey)
+}
 
 // Template email pour le rappel de lancement
 function getLaunchReminderEmail(userName: string, type: 'D2' | 'D1' | 'DJ') {
@@ -100,28 +104,26 @@ function getLaunchReminderEmail(userName: string, type: 'D2' | 'D1' | 'DJ') {
 export async function POST(request: NextRequest) {
   try {
     // Verifier auth admin
-    const session = await auth.api.getSession({
-      headers: await headers()
-    })
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
     
-    if (!session?.user?.email || session.user.email !== 'fanny.guck@gmail.com') {
+    if (!user?.email || user.email !== 'fanny.guck@gmail.com') {
       return NextResponse.json({ error: 'Non autorise' }, { status: 403 })
     }
     
     const body = await request.json()
-    const { type } = body // 'D1' (demain) ou 'DJ' (jour J)
+    const { type } = body // 'D2', 'D1' ou 'DJ'
     
     if (!type || !['D2', 'D1', 'DJ'].includes(type)) {
       return NextResponse.json({ error: 'Type invalide. Utilise D2, D1 ou DJ' }, { status: 400 })
     }
     
-    // Recuperer tous les utilisateurs avec email
-    const allUsers = await db.select({
-      email: users.email,
-      name: users.name
-    }).from(users)
+    // Recuperer tous les utilisateurs avec email depuis Supabase
+    const { data: allUsers, error: dbError } = await supabase
+      .from('users')
+      .select('email, name')
     
-    if (!allUsers.length) {
+    if (dbError || !allUsers?.length) {
       return NextResponse.json({ error: 'Aucun utilisateur trouve' }, { status: 404 })
     }
     
@@ -139,6 +141,7 @@ export async function POST(request: NextRequest) {
         const { subject, html } = getLaunchReminderEmail(user.name || '', type as 'D2' | 'D1' | 'DJ')
         
         try {
+          const resend = getResend()
           await resend.emails.send({
             from: 'ChapCam <noreply@chapcam.com>',
             to: user.email,
