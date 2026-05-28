@@ -3,22 +3,106 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createDecartClient, models } from '@decartai/sdk'
 
+// 2 points = 1 seconde de swap
+const POINTS_PER_SECOND = 2
+
 export function useLucy21() {
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [connectionState, setConnectionState] = useState('disconnected')
   const [error, setError] = useState<string | null>(null)
+  const [pointsUsed, setPointsUsed] = useState(0)
+  const [sessionDuration, setSessionDuration] = useState(0)
 
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const realtimeClientRef = useRef<any>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const sessionStartRef = useRef<number | null>(null)
+  const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Deduire les points toutes les secondes pendant le swap
+  const startPointsDeduction = useCallback(() => {
+    if (pointsIntervalRef.current) {
+      clearInterval(pointsIntervalRef.current)
+    }
+    
+    sessionStartRef.current = Date.now()
+    setPointsUsed(0)
+    setSessionDuration(0)
+    
+    // Deduire 2 points par seconde
+    pointsIntervalRef.current = setInterval(async () => {
+      const elapsed = Math.floor((Date.now() - (sessionStartRef.current || Date.now())) / 1000)
+      const points = elapsed * POINTS_PER_SECOND
+      setSessionDuration(elapsed)
+      setPointsUsed(points)
+      
+      // Envoyer la deduction au serveur toutes les 10 secondes
+      if (elapsed > 0 && elapsed % 10 === 0) {
+        try {
+          const res = await fetch('/api/points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              pointsToDeduct: 10 * POINTS_PER_SECOND, // 20 points pour 10 secondes
+              sessionDuration: 10 
+            })
+          })
+          const data = await res.json()
+          
+          // Si plus assez de points, arreter le swap
+          if (!data.success && data.error === 'Points insuffisants') {
+            disconnect()
+          }
+        } catch (err) {
+          console.error('[Lucy 2.1] Points deduction error:', err)
+        }
+      }
+    }, 1000)
+  }, [])
+
+  const stopPointsDeduction = useCallback(async () => {
+    if (pointsIntervalRef.current) {
+      clearInterval(pointsIntervalRef.current)
+      pointsIntervalRef.current = null
+    }
+    
+    // Deduire les points restants (si session < 10 secondes)
+    if (sessionStartRef.current) {
+      const totalSeconds = Math.floor((Date.now() - sessionStartRef.current) / 1000)
+      const remainingSeconds = totalSeconds % 10 // Secondes non encore deduites
+      
+      if (remainingSeconds > 0) {
+        try {
+          await fetch('/api/points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              pointsToDeduct: remainingSeconds * POINTS_PER_SECOND,
+              sessionDuration: remainingSeconds 
+            })
+          })
+        } catch (err) {
+          console.error('[Lucy 2.1] Final points deduction error:', err)
+        }
+      }
+    }
+    
+    sessionStartRef.current = null
+  }, [])
 
   useEffect(() => {
-    return () => disconnect()
+    return () => {
+      disconnect()
+      stopPointsDeduction()
+    }
   }, [])
 
   const disconnect = useCallback(() => {
+    // Arreter la deduction de points
+    stopPointsDeduction()
+    
     if (realtimeClientRef.current) {
       try { realtimeClientRef.current.disconnect() } catch {}
       realtimeClientRef.current = null
@@ -34,7 +118,7 @@ export function useLucy21() {
     setIsConnecting(false)
     setConnectionState('disconnected')
     setError(null)
-  }, [])
+  }, [stopPointsDeduction])
 
   const connect = useCallback(async (avatarImageUrl: string) => {
     disconnect()
@@ -43,6 +127,14 @@ export function useLucy21() {
     setConnectionState('connecting')
 
     try {
+      // Verifier les points disponibles avant de commencer
+      const pointsRes = await fetch('/api/points')
+      const pointsData = await pointsRes.json()
+      
+      if (!pointsData.success || pointsData.points < POINTS_PER_SECOND * 10) {
+        throw new Error('Points insuffisants. Recharge ton compte pour utiliser le swap.')
+      }
+
       const tokenRes = await fetch('/api/decart-token')
       const { token: clientToken } = await tokenRes.json()
 
@@ -97,6 +189,8 @@ export function useLucy21() {
         if (state === 'connected' || state === 'generating') {
           setIsConnected(true)
           setIsConnecting(false)
+          // Demarrer la deduction de points quand connecte
+          startPointsDeduction()
         }
       })
 
@@ -108,7 +202,7 @@ export function useLucy21() {
       setError(err.message || 'Erreur de connexion')
       setIsConnecting(false)
     }
-  }, [disconnect])
+  }, [disconnect, startPointsDeduction])
 
   return {
     isConnected,
@@ -119,5 +213,7 @@ export function useLucy21() {
     remoteVideoRef,
     connect,
     disconnect,
+    pointsUsed,
+    sessionDuration,
   }
 }
