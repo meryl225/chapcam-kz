@@ -18,37 +18,6 @@ function isValidEmail(email: string): boolean {
   return re.test(email)
 }
 
-// Envoi un-par-un (filet de securite si un batch entier est rejete).
-// Isole les adresses fautives pour ne pas perdre les valides.
-async function sendIndividually(
-  resend: ReturnType<typeof getResend>,
-  payload: { from: string; to: string; subject: string; html: string }[],
-  errorSamples: { email: string; error: string }[],
-): Promise<{ sent: number; failed: number }> {
-  let sent = 0
-  let failed = 0
-  for (const msg of payload) {
-    try {
-      const { data, error } = await resend.emails.send(msg)
-      if (error) {
-        failed++
-        const m = typeof error === 'string' ? error : (error.message || JSON.stringify(error))
-        if (errorSamples.length < 20) errorSamples.push({ email: msg.to, error: m })
-      } else if (data?.id) {
-        sent++
-      } else {
-        failed++
-      }
-    } catch (err: any) {
-      failed++
-      if (errorSamples.length < 20) errorSamples.push({ email: msg.to, error: err?.message || String(err) })
-    }
-    // Respecte la limite de 5 req/s de Resend
-    await new Promise((r) => setTimeout(r, 250))
-  }
-  return { sent, failed }
-}
-
 // Lazy initialization to avoid build-time errors
 function getResend() {
   const apiKey = process.env.RESEND_API_KEY
@@ -245,12 +214,14 @@ export async function POST(request: NextRequest) {
         const { data, error } = await resend.batch.send(payload)
 
         if (error) {
-          // Le batch a echoue en bloc -> on retombe sur un envoi un-par-un
-          // pour que les adresses valides partent quand meme.
-          console.warn(`[Email Campaign] Batch ${batchIndex} rejete (${error.message || error}). Fallback individuel...`)
-          const { sent, failed } = await sendIndividually(resend, payload, errorSamples)
-          successCount += sent
-          errorCount += failed
+          // Le batch est rejete en bloc. On compte les echecs SANS retry lent
+          // (le retry un-par-un faisait timeout la fonction -> "Failed to fetch").
+          errorCount += payload.length
+          const msg = typeof error === 'string' ? error : (error.message || JSON.stringify(error))
+          console.error(`[Email Campaign] Batch ${batchIndex}/${totalBatches} rejete:`, msg)
+          if (errorSamples.length < 20) {
+            errorSamples.push({ email: `batch ${batchIndex} (${payload.length} emails)`, error: msg })
+          }
         } else {
           // data.data = tableau d'objets { id } pour chaque email accepte
           const accepted = data?.data?.length ?? 0
@@ -260,18 +231,19 @@ export async function POST(request: NextRequest) {
           }
         }
       } catch (err: any) {
+        errorCount += payload.length
         const msg = err?.message || String(err)
-        console.warn(`[Email Campaign] Exception batch ${batchIndex} (${msg}). Fallback individuel...`)
-        const { sent, failed } = await sendIndividually(resend, payload, errorSamples)
-        successCount += sent
-        errorCount += failed
+        console.error(`[Email Campaign] Exception batch ${batchIndex}/${totalBatches}:`, msg)
+        if (errorSamples.length < 20) {
+          errorSamples.push({ email: `batch ${batchIndex} (${payload.length} emails)`, error: msg })
+        }
       }
 
       console.log(`[Email Campaign] Batch ${batchIndex}/${totalBatches} traite (succes cumules: ${successCount}, erreurs: ${errorCount})`)
 
       // Petite pause entre les batches pour rester sous la limite de debit
       if (i + batchSize < allUsers.length) {
-        await new Promise((resolve) => setTimeout(resolve, 600))
+        await new Promise((resolve) => setTimeout(resolve, 350))
       }
     }
 
