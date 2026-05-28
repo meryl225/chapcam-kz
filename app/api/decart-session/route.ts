@@ -1,18 +1,16 @@
 import { createDecartClient } from '@decartai/sdk'
 import { NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
-import { headers } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function POST() {
   // 1. Verifier que l'utilisateur est authentifie
-  const session = await auth.api.getSession({
-    headers: await headers()
-  })
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!session?.user?.id) {
+  if (!user?.id) {
     return NextResponse.json(
       { error: 'Non authentifie. Connecte-toi pour utiliser le swap.' },
       { status: 401 }
@@ -42,20 +40,20 @@ export async function POST() {
         'http://localhost:3000'
       ],
       metadata: {
-        userId: session.user.id,
-        userEmail: session.user.email,
+        userId: user.id,
+        userEmail: user.email,
         sessionType: 'realtime-swap',
         createdAt: new Date().toISOString()
       }
     })
 
-    console.log(`[Decart Session] Session creee pour user ${session.user.id}`)
+    console.log(`[Decart Session] Session creee pour user ${user.id}`)
 
     return NextResponse.json({
       success: true,
       token: token.apiKey || token.token,
       expiresAt: token.expiresAt,
-      userId: session.user.id
+      userId: user.id
     })
   } catch (error: any) {
     console.error('[Decart Session] Error:', error)
