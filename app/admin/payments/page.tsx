@@ -11,6 +11,7 @@ import {
   Clock,
   Loader2,
   Settings,
+  Mail,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -100,6 +101,33 @@ export default function AdminPaymentsPage() {
       const data = await res.json()
       if (res.ok) {
         setToast({ type: 'ok', msg: data.message || 'Action effectuee' })
+        load()
+      } else {
+        setToast({ type: 'err', msg: data.error || 'Erreur' })
+      }
+    } catch {
+      setToast({ type: 'err', msg: 'Erreur de connexion' })
+    } finally {
+      setActioningId(null)
+    }
+  }
+
+  const handleRelink = async (id: string, currentEmail: string) => {
+    const newEmail = window.prompt(
+      `Corriger l'email et crediter les points.\n\nEmail actuel : ${currentEmail}\n\nSaisissez le bon email (celui du compte ChapCam de l'utilisateur) :`,
+      currentEmail,
+    )
+    if (!newEmail || !newEmail.trim()) return
+    setActioningId(id)
+    try {
+      const res = await fetch('/api/admin/payments/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'relink', newEmail: newEmail.trim() }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setToast({ type: 'ok', msg: data.message || 'Points credites' })
         load()
       } else {
         setToast({ type: 'err', msg: data.error || 'Erreur' })
@@ -236,30 +264,45 @@ export default function AdminPaymentsPage() {
                     )}
                   </div>
 
-                  {r.status === 'pending' && (
-                    <div className="flex gap-2 lg:flex-col xl:flex-row">
-                      <button
-                        onClick={() => handleAction(r.id, 'approve')}
-                        disabled={actioningId === r.id}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#00ff88] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
-                      >
-                        {actioningId === r.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Check className="h-4 w-4" />
-                        )}
-                        Valider
-                      </button>
-                      <button
-                        onClick={() => handleAction(r.id, 'reject')}
-                        disabled={actioningId === r.id}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-5 py-2.5 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-60"
-                      >
-                        <X className="h-4 w-4" />
-                        Refuser
-                      </button>
-                    </div>
-                  )}
+                  <div className="flex gap-2 lg:flex-col xl:flex-row">
+                    {r.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => handleAction(r.id, 'approve')}
+                          disabled={actioningId === r.id}
+                          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#00ff88] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
+                        >
+                          {actioningId === r.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                          Valider
+                        </button>
+                        <button
+                          onClick={() => handleAction(r.id, 'reject')}
+                          disabled={actioningId === r.id}
+                          className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-red-500/40 bg-red-500/10 px-5 py-2.5 text-sm font-semibold text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-60"
+                        >
+                          <X className="h-4 w-4" />
+                          Refuser
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={() => handleRelink(r.id, r.email)}
+                      disabled={actioningId === r.id}
+                      className="flex items-center justify-center gap-2 rounded-xl border border-gray-700 bg-[#0a0a0a] px-5 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white disabled:opacity-60"
+                      title="Corriger l'email et crediter les points sur le bon compte"
+                    >
+                      {actioningId === r.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Mail className="h-4 w-4" />
+                      )}
+                      Corriger l&apos;email
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
