@@ -5,6 +5,9 @@ import { createDecartClient, models } from '@decartai/sdk'
 
 // 2 points = 1 seconde de swap
 const POINTS_PER_SECOND = 2
+// Intervalle d'envoi de la deduction au serveur (en secondes).
+// Plus court = arret plus precis a l'epuisement, moins de points "perdus".
+const DEDUCTION_INTERVAL = 5
 
 export function useLucy21() {
   const [isConnected, setIsConnected] = useState(false)
@@ -31,28 +34,28 @@ export function useLucy21() {
     setPointsUsed(0)
     setSessionDuration(0)
     
-    // Deduire 2 points par seconde
+    // Deduire 2 points par seconde (affichage local chaque seconde)
     pointsIntervalRef.current = setInterval(async () => {
       const elapsed = Math.floor((Date.now() - (sessionStartRef.current || Date.now())) / 1000)
       const points = elapsed * POINTS_PER_SECOND
       setSessionDuration(elapsed)
       setPointsUsed(points)
-      
-      // Envoyer la deduction au serveur toutes les 10 secondes
-      if (elapsed > 0 && elapsed % 10 === 0) {
+
+      // Envoyer la deduction au serveur a chaque palier (toutes les 5s)
+      if (elapsed > 0 && elapsed % DEDUCTION_INTERVAL === 0) {
         try {
           const res = await fetch('/api/points', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              pointsToDeduct: 10 * POINTS_PER_SECOND, // 20 points pour 10 secondes
-              sessionDuration: 10 
-            })
+            body: JSON.stringify({
+              pointsToDeduct: DEDUCTION_INTERVAL * POINTS_PER_SECOND,
+              sessionDuration: DEDUCTION_INTERVAL,
+            }),
           })
           const data = await res.json()
-          
-          // Si plus assez de points, arreter le swap
-          if (!data.success && data.error === 'Points insuffisants') {
+
+          // Plus de points OU solde epuise par cette deduction -> couper le swap
+          if (!data.success || data.depleted) {
             disconnect()
           }
         } catch (err) {
@@ -68,10 +71,10 @@ export function useLucy21() {
       pointsIntervalRef.current = null
     }
     
-    // Deduire les points restants (si session < 10 secondes)
+    // Deduire les secondes restantes non encore facturees (< 1 palier)
     if (sessionStartRef.current) {
       const totalSeconds = Math.floor((Date.now() - sessionStartRef.current) / 1000)
-      const remainingSeconds = totalSeconds % 10 // Secondes non encore deduites
+      const remainingSeconds = totalSeconds % DEDUCTION_INTERVAL // Secondes non encore deduites
       
       if (remainingSeconds > 0) {
         try {
@@ -154,11 +157,14 @@ export function useLucy21() {
     setConnectionState('connecting')
 
     try {
-      // Verifier les points disponibles avant de commencer
+      // Verifier les points disponibles avant de commencer.
+      // Il suffit d'avoir au moins 1 palier de points (5s) pour demarrer ;
+      // le client pourra ensuite swaper jusqu'a epuisement total du solde.
       const pointsRes = await fetch('/api/points')
       const pointsData = await pointsRes.json()
-      
-      if (!pointsData.success || pointsData.points < POINTS_PER_SECOND * 10) {
+
+      const minToStart = POINTS_PER_SECOND * DEDUCTION_INTERVAL // 10 points = 5s
+      if (!pointsData.success || pointsData.points < minToStart) {
         throw new Error('Points insuffisants. Recharge ton compte pour utiliser le swap.')
       }
 
