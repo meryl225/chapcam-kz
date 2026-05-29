@@ -199,8 +199,7 @@ export function useLucy21() {
       const realtimeClient = await client.realtime.connect(stream, {
         model: models.realtime('lucy-2.1'),
         mirror: 'auto',
-        quality: 'high',
-        latencyMode: 'low',
+        resolution: '720p',
 
         onRemoteStream: (transformedStream: MediaStream) => {
           if (remoteVideoRef.current) {
