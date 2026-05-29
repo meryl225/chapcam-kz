@@ -35,20 +35,24 @@ export async function POST(request: NextRequest) {
     }
 
     const currentPoints = subscription.points || 0
-    
-    // Verifier si l'utilisateur a assez de points
-    if (currentPoints < points) {
-      return NextResponse.json({ 
-        success: false, 
+
+    // Si le solde est deja a zero, rien a deduire : le swap doit s'arreter.
+    if (currentPoints <= 0) {
+      return NextResponse.json({
+        success: false,
         error: 'Points insuffisants',
-        currentPoints,
-        requiredPoints: points
+        currentPoints: 0,
+        depleted: true,
       }, { status: 400 })
     }
 
-    // Deduire les points
-    const newPoints = Math.max(0, currentPoints - points)
-    
+    // Deduire ce qui est demande, mais jamais plus que le solde disponible.
+    // Ainsi le client consomme TOUS ses points jusqu'a epuisement, sans
+    // gaspiller le dernier palier incomplet.
+    const pointsDeducted = Math.min(points, currentPoints)
+    const newPoints = currentPoints - pointsDeducted
+    const depleted = newPoints <= 0
+
     const { error: updateError } = await supabase
       .from('subscriptions')
       .update({ 
@@ -68,16 +72,18 @@ export async function POST(request: NextRequest) {
     // Enregistrer la session de swap
     await supabase.from('swap_sessions').insert({
       user_id: user.id,
-      duration_seconds: sessionDuration || Math.floor(points / POINTS_PER_SECOND),
-      points_used: points,
+      duration_seconds: sessionDuration || Math.floor(pointsDeducted / POINTS_PER_SECOND),
+      points_used: pointsDeducted,
     })
 
     return NextResponse.json({
       success: true,
       previousPoints: currentPoints,
-      pointsDeducted: points,
+      pointsDeducted,
       currentPoints: newPoints,
-      maxPoints: subscription.max_points || 0
+      maxPoints: subscription.max_points || 0,
+      // Signale au client que le solde est epuise -> il doit couper le swap.
+      depleted,
     })
 
   } catch (error) {
