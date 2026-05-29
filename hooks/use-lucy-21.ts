@@ -102,17 +102,44 @@ export function useLucy21() {
   const disconnect = useCallback(() => {
     // Arreter la deduction de points
     stopPointsDeduction()
-    
+
+    // 1. Fermer la session Decart (arrete la facturation cote serveur)
     if (realtimeClientRef.current) {
-      try { realtimeClientRef.current.disconnect() } catch {}
+      try {
+        realtimeClientRef.current.disconnect()
+      } catch (e) {
+        console.error('[Lucy 2.1] Erreur disconnect Decart:', e)
+      }
       realtimeClientRef.current = null
     }
+
+    // 2. Couper la camera locale (tous les tracks du flux capture)
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
-    if (localVideoRef.current) localVideoRef.current.srcObject = null
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
+
+    // 3. Couper egalement les tracks attaches aux elements video
+    //    (flux local ET flux transforme renvoye par Decart) pour eteindre
+    //    le voyant camera et liberer la ressource dans tous les cas.
+    const localStream = localVideoRef.current?.srcObject as MediaStream | null
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop())
+    }
+    const remoteStream = remoteVideoRef.current?.srcObject as MediaStream | null
+    if (remoteStream) {
+      remoteStream.getTracks().forEach((track) => track.stop())
+    }
+
+    // 4. Detacher et mettre en pause les elements video
+    if (localVideoRef.current) {
+      localVideoRef.current.pause()
+      localVideoRef.current.srcObject = null
+    }
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.pause()
+      remoteVideoRef.current.srcObject = null
+    }
 
     setIsConnected(false)
     setIsConnecting(false)
@@ -199,10 +226,32 @@ export function useLucy21() {
 
     } catch (err: any) {
       console.error('[Lucy 2.1]', err)
+      // Nettoyage complet : couper la camera et fermer toute session Decart
+      // ouverte avant l'echec, pour ne pas laisser la camera allumee ni
+      // facturer Decart inutilement.
+      if (realtimeClientRef.current) {
+        try {
+          realtimeClientRef.current.disconnect()
+        } catch {}
+        realtimeClientRef.current = null
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
+      }
+      const localStream = localVideoRef.current?.srcObject as MediaStream | null
+      if (localStream) localStream.getTracks().forEach((track) => track.stop())
+      if (localVideoRef.current) {
+        localVideoRef.current.pause()
+        localVideoRef.current.srcObject = null
+      }
+      stopPointsDeduction()
+      setIsConnected(false)
+      setConnectionState('error')
       setError(err.message || 'Erreur de connexion')
       setIsConnecting(false)
     }
-  }, [disconnect, startPointsDeduction])
+  }, [disconnect, startPointsDeduction, stopPointsDeduction])
 
   return {
     isConnected,
