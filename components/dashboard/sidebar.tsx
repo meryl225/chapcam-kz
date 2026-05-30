@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, CreditCard, Battery, Shield } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, CreditCard, Battery, Shield, ReceiptText } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -49,6 +49,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES' },
   { href: '/dashboard/settings', icon: Settings, label: 'PARAMETRES' },
   { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGE' },
+  { href: '/dashboard/mes-demandes', icon: ReceiptText, label: 'MES DEMANDES' },
 ]
 
 interface SidebarContentProps {

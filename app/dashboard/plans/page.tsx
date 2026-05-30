@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Check, Crown, Clock, Sparkles, ExternalLink, Loader2 } from 'lucide-react'
+import { Check, Crown, Clock, Sparkles, Loader2, CreditCard } from 'lucide-react'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 import { PLANS, type PlanConfig } from '@/lib/plans'
 import { PaymentConfirmModal } from './payment-confirm-modal'
 
@@ -11,8 +12,6 @@ type WaveLinkMap = Record<string, { plan: string; label: string; amount: number;
 export default function PlansPage() {
   const [waveLinks, setWaveLinks] = useState<WaveLinkMap>({})
   const [loadingLinks, setLoadingLinks] = useState(true)
-  // plan dont le lien Wave a ete ouvert -> affiche "J'ai effectue mon paiement"
-  const [openedPlan, setOpenedPlan] = useState<string | null>(null)
   const [modalPlan, setModalPlan] = useState<PlanConfig | null>(null)
 
   useEffect(() => {
@@ -27,17 +26,6 @@ export default function PlansPage() {
       .finally(() => setLoadingLinks(false))
   }, [])
 
-  const handleSubscribe = (plan: PlanConfig) => {
-    const link = waveLinks[plan.id]?.wave_url
-    if (link) {
-      window.open(link, '_blank', 'noopener,noreferrer')
-      setOpenedPlan(plan.id)
-    } else {
-      // Pas de lien configure : on ouvre directement le formulaire de confirmation
-      setOpenedPlan(plan.id)
-    }
-  }
-
   return (
     <div className="min-h-screen bg-[#050505] px-6 py-12">
       <div className="mx-auto max-w-7xl">
@@ -47,11 +35,11 @@ export default function PlansPage() {
             <div className="relative z-10 text-center">
               <div className="mb-2 flex items-center justify-center gap-2">
                 <Sparkles className="h-5 w-5 text-[#00ff88]" />
-                <span className="text-lg font-bold text-[#00ff88]">PAIEMENT SECURISE VIA WAVE</span>
+                <span className="text-lg font-bold text-[#00ff88]">PAIEMENT MOBILE SECURISE</span>
                 <Sparkles className="h-5 w-5 text-[#00ff88]" />
               </div>
               <h3 className="mb-2 text-xl font-black text-white md:text-2xl">
-                Choisissez votre formule, payez avec <span className="text-[#00ff88]">Wave</span>
+                Payez avec <span className="text-[#00ff88]">Wave, Orange, MTN ou Moov</span>
               </h3>
               <p className="text-sm text-gray-300">
                 Apres le paiement, confirmez votre transaction pour activer votre abonnement.
@@ -72,7 +60,6 @@ export default function PlansPage() {
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan, index) => {
-            const opened = openedPlan === plan.id
             return (
               <motion.div
                 key={plan.id}
@@ -125,42 +112,24 @@ export default function PlansPage() {
                   </li>
                 </ul>
 
-                {opened ? (
-                  <button
-                    onClick={() => setModalPlan(plan)}
-                    className="mt-10 w-full rounded-2xl bg-[#00ff88] py-4 font-semibold text-black transition-all hover:bg-[#00dd77]"
-                  >
-                    J&apos;ai effectue mon paiement
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleSubscribe(plan)}
-                    disabled={loadingLinks}
-                    className={`mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all disabled:opacity-60 ${
-                      plan.popular
-                        ? 'bg-[#00ff88] text-black hover:bg-[#00dd77]'
-                        : 'bg-white text-black hover:bg-gray-200'
-                    }`}
-                  >
-                    {loadingLinks ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <>
-                        S&apos;abonner
-                        <ExternalLink className="h-4 w-4" />
-                      </>
-                    )}
-                  </button>
-                )}
-
-                {opened && (
-                  <button
-                    onClick={() => handleSubscribe(plan)}
-                    className="mt-3 text-center text-xs text-gray-500 underline transition-colors hover:text-[#00ff88]"
-                  >
-                    Rouvrir le lien de paiement Wave
-                  </button>
-                )}
+                <button
+                  onClick={() => setModalPlan(plan)}
+                  disabled={loadingLinks}
+                  className={`mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all disabled:opacity-60 ${
+                    plan.popular
+                      ? 'bg-[#00ff88] text-black hover:bg-[#00dd77]'
+                      : 'bg-white text-black hover:bg-gray-200'
+                  }`}
+                >
+                  {loadingLinks ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      S&apos;abonner
+                      <CreditCard className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
               </motion.div>
             )
           })}
@@ -172,16 +141,30 @@ export default function PlansPage() {
           transition={{ delay: 0.5 }}
           className="mt-12 text-center"
         >
-          <div className="inline-flex items-center gap-3 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-6 py-3">
-            <Clock className="h-5 w-5 text-yellow-400" />
+          <div className="inline-flex flex-col items-center gap-3 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-6 py-4 sm:flex-row">
+            <Clock className="h-5 w-5 flex-shrink-0 text-yellow-400" />
             <p className="font-semibold text-yellow-400">
               Votre abonnement est active manuellement apres verification du paiement.
             </p>
           </div>
+          <div className="mt-6">
+            <Link
+              href="/dashboard/mes-demandes"
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-5 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white"
+            >
+              Suivre l&apos;etat de mes demandes
+            </Link>
+          </div>
         </motion.div>
       </div>
 
-      {modalPlan && <PaymentConfirmModal plan={modalPlan} onClose={() => setModalPlan(null)} />}
+      {modalPlan && (
+        <PaymentConfirmModal
+          plan={modalPlan}
+          waveUrl={waveLinks[modalPlan.id]?.wave_url}
+          onClose={() => setModalPlan(null)}
+        />
+      )}
     </div>
   )
 }

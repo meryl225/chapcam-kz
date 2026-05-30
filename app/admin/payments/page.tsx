@@ -12,8 +12,10 @@ import {
   Loader2,
   Settings,
   Mail,
+  UserPlus,
 } from 'lucide-react'
 import Link from 'next/link'
+import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods'
 
 interface PaymentRequest {
   id: string
@@ -22,6 +24,10 @@ interface PaymentRequest {
   phone_number: string
   plan: string
   amount: number
+  payment_method: string
+  paid_amount: number | null
+  paid_at: string | null
+  comment: string | null
   wave_transaction_reference: string
   screenshot_url: string | null
   status: 'pending' | 'approved' | 'rejected'
@@ -153,7 +159,14 @@ export default function AdminPaymentsPage() {
               <p className="text-sm text-gray-400">Validez les demandes d&apos;abonnement</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/admin/subscriptions"
+              className="flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white"
+            >
+              <UserPlus className="h-4 w-4" />
+              Ajouter un abonnement
+            </Link>
             <Link
               href="/admin/settings"
               className="flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white"
@@ -234,23 +247,41 @@ export default function AdminPaymentsPage() {
                       <span className="rounded-full border border-gray-700 bg-[#0a0a0a] px-2.5 py-0.5 text-xs font-medium capitalize text-gray-300">
                         {r.plan} — {r.amount.toLocaleString()} FCFA
                       </span>
+                      <span className="rounded-full border border-[#00ff88]/30 bg-[#00ff88]/10 px-2.5 py-0.5 text-xs font-medium text-[#00ff88]">
+                        {PAYMENT_METHOD_LABELS[r.payment_method] ?? r.payment_method ?? 'Wave'}
+                      </span>
                     </div>
                     <div className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm text-gray-400 sm:grid-cols-2">
                       <p>
                         <span className="text-gray-500">Email :</span> {r.email}
                       </p>
                       <p>
-                        <span className="text-gray-500">Numero :</span> {r.phone_number}
+                        <span className="text-gray-500">Numero payeur :</span> {r.phone_number}
                       </p>
                       <p className="break-all">
                         <span className="text-gray-500">Ref :</span>{' '}
                         {r.wave_transaction_reference}
                       </p>
+                      <p>
+                        <span className="text-gray-500">Montant declare :</span>{' '}
+                        {(r.paid_amount ?? r.amount).toLocaleString()} FCFA
+                      </p>
+                      {r.paid_at && (
+                        <p>
+                          <span className="text-gray-500">Paye le :</span>{' '}
+                          {new Date(r.paid_at).toLocaleString('fr-FR')}
+                        </p>
+                      )}
                       <p className="flex items-center gap-1.5">
                         <Clock className="h-3.5 w-3.5" />
                         {new Date(r.created_at).toLocaleString('fr-FR')}
                       </p>
                     </div>
+                    {r.comment && (
+                      <p className="mt-2 rounded-lg border border-gray-800 bg-[#0a0a0a] px-3 py-2 text-sm text-gray-400">
+                        <span className="text-gray-500">Commentaire :</span> {r.comment}
+                      </p>
+                    )}
                     {r.screenshot_url && (
                       <a
                         href={r.screenshot_url}
