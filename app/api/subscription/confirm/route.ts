@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPlan } from '@/lib/plans'
+import { getPaymentMethod } from '@/lib/payment-methods'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,7 +17,11 @@ export async function POST(req: NextRequest) {
     const email = String(form.get('email') || '').trim().toLowerCase()
     const phoneNumber = String(form.get('phoneNumber') || '').trim()
     const planId = String(form.get('plan') || '').trim()
+    const methodId = String(form.get('paymentMethod') || 'wave').trim()
     const reference = String(form.get('reference') || '').trim()
+    const paidAmountRaw = String(form.get('paidAmount') || '').trim()
+    const paidAtRaw = String(form.get('paidAt') || '').trim()
+    const comment = String(form.get('comment') || '').trim()
     const screenshot = form.get('screenshot') as File | null
 
     // --- Validation ---
@@ -27,15 +32,42 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Adresse email invalide.' }, { status: 400 })
     }
     if (!phoneNumber || phoneNumber.length < 6) {
-      return NextResponse.json({ error: 'Numero Wave invalide.' }, { status: 400 })
+      return NextResponse.json({ error: 'Numero de telephone invalide.' }, { status: 400 })
     }
     const plan = getPlan(planId)
     if (!plan) {
       return NextResponse.json({ error: 'Formule invalide.' }, { status: 400 })
     }
+    const method = getPaymentMethod(methodId)
+    if (!method) {
+      return NextResponse.json({ error: 'Mode de paiement invalide.' }, { status: 400 })
+    }
     if (!reference || reference.length < 4) {
       return NextResponse.json(
-        { error: 'Reference de transaction Wave requise.' },
+        { error: 'Reference de transaction requise.' },
+        { status: 400 },
+      )
+    }
+
+    const paidAmount = Number.parseInt(paidAmountRaw, 10)
+    if (!Number.isFinite(paidAmount) || paidAmount <= 0) {
+      return NextResponse.json({ error: 'Montant paye invalide.' }, { status: 400 })
+    }
+
+    let paidAtIso: string | null = null
+    if (paidAtRaw) {
+      const d = new Date(paidAtRaw)
+      if (!Number.isNaN(d.getTime())) paidAtIso = d.toISOString()
+    }
+    if (!paidAtIso) {
+      return NextResponse.json({ error: 'Date et heure du paiement requises.' }, { status: 400 })
+    }
+
+    // Capture obligatoire pour les paiements manuels (Orange / MTN / Moov)
+    const isManual = method.type === 'phone'
+    if (isManual && (!screenshot || screenshot.size === 0)) {
+      return NextResponse.json(
+        { error: 'La capture d\'ecran est obligatoire pour ce mode de paiement.' },
         { status: 400 },
       )
     }
@@ -100,6 +132,10 @@ export async function POST(req: NextRequest) {
       phone_number: phoneNumber,
       plan: plan.id,
       amount: plan.price,
+      payment_method: method.id,
+      paid_amount: paidAmount,
+      paid_at: paidAtIso,
+      comment: comment || null,
       wave_transaction_reference: reference,
       screenshot_url: screenshotUrl,
       status: 'pending',
