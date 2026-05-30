@@ -15,7 +15,7 @@ import {
   UserPlus,
 } from 'lucide-react'
 import Link from 'next/link'
-import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods'
+import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_LOGOS } from '@/lib/payment-methods'
 
 interface PaymentRequest {
   id: string
@@ -247,7 +247,16 @@ export default function AdminPaymentsPage() {
                       <span className="rounded-full border border-gray-700 bg-[#0a0a0a] px-2.5 py-0.5 text-xs font-medium capitalize text-gray-300">
                         {r.plan} — {r.amount.toLocaleString()} FCFA
                       </span>
-                      <span className="rounded-full border border-[#00ff88]/30 bg-[#00ff88]/10 px-2.5 py-0.5 text-xs font-medium text-[#00ff88]">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-[#00ff88]/30 bg-[#00ff88]/10 py-0.5 pl-1 pr-2.5 text-xs font-medium text-[#00ff88]">
+                        {PAYMENT_METHOD_LOGOS[r.payment_method] && (
+                          <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-white p-0.5">
+                            <img
+                              src={PAYMENT_METHOD_LOGOS[r.payment_method] || '/placeholder.svg'}
+                              alt=""
+                              className="h-full w-full object-contain"
+                            />
+                          </span>
+                        )}
                         {PAYMENT_METHOD_LABELS[r.payment_method] ?? r.payment_method ?? 'Wave'}
                       </span>
                     </div>

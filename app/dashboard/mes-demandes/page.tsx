@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Clock, CheckCircle, XCircle, Loader2, RefreshCw, ReceiptText } from 'lucide-react'
 import Link from 'next/link'
-import { PAYMENT_METHOD_LABELS } from '@/lib/payment-methods'
+import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_LOGOS } from '@/lib/payment-methods'
 import { getPlan } from '@/lib/plans'
 
 interface MyRequest {
@@ -129,8 +129,17 @@ export default function MyRequestsPage() {
                     </span>
                   </div>
                   <div className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm text-gray-400 sm:grid-cols-2">
-                    <p>
-                      <span className="text-gray-500">Mode :</span>{' '}
+                    <p className="flex items-center gap-1.5">
+                      <span className="text-gray-500">Mode :</span>
+                      {PAYMENT_METHOD_LOGOS[r.payment_method] && (
+                        <span className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full bg-white p-0.5">
+                          <img
+                            src={PAYMENT_METHOD_LOGOS[r.payment_method] || '/placeholder.svg'}
+                            alt=""
+                            className="h-full w-full object-contain"
+                          />
+                        </span>
+                      )}
                       {PAYMENT_METHOD_LABELS[r.payment_method] ?? r.payment_method}
                     </p>
                     <p>
