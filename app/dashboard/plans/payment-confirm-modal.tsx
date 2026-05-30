@@ -11,8 +11,6 @@ import {
   Copy,
   Check,
   ChevronLeft,
-  Phone,
-  Wallet,
 } from 'lucide-react'
 import type { PlanConfig } from '@/lib/plans'
 import { PAYMENT_METHODS, type PaymentMethod, type PaymentMethodId } from '@/lib/payment-methods'
@@ -166,14 +164,14 @@ export function PaymentConfirmModal({ plan, waveUrl, onClose }: Props) {
                     className="flex flex-col items-center gap-2 rounded-2xl border border-gray-800 bg-[#0a0a0a] px-4 py-5 text-center transition-all hover:border-[#00ff88]"
                   >
                     <span
-                      className="flex h-11 w-11 items-center justify-center rounded-full"
-                      style={{ backgroundColor: `${m.color}22`, color: m.color }}
+                      className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-white p-1.5"
+                      style={{ boxShadow: `0 0 0 1px ${m.color}55` }}
                     >
-                      {m.type === 'link' ? (
-                        <Wallet className="h-5 w-5" />
-                      ) : (
-                        <Phone className="h-5 w-5" />
-                      )}
+                      <img
+                        src={m.logo || '/placeholder.svg'}
+                        alt={`Logo ${m.label}`}
+                        className="h-full w-full object-contain"
+                      />
                     </span>
                     <span className="text-sm font-semibold text-white">{m.label}</span>
                   </button>
@@ -185,8 +183,17 @@ export function PaymentConfirmModal({ plan, waveUrl, onClose }: Props) {
           {/* ============================= WAVE (lien) ============================= */}
           {step === 'wave' && method && (
             <>
-              <h3 className="text-xl font-bold text-white">Paiement {method.label}</h3>
-              <p className="mb-5 mt-1 text-sm text-gray-400">
+              <div className="flex items-center gap-3">
+                <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white p-1.5">
+                  <img
+                    src={method.logo || '/placeholder.svg'}
+                    alt={`Logo ${method.label}`}
+                    className="h-full w-full object-contain"
+                  />
+                </span>
+                <h3 className="text-xl font-bold text-white">Paiement {method.label}</h3>
+              </div>
+              <p className="mb-5 mt-2 text-sm text-gray-400">
                 Formule <span className="font-semibold text-[#00ff88]">{plan.name}</span> —{' '}
                 {plan.price.toLocaleString()} FCFA
               </p>
@@ -217,8 +224,17 @@ export function PaymentConfirmModal({ plan, waveUrl, onClose }: Props) {
           {/* ============================= PAIEMENT PAR NUMERO ============================= */}
           {step === 'phone' && method && (
             <>
-              <h3 className="text-xl font-bold text-white">Paiement {method.label}</h3>
-              <p className="mb-5 mt-1 text-sm text-gray-400">
+              <div className="flex items-center gap-3">
+                <span className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-white p-1.5">
+                  <img
+                    src={method.logo || '/placeholder.svg'}
+                    alt={`Logo ${method.label}`}
+                    className="h-full w-full object-contain"
+                  />
+                </span>
+                <h3 className="text-xl font-bold text-white">Paiement {method.label}</h3>
+              </div>
+              <p className="mb-5 mt-2 text-sm text-gray-400">
                 Formule <span className="font-semibold text-[#00ff88]">{plan.name}</span> —{' '}
                 {plan.price.toLocaleString()} FCFA
               </p>

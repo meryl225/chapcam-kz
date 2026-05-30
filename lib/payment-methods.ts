@@ -13,6 +13,7 @@ export interface PaymentMethod {
   number?: string
   beneficiary?: string
   color: string // couleur d'accent de la carte (classe tailwind text/bg)
+  logo: string // chemin du logo officiel du moyen de paiement
 }
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
@@ -21,6 +22,7 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
     label: 'Wave',
     type: 'link',
     color: '#1dc3ff',
+    logo: '/payments/wave.png',
   },
   {
     id: 'orange',
@@ -29,6 +31,7 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
     number: '+2250779475824',
     beneficiary: 'KACOU BEBI MERYL',
     color: '#ff7900',
+    logo: '/payments/orange.png',
   },
   {
     id: 'mtn',
@@ -37,6 +40,7 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
     number: '+2250555560189',
     beneficiary: 'KACOU BEBI MERYL',
     color: '#ffcc00',
+    logo: '/payments/mtn.png',
   },
   {
     id: 'moov',
@@ -45,8 +49,13 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
     number: '+2250150641042',
     beneficiary: 'KACOU BEBI MERYL',
     color: '#0066ff',
+    logo: '/payments/moov.png',
   },
 ]
+
+export const PAYMENT_METHOD_LOGOS: Record<string, string> = Object.fromEntries(
+  PAYMENT_METHODS.map((m) => [m.id, m.logo]),
+)
 
 export function getPaymentMethod(id: string): PaymentMethod | undefined {
   return PAYMENT_METHODS.find((m) => m.id === id)
