@@ -96,7 +96,7 @@ export default function AdminSubscriptionsPage() {
             <label className={labelClass}>Type d&apos;abonnement</label>
             <select
               value={plan}
-              onChange={(e) => setPlan(e.target.value)}
+              onChange={(e) => setPlan(e.target.value as typeof plan)}
               className={inputClass}
             >
               {PLANS.map((p) => (
