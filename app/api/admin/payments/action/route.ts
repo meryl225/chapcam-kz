@@ -2,7 +2,13 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminRequest, ADMIN_EMAIL } from '@/lib/admin-auth'
 import { getPlan } from '@/lib/plans'
-import { sendSubscriptionApprovedEmail, sendSubscriptionRejectedEmail } from '@/lib/email'
+import { getLiveOffer } from '@/lib/live-offers'
+import { grantLiveWindow } from '@/lib/live-access'
+import {
+  sendSubscriptionApprovedEmail,
+  sendSubscriptionRejectedEmail,
+  sendLiveAccessApprovedEmail,
+} from '@/lib/email'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -113,7 +119,8 @@ export async function POST(req: NextRequest) {
     }
 
     const plan = getPlan(request.plan)
-    if (!plan) {
+    const liveOffer = getLiveOffer(request.plan)
+    if (!plan && !liveOffer) {
       return NextResponse.json({ error: 'Formule inconnue.' }, { status: 400 })
     }
 
@@ -135,7 +142,14 @@ export async function POST(req: NextRequest) {
         )
       }
 
-      const { now, end } = await activateSubscription(admin, userId, newEmail, plan)
+      const now = new Date()
+
+      if (liveOffer) {
+        // Offre Live Pro : on accorde une fenetre de 15 min (pas de points).
+        await grantLiveWindow(admin, userId, 1)
+      } else {
+        await activateSubscription(admin, userId, newEmail, plan!)
+      }
 
       // Mettre a jour la demande : nouvel email, statut approuve, lien compte
       await admin
@@ -155,24 +169,38 @@ export async function POST(req: NextRequest) {
         details: {
           old_email: request.email,
           new_email: newEmail,
-          plan: plan.id,
-          points: plan.points,
+          plan: request.plan,
+          points: liveOffer ? 0 : plan!.points,
+          live_offer: !!liveOffer,
         },
       })
 
-      sendSubscriptionApprovedEmail(
-        newEmail,
-        request.full_name,
-        plan.name,
-        plan.price,
-        plan.points,
-        fmtDate(now),
-        fmtDate(end),
-      ).catch((e) => console.error('[action] Email relink echoue:', e))
+      if (liveOffer) {
+        sendLiveAccessApprovedEmail(
+          newEmail,
+          request.full_name,
+          liveOffer.name,
+          liveOffer.price,
+          liveOffer.windowMinutes,
+        ).catch((e) => console.error('[action] Email relink Live echoue:', e))
+      } else {
+        const end = new Date(now.getTime() + plan!.durationDays * 24 * 60 * 60 * 1000)
+        sendSubscriptionApprovedEmail(
+          newEmail,
+          request.full_name,
+          plan!.name,
+          plan!.price,
+          plan!.points,
+          fmtDate(now),
+          fmtDate(end),
+        ).catch((e) => console.error('[action] Email relink echoue:', e))
+      }
 
       return NextResponse.json({
         success: true,
-        message: `Points credites sur ${newEmail} et email de confirmation envoye.`,
+        message: liveOffer
+          ? `Acces Live credite sur ${newEmail} et email de confirmation envoye.`
+          : `Points credites sur ${newEmail} et email de confirmation envoye.`,
       })
     }
 
@@ -199,7 +227,8 @@ export async function POST(req: NextRequest) {
       })
 
       // Email de refus (best effort)
-      sendSubscriptionRejectedEmail(request.email, request.full_name, plan.name, reason).catch(
+      const rejectedName = liveOffer ? liveOffer.name : plan!.name
+      sendSubscriptionRejectedEmail(request.email, request.full_name, rejectedName, reason).catch(
         (e) => console.error('[action] Email refus echoue:', e),
       )
 
@@ -216,14 +245,17 @@ export async function POST(req: NextRequest) {
     }
 
     const now = new Date()
-    const end = new Date(now.getTime() + plan.durationDays * 24 * 60 * 60 * 1000)
 
-    // Activer / mettre a jour l'abonnement (credit des points + dates)
+    // Activer : soit l'abonnement (points), soit l'acces Live (fenetre 15 min)
     if (userId) {
-      await activateSubscription(admin, userId, String(request.email), plan)
+      if (liveOffer) {
+        await grantLiveWindow(admin, userId, 1)
+      } else {
+        await activateSubscription(admin, userId, String(request.email), plan!)
+      }
     } else {
       console.warn(
-        `[action] Aucun compte trouve pour ${request.email}. Demande approuvee mais abonnement non lie.`,
+        `[action] Aucun compte trouve pour ${request.email}. Demande approuvee mais acces non lie.`,
       )
     }
 
@@ -244,29 +276,43 @@ export async function POST(req: NextRequest) {
       payment_request_id: id,
       admin_email: ADMIN_EMAIL,
       details: {
-        plan: plan.id,
-        amount: plan.price,
-        points: plan.points,
+        plan: request.plan,
+        amount: liveOffer ? liveOffer.price : plan!.price,
+        points: liveOffer ? 0 : plan!.points,
+        live_offer: !!liveOffer,
         user_linked: !!userId,
         reference: request.wave_transaction_reference,
       },
     })
 
     // Email d'activation (best effort)
-    sendSubscriptionApprovedEmail(
-      request.email,
-      request.full_name,
-      plan.name,
-      plan.price,
-      plan.points,
-      fmtDate(now),
-      fmtDate(end),
-    ).catch((e) => console.error('[action] Email approbation echoue:', e))
+    if (liveOffer) {
+      sendLiveAccessApprovedEmail(
+        request.email,
+        request.full_name,
+        liveOffer.name,
+        liveOffer.price,
+        liveOffer.windowMinutes,
+      ).catch((e) => console.error('[action] Email approbation Live echoue:', e))
+    } else {
+      const end = new Date(now.getTime() + plan!.durationDays * 24 * 60 * 60 * 1000)
+      sendSubscriptionApprovedEmail(
+        request.email,
+        request.full_name,
+        plan!.name,
+        plan!.price,
+        plan!.points,
+        fmtDate(now),
+        fmtDate(end),
+      ).catch((e) => console.error('[action] Email approbation echoue:', e))
+    }
 
     return NextResponse.json({
       success: true,
       message: userId
-        ? 'Abonnement active et email envoye.'
+        ? liveOffer
+          ? 'Acces Live active et email envoye.'
+          : 'Abonnement active et email envoye.'
         : 'Demande approuvee, mais aucun compte ne correspond a cet email. L\'utilisateur doit creer un compte avec cet email.',
       userLinked: !!userId,
     })

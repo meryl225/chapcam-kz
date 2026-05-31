@@ -412,6 +412,76 @@ export async function sendSubscriptionRejectedEmail(
   }
 }
 
+// Template email : acces Live Pro active (offre fenetre 15 min)
+export async function sendLiveAccessApprovedEmail(
+  to: string,
+  userName: string,
+  offerName: string,
+  amount: number,
+  windowMinutes: number,
+) {
+  const client = await getResendClient()
+  if (!client) {
+    console.warn('[Email] Resend not configured - skipping email')
+    return { success: false, error: 'Email service not configured' }
+  }
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: `ChapCam - Votre acces ${offerName} est active !`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background-color:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;margin:0 auto;padding:40px 20px;">
+            <tr><td style="text-align:center;padding-bottom:30px;">
+              <img src="https://chapcam.com/favicon.jpg" alt="ChapCam" width="80" height="80" style="border-radius:16px;">
+            </td></tr>
+            <tr><td style="background:linear-gradient(135deg,#1a1a1a 0%,#0d0d0d 100%);border-radius:16px;padding:40px;border:1px solid #222;">
+              <div style="text-align:center;margin-bottom:20px;">
+                <div style="display:inline-block;background:#00ff8820;border-radius:50%;padding:16px;"><span style="font-size:32px;">&#10003;</span></div>
+              </div>
+              <h1 style="color:#00ff88;margin:0 0 20px 0;font-size:24px;text-align:center;">Acces Live Pro active !</h1>
+              <p style="color:#ffffff;font-size:16px;line-height:1.6;margin:0 0 20px 0;">Bonjour <strong>${userName}</strong>,</p>
+              <p style="color:#cccccc;font-size:16px;line-height:1.6;margin:0 0 20px 0;">
+                Votre paiement a ete verifie. Votre acces au Face Swap temps reel est pret.
+                La fenetre de <strong>${windowMinutes} minutes</strong> demarrera au moment ou vous lancerez votre premiere session sur la page Live.
+              </p>
+              <div style="background:#111111;border-radius:12px;padding:20px;margin:20px 0;border:1px solid #333;">
+                <table width="100%" cellspacing="0" cellpadding="8">
+                  <tr><td style="color:#888;font-size:14px;border-bottom:1px solid #222;">Offre</td><td style="color:#fff;font-size:14px;text-align:right;border-bottom:1px solid #222;font-weight:bold;">${offerName}</td></tr>
+                  <tr><td style="color:#888;font-size:14px;border-bottom:1px solid #222;">Montant</td><td style="color:#00ff88;font-size:14px;text-align:right;border-bottom:1px solid #222;font-weight:bold;">${amount.toLocaleString()} FCFA</td></tr>
+                  <tr><td style="color:#888;font-size:14px;">Duree d'acces</td><td style="color:#fff;font-size:14px;text-align:right;font-weight:bold;">${windowMinutes} min (au lancement)</td></tr>
+                </table>
+              </div>
+              <div style="text-align:center;margin-top:30px;">
+                <a href="https://chapcam.com/live" style="display:inline-block;background:#00ff88;color:#000;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:bold;font-size:16px;">Lancer le Live</a>
+              </div>
+            </td></tr>
+            <tr><td style="text-align:center;padding-top:30px;">
+              <p style="color:#666;font-size:12px;margin:0;">ChapCam - Face Swap en Temps Reel<br><a href="https://chapcam.com" style="color:#00ff88;text-decoration:none;">chapcam.com</a></p>
+            </td></tr>
+          </table>
+        </body>
+        </html>
+      `,
+    })
+
+    if (error) {
+      console.error('[Email] Error sending live access email:', error)
+      return { success: false, error }
+    }
+    console.log('[Email] Live access approved email sent:', data?.id)
+    return { success: true, id: data?.id }
+  } catch (error) {
+    console.error('[Email] Exception sending live access email:', error)
+    return { success: false, error }
+  }
+}
+
 // Envoi d'emails en batch pour les gros volumes (newsletters, etc.)
 export async function sendBatchEmails(
   emails: Array<{
