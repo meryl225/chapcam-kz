@@ -3,25 +3,16 @@ import { HeroSection } from "@/components/hero-section"
 import { InActionSection } from "@/components/in-action-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
 import { RoadmapSection } from "@/components/roadmap-section"
-import { LaunchCountdown } from "@/components/launch-countdown"
 import { PricingSection } from "@/components/pricing-section"
 import { FAQSection } from "@/components/faq-section"
 import { TutorialSection } from "@/components/tutorial-section"
 import { FounderSection } from "@/components/founder-section"
 import { AnimatedBackground } from "@/components/animated-background"
 import { TelegramSupport } from "@/components/telegram-support"
-import { LaunchBanner } from "@/components/launch-banner"
-import { LaunchModal } from "@/components/launch-modal"
 
 export default function Home() {
   return (
     <main className="min-h-screen bg-background overflow-hidden relative">
-      {/* Launch Banner - Top of page */}
-      <LaunchBanner />
-      
-      {/* Launch Modal - Popup */}
-      <LaunchModal />
-      
       {/* Global background effects */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#1a1f35] via-[#0a0e1a] to-[#0a0e1a]" />
@@ -36,7 +27,6 @@ export default function Home() {
         <InActionSection />
         <RoadmapSection />
         <HowItWorksSection />
-        <LaunchCountdown />
         <PricingSection />
         <FAQSection />
         <TutorialSection />

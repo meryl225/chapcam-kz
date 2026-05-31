@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock, Sparkles } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -93,51 +93,6 @@ export function PricingSection() {
   return (
     <section id="tarifs" className="relative py-24 px-6 bg-[#050505]">
       <div className="max-w-7xl mx-auto relative">
-        {/* Launch Offer Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mb-12"
-        >
-          <div className="relative bg-gradient-to-r from-[#00ff88]/20 via-[#00ff88]/10 to-[#00ff88]/20 border border-[#00ff88]/50 rounded-2xl p-6 md:p-8 overflow-hidden">
-            {/* Animated background sparkles */}
-            <div className="absolute inset-0 overflow-hidden">
-              <motion.div
-                animate={{ 
-                  x: [0, 100, 0],
-                  opacity: [0.3, 0.6, 0.3]
-                }}
-                transition={{ duration: 5, repeat: Infinity }}
-                className="absolute top-0 left-0 w-32 h-32 bg-[#00ff88]/20 rounded-full blur-3xl"
-              />
-              <motion.div
-                animate={{ 
-                  x: [0, -100, 0],
-                  opacity: [0.3, 0.6, 0.3]
-                }}
-                transition={{ duration: 5, repeat: Infinity, delay: 1 }}
-                className="absolute bottom-0 right-0 w-32 h-32 bg-[#00ff88]/20 rounded-full blur-3xl"
-              />
-            </div>
-            
-            <div className="relative z-10 text-center">
-              <div className="flex items-center justify-center gap-2 mb-3">
-                <Sparkles className="w-6 h-6 text-[#00ff88]" />
-                <span className="text-[#00ff88] font-bold text-lg">OFFRE SPECIALE DE LANCEMENT</span>
-                <Sparkles className="w-6 h-6 text-[#00ff88]" />
-              </div>
-              <h3 className="text-2xl md:text-3xl font-black text-white mb-2">
-                Jusqu&apos;a <span className="text-[#00ff88]">-29%</span> sur tous les plans !
-              </h3>
-              <div className="flex items-center justify-center gap-2 text-yellow-400">
-                <Clock className="w-5 h-5" />
-                <span className="font-semibold">Valable 7 jours seulement !</span>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
         {/* Header */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -182,13 +137,6 @@ export function PricingSection() {
                     MEILLEUR CHOIX
                   </div>
                 )}
-
-                {/* Launch Badge */}
-                <div className="absolute top-4 left-4">
-                  <span className="bg-[#00ff88]/20 text-[#00ff88] text-xs font-bold px-2 py-1 rounded-full border border-[#00ff88]/50">
-                    LANCEMENT
-                  </span>
-                </div>
 
                 <div className="flex items-center gap-3 mb-6 mt-4">
                   <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${plan.color}20` }}>
