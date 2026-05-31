@@ -9,6 +9,11 @@ onnx==1.16.2
 
 # Choisir UN provider ONNX Runtime :
 #  - GPU (recommande) :
-onnxruntime-gpu==1.18.1
-#  - CPU (fallback, lent) : commenter la ligne ci-dessus et decommenter :
-# onnxruntime==1.18.1
+#    /!\ 1.19.x = build CUDA 12 + cuDNN 9 (compatible CUDA 12.x des pods recents).
+#        Les versions <= 1.18.x utilisent CUDA 11 et ne marchent PAS sur CUDA 12.
+onnxruntime-gpu==1.19.2
+# Librairies CUDA 12 / cuDNN 9 requises par onnxruntime-gpu 1.19.x
+nvidia-cudnn-cu12==9.*
+nvidia-cublas-cu12
+#  - CPU (fallback, lent) : commenter les 3 lignes ci-dessus et decommenter :
+# onnxruntime==1.19.2
