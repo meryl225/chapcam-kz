@@ -26,7 +26,8 @@ import json
 import base64
 import hashlib
 import asyncio
-from io import BytesIO
+import urllib.request
+from urllib.parse import urlparse, parse_qs
 
 import numpy as np
 import cv2
@@ -38,15 +39,37 @@ SHARED_SECRET = os.environ.get("LIVE_GPU_SHARED_SECRET", "")
 PORT = int(os.environ.get("PORT", "8765"))
 PROVIDERS = ["CUDAExecutionProvider", "CPUExecutionProvider"]
 
+# Modele de swap : telecharge automatiquement au 1er demarrage s'il manque.
+MODEL_DIR = os.path.expanduser("~/.insightface/models")
+MODEL_PATH = os.path.join(MODEL_DIR, "inswapper_128.onnx")
+# Miroir public du modele inswapper_128 (~530 Mo). Surchargeable via env.
+MODEL_URL = os.environ.get(
+    "INSWAPPER_URL",
+    "https://huggingface.co/ezioruan/inswapper_128.onnx/resolve/main/inswapper_128.onnx",
+)
+
+
+def ensure_model() -> str:
+    """Telecharge inswapper_128.onnx si absent, renvoie son chemin local."""
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    if os.path.exists(MODEL_PATH) and os.path.getsize(MODEL_PATH) > 100_000_000:
+        print(f"[worker] Modele deja present : {MODEL_PATH}")
+        return MODEL_PATH
+    print(f"[worker] Telechargement du modele depuis {MODEL_URL} ...")
+    tmp = MODEL_PATH + ".part"
+    urllib.request.urlretrieve(MODEL_URL, tmp)
+    os.replace(tmp, MODEL_PATH)
+    print(f"[worker] Modele telecharge : {MODEL_PATH}")
+    return MODEL_PATH
+
+
 # ----------------------------------------------------------------------
 # Chargement des modeles (une seule fois au demarrage du pod)
 # ----------------------------------------------------------------------
 print("[worker] Chargement des modeles InsightFace...")
 face_app = FaceAnalysis(name="buffalo_l", providers=PROVIDERS)
 face_app.prepare(ctx_id=0, det_size=(640, 640))
-swapper = insightface.model_zoo.get_model(
-    "inswapper_128.onnx", providers=PROVIDERS
-)
+swapper = insightface.model_zoo.get_model(ensure_model(), providers=PROVIDERS)
 print("[worker] Modeles prets.")
 
 
@@ -79,11 +102,24 @@ def decode_data_url(data_url: str) -> np.ndarray:
     return cv2.imdecode(arr, cv2.IMREAD_COLOR)
 
 
+def extract_token(ws) -> str:
+    """Recupere ?token=... quelle que soit la version de la lib websockets."""
+    raw_path = ""
+    # websockets >= 11 : le chemin est sur ws.request.path
+    req = getattr(ws, "request", None)
+    if req is not None and getattr(req, "path", None):
+        raw_path = req.path
+    elif getattr(ws, "path", None):  # versions plus anciennes
+        raw_path = ws.path
+    if not raw_path:
+        return ""
+    query = urlparse(raw_path).query
+    return parse_qs(query).get("token", [""])[0]
+
+
 async def handle(ws):
     # 1. Authentification via le token dans la query string
-    token = ""
-    if ws.path and "token=" in ws.path:
-        token = ws.path.split("token=", 1)[1].split("&", 1)[0]
+    token = extract_token(ws)
     if not verify_token(token):
         await ws.close(code=4001, reason="token invalide")
         return

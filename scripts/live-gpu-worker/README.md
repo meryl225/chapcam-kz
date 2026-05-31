@@ -7,26 +7,39 @@ Ce dossier contient le serveur **WebSocket** à déployer sur un **pod GPU persi
 
 ## 1. Pré-requis
 
-- 1 GPU NVIDIA (RTX 4090 / A10 / L4 recommandé pour < 600 ms).
-- Python 3.10+, CUDA 11.8+.
-- Les modèles InsightFace : `buffalo_l` (auto-téléchargé) et `inswapper_128.onnx`.
+- 1 GPU NVIDIA (RTX 4090 / 5090 / A10 / L4 recommandé pour < 600 ms).
+- Python 3.10+, CUDA 11.8+ (le template RunPod « Pytorch 2.8 » convient).
+- Les modèles InsightFace : `buffalo_l` **et** `inswapper_128.onnx` se
+  **téléchargent automatiquement** au 1er démarrage (rien à placer à la main).
 
-## 2. Installation
+## 2. Déploiement RunPod (sans SSH, via Jupyter)
+
+1. RunPod → **Deploy a Pod** → **GPU Pods** (pas Serverless), RTX 4090/5090,
+   template **Runpod Pytorch 2.8**, coche **Start Jupyter notebook**, **Deploy**.
+2. Pod → **Connect** → **Connect to Jupyter Lab** → **File ▸ New ▸ Terminal**.
+3. Récupère le worker (glisse `server.py` dans Jupyter, ou clone le repo) :
+
+\`\`\`bash
+git clone https://github.com/meryl225/chapcam-kz.git
+cd chapcam-kz/scripts/live-gpu-worker
+\`\`\`
+
+## 3. Installation & lancement
 
 \`\`\`bash
 pip install insightface onnxruntime-gpu opencv-python-headless websockets numpy
-# Placez inswapper_128.onnx dans ~/.insightface/models/ (ou le cwd)
-\`\`\`
 
-## 3. Lancement
-
-\`\`\`bash
-export LIVE_GPU_SHARED_SECRET="<le-meme-secret-que-dans-l-app>"
+# Utilise LE MEME secret que la variable LIVE_GPU_SHARED_SECRET du site :
+export LIVE_GPU_SHARED_SECRET="4CtW2rKdisYD08W0YaW7oa7QVzEL8IoP6mzw460VCo4y6WhNM1dclJChsh24aEy2"
 export PORT=8765
 python server.py
 \`\`\`
 
-Exposez le port (RunPod : "TCP Port" ou "HTTP Port") et récupérez l'URL publique.
+Au 1er lancement, le modèle (~530 Mo) se télécharge, puis :
+`[worker] WebSocket en écoute sur 0.0.0.0:8765`. **Laisse ce terminal ouvert.**
+
+Ensuite : page du pod → **Edit ▸ Expose HTTP Ports** → ajoute **8765**.
+RunPod fournit une URL publique, ex. `https://xxxxx-8765.proxy.runpod.net`.
 
 ## 4. Variables d'environnement à définir dans l'app v0 / Vercel
 
