@@ -23,6 +23,7 @@ interface Session {
   avatar_name: string
   started_at: string
   ended_at: string | null
+  duration_seconds: number | null
   frames_processed: number | null
 }
 
@@ -32,8 +33,8 @@ interface ChartData {
   minutes: number
 }
 
-function formatDuration(ms: number): string {
-  const s = Math.floor(ms / 1000)
+function formatDuration(totalSeconds: number): string {
+  const s = Math.floor(totalSeconds)
   const m = Math.floor(s / 60)
   return m > 0 ? m + 'm ' + (s % 60) + 's' : s + 's'
 }
@@ -105,7 +106,6 @@ export default function StatsPage() {
         .from('swap_sessions')
         .select('*')
         .eq('user_id', user.id)
-        .not('ended_at', 'is', null)
         .order('started_at', { ascending: false })
 
       const sessionsList = sessionsData || []
@@ -114,12 +114,7 @@ export default function StatsPage() {
       // Compute stats
       setTotalSessions(sessionsList.length)
 
-      const minutes = sessionsList.reduce((acc, s) => {
-        if (s.ended_at && s.started_at) {
-          return acc + (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000
-        }
-        return acc
-      }, 0)
+      const minutes = sessionsList.reduce((acc, s) => acc + (s.duration_seconds || 0) / 60, 0)
       setTotalMinutes(minutes)
 
       const frames = sessionsList.reduce((acc, s) => acc + (s.frames_processed || 0), 0)
@@ -148,12 +143,7 @@ export default function StatsPage() {
           return sessionDate === dateStr
         })
 
-        const dayMinutes = daySessions.reduce((acc, s) => {
-          if (s.ended_at && s.started_at) {
-            return acc + (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000
-          }
-          return acc
-        }, 0)
+        const dayMinutes = daySessions.reduce((acc, s) => acc + (s.duration_seconds || 0) / 60, 0)
 
         last14Days.push({
           date: formatDateShort(date.toISOString()),
@@ -320,9 +310,7 @@ export default function StatsPage() {
             </thead>
             <tbody>
               {sessions.slice(0, 10).map((session) => {
-                const duration = session.ended_at && session.started_at
-                  ? new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()
-                  : 0
+                const duration = session.duration_seconds || 0
                 return (
                   <tr key={session.id} className="border-b border-white/5 transition-colors hover:bg-white/5">
                     <td className="p-4 font-medium text-white">{session.avatar_name || 'Sans nom'}</td>

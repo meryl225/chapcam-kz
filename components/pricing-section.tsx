@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock, Gift, Sparkles } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock, Gift, Sparkles, Video, CreditCard } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -221,6 +221,74 @@ export function PricingSection() {
             )
           })}
         </div>
+
+        {/* ===================== OFFRE LIVE PRO (separee, encadree en rouge) ===================== */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-10"
+        >
+          <div className="relative overflow-hidden rounded-3xl border-2 border-red-500 bg-gradient-to-br from-red-500/10 via-[#111] to-[#111] p-6 shadow-[0_0_40px_-10px_rgba(239,68,68,0.5)] md:p-8">
+            <div className="absolute -top-3 -right-3 flex items-center gap-1 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+              <Zap className="h-3.5 w-3.5" />
+              OFFRE SPECIALE
+            </div>
+
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex-1">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-red-400">
+                  <Video className="h-3.5 w-3.5" />
+                  Face Swap Temps Reel
+                </div>
+                <h3 className="text-2xl font-black text-white md:text-3xl">Live Pro 15 min</h3>
+                <p className="mt-2 max-w-xl text-gray-400">
+                  Change de visage en direct avec un moteur GPU basse latence, utilisable dans tes appels video.
+                  Offre <span className="font-semibold text-red-400">independante</span> des formules a points.
+                </p>
+
+                <ul className="mt-4 grid gap-2 text-gray-300 sm:grid-cols-2">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-5 w-5 flex-shrink-0 text-red-400" />
+                    15 minutes de swap en direct
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-5 w-5 flex-shrink-0 text-red-400" />
+                    Basse latence, jusqu&apos;a 4 personas
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-5 w-5 flex-shrink-0 text-red-400" />
+                    Utilisable en appel video (OBS)
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Gift className="h-5 w-5 flex-shrink-0 text-[#00ff88]" />
+                    Essai gratuit de 2 min offert
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex flex-col items-stretch gap-3 lg:w-64">
+                <div className="text-center lg:text-right">
+                  <span className="text-4xl font-black text-red-400">10.000</span>
+                  <span className="text-xl text-gray-400"> FCFA</span>
+                  <p className="text-gray-500 text-sm">pour 15 min d&apos;acces</p>
+                </div>
+                <Link href="/live" className="w-full">
+                  <Button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#00ff88]/50 bg-[#00ff88]/10 py-6 text-base font-bold text-[#00ff88] transition-colors hover:bg-[#00ff88]/20">
+                    <Gift className="h-5 w-5" />
+                    Essayer gratuitement
+                  </Button>
+                </Link>
+                <Link href="/live" className="w-full">
+                  <Button className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500 py-6 text-base font-bold text-white transition-colors hover:bg-red-600">
+                    Acheter 15 min
+                    <CreditCard className="h-5 w-5" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Urgency Message */}
         <motion.div
