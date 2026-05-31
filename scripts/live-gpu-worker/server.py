@@ -51,11 +51,21 @@ async def _send_json(ws, obj) -> None:
 
 
 def _is_ws_upgrade(headers) -> bool:
-    try:
-        up = headers.get("Upgrade", "") or headers.get("upgrade", "")
-    except Exception:  # noqa: BLE001
-        up = ""
-    return str(up).lower() == "websocket"
+    """Detecte une vraie negociation WebSocket.
+
+    On considere que c'est un WS upgrade si l'en-tete Upgrade vaut "websocket"
+    OU si l'en-tete Sec-WebSocket-Key est present (signal definitif, jamais
+    present sur une simple requete HTTP GET de health-check).
+    """
+    def _get(name: str) -> str:
+        try:
+            return str(headers.get(name, "") or headers.get(name.lower(), "") or "")
+        except Exception:  # noqa: BLE001
+            return ""
+
+    if _get("Sec-WebSocket-Key"):
+        return True
+    return _get("Upgrade").lower() == "websocket"
 
 
 async def process_request(*args):
