@@ -2,43 +2,10 @@
 
 import { motion } from "framer-motion"
 import Link from "next/link"
-import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Play, ArrowRight, Pause, Volume2, VolumeX, Maximize2 } from "lucide-react"
+import { Play, ArrowRight, ArrowLeftRight } from "lucide-react"
 
 export function InActionSection() {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [isPlaying, setIsPlaying] = useState(true)
-  const [isMuted, setIsMuted] = useState(true)
-
-  const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pause()
-      } else {
-        videoRef.current.play()
-      }
-      setIsPlaying(!isPlaying)
-    }
-  }
-
-  const toggleMute = () => {
-    if (videoRef.current) {
-      videoRef.current.muted = !isMuted
-      setIsMuted(!isMuted)
-    }
-  }
-
-  const toggleFullscreen = () => {
-    if (videoRef.current) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen()
-      } else {
-        videoRef.current.requestFullscreen()
-      }
-    }
-  }
-
   // Platform logos as SVG components
   const platforms = [
     { name: "WhatsApp", color: "#25D366" },
@@ -114,62 +81,50 @@ export function InActionSection() {
               className="absolute inset-0 rounded-3xl"
             />
 
-            {/* Video container */}
-            <div className="relative aspect-video rounded-3xl overflow-hidden border border-[#00ff88]/30 bg-black group">
-              <video
-                ref={videoRef}
-                className="w-full h-full object-cover"
-                autoPlay
-                loop
-                muted
-                playsInline
-              >
-                <source src="/videos/chapcam-demo.mp4" type="video/mp4" />
-                Votre navigateur ne supporte pas la lecture de videos.
-              </video>
-
-              {/* Video controls overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                {/* Play/Pause button center */}
-                <button
-                  onClick={togglePlay}
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-[#00ff88]/90 flex items-center justify-center hover:bg-[#00ff88] transition-colors"
-                >
-                  {isPlaying ? (
-                    <Pause className="w-8 h-8 text-black" />
-                  ) : (
-                    <Play className="w-8 h-8 text-black fill-black ml-1" />
-                  )}
-                </button>
-
-                {/* Bottom controls */}
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {/* Mute button */}
-                    <button
-                      onClick={toggleMute}
-                      className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-colors"
-                    >
-                      {isMuted ? (
-                        <VolumeX className="w-5 h-5 text-white" />
-                      ) : (
-                        <Volume2 className="w-5 h-5 text-white" />
-                      )}
-                    </button>
+            {/* Swap demo container (avant / apres) */}
+            <div className="relative aspect-video rounded-3xl overflow-hidden border border-[#00ff88]/30 bg-black">
+              <div className="grid h-full w-full grid-cols-2">
+                {/* Camera reelle - toi */}
+                <div className="relative h-full w-full overflow-hidden border-r border-black/40">
+                  <img
+                    src="/demo/me.png"
+                    alt="Visage reel avant transformation ChapCam"
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5 backdrop-blur-sm">
+                    <span className="text-xs font-semibold tracking-wide text-white">CAMERA REELLE</span>
                   </div>
+                </div>
 
-                  {/* Fullscreen button */}
-                  <button
-                    onClick={toggleFullscreen}
-                    className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-colors"
-                  >
-                    <Maximize2 className="w-5 h-5 text-white" />
-                  </button>
+                {/* Camera ChapCam - Einstein */}
+                <div className="relative h-full w-full overflow-hidden">
+                  <img
+                    src="/demo/einstein.png"
+                    alt="Visage transforme en Albert Einstein avec ChapCam"
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute top-3 right-3 flex items-center gap-2 rounded-full border border-[#00ff88]/50 bg-[#00ff88]/20 px-3 py-1.5 backdrop-blur-sm">
+                    <span className="text-xs font-bold tracking-wide text-[#00ff88]">CAMERA CHAPCAM</span>
+                  </div>
                 </div>
               </div>
 
+              {/* Separateur central avec icone de swap */}
+              <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2">
+                <div className="h-full w-[2px] bg-gradient-to-b from-transparent via-[#00ff88]/70 to-transparent" />
+              </div>
+              <motion.div
+                animate={{ scale: [1, 1.1, 1] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+              >
+                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#00ff88]/60 bg-black/70 backdrop-blur-sm">
+                  <ArrowLeftRight className="h-6 w-6 text-[#00ff88]" />
+                </div>
+              </motion.div>
+
               {/* Live badge */}
-              <div className="absolute top-4 left-4 flex items-center gap-2 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full">
+              <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5 backdrop-blur-sm">
                 <motion.div
                   animate={{ opacity: [1, 0.5, 1] }}
                   transition={{ duration: 1, repeat: Infinity }}
@@ -178,8 +133,8 @@ export function InActionSection() {
                 <span className="text-white text-sm font-medium">DEMO LIVE</span>
               </div>
 
-              {/* Nouveau visage label */}
-              <div className="absolute top-4 right-4 bg-[#00ff88]/20 backdrop-blur-sm px-3 py-1.5 rounded-full border border-[#00ff88]/50">
+              {/* Face swap label */}
+              <div className="absolute bottom-3 right-3 rounded-full border border-[#00ff88]/50 bg-[#00ff88]/20 px-3 py-1.5 backdrop-blur-sm">
                 <span className="text-[#00ff88] text-sm font-bold">Face Swap en Direct</span>
               </div>
             </div>
@@ -192,7 +147,7 @@ export function InActionSection() {
               transition={{ delay: 1 }}
               className="text-center text-gray-500 text-sm mt-4"
             >
-              Survolez pour afficher les controles
+              Transformation instantanee de ton visage en temps reel
             </motion.p>
           </div>
         </motion.div>
