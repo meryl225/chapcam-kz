@@ -1,13 +1,15 @@
 'use client'
 
 import { forwardRef } from 'react'
-import { Activity, Gauge, Webcam, Sparkles } from 'lucide-react'
+import { Activity, Gauge, Webcam, Sparkles, Users } from 'lucide-react'
 import type { LiveStatus } from '@/hooks/use-live-face-swap'
 
 interface Props {
   status: LiveStatus
   fps: number
   latencyMs: number
+  queuePosition?: number
+  queueTotal?: number
   videoRef: React.RefObject<HTMLVideoElement | null>
   outputCanvasRef: React.RefObject<HTMLCanvasElement | null>
 }
@@ -20,10 +22,11 @@ function latencyColor(ms: number) {
 }
 
 export const LiveStage = forwardRef<HTMLDivElement, Props>(function LiveStage(
-  { status, fps, latencyMs, videoRef, outputCanvasRef },
+  { status, fps, latencyMs, queuePosition = 0, queueTotal = 0, videoRef, outputCanvasRef },
   ref,
 ) {
   const isLive = status === 'running'
+  const isQueued = status === 'queued'
   const isPreparing = status === 'connecting' || status === 'preparing'
 
   return (
@@ -53,7 +56,25 @@ export const LiveStage = forwardRef<HTMLDivElement, Props>(function LiveStage(
           <canvas ref={outputCanvasRef} className="h-full w-full -scale-x-100 object-cover" />
           {!isLive && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500">
-              {isPreparing ? (
+              {isQueued ? (
+                <>
+                  <Users className="h-10 w-10 animate-pulse text-[#00ff88]/70" />
+                  <span className="text-3xl font-extrabold text-[#00ff88]">
+                    {queuePosition > 0 ? `#${queuePosition}` : '...'}
+                  </span>
+                  <span className="text-sm font-semibold text-white">File d&apos;attente GPU</span>
+                  <span className="text-xs text-gray-400">
+                    {queuePosition > 0
+                      ? `Tu es ${queuePosition === 1 ? 'le prochain' : `en position ${queuePosition}`}${
+                          queueTotal > 0 ? ` sur ${queueTotal} en attente` : ''
+                        }`
+                      : 'Recherche d\u2019un creneau GPU libre...'}
+                  </span>
+                  <span className="mt-1 text-[11px] text-gray-500">
+                    Ton temps d&apos;essai ne tourne pas pendant l&apos;attente.
+                  </span>
+                </>
+              ) : isPreparing ? (
                 <>
                   <Sparkles className="h-10 w-10 animate-pulse text-[#00ff88]/60" />
                   <span className="text-sm text-[#00ff88]/80">
@@ -81,7 +102,13 @@ export const LiveStage = forwardRef<HTMLDivElement, Props>(function LiveStage(
             className={`h-2.5 w-2.5 rounded-full ${isLive ? 'animate-pulse bg-[#00ff88]' : 'bg-gray-600'}`}
           />
           <span className="text-xs font-medium text-gray-300">
-            {isLive ? 'EN DIRECT' : status === 'stopped' ? 'Arrete' : 'Hors ligne'}
+            {isLive
+              ? 'EN DIRECT'
+              : isQueued
+                ? 'EN FILE D\u2019ATTENTE'
+                : status === 'stopped'
+                  ? 'Arrete'
+                  : 'Hors ligne'}
           </span>
         </div>
         <div className="flex items-center gap-5">

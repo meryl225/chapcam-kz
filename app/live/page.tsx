@@ -57,6 +57,8 @@ export default function LivePage() {
     secondsRemaining,
     fps,
     latencyMs,
+    queuePosition,
+    queueTotal,
     error,
     notConfigured,
     videoRef,
@@ -143,7 +145,7 @@ export default function LivePage() {
     await start({ references })
   }
 
-  const isBusy = status === 'connecting' || status === 'preparing'
+  const isBusy = status === 'connecting' || status === 'preparing' || status === 'queued'
   const isLive = status === 'running'
   const effectiveMode = mode ?? access?.mode ?? 'none'
   const canStart = effectiveMode !== 'none' && selected.length > 0
@@ -217,6 +219,8 @@ export default function LivePage() {
           status={status}
           fps={fps}
           latencyMs={latencyMs}
+          queuePosition={queuePosition}
+          queueTotal={queueTotal}
           videoRef={videoRef}
           outputCanvasRef={outputCanvasRef}
         />
@@ -239,7 +243,13 @@ export default function LivePage() {
               {isBusy ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  {status === 'connecting' ? 'Connexion...' : 'Preparation...'}
+                  {status === 'connecting'
+                    ? 'Connexion...'
+                    : status === 'queued'
+                      ? queuePosition > 0
+                        ? `File d\u2019attente (position ${queuePosition})`
+                        : 'File d\u2019attente...'
+                      : 'Preparation...'}
                 </>
               ) : (
                 <>

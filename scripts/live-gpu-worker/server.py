@@ -1,198 +1,209 @@
 """
-ChapCam Live Pro - Worker GPU Face Swap temps reel (serveur WebSocket)
-=======================================================================
+ChapCam Live - Serveur WebSocket GPU (mode cloud).
 
-A deployer sur un POD GPU PERSISTANT (RunPod "Pods", pas serverless) pour
-obtenir une latence basse facon LiveSync.
+Branche par l'app Next.js via LIVE_GPU_WS_URL (ex: wss://gpu.tondomaine.com/ws).
+Le navigateur se connecte avec ?token=<userId.exp.hmac>.
 
-Pipeline : InsightFace (detection) + inswapper_128 (swap) + GFPGAN optionnel.
-Pour des perfs maximales, convertir les modeles en TensorRT (voir README).
+Protocole (cf. hooks/use-live-face-swap.ts) :
+  -> client : { "type": "config", "references": ["url1", ...] }
+  <- worker : { "type": "queue", "position": N, "total": M }   (si file d'attente)
+  <- worker : { "type": "ready" }
+  -> client : frame binaire JPEG
+  <- worker : frame binaire JPEG (swappee)
+  <- worker : { "type": "error", "message": "..." }
 
-Protocole WebSocket (binaire + JSON) :
-  1. Le client se connecte a  wss://<pod>/ws?token=<userId.exp.hmac>
-  2. Le serveur valide le token HMAC (meme secret que LIVE_GPU_SHARED_SECRET).
-  3. Le client envoie un message JSON {type:"persona", images:[dataURL,...]} (1 a 4).
-  4. Le client envoie ensuite des frames JPEG binaires (la webcam).
-  5. Le serveur renvoie pour chaque frame un JPEG binaire (le visage swappe).
-
-Variables d'environnement attendues sur le pod :
-  LIVE_GPU_SHARED_SECRET : doit etre IDENTIQUE a  celui de l'app Next.js.
+Lancement :
+    python server.py
 """
 
-import os
-import time
-import hmac
-import json
-import base64
-import hashlib
+from __future__ import annotations
+
 import asyncio
+import json
+import os
 import urllib.request
+from http import HTTPStatus
 from urllib.parse import urlparse, parse_qs
 
-import numpy as np
-import cv2
 import websockets
-import insightface
-from insightface.app import FaceAnalysis
 
-SHARED_SECRET = os.environ.get("LIVE_GPU_SHARED_SECRET", "")
-PORT = int(os.environ.get("PORT", "8765"))
-PROVIDERS = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+from engine import SwapEngine, new_track
+from auth import verify_token
+from queue_manager import GpuQueue
 
-# Modele de swap : telecharge automatiquement au 1er demarrage s'il manque.
-MODEL_DIR = os.path.expanduser("~/.insightface/models")
-MODEL_PATH = os.path.join(MODEL_DIR, "inswapper_128.onnx")
-# Miroir public du modele inswapper_128 (~530 Mo). Surchargeable via env.
-MODEL_URL = os.environ.get(
-    "INSWAPPER_URL",
-    "https://huggingface.co/ezioruan/inswapper_128.onnx/resolve/main/inswapper_128.onnx",
-)
+HOST = os.getenv("CHAPCAM_HOST", "0.0.0.0")
+PORT = int(os.getenv("CHAPCAM_PORT", os.getenv("PORT", "8765")))
+MAX_REFERENCES = 4
+JPEG_QUALITY = int(os.getenv("CHAPCAM_JPEG_QUALITY", "70"))
+
+engine = SwapEngine()
+queue = GpuQueue()
 
 
-def ensure_model() -> str:
-    """Telecharge inswapper_128.onnx si absent, renvoie son chemin local."""
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    if os.path.exists(MODEL_PATH) and os.path.getsize(MODEL_PATH) > 100_000_000:
-        print(f"[worker] Modele deja present : {MODEL_PATH}")
-        return MODEL_PATH
-    print(f"[worker] Telechargement du modele depuis {MODEL_URL} ...")
-    tmp = MODEL_PATH + ".part"
-    urllib.request.urlretrieve(MODEL_URL, tmp)
-    os.replace(tmp, MODEL_PATH)
-    print(f"[worker] Modele telecharge : {MODEL_PATH}")
-    return MODEL_PATH
+def _fetch_image_bytes(url: str, timeout: float = 10.0) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": "ChapCam-GPU/1.0"})
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        return resp.read()
 
 
-# ----------------------------------------------------------------------
-# Chargement des modeles (une seule fois au demarrage du pod)
-# ----------------------------------------------------------------------
-print("[worker] Chargement des modeles InsightFace...")
-face_app = FaceAnalysis(name="buffalo_l", providers=PROVIDERS)
-face_app.prepare(ctx_id=0, det_size=(640, 640))
-swapper = insightface.model_zoo.get_model(ensure_model(), providers=PROVIDERS)
-print("[worker] Modeles prets.")
+async def _send_json(ws, obj) -> None:
+    await ws.send(json.dumps(obj))
 
 
-def verify_token(token: str) -> bool:
-    """Valide le token HMAC '<userId>.<exp>.<sig>' signe par l'app Next.js."""
-    if not SHARED_SECRET or not token:
-        return False
+def _is_ws_upgrade(headers) -> bool:
     try:
-        parts = token.split(".")
-        if len(parts) != 3:
-            return False
-        user_id, exp, sig = parts
-        if int(exp) < int(time.time()):
-            return False  # token expire
-        payload = f"{user_id}.{exp}"
-        expected = hmac.new(
-            SHARED_SECRET.encode(), payload.encode(), hashlib.sha256
-        ).hexdigest()
-        return hmac.compare_digest(expected, sig)
-    except Exception:
-        return False
+        up = headers.get("Upgrade", "") or headers.get("upgrade", "")
+    except Exception:  # noqa: BLE001
+        up = ""
+    return str(up).lower() == "websocket"
 
 
-def decode_data_url(data_url: str) -> np.ndarray:
-    """Decode une image dataURL base64 en image OpenCV BGR."""
-    if "," in data_url:
-        data_url = data_url.split(",", 1)[1]
-    raw = base64.b64decode(data_url)
-    arr = np.frombuffer(raw, np.uint8)
-    return cv2.imdecode(arr, cv2.IMREAD_COLOR)
+async def process_request(*args):
+    """Repond 200 OK aux requetes HTTP simples (health-check du proxy RunPod /
+    Cloudflare) tout en laissant passer les vraies negociations WebSocket.
+
+    Compatible :
+      - websockets >= 13 : process_request(connection, request)
+      - websockets < 13  : process_request(path, request_headers)
+    """
+    # Nouvelle API (websockets >= 13) : (connection, request)
+    if len(args) == 2 and hasattr(args[0], "respond"):
+        connection, request = args
+        if _is_ws_upgrade(getattr(request, "headers", {})):
+            return None  # laisser le handshake WebSocket continuer
+        return connection.respond(HTTPStatus.OK, "ChapCam GPU worker OK\n")
+
+    # Ancienne API (websockets < 13) : (path, request_headers)
+    request_headers = args[1] if len(args) >= 2 else {}
+    if _is_ws_upgrade(request_headers):
+        return None
+    return (HTTPStatus.OK, [("Content-Type", "text/plain")], b"ChapCam GPU worker OK\n")
 
 
-def extract_token(ws) -> str:
-    """Recupere ?token=... quelle que soit la version de la lib websockets."""
+def _extract_query(ws) -> dict:
+    """Recupere la query string quelle que soit la version de websockets."""
     raw_path = ""
-    # websockets >= 11 : le chemin est sur ws.request.path
     req = getattr(ws, "request", None)
     if req is not None and getattr(req, "path", None):
         raw_path = req.path
-    elif getattr(ws, "path", None):  # versions plus anciennes
+    elif getattr(ws, "path", None):
         raw_path = ws.path
-    if not raw_path:
-        return ""
-    query = urlparse(raw_path).query
-    return parse_qs(query).get("token", [""])[0]
+    return parse_qs(urlparse(raw_path).query) if raw_path else {}
 
 
 async def handle(ws):
-    # 1. Authentification via le token dans la query string
-    token = extract_token(ws)
-    if not verify_token(token):
-        await ws.close(code=4001, reason="token invalide")
+    # 1) Authentification via le token dans l'URL
+    qs = _extract_query(ws)
+    token = (qs.get("token") or [None])[0]
+    info = verify_token(token)
+    if not info:
+        await _send_json(ws, {"type": "error", "message": "Token invalide ou expire."})
+        await ws.close()
         return
 
-    source_face = None
-    print("[worker] Client connecte et authentifie.")
+    user_id = info.user_id
+    mode = (qs.get("mode") or ["trial"])[0]
+    print(f"[server] Connexion user={user_id} mode={mode}")
 
+    ticket = None
     try:
+        # 2) Attendre le message de config (references persona)
+        raw = await asyncio.wait_for(ws.recv(), timeout=30)
+        if isinstance(raw, bytes):
+            await _send_json(ws, {"type": "error", "message": "Config attendue avant les frames."})
+            return
+        msg = json.loads(raw)
+        if msg.get("type") != "config":
+            await _send_json(ws, {"type": "error", "message": "Premier message doit etre 'config'."})
+            return
+
+        references = (msg.get("references") or [])[:MAX_REFERENCES]
+        if not references:
+            await _send_json(ws, {"type": "error", "message": "Au moins une photo de reference est requise."})
+            return
+
+        # 3) File d'attente GPU : on attend un slot libre
+        async def on_position(position, total):
+            try:
+                await _send_json(ws, {"type": "queue", "position": position, "total": total})
+            except Exception:  # noqa: BLE001
+                pass
+
+        ticket = await queue.acquire(user_id, mode, on_position)
+
+        # 4) Preparer le visage source a partir de la premiere reference exploitable
+        source_face = None
+        for url in references:
+            try:
+                data = await asyncio.to_thread(_fetch_image_bytes, url)
+                source_face = await asyncio.to_thread(engine.build_source_from_bytes, data)
+                if source_face is not None:
+                    break
+            except Exception as e:  # noqa: BLE001
+                print(f"[server] reference KO {url}: {e}")
+
+        if source_face is None:
+            await _send_json(ws, {"type": "error", "message": "Aucun visage detecte sur les photos de reference."})
+            return
+
+        # 5) Pret : on signale au client de commencer a envoyer des frames
+        await _send_json(ws, {"type": "ready"})
+        track = new_track()
+
+        # 6) Boucle de traitement des frames
         async for message in ws:
-            # Message JSON = configuration du persona (images de reference)
             if isinstance(message, str):
                 try:
-                    data = json.loads(message)
-                except Exception:
-                    continue
-                if data.get("type") == "persona":
-                    images = data.get("images", [])[:4]
-                    best = None
-                    for d in images:
-                        img = decode_data_url(d)
-                        if img is None:
-                            continue
-                        faces = face_app.get(img)
-                        if faces:
-                            # On garde le plus grand visage detecte
-                            f = max(
-                                faces,
-                                key=lambda x: (x.bbox[2] - x.bbox[0])
-                                * (x.bbox[3] - x.bbox[1]),
-                            )
-                            best = f
-                    source_face = best
-                    await ws.send(
-                        json.dumps(
-                            {"type": "ready", "ok": source_face is not None}
-                        )
-                    )
+                    ctrl = json.loads(message)
+                    if ctrl.get("type") == "stop":
+                        break
+                except Exception:  # noqa: BLE001
+                    pass
                 continue
 
-            # Message binaire = frame webcam JPEG a  swapper
-            if source_face is None:
-                # Pas encore de persona : on renvoie la frame inchangee
-                await ws.send(message)
-                continue
-
-            arr = np.frombuffer(message, np.uint8)
-            frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+            frame = await asyncio.to_thread(engine.decode_jpeg, message)
             if frame is None:
                 continue
+            swapped = await asyncio.to_thread(engine.swap_frame, frame, source_face, track)
+            out = await asyncio.to_thread(engine.encode_jpeg, swapped, JPEG_QUALITY)
+            if out:
+                await ws.send(out)
 
-            faces = face_app.get(frame)
-            for target in faces:
-                frame = swapper.get(
-                    frame, target, source_face, paste_back=True
-                )
-
-            ok, buf = cv2.imencode(
-                ".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80]
-            )
-            if ok:
-                await ws.send(buf.tobytes())
+    except asyncio.CancelledError:
+        try:
+            await _send_json(ws, {"type": "error", "message": "Session annulee."})
+        except Exception:  # noqa: BLE001
+            pass
     except websockets.ConnectionClosed:
         pass
+    except Exception as e:  # noqa: BLE001
+        print(f"[server] Exception user={user_id}: {e}")
+        try:
+            await _send_json(ws, {"type": "error", "message": "Erreur interne du moteur Live."})
+        except Exception:  # noqa: BLE001
+            pass
     finally:
-        print("[worker] Client deconnecte.")
+        if ticket is not None:
+            await ticket.release()
+        else:
+            await queue.cancel(user_id)
+        print(f"[server] Deconnexion user={user_id}")
 
 
 async def main():
-    print(f"[worker] WebSocket en ecoute sur 0.0.0.0:{PORT}")
+    print("[server] Chargement du moteur de face swap...")
+    await asyncio.to_thread(engine.load)
+    print(f"[server] Worker GPU pret. Sessions GPU simultanees max : {queue.max_concurrent}")
+    print(f"[server] Ecoute WebSocket sur ws://{HOST}:{PORT}")
     async with websockets.serve(
-        handle, "0.0.0.0", PORT, max_size=8 * 1024 * 1024
+        handle,
+        HOST,
+        PORT,
+        max_size=8 * 1024 * 1024,
+        ping_interval=20,
+        process_request=process_request,
     ):
-        await asyncio.Future()  # tourne indefiniment
+        await asyncio.Future()
 
 
 if __name__ == "__main__":

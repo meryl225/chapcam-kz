@@ -1,69 +1,132 @@
-# ChapCam Live Pro — Worker GPU (Face Swap temps réel)
+# ChapCam Live - Worker GPU (le "2e logiciel")
 
-Ce dossier contient le serveur **WebSocket** à déployer sur un **pod GPU persistant**
-(RunPod « Pods », Vast.ai, Lambda…) pour alimenter la page `/live` avec une latence basse.
+Moteur de **face swap temps reel** qui alimente l'offre **Live Pro**.
+Memes briques techniques que les outils "pro" : **InsightFace** (detection +
+embedding `buffalo_l`) + **inswapper_128** sur **ONNX Runtime GPU**, avec
+acceleration **TensorRT** optionnelle.
 
-> L'app Next.js (v0) parle à ce worker. Elle ne peut pas l'héberger : un GPU est requis.
+Il existe **deux modes**, qui partagent le meme moteur (`engine.py`) :
 
-## 1. Pré-requis
+| Mode | Fichier | Pour qui | Latence |
+|------|---------|----------|---------|
+| **Cloud** | `server.py` | Tous les clients, rien a installer (100% navigateur) | ~80-200 ms (reseau inclus) |
+| **Local** | `local_app.py` | Utilisateurs avances avec GPU NVIDIA | **~20-40 ms** (vrai temps reel) |
 
-- 1 GPU NVIDIA (RTX 4090 / 5090 / A10 / L4 recommandé pour < 600 ms).
-- Python 3.10+, CUDA 11.8+ (le template RunPod « Pytorch 2.8 » convient).
-- Les modèles InsightFace : `buffalo_l` **et** `inswapper_128.onnx` se
-  **téléchargent automatiquement** au 1er démarrage (rien à placer à la main).
+---
 
-## 2. Déploiement RunPod (sans SSH, via Jupyter)
+## 1. Mode Cloud (`server.py`)
 
-1. RunPod → **Deploy a Pod** → **GPU Pods** (pas Serverless), RTX 4090/5090,
-   template **Runpod Pytorch 2.8**, coche **Start Jupyter notebook**, **Deploy**.
-2. Pod → **Connect** → **Connect to Jupyter Lab** → **File ▸ New ▸ Terminal**.
-3. Récupère le worker (glisse `server.py` dans Jupyter, ou clone le repo) :
+Branche a l'app Next.js. Le navigateur envoie les frames webcam, le worker
+renvoie les frames "swappees".
 
-\`\`\`bash
-git clone https://github.com/meryl225/chapcam-kz.git
-cd chapcam-kz/scripts/live-gpu-worker
-\`\`\`
+### Lancer en local (test)
 
-## 3. Installation & lancement
-
-\`\`\`bash
-pip install insightface onnxruntime-gpu opencv-python-headless websockets numpy
-
-# Utilise LE MEME secret que la variable LIVE_GPU_SHARED_SECRET du site :
-export LIVE_GPU_SHARED_SECRET="4CtW2rKdisYD08W0YaW7oa7QVzEL8IoP6mzw460VCo4y6WhNM1dclJChsh24aEy2"
-export PORT=8765
+```bash
+pip install -r requirements.txt
+python download_models.py
+export LIVE_GPU_SHARED_SECRET="le-meme-secret-que-next"
 python server.py
-\`\`\`
+# -> ws://localhost:8765
+```
 
-Au 1er lancement, le modèle (~530 Mo) se télécharge, puis :
-`[worker] WebSocket en écoute sur 0.0.0.0:8765`. **Laisse ce terminal ouvert.**
+### Deployer avec Docker (n'importe quel fournisseur GPU)
 
-Ensuite : page du pod → **Edit ▸ Expose HTTP Ports** → ajoute **8765**.
-RunPod fournit une URL publique, ex. `https://xxxxx-8765.proxy.runpod.net`.
+```bash
+docker build -t chapcam-gpu .
+docker run --gpus all -p 8765:8765 \
+  -e LIVE_GPU_SHARED_SECRET="le-meme-secret-que-next" \
+  -e CHAPCAM_MAX_CONCURRENT=2 \
+  chapcam-gpu
+```
 
-## 4. Variables d'environnement à définir dans l'app v0 / Vercel
+Fonctionne sur **Vast.ai, Lambda, RunPod, Paperspace, un serveur perso**, etc.
+Il faut exposer le port en **WSS** (TLS) derriere un reverse proxy
+(Caddy/Nginx/Traefik), car le navigateur exige `wss://` quand le site est en HTTPS.
 
-| Variable | Exemple | Rôle |
-|----------|---------|------|
-| `LIVE_GPU_WS_URL` | `wss://abc-8765.proxy.runpod.net/ws` | URL WebSocket publique du pod |
-| `LIVE_GPU_SHARED_SECRET` | `une-longue-chaine-aleatoire` | Secret partagé (HMAC). **Identique** des deux côtés. |
+### Brancher dans l'app Next.js
 
-Tant que ces variables ne sont pas définies, `/live` affiche « moteur non configuré »
-mais tout le reste (essai, offre, timer) fonctionne.
+Definir ces variables d'environnement cote Vercel :
 
-## 5. Optimisation latence (objectif type LiveSync)
+```
+LIVE_GPU_WS_URL=wss://gpu.tondomaine.com         # ou wss://.../ws selon ton proxy
+LIVE_GPU_SHARED_SECRET=le-meme-secret-que-le-worker
+```
 
-1. **TensorRT** : convertir `inswapper_128.onnx` et le détecteur en moteurs TRT FP16.
-   Gain typique x2–x3 sur le temps d'inférence.
-2. **det_size** : réduire à `(320, 320)` si la webcam est cadrée serré.
-3. **Résolution** : le client envoie déjà des frames downscalées ; ajustez côté `use-live-face-swap.ts`.
-4. **Pod proche** : choisissez une région GPU proche de vos utilisateurs.
-5. **Garder le pod chaud** : un pod persistant évite tout cold start (contrairement au serverless).
+> Le secret **doit etre identique** des deux cotes : l'app signe un token HMAC
+> `userId.exp.hmac`, le worker le verifie (`auth.py`). Ne committez jamais ce
+> secret dans le depot.
 
-## 6. Protocole (résumé)
+---
 
-1. Connexion : `wss://<pod>/ws?token=<userId.exp.hmac>` → le worker valide le HMAC.
-2. Client → `{"type":"persona","images":[dataURL,...]}` (1 à 4 photos).
-3. Worker → `{"type":"ready","ok":true}`.
-4. Client → frames **JPEG binaires** (webcam).
-5. Worker → frames **JPEG binaires** (visage swappé).
+## 2. Mode Local (`local_app.py`) - vrai ~30 ms
+
+Tourne sur le GPU du client : **webcam -> swap -> camera virtuelle** "ChapCam"
+utilisable dans Zoom / Meet / Discord / OBS. Aucune latence reseau.
+
+```bash
+pip install -r requirements-local.txt
+python download_models.py
+python local_app.py --personas mon_persona.jpg --preview
+```
+
+Prerequis camera virtuelle :
+- **Windows / macOS** : installer **OBS** (fournit la "OBS Virtual Camera").
+- **Linux** : `sudo modprobe v4l2loopback`.
+
+Puis dans Zoom/Meet/Discord, choisir la camera **"OBS Virtual Camera"** / "ChapCam".
+
+---
+
+## 3. File d'attente (queue)
+
+Le worker n'accepte que `CHAPCAM_MAX_CONCURRENT` sessions simultanees (selon la
+VRAM). Au-dela, les nouveaux arrivants sont **mis en file d'attente** et recoivent
+leur **position en temps reel** :
+
+```json
+{ "type": "queue", "position": 2, "total": 5 }
+```
+
+Priorite : les sessions **payantes** passent devant les **essais gratuits**.
+Des qu'un slot se libere, le worker envoie `{"type":"ready"}` et le swap demarre.
+
+---
+
+## 4. Optimiser la latence facon "pro"
+
+1. **TensorRT** (`CHAPCAM_USE_TRT=1`) : compile un moteur FP16 optimise au 1er
+   lancement (cache sur disque). Gain majeur sur l'inference.
+2. **`CHAPCAM_DET_SIZE=320`** (ou 256) : la detection est le plus gros cout ;
+   reduire la taille accelere beaucoup pour une perte de precision minime.
+3. **`CHAPCAM_REDETECT_EVERY=8`** : tracking - on ne redetecte le visage que
+   toutes les 8 frames et on reutilise la bbox entre-temps.
+4. **GPU dedie** dans une region reseau proche de tes utilisateurs (reduit le RTT).
+5. Garder un **pod persistant** (pas de cold start) et `CHAPCAM_MAX_CONCURRENT`
+   adapte a la VRAM pour eviter la contention.
+
+---
+
+## 5. Protocole WebSocket (resume)
+
+1. Connexion : `wss://<host>/?token=<userId.exp.hmac>` -> le worker valide le HMAC.
+2. Client -> `{"type":"config","references":["url1", ...]}` (1 a 4 URLs de photos).
+3. (si file) Worker -> `{"type":"queue","position":N,"total":M}` (repete).
+4. Worker -> `{"type":"ready"}`.
+5. Client -> frames **JPEG binaires** (webcam).
+6. Worker -> frames **JPEG binaires** (visage swappe).
+7. En cas de souci : Worker -> `{"type":"error","message":"..."}`.
+
+---
+
+## Fichiers
+
+| Fichier | Role |
+|---------|------|
+| `engine.py` | Moteur de swap partage (InsightFace + inswapper + ONNX/TensorRT) |
+| `server.py` | Serveur WebSocket cloud + file d'attente + auth token |
+| `local_app.py` | App locale webcam -> camera virtuelle |
+| `queue_manager.py` | File d'attente GPU avec priorite payant > essai |
+| `auth.py` | Verification du token HMAC emis par Next.js |
+| `download_models.py` | Telechargement des modeles (inswapper + buffalo_l) |
+| `Dockerfile` | Image GPU pour le mode cloud |
+| `.env.example` | Variables d'environnement du worker |
