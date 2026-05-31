@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
-import { LegalConsentModal } from '@/components/legal-consent-modal'
 import { SecurityProvider } from '@/components/security-provider'
 import './globals.css'
 
@@ -35,7 +34,6 @@ export default function RootLayout({
     <html lang="fr" className="bg-background">
       <body className="font-sans antialiased">
         <SecurityProvider>
-          <LegalConsentModal />
           {children}
         </SecurityProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
