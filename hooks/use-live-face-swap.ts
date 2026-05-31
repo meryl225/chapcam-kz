@@ -40,8 +40,8 @@ interface UseLiveFaceSwapReturn {
   latencyMs: number
   error: string | null
   notConfigured: boolean
-  videoRef: React.RefObject<HTMLVideoElement>
-  outputCanvasRef: React.RefObject<HTMLCanvasElement>
+  videoRef: React.RefObject<HTMLVideoElement | null>
+  outputCanvasRef: React.RefObject<HTMLCanvasElement | null>
   start: (opts: StartOptions) => Promise<void>
   stop: () => void
 }
