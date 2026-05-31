@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPlan } from '@/lib/plans'
+import { getLiveOffer } from '@/lib/live-offers'
 import { getPaymentMethod } from '@/lib/payment-methods'
 
 export const runtime = 'nodejs'
@@ -34,8 +35,11 @@ export async function POST(req: NextRequest) {
     if (!phoneNumber || phoneNumber.length < 6) {
       return NextResponse.json({ error: 'Numero de telephone invalide.' }, { status: 400 })
     }
+    // Le produit achete peut etre une formule classique OU l'offre Live Pro.
     const plan = getPlan(planId)
-    if (!plan) {
+    const liveOffer = getLiveOffer(planId)
+    const product = plan ?? liveOffer
+    if (!product) {
       return NextResponse.json({ error: 'Formule invalide.' }, { status: 400 })
     }
     const method = getPaymentMethod(methodId)
@@ -130,8 +134,8 @@ export async function POST(req: NextRequest) {
       full_name: fullName,
       email,
       phone_number: phoneNumber,
-      plan: plan.id,
-      amount: plan.price,
+      plan: product.id,
+      amount: product.price,
       payment_method: method.id,
       paid_amount: paidAmount,
       paid_at: paidAtIso,

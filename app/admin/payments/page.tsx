@@ -54,6 +54,10 @@ const STATUS_LABEL: Record<string, string> = {
   rejected: 'Refuse',
 }
 
+const PLAN_DISPLAY: Record<string, string> = {
+  live15: 'Live Pro 15 min',
+}
+
 export default function AdminPaymentsPage() {
   const [requests, setRequests] = useState<PaymentRequest[]>([])
   const [loading, setLoading] = useState(true)
@@ -245,7 +249,7 @@ export default function AdminPaymentsPage() {
                         {STATUS_LABEL[r.status]}
                       </span>
                       <span className="rounded-full border border-gray-700 bg-[#0a0a0a] px-2.5 py-0.5 text-xs font-medium capitalize text-gray-300">
-                        {r.plan} — {r.amount.toLocaleString()} FCFA
+                        {(PLAN_DISPLAY[r.plan] ?? r.plan)} — {r.amount.toLocaleString()} FCFA
                       </span>
                       <span className="inline-flex items-center gap-1.5 rounded-full border border-[#00ff88]/30 bg-[#00ff88]/10 py-0.5 pl-1 pr-2.5 text-xs font-medium text-[#00ff88]">
                         {PAYMENT_METHOD_LOGOS[r.payment_method] && (
