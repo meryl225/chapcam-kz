@@ -125,7 +125,49 @@ export async function grantLiveWindow(admin: Admin, userId: string, count = 1): 
 // ============================================================
 
 export function isGpuConfigured(): boolean {
-  return !!process.env.LIVE_GPU_WS_URL && !!process.env.LIVE_GPU_SHARED_SECRET
+  // Configure si on a le secret ET (une URL fixe OU un pod RunPod pour l'auto-decouverte).
+  return (
+    !!process.env.LIVE_GPU_SHARED_SECRET &&
+    (!!process.env.LIVE_GPU_WS_URL || !!process.env.RUNPOD_POD_ID)
+  )
+}
+
+// Resout l'URL WebSocket du worker GPU.
+// Priorite : LIVE_GPU_WS_URL fixe > auto-decouverte via le pod RunPod.
+// L'auto-decouverte interroge https://<pod>-8765.proxy.runpod.net/tunnel-url
+// (requete GET simple, qui PASSE le proxy RunPod, contrairement a l'upgrade WS),
+// pour recuperer l'URL Cloudflare courante (wss://...trycloudflare.com).
+export async function resolveGpuWsUrl(): Promise<string | null> {
+  const fixed = process.env.LIVE_GPU_WS_URL
+  const podId = process.env.RUNPOD_POD_ID
+
+  // Le proxy HTTP de RunPod (*.proxy.runpod.net) renvoie 502 sur l'upgrade
+  // WebSocket : une URL fixe pointant vers ce proxy est donc inutilisable.
+  // Si on a un RUNPOD_POD_ID, on ignore cette URL cassee et on passe a
+  // l'auto-decouverte du tunnel Cloudflare.
+  const fixedIsBrokenProxy = !!fixed && /proxy\.runpod\.net/i.test(fixed)
+  if (fixed && !(fixedIsBrokenProxy && podId)) return fixed
+
+  if (!podId) return null
+
+  const port = process.env.RUNPOD_HTTP_PORT || '8765'
+  const lookupUrl = `https://${podId}-${port}.proxy.runpod.net/tunnel-url`
+  try {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 8000)
+    const res = await fetch(lookupUrl, { cache: 'no-store', signal: ctrl.signal })
+    clearTimeout(timer)
+    if (!res.ok) {
+      console.error('[live-access] tunnel-url HTTP', res.status)
+      return null
+    }
+    const data = (await res.json()) as { wss_url?: string }
+    const url = (data?.wss_url || '').trim()
+    return url || null
+  } catch (err: any) {
+    console.error('[live-access] resolveGpuWsUrl echec:', err?.message || err)
+    return null
+  }
 }
 
 export function signGpuToken(userId: string, ttlSeconds = 20 * 60): string {
@@ -137,12 +179,23 @@ export function signGpuToken(userId: string, ttlSeconds = 20 * 60): string {
   return `${payload}.${sig}`
 }
 
+// Version synchrone (URL fixe uniquement) - conservee pour compat.
 export function getGpuConnection(userId: string): { wsUrl: string; token: string } | null {
-  if (!isGpuConfigured()) return null
+  if (!process.env.LIVE_GPU_WS_URL || !process.env.LIVE_GPU_SHARED_SECRET) return null
   return {
     wsUrl: process.env.LIVE_GPU_WS_URL as string,
     token: signGpuToken(userId),
   }
+}
+
+// Version async : resout l'URL (fixe ou auto-decouverte RunPod) puis signe le token.
+export async function getGpuConnectionAsync(
+  userId: string,
+): Promise<{ wsUrl: string; token: string } | null> {
+  if (!isGpuConfigured()) return null
+  const wsUrl = await resolveGpuWsUrl()
+  if (!wsUrl) return null
+  return { wsUrl, token: signGpuToken(userId) }
 }
 
 // Helper expose pour valider la coherence d'une offre Live cote serveur.

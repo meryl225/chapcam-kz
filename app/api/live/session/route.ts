@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import {
   ensureLiveAccess,
   computeState,
-  getGpuConnection,
+  getGpuConnectionAsync,
   isGpuConfigured,
   liveOfferWindowMinutes,
 } from '@/lib/live-access'
@@ -78,7 +78,18 @@ export async function POST(_req: NextRequest) {
       })
     }
 
-    const gpu = getGpuConnection(user.id)
+    const gpu = await getGpuConnectionAsync(user.id)
+
+    if (!gpu) {
+      return NextResponse.json({
+        configured: false,
+        mode,
+        secondsRemaining,
+        windowExpiresAt,
+        message:
+          'Le moteur Live est injoignable (tunnel non demarre ou pod eteint). Lance run-tunnel.sh sur le pod GPU.',
+      })
+    }
 
     return NextResponse.json({
       configured: true,
