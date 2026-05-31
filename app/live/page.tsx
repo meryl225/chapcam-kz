@@ -145,7 +145,8 @@ export default function LivePage() {
 
   const isBusy = status === 'connecting' || status === 'preparing'
   const isLive = status === 'running'
-  const canStart = (access?.mode ?? 'none') !== 'none' && selected.length > 0
+  const effectiveMode = mode ?? access?.mode ?? 'none'
+  const canStart = effectiveMode !== 'none' && selected.length > 0
 
   if (loading) {
     return (
@@ -243,7 +244,9 @@ export default function LivePage() {
               ) : (
                 <>
                   <Play className="h-5 w-5 fill-black" />
-                  Demarrer le Live Face Swap
+                  {effectiveMode === 'trial'
+                    ? 'Demarrer l\u2019essai gratuit (2 min)'
+                    : 'Demarrer le Live Face Swap'}
                 </>
               )}
             </button>

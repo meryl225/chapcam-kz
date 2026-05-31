@@ -72,25 +72,33 @@ export function LiveAccessBanner({
   // Essai gratuit disponible
   if (mode === 'trial') {
     return (
-      <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-500/20">
-            <Gift className="h-5 w-5 text-yellow-400" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-white">Essai gratuit</p>
-            <p className="text-xs text-gray-400">
-              Il te reste {fmt(trialSecondsRemaining)} d&apos;essai. Achete {offerName} pour 15 min sans coupure.
-            </p>
+      <div className="rounded-2xl border border-[#00ff88]/40 bg-gradient-to-r from-[#00ff88]/15 to-[#00ff88]/5 p-5">
+        <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3">
+            <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#00ff88]/20">
+              <Gift className="h-6 w-6 text-[#00ff88]" />
+            </span>
+            <div>
+              <p className="flex items-center gap-2 text-base font-bold text-white">
+                Essaye gratuitement
+                <span className="rounded-full bg-[#00ff88] px-2 py-0.5 text-[11px] font-bold text-black">
+                  2 MIN OFFERTES
+                </span>
+              </p>
+              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-gray-300">
+                <Clock className="h-3.5 w-3.5 text-[#00ff88]" />
+                Il te reste <span className="font-mono font-semibold text-[#00ff88]">{fmt(trialSecondsRemaining)}</span> d&apos;essai gratuit. Lance le swap pour commencer !
+              </p>
+            </div>
           </div>
+          <button
+            onClick={onBuy}
+            className="flex items-center gap-2 rounded-xl border border-white/15 bg-black/30 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black/50"
+          >
+            <CreditCard className="h-4 w-4 text-[#00ff88]" />
+            Passer a 15 min — {offerPrice.toLocaleString()} FCFA
+          </button>
         </div>
-        <button
-          onClick={onBuy}
-          className="flex items-center gap-2 rounded-xl bg-[#00ff88] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#00dd77]"
-        >
-          <CreditCard className="h-4 w-4" />
-          {offerPrice.toLocaleString()} FCFA
-        </button>
       </div>
     )
   }
