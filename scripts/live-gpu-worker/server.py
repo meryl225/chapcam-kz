@@ -21,6 +21,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import time
 import urllib.request
 from http import HTTPStatus
 from urllib.parse import urlparse, parse_qs
@@ -190,6 +191,12 @@ async def handle(ws):
         await _send_json(ws, {"type": "ready"})
         track = new_track()
 
+        # --- Instrumentation perf (moyennes glissantes) ---
+        n = 0
+        acc = {"decode": 0.0, "detect": 0.0, "swap": 0.0, "encode": 0.0, "server": 0.0}
+        detect_count = 0
+        last_report = time.perf_counter()
+
         # 6) Boucle de traitement des frames
         async for message in ws:
             if isinstance(message, str):
@@ -201,13 +208,56 @@ async def handle(ws):
                     pass
                 continue
 
-            frame = await asyncio.to_thread(engine.decode_jpeg, message)
-            if frame is None:
-                continue
-            swapped = await asyncio.to_thread(engine.swap_frame, frame, source_face, track)
-            out = await asyncio.to_thread(engine.encode_jpeg, swapped, JPEG_QUALITY)
+            t_server0 = time.perf_counter()
+            # Tout le pipeline GPU dans UN seul saut de thread (moins d'overhead)
+            out, st = await asyncio.to_thread(
+                engine.process_jpeg, message, source_face, track, JPEG_QUALITY
+            )
+            server_ms = (time.perf_counter() - t_server0) * 1000.0
             if out:
                 await ws.send(out)
+
+            # Accumulation des metriques
+            n += 1
+            acc["decode"] += st.get("decode_ms", 0.0)
+            acc["detect"] += st.get("detect_ms", 0.0)
+            acc["swap"] += st.get("swap_ms", 0.0)
+            acc["encode"] += st.get("encode_ms", 0.0)
+            acc["server"] += server_ms
+            if st.get("detected"):
+                detect_count += 1
+
+            # Rapport toutes les ~2 s : log serveur + message stats au client
+            elapsed = time.perf_counter() - last_report
+            if elapsed >= 2.0 and n > 0:
+                gpu_fps = n / elapsed
+                avg = {k: round(v / n, 1) for k, v in acc.items()}
+                det_avg = round(acc["detect"] / detect_count, 1) if detect_count else 0.0
+                print(
+                    f"[perf] {gpu_fps:4.1f} fps GPU | server {avg['server']}ms "
+                    f"(decode {avg['decode']} | detect {det_avg} x{detect_count}/{n} "
+                    f"| swap {avg['swap']} | encode {avg['encode']})",
+                    flush=True,
+                )
+                try:
+                    await _send_json(
+                        ws,
+                        {
+                            "type": "stats",
+                            "gpuFps": round(gpu_fps, 1),
+                            "serverMs": avg["server"],
+                            "decodeMs": avg["decode"],
+                            "detectMs": det_avg,
+                            "swapMs": avg["swap"],
+                            "encodeMs": avg["encode"],
+                        },
+                    )
+                except Exception:  # noqa: BLE001
+                    pass
+                n = 0
+                detect_count = 0
+                acc = {"decode": 0.0, "detect": 0.0, "swap": 0.0, "encode": 0.0, "server": 0.0}
+                last_report = time.perf_counter()
 
     except asyncio.CancelledError:
         try:

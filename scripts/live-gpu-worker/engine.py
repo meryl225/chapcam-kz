@@ -144,8 +144,18 @@ class SwapEngine:
         return self.build_source_face(img)
 
     # ----- Swap d'une frame -----
-    def swap_frame(self, frame_bgr: np.ndarray, source_face, track: Optional[_Track] = None) -> np.ndarray:
-        """Applique le visage source sur le(s) visage(s) detecte(s) dans la frame."""
+    def swap_frame(
+        self,
+        frame_bgr: np.ndarray,
+        source_face,
+        track: Optional[_Track] = None,
+        stats: Optional[dict] = None,
+    ) -> np.ndarray:
+        """Applique le visage source sur le(s) visage(s) detecte(s) dans la frame.
+
+        Si `stats` est fourni (dict), on y ecrit les temps en ms :
+          stats["detect_ms"], stats["swap_ms"], stats["detected"] (bool).
+        """
         if source_face is None:
             return frame_bgr
 
@@ -157,8 +167,12 @@ class SwapEngine:
 
         target_face = None
         if do_detect:
+            t0 = time.perf_counter()
             with self._lock:
                 faces = self._analyser.get(frame_bgr)
+            if stats is not None:
+                stats["detect_ms"] = (time.perf_counter() - t0) * 1000.0
+                stats["detected"] = True
             if faces:
                 faces.sort(
                     key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]),
@@ -175,9 +189,41 @@ class SwapEngine:
         if target_face is None:
             return frame_bgr
 
+        t1 = time.perf_counter()
         with self._lock:
             result = self._swapper.get(frame_bgr, target_face, source_face, paste_back=True)
+        if stats is not None:
+            stats["swap_ms"] = (time.perf_counter() - t1) * 1000.0
         return result
+
+    # ----- Pipeline complet chronometre (decode -> swap -> encode) -----
+    def process_jpeg(
+        self,
+        data: bytes,
+        source_face,
+        track: Optional[_Track] = None,
+        quality: int = 70,
+    ) -> tuple[bytes, dict]:
+        """Decode un JPEG, applique le swap, re-encode. Renvoie (jpeg, stats_ms).
+
+        Tout est fait dans UN seul appel (donc un seul saut de thread depuis
+        l'event loop), ce qui reduit l'overhead par rapport a 3 appels separes.
+        """
+        stats: dict = {"decode_ms": 0.0, "detect_ms": 0.0, "swap_ms": 0.0, "encode_ms": 0.0, "detected": False}
+
+        t0 = time.perf_counter()
+        arr = np.frombuffer(data, dtype=np.uint8)
+        frame = cv2.imdecode(arr, cv2.IMREAD_COLOR)
+        stats["decode_ms"] = (time.perf_counter() - t0) * 1000.0
+        if frame is None:
+            return b"", stats
+
+        swapped = self.swap_frame(frame, source_face, track, stats=stats)
+
+        t2 = time.perf_counter()
+        ok, buf = cv2.imencode(".jpg", swapped, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
+        stats["encode_ms"] = (time.perf_counter() - t2) * 1000.0
+        return (buf.tobytes() if ok else b""), stats
 
     # ----- Helpers JPEG (cloud) -----
     def decode_jpeg(self, data: bytes) -> Optional[np.ndarray]:
