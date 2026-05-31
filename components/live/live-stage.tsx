@@ -8,8 +8,8 @@ interface Props {
   status: LiveStatus
   fps: number
   latencyMs: number
-  videoRef: React.RefObject<HTMLVideoElement>
-  outputCanvasRef: React.RefObject<HTMLCanvasElement>
+  videoRef: React.RefObject<HTMLVideoElement | null>
+  outputCanvasRef: React.RefObject<HTMLCanvasElement | null>
 }
 
 function latencyColor(ms: number) {
