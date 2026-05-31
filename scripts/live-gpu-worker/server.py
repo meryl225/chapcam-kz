@@ -22,6 +22,7 @@ import asyncio
 import json
 import os
 import urllib.request
+from http import HTTPStatus
 from urllib.parse import urlparse, parse_qs
 
 import websockets
@@ -47,6 +48,36 @@ def _fetch_image_bytes(url: str, timeout: float = 10.0) -> bytes:
 
 async def _send_json(ws, obj) -> None:
     await ws.send(json.dumps(obj))
+
+
+def _is_ws_upgrade(headers) -> bool:
+    try:
+        up = headers.get("Upgrade", "") or headers.get("upgrade", "")
+    except Exception:  # noqa: BLE001
+        up = ""
+    return str(up).lower() == "websocket"
+
+
+async def process_request(*args):
+    """Repond 200 OK aux requetes HTTP simples (health-check du proxy RunPod /
+    Cloudflare) tout en laissant passer les vraies negociations WebSocket.
+
+    Compatible :
+      - websockets >= 13 : process_request(connection, request)
+      - websockets < 13  : process_request(path, request_headers)
+    """
+    # Nouvelle API (websockets >= 13) : (connection, request)
+    if len(args) == 2 and hasattr(args[0], "respond"):
+        connection, request = args
+        if _is_ws_upgrade(getattr(request, "headers", {})):
+            return None  # laisser le handshake WebSocket continuer
+        return connection.respond(HTTPStatus.OK, "ChapCam GPU worker OK\n")
+
+    # Ancienne API (websockets < 13) : (path, request_headers)
+    request_headers = args[1] if len(args) >= 2 else {}
+    if _is_ws_upgrade(request_headers):
+        return None
+    return (HTTPStatus.OK, [("Content-Type", "text/plain")], b"ChapCam GPU worker OK\n")
 
 
 def _extract_query(ws) -> dict:
@@ -164,7 +195,14 @@ async def main():
     await asyncio.to_thread(engine.load)
     print(f"[server] Worker GPU pret. Sessions GPU simultanees max : {queue.max_concurrent}")
     print(f"[server] Ecoute WebSocket sur ws://{HOST}:{PORT}")
-    async with websockets.serve(handle, HOST, PORT, max_size=8 * 1024 * 1024, ping_interval=20):
+    async with websockets.serve(
+        handle,
+        HOST,
+        PORT,
+        max_size=8 * 1024 * 1024,
+        ping_interval=20,
+        process_request=process_request,
+    ):
         await asyncio.Future()
 
 
