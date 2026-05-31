@@ -50,6 +50,27 @@ async def _send_json(ws, obj) -> None:
     await ws.send(json.dumps(obj))
 
 
+# Fichier ou run-tunnel.sh ecrit l'URL publique Cloudflare (wss://...).
+TUNNEL_URL_FILE = os.getenv("CHAPCAM_TUNNEL_URL_FILE", "/tmp/chapcam-tunnel-url.txt")
+
+
+def _read_tunnel_url() -> str:
+    try:
+        with open(TUNNEL_URL_FILE, "r", encoding="utf-8") as fh:
+            return fh.read().strip()
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _request_path(*args) -> str:
+    """Recupere le chemin demande quelle que soit la version de websockets."""
+    # Nouvelle API : (connection, request) -> request.path
+    if len(args) == 2 and hasattr(args[0], "respond"):
+        return getattr(args[1], "path", "") or ""
+    # Ancienne API : (path, headers)
+    return args[0] if args and isinstance(args[0], str) else ""
+
+
 def _is_ws_upgrade(headers) -> bool:
     """Detecte une vraie negociation WebSocket.
 
@@ -76,17 +97,26 @@ async def process_request(*args):
       - websockets >= 13 : process_request(connection, request)
       - websockets < 13  : process_request(path, request_headers)
     """
+    path = _request_path(*args)
+    is_tunnel_url = path.split("?", 1)[0].rstrip("/") == "/tunnel-url"
+
     # Nouvelle API (websockets >= 13) : (connection, request)
     if len(args) == 2 and hasattr(args[0], "respond"):
         connection, request = args
         if _is_ws_upgrade(getattr(request, "headers", {})):
             return None  # laisser le handshake WebSocket continuer
+        if is_tunnel_url:
+            body = json.dumps({"wss_url": _read_tunnel_url()}) + "\n"
+            return connection.respond(HTTPStatus.OK, body)
         return connection.respond(HTTPStatus.OK, "ChapCam GPU worker OK\n")
 
     # Ancienne API (websockets < 13) : (path, request_headers)
     request_headers = args[1] if len(args) >= 2 else {}
     if _is_ws_upgrade(request_headers):
         return None
+    if is_tunnel_url:
+        body = (json.dumps({"wss_url": _read_tunnel_url()}) + "\n").encode("utf-8")
+        return (HTTPStatus.OK, [("Content-Type", "application/json")], body)
     return (HTTPStatus.OK, [("Content-Type", "text/plain")], b"ChapCam GPU worker OK\n")
 
 

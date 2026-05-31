@@ -46,6 +46,8 @@ if ! command -v cloudflared >/dev/null 2>&1; then
 fi
 
 # 3. Demarrer le worker en arriere-plan
+# Effacer l'ancienne URL pour ne pas servir une valeur perimee au demarrage
+rm -f "${CHAPCAM_TUNNEL_URL_FILE:-/tmp/chapcam-tunnel-url.txt}"
 echo "[run-tunnel] Demarrage du worker GPU sur le port $PORT..."
 python server.py > /tmp/chapcam-worker.log 2>&1 &
 WORKER_PID=$!
@@ -80,15 +82,22 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
+TUNNEL_URL_FILE="${CHAPCAM_TUNNEL_URL_FILE:-/tmp/chapcam-tunnel-url.txt}"
+
 echo ""
 echo "=================================================================="
 if [ -n "$PUBLIC_URL" ]; then
   WSS_URL="wss://${PUBLIC_URL#https://}"
-  echo "  TUNNEL ACTIF"
+  # Ecrire l'URL pour que le worker la serve sur /tunnel-url (auto-decouverte)
+  echo "$WSS_URL" > "$TUNNEL_URL_FILE"
+  echo "  TUNNEL ACTIF (auto-decouverte activee)"
   echo ""
-  echo "  Colle cette valeur dans LIVE_GPU_WS_URL sur Vercel :"
-  echo ""
+  echo "  URL publique du moteur Live :"
   echo "      $WSS_URL"
+  echo ""
+  echo "  Rien a coller : le site recupere cette URL automatiquement"
+  echo "  via RUNPOD_POD_ID. (Tu peux aussi la mettre dans LIVE_GPU_WS_URL"
+  echo "   si tu preferes la fixer manuellement.)"
   echo ""
 else
   echo "  URL du tunnel introuvable. Voir : cat /tmp/chapcam-tunnel.log"
