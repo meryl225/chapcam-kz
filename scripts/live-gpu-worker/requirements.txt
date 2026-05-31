@@ -1,0 +1,14 @@
+# ChapCam Live - dependances du worker GPU (mode cloud, server.py)
+# GPU NVIDIA recommande. Pour TensorRT, utiliser une image CUDA + onnxruntime-gpu compatible.
+
+websockets==12.0
+numpy==1.26.4
+opencv-python-headless==4.10.0.84
+insightface==0.7.3
+onnx==1.16.2
+
+# Choisir UN provider ONNX Runtime :
+#  - GPU (recommande) :
+onnxruntime-gpu==1.18.1
+#  - CPU (fallback, lent) : commenter la ligne ci-dessus et decommenter :
+# onnxruntime==1.18.1

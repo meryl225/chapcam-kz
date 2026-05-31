@@ -21,6 +21,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 export type LiveStatus =
   | 'idle'
   | 'connecting'
+  | 'queued'
   | 'preparing'
   | 'running'
   | 'stopped'
@@ -38,6 +39,8 @@ interface UseLiveFaceSwapReturn {
   secondsRemaining: number
   fps: number
   latencyMs: number
+  queuePosition: number
+  queueTotal: number
   error: string | null
   notConfigured: boolean
   videoRef: React.RefObject<HTMLVideoElement | null>
@@ -57,6 +60,8 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const [secondsRemaining, setSecondsRemaining] = useState(0)
   const [fps, setFps] = useState(0)
   const [latencyMs, setLatencyMs] = useState(0)
+  const [queuePosition, setQueuePosition] = useState(0)
+  const [queueTotal, setQueueTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [notConfigured, setNotConfigured] = useState(false)
 
@@ -116,6 +121,8 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     setStatus('stopped')
     setFps(0)
     setLatencyMs(0)
+    setQueuePosition(0)
+    setQueueTotal(0)
     stoppingRef.current = false
   }, [cleanup])
 
@@ -257,8 +264,9 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
         captureCanvasRef.current = document.createElement('canvas')
       }
 
-      // 3. Connexion WebSocket au worker GPU
-      const url = `${gpu.wsUrl}${gpu.wsUrl.includes('?') ? '&' : '?'}token=${encodeURIComponent(gpu.token)}`
+      // 3. Connexion WebSocket au worker GPU (on passe le mode pour la priorite de file d'attente)
+      const sep = gpu.wsUrl.includes('?') ? '&' : '?'
+      const url = `${gpu.wsUrl}${sep}token=${encodeURIComponent(gpu.token)}&mode=${encodeURIComponent(session.mode ?? 'trial')}`
       let ws: WebSocket
       try {
         ws = new WebSocket(url)
@@ -280,7 +288,13 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
         if (typeof ev.data === 'string') {
           try {
             const msg = JSON.parse(ev.data)
-            if (msg.type === 'ready') {
+            if (msg.type === 'queue') {
+              setStatus('queued')
+              setQueuePosition(typeof msg.position === 'number' ? msg.position : 0)
+              setQueueTotal(typeof msg.total === 'number' ? msg.total : 0)
+            } else if (msg.type === 'ready') {
+              setQueuePosition(0)
+              setQueueTotal(0)
               readyRef.current = true
               setStatus('running')
             } else if (msg.type === 'error') {
@@ -354,6 +368,8 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     secondsRemaining,
     fps,
     latencyMs,
+    queuePosition,
+    queueTotal,
     error,
     notConfigured,
     videoRef,
