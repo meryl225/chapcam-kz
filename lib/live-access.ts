@@ -139,9 +139,15 @@ export function isGpuConfigured(): boolean {
 // pour recuperer l'URL Cloudflare courante (wss://...trycloudflare.com).
 export async function resolveGpuWsUrl(): Promise<string | null> {
   const fixed = process.env.LIVE_GPU_WS_URL
-  if (fixed) return fixed
-
   const podId = process.env.RUNPOD_POD_ID
+
+  // Le proxy HTTP de RunPod (*.proxy.runpod.net) renvoie 502 sur l'upgrade
+  // WebSocket : une URL fixe pointant vers ce proxy est donc inutilisable.
+  // Si on a un RUNPOD_POD_ID, on ignore cette URL cassee et on passe a
+  // l'auto-decouverte du tunnel Cloudflare.
+  const fixedIsBrokenProxy = !!fixed && /proxy\.runpod\.net/i.test(fixed)
+  if (fixed && !(fixedIsBrokenProxy && podId)) return fixed
+
   if (!podId) return null
 
   const port = process.env.RUNPOD_HTTP_PORT || '8765'
