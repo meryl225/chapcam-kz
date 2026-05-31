@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, CreditCard, Battery, Shield, ReceiptText } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, CreditCard, Battery, Shield, ReceiptText, Video } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -45,6 +45,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/dashboard', icon: Zap, label: 'LIVE SWAP' },
+  { href: '/live', icon: Video, label: 'LIVE PRO' },
   { href: '/dashboard/avatars', icon: Users, label: 'MES AVATARS' },
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES' },
   { href: '/dashboard/settings', icon: Settings, label: 'PARAMETRES' },
