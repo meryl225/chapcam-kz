@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock, Gift, Sparkles } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -107,6 +107,43 @@ export function PricingSection() {
           <p className="text-gray-400 mt-4 text-lg">
             2 points = 1 seconde de transformation du visage et corps entier
           </p>
+        </motion.div>
+
+        {/* Free Trial Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-16"
+        >
+          <div className="relative overflow-hidden rounded-3xl border border-[#00ff88]/40 bg-gradient-to-r from-[#00ff88]/15 via-[#00ff88]/10 to-[#00ff88]/5 p-6 md:p-8">
+            <div className="flex flex-col items-center gap-5 text-center md:flex-row md:items-center md:justify-between md:text-left">
+              <div className="flex items-center gap-4">
+                <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-[#00ff88]/20">
+                  <Gift className="h-7 w-7 text-[#00ff88]" />
+                </span>
+                <div>
+                  <div className="flex items-center justify-center gap-2 md:justify-start">
+                    <h3 className="text-2xl font-black text-white md:text-3xl">
+                      Essaye gratuitement
+                    </h3>
+                    <span className="rounded-full bg-[#00ff88] px-3 py-1 text-xs font-bold text-black">
+                      2 MIN OFFERTES
+                    </span>
+                  </div>
+                  <p className="mt-1 text-gray-300">
+                    Teste le Live Face Swap en temps reel, sans carte bancaire, directement dans ton navigateur.
+                  </p>
+                </div>
+              </div>
+              <Link href="/live" className="w-full md:w-auto">
+                <Button className="flex w-full items-center gap-2 rounded-2xl bg-[#00ff88] px-8 py-6 text-base font-bold text-black transition-all hover:bg-[#00dd77] md:w-auto">
+                  <Sparkles className="h-5 w-5" />
+                  Essayer maintenant
+                </Button>
+              </Link>
+            </div>
+          </div>
         </motion.div>
 
         {/* Pricing Cards */}

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Zap, Shield, Monitor, MessageCircle } from "lucide-react"
+import { ArrowRight, Zap, Shield, Monitor, MessageCircle, Gift } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FeatureList } from "@/components/feature-list"
 import { PhoneMockup } from "@/components/phone-mockup"
@@ -102,6 +102,21 @@ export function HeroSection() {
                   <ArrowRight className="w-5 h-5" />
                 </motion.div>
               </Button>
+            </motion.div>
+          </Link>
+
+          {/* Free Trial CTA */}
+          <Link href="/live">
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="flex w-fit items-center gap-2 rounded-full border border-[#00ff88]/50 bg-[#00ff88]/10 px-6 py-3 transition-colors hover:bg-[#00ff88]/20"
+            >
+              <Gift className="h-5 w-5 text-[#00ff88]" />
+              <span className="font-semibold text-[#00ff88]">Essai gratuit 2 min</span>
+              <span className="rounded-full bg-[#00ff88] px-2 py-0.5 text-xs font-bold text-black">
+                SANS CARTE
+              </span>
             </motion.div>
           </Link>
 
