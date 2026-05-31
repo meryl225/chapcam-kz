@@ -351,6 +351,12 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
               setError(msg.message || 'Erreur du moteur Live.')
               setStatus('error')
               cleanup()
+            } else if (msg.type === 'stats') {
+              // Metriques perf rapportees par le worker GPU
+              if (typeof msg.serverMs === 'number') {
+                lastGpuMsRef.current = msg.serverMs
+                setGpuMs(Math.round(msg.serverMs))
+              }
             }
           } catch {
             /* message texte inconnu */
@@ -418,6 +424,8 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     secondsRemaining,
     fps,
     latencyMs,
+    gpuMs,
+    networkMs,
     queuePosition,
     queueTotal,
     error,
