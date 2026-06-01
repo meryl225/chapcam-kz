@@ -310,6 +310,72 @@ export async function selectGpuWsUrl(userId: string): Promise<string | null> {
   return hashPick(tied.map((t) => t.w), userId).wsUrl
 }
 
+// ------------------------------------------------------------
+// Statut des workers GPU (pour le dashboard admin).
+// ------------------------------------------------------------
+export interface GpuWorkerStatus {
+  id: string // pod id ou URL (identifiant lisible)
+  kind: 'pod' | 'url'
+  online: boolean // tunnel resolu (worker joignable)
+  ready: boolean // /health a repondu 200 (modele charge)
+  active: number
+  waiting: number
+  max: number
+  free: number
+  uptime?: number
+}
+
+export interface GpuClusterStatus {
+  configured: boolean
+  workers: GpuWorkerStatus[]
+  totals: { active: number; waiting: number; max: number; free: number; online: number; total: number }
+}
+
+// Renvoie l'etat detaille de chaque worker + les totaux agreges.
+export async function getGpuWorkersStatus(): Promise<GpuClusterStatus> {
+  const specs = gpuWorkerSpecs()
+  const workers: GpuWorkerStatus[] = await Promise.all(
+    specs.map(async (spec) => {
+      const id = spec.fixedUrl ?? spec.podId ?? 'inconnu'
+      const kind: 'pod' | 'url' = spec.podId ? 'pod' : 'url'
+      const resolved = await resolveWorker(spec)
+      if (!resolved) {
+        return { id, kind, online: false, ready: false, active: 0, waiting: 0, max: 0, free: 0 }
+      }
+      const health = await fetchWorkerHealth(resolved.healthUrl)
+      if (!health) {
+        // Tunnel up mais /health KO (modele en chargement ou worker fige).
+        return { id, kind, online: true, ready: false, active: 0, waiting: 0, max: 0, free: 0 }
+      }
+      return {
+        id,
+        kind,
+        online: true,
+        ready: true,
+        active: health.active ?? 0,
+        waiting: health.waiting ?? 0,
+        max: health.max ?? 0,
+        free: health.free ?? 0,
+        uptime: (health as WorkerHealth & { uptime?: number }).uptime,
+      }
+    }),
+  )
+
+  const totals = workers.reduce(
+    (acc, w) => ({
+      active: acc.active + w.active,
+      waiting: acc.waiting + w.waiting,
+      max: acc.max + w.max,
+      free: acc.free + w.free,
+      online: acc.online + (w.ready ? 1 : 0),
+      total: acc.total + 1,
+    }),
+    { active: 0, waiting: 0, max: 0, free: 0, online: 0, total: 0 },
+  )
+
+  return { configured: isGpuConfigured(), workers, totals }
+}
+
 export function signGpuToken(userId: string, ttlSeconds = 20 * 60): string {
   const secret = process.env.LIVE_GPU_SHARED_SECRET
   if (!secret) throw new Error('LIVE_GPU_SHARED_SECRET manquant')
