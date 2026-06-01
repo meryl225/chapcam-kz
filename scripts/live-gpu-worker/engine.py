@@ -88,8 +88,12 @@ class SwapEngine:
     """Moteur de face swap reutilisable. Thread-safe pour l'inference."""
 
     model_root: str = field(default_factory=lambda: os.getenv("CHAPCAM_MODEL_ROOT", "./models"))
-    det_size: int = field(default_factory=lambda: int(os.getenv("CHAPCAM_DET_SIZE", "320")))
-    redetect_every: int = field(default_factory=lambda: int(os.getenv("CHAPCAM_REDETECT_EVERY", "8")))
+    det_size: int = field(default_factory=lambda: int(os.getenv("CHAPCAM_DET_SIZE", "384")))
+    # Redetection a CHAQUE frame par defaut : c'est ce qui evite la deformation
+    # du swap quand le visage bouge. Avant (8) on reutilisait des points de
+    # visage perimes entre deux detections -> le visage source etait plaque sur
+    # une position obsolete (etirement/glissement). Mettre 2 si besoin de FPS.
+    redetect_every: int = field(default_factory=lambda: int(os.getenv("CHAPCAM_REDETECT_EVERY", "1")))
 
     _analyser: object = field(default=None, init=False)
     _swapper: object = field(default=None, init=False)
