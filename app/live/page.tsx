@@ -12,6 +12,7 @@ import {
   AlertTriangle,
   Info,
   Camera,
+  Users,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useLiveFaceSwap } from '@/hooks/use-live-face-swap'
@@ -184,7 +185,7 @@ export default function LivePage() {
           </p>
           <p className="mt-2 text-xs text-gray-500">
             L&apos;outil Live est <span className="text-gray-300">different du logiciel ChapCam de depart</span>.
-            Avec un abonnement, la transformation est bien plus belle et te change en entier —{' '}
+            Avec un abonnement, il n&apos;y a pas de bug et la transformation se fait de la tete aux pieds —{' '}
             <Link href="/dashboard/recharge" className="text-[#00ff88] underline-offset-2 hover:underline">
               voir les abonnements
             </Link>
@@ -206,6 +207,24 @@ export default function LivePage() {
             />
           </div>
         )}
+
+        {/* Info file d'attente : beaucoup d'essais gratuits en meme temps */}
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white/5">
+            <Users className="h-4 w-4 text-gray-300" />
+          </span>
+          <div className="text-sm text-gray-300">
+            <p className="font-semibold text-white">Beaucoup de monde essaie en ce moment</p>
+            <p className="mt-1 text-gray-400">
+              L&apos;essai est gratuit, donc plusieurs personnes l&apos;utilisent en meme temps. Tu peux
+              parfois attendre un peu avant que ca demarre. Avec un{' '}
+              <Link href="/dashboard/recharge" className="text-[#00ff88] underline-offset-2 hover:underline">
+                abonnement
+              </Link>
+              , tu passes en priorite, sans bug et avec une transformation de la tete aux pieds.
+            </p>
+          </div>
+        </div>
 
         {/* Alerte moteur non configure */}
         {(notConfigured || access?.gpuConfigured === false) && (
