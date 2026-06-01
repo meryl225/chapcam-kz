@@ -176,7 +176,7 @@ export default function LivePage() {
 
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-balance md:text-3xl">
-            Face Swap temps reel basse latence
+            flashchap
           </h1>
           <p className="mt-1 text-sm text-gray-400">
             Transforme ton visage en direct avec un moteur GPU dedie. Utilisable dans tes appels video.

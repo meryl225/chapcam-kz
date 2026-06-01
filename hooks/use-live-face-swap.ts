@@ -39,6 +39,8 @@ interface UseLiveFaceSwapReturn {
   secondsRemaining: number
   fps: number
   latencyMs: number
+  gpuMs: number // temps de traitement GPU (rapporte par le worker)
+  networkMs: number // latence reseau estimee (total - GPU)
   queuePosition: number
   queueTotal: number
   error: string | null
@@ -49,10 +51,14 @@ interface UseLiveFaceSwapReturn {
   stop: () => void
 }
 
+// Reglages basse latence. Le vrai limiteur de cadence est MAX_IN_FLIGHT
+// (back-pressure) : on n'envoie une nouvelle frame que si moins de N sont
+// "en vol". TARGET_INTERVAL_MS ne sert que de garde-fou anti-flood.
 const MAX_IN_FLIGHT = 2
 const CAPTURE_WIDTH = 480 // largeur d'envoi (downscale pour la vitesse)
 const JPEG_QUALITY = 0.6
-const TARGET_INTERVAL_MS = 60 // ~16 fps max cote envoi (limite par la latence reseau/GPU)
+const TARGET_INTERVAL_MS = 25 // garde-fou ~40 fps (avant: 60 = bride a 16 fps)
+const PERF_LOG = true // logs de performance detailles en console
 
 export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const [status, setStatus] = useState<LiveStatus>('idle')
@@ -60,6 +66,8 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const [secondsRemaining, setSecondsRemaining] = useState(0)
   const [fps, setFps] = useState(0)
   const [latencyMs, setLatencyMs] = useState(0)
+  const [gpuMs, setGpuMs] = useState(0)
+  const [networkMs, setNetworkMs] = useState(0)
   const [queuePosition, setQueuePosition] = useState(0)
   const [queueTotal, setQueueTotal] = useState(0)
   const [error, setError] = useState<string | null>(null)
@@ -81,6 +89,16 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const recvTimesRef = useRef<number[]>([]) // timestamps de reception (pour le fps)
   const readyRef = useRef<boolean>(false)
   const stoppingRef = useRef<boolean>(false)
+
+  // --- Instrumentation perf cote client ---
+  const lastGpuMsRef = useRef<number>(0) // dernier serverMs rapporte par le worker
+  const perfRef = useRef({
+    frames: 0,
+    encodeMs: 0, // temps de toBlob (encodage JPEG navigateur)
+    drawMs: 0, // temps de drawImage capture
+    latency: 0, // somme des latences totales
+    lastLog: 0,
+  })
 
   const cleanup = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
@@ -148,15 +166,22 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
         canvas.height = Math.round(vh * scale)
         const ctx = canvas.getContext('2d')
         if (ctx) {
+          const tDraw0 = performance.now()
           ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+          const drawMs = performance.now() - tDraw0
+          const tEnc0 = performance.now()
           canvas.toBlob(
             (blob) => {
+              const encodeMs = performance.now() - tEnc0
               if (blob && wsRef.current?.readyState === WebSocket.OPEN) {
                 blob.arrayBuffer().then((buf) => {
                   if (wsRef.current?.readyState === WebSocket.OPEN) {
                     sendTimesRef.current.push(performance.now())
                     inFlightRef.current += 1
                     wsRef.current.send(buf)
+                    // perf : accumuler draw + encode cote client
+                    perfRef.current.drawMs += drawMs
+                    perfRef.current.encodeMs += encodeMs
                   }
                 })
               }
@@ -188,9 +213,13 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
 
     // Latence : on associe la frame recue au plus ancien envoi (FIFO)
     const sentAt = sendTimesRef.current.shift()
+    let lat = 0
     if (sentAt != null) {
-      const lat = performance.now() - sentAt
+      lat = performance.now() - sentAt
       setLatencyMs((prev) => Math.round(prev ? prev * 0.7 + lat * 0.3 : lat))
+      // Reseau estime = latence totale - temps GPU rapporte par le worker
+      const net = Math.max(0, lat - lastGpuMsRef.current)
+      setNetworkMs((prev) => Math.round(prev ? prev * 0.7 + net * 0.3 : net))
     }
     inFlightRef.current = Math.max(0, inFlightRef.current - 1)
 
@@ -199,6 +228,27 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     recvTimesRef.current.push(tnow)
     recvTimesRef.current = recvTimesRef.current.filter((t) => tnow - t <= 1000)
     setFps(recvTimesRef.current.length)
+
+    // --- Log perf periodique (toutes les ~2 s) ---
+    if (PERF_LOG) {
+      const p = perfRef.current
+      p.frames += 1
+      p.latency += lat
+      if (p.lastLog === 0) p.lastLog = tnow
+      const dt = tnow - p.lastLog
+      if (dt >= 2000 && p.frames > 0) {
+        const fpsr = (p.frames / dt) * 1000
+        const avgLat = p.latency / p.frames
+        const gpu = lastGpuMsRef.current
+        const net = Math.max(0, avgLat - gpu)
+        console.log(
+          `[v0][perf] ${fpsr.toFixed(1)} fps | latence ${avgLat.toFixed(0)}ms ` +
+            `= GPU ${gpu.toFixed(0)}ms + reseau ~${net.toFixed(0)}ms | ` +
+            `client: draw ${(p.drawMs / p.frames).toFixed(1)}ms + encode ${(p.encodeMs / p.frames).toFixed(1)}ms`,
+        )
+        perfRef.current = { frames: 0, encodeMs: 0, drawMs: 0, latency: 0, lastLog: tnow }
+      }
+    }
   }, [])
 
   const start = useCallback(
@@ -301,6 +351,12 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
               setError(msg.message || 'Erreur du moteur Live.')
               setStatus('error')
               cleanup()
+            } else if (msg.type === 'stats') {
+              // Metriques perf rapportees par le worker GPU
+              if (typeof msg.serverMs === 'number') {
+                lastGpuMsRef.current = msg.serverMs
+                setGpuMs(Math.round(msg.serverMs))
+              }
             }
           } catch {
             /* message texte inconnu */
@@ -368,6 +424,8 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     secondsRemaining,
     fps,
     latencyMs,
+    gpuMs,
+    networkMs,
     queuePosition,
     queueTotal,
     error,

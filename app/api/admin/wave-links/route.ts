@@ -2,13 +2,21 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminRequest, ADMIN_EMAIL } from '@/lib/admin-auth'
 import { PLANS } from '@/lib/plans'
+import { LIVE_OFFERS } from '@/lib/live-offers'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const VALID_PLANS = PLANS.map((p) => p.id)
+// Catalogue editable : formules d'abonnement + offres Live (ex: flashchap / live15).
+const CATALOG = [
+  ...PLANS.map((p) => ({ plan: p.id, label: p.name, amount: p.price })),
+  ...LIVE_OFFERS.map((o) => ({ plan: o.id, label: o.name, amount: o.price })),
+]
 
 // GET admin : liste des liens Wave actuels (pour l'editeur).
+// On part du catalogue complet (abonnements + offres Live) et on fusionne
+// les URLs deja enregistrees en base, afin que TOUTES les offres soient
+// editables meme si leur ligne n'existe pas encore en base.
 export async function GET() {
   if (!(await isAdminRequest())) {
     return NextResponse.json({ error: 'Acces refuse.' }, { status: 403 })
@@ -16,13 +24,17 @@ export async function GET() {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('wave_links')
-    .select('plan, label, amount, wave_url')
-    .order('amount', { ascending: true })
+    .select('plan, wave_url')
 
   if (error) {
     return NextResponse.json({ error: 'Erreur lecture.' }, { status: 500 })
   }
-  return NextResponse.json({ links: data ?? [] })
+
+  const urlByPlan: Record<string, string> = {}
+  for (const row of data ?? []) urlByPlan[row.plan] = row.wave_url || ''
+
+  const links = CATALOG.map((c) => ({ ...c, wave_url: urlByPlan[c.plan] ?? '' }))
+  return NextResponse.json({ links })
 }
 
 // POST admin : met a jour les liens Wave.
@@ -42,7 +54,8 @@ export async function POST(req: NextRequest) {
     const admin = createAdminClient()
 
     for (const link of links) {
-      if (!VALID_PLANS.includes(link.plan as any)) continue
+      const meta = CATALOG.find((c) => c.plan === link.plan)
+      if (!meta) continue
       const url = String(link.wave_url || '').trim()
       // Validation legere : doit etre vide ou une URL http(s)
       if (url && !/^https?:\/\//i.test(url)) {
@@ -51,12 +64,19 @@ export async function POST(req: NextRequest) {
           { status: 400 },
         )
       }
-      const { error } = await admin
-        .from('wave_links')
-        .update({ wave_url: url, updated_at: new Date().toISOString() })
-        .eq('plan', link.plan)
+      // Upsert : cree la ligne si elle n'existe pas encore (cas des offres Live).
+      const { error } = await admin.from('wave_links').upsert(
+        {
+          plan: meta.plan,
+          label: meta.label,
+          amount: meta.amount,
+          wave_url: url,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'plan' },
+      )
       if (error) {
-        console.error('[admin/wave-links] Erreur update:', error.message)
+        console.error('[admin/wave-links] Erreur upsert:', error.message)
         return NextResponse.json({ error: 'Erreur lors de la mise a jour.' }, { status: 500 })
       }
     }
