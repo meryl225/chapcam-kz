@@ -13,6 +13,7 @@ import {
   Settings,
   Mail,
   UserPlus,
+  Download,
 } from 'lucide-react'
 import Link from 'next/link'
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_LOGOS } from '@/lib/payment-methods'
@@ -164,6 +165,13 @@ export default function AdminPaymentsPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/admin/installations"
+              className="flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#3b82f6] hover:text-white"
+            >
+              <Download className="h-4 w-4" />
+              Installations
+            </Link>
             <Link
               href="/admin/subscriptions"
               className="flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white"
