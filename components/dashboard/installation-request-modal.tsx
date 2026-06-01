@@ -124,6 +124,12 @@ export function InstallationRequestModal({ open, onClose }: Props) {
               </div>
             </div>
 
+            {/* Reserve aux abonnes */}
+            <div className="mb-5 rounded-lg border border-[#2563eb]/30 bg-[#2563eb]/10 px-3 py-2.5 text-sm text-[#93c5fd]">
+              L&apos;installation est reservee aux clients ayant un abonnement actif. Prenez un
+              abonnement pour beneficier de l&apos;installation par notre equipe.
+            </div>
+
             {/* Apps */}
             <label className="mb-2 block text-sm font-medium text-white">
               Applications a installer avec ChapCam
