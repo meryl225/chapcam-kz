@@ -10,6 +10,7 @@ interface Props {
   latencyMs: number
   queuePosition?: number
   queueTotal?: number
+  saturated?: boolean
   videoRef: React.RefObject<HTMLVideoElement | null>
   outputCanvasRef: React.RefObject<HTMLCanvasElement | null>
 }
@@ -22,7 +23,7 @@ function latencyColor(ms: number) {
 }
 
 export const LiveStage = forwardRef<HTMLDivElement, Props>(function LiveStage(
-  { status, fps, latencyMs, queuePosition = 0, queueTotal = 0, videoRef, outputCanvasRef },
+  { status, fps, latencyMs, queuePosition = 0, queueTotal = 0, saturated = false, videoRef, outputCanvasRef },
   ref,
 ) {
   const isLive = status === 'running'
@@ -56,7 +57,19 @@ export const LiveStage = forwardRef<HTMLDivElement, Props>(function LiveStage(
           <canvas ref={outputCanvasRef} className="h-full w-full -scale-x-100 object-cover" />
           {!isLive && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-gray-500">
-              {isQueued ? (
+              {isQueued && saturated ? (
+                <>
+                  <Users className="h-10 w-10 animate-pulse text-yellow-400/80" />
+                  <span className="text-sm font-semibold text-white">Tous les GPU sont occupes</span>
+                  <span className="max-w-xs text-center text-xs text-gray-400">
+                    On cherche un creneau libre et on te connecte automatiquement des qu&apos;un
+                    GPU se libere. Reste sur cette page.
+                  </span>
+                  <span className="mt-1 text-[11px] text-gray-500">
+                    Ton temps d&apos;essai ne tourne pas pendant l&apos;attente.
+                  </span>
+                </>
+              ) : isQueued ? (
                 <>
                   <Users className="h-10 w-10 animate-pulse text-[#00ff88]/70" />
                   <span className="text-3xl font-extrabold text-[#00ff88]">
