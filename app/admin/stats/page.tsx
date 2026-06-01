@@ -15,60 +15,24 @@ export default function AdminStatsPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+
   const loadStats = useCallback(async () => {
-    const supabase = createClient()
     setRefreshing(true)
-    
     try {
-      // Total utilisateurs (table profiles)
-      const { count: totalUsers, error: usersError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-      
-      if (usersError) console.error('Erreur profiles:', usersError)
-
-      // Inscriptions aujourd'hui
-      const today = new Date().toISOString().split('T')[0]
-      const { count: todayRegistrations, error: todayError } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', today)
-      
-      if (todayError) console.error('Erreur today:', todayError)
-
-      // Utilisateurs en ligne (via user_activity created_at)
-      const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-      const { count: onlineUsers, error: onlineError } = await supabase
-        .from('user_activity')
-        .select('user_id', { count: 'exact', head: true })
-        .gte('created_at', fiveMinAgo)
-      
-      if (onlineError) console.error('Erreur online:', onlineError)
-
-      // Swaps en cours (sessions recentes)
-      const { count: activeSwaps, error: swapsError } = await supabase
-        .from('swap_sessions')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', fiveMinAgo)
-      
-      if (swapsError) console.error('Erreur swaps:', swapsError)
-
-      // Subscriptions actives
-      const { count: activeSubscriptions, error: subsError } = await supabase
-        .from('subscriptions')
-        .select('*', { count: 'exact', head: true })
-        .eq('is_active', true)
-        .gt('points', 0)
-      
-      if (subsError) console.error('Erreur subscriptions:', subsError)
-
+      // Tout passe par l'API serveur (service_role) : les inscriptions sont
+      // dans auth.users, illisible cote navigateur avec la cle anon.
+      const res = await fetch('/api/admin/stats', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
       setStats({
-        totalUsers: totalUsers || 0,
-        todayRegistrations: todayRegistrations || 0,
-        onlineUsers: onlineUsers || 0,
-        activeSwaps: activeSwaps || 0,
-        activeSubscriptions: activeSubscriptions || 0,
+        totalUsers: data.totalUsers || 0,
+        todayRegistrations: data.todayRegistrations || 0,
+        onlineUsers: data.onlineUsers || 0,
+        activeSwaps: data.activeSwaps || 0,
+        activeSubscriptions: data.activeSubscriptions || 0,
       })
+      setLastUpdated(new Date())
     } catch (error) {
       console.error('Erreur chargement stats:', error)
     } finally {
@@ -79,9 +43,10 @@ export default function AdminStatsPage() {
 
   useEffect(() => {
     loadStats()
-    const interval = setInterval(loadStats, 8000)
+    // Rafraichissement temps reel toutes les 5 secondes
+    const interval = setInterval(loadStats, 5000)
     return () => clearInterval(interval)
-  }, [])
+  }, [loadStats])
 
   // Protection stricte - Seul toi peux acceder
   useEffect(() => {
@@ -106,7 +71,21 @@ export default function AdminStatsPage() {
           <Shield className="w-12 h-12 text-[#00ff88]" />
           <div>
             <h1 className="text-4xl font-bold">Statistiques Privées ChapCam</h1>
-            <p className="text-gray-400">Accès restreint • Visible uniquement par toi</p>
+            <div className="mt-1 flex items-center gap-3">
+              <p className="text-gray-400">Accès restreint • Visible uniquement par toi</p>
+              <span className="flex items-center gap-1.5 rounded-full bg-[#00ff88]/10 px-2.5 py-0.5 text-xs font-medium text-[#00ff88]">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#00ff88] opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#00ff88]" />
+                </span>
+                En direct
+              </span>
+              {lastUpdated && (
+                <span className="text-xs text-gray-500">
+                  MAJ {lastUpdated.toLocaleTimeString('fr-FR')}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
