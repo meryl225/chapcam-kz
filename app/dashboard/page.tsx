@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
@@ -299,6 +299,20 @@ export default function DashboardPage() {
             <span className="text-white font-bold">{userPoints.toLocaleString()}</span>
             <span className="text-gray-400 text-sm">points</span>
           </div>
+        </div>
+      </div>
+
+      {/* Rappel : c'est la vraie version premium */}
+      <div className="flex items-start gap-3 rounded-xl border border-[#00ff88]/30 bg-gradient-to-r from-[#00ff88]/10 to-transparent p-4">
+        <div className="rounded-lg bg-[#00ff88]/20 p-2">
+          <Crown className="h-5 w-5 text-[#00ff88]" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-white">Tu utilises la vraie version ChapCam</p>
+          <p className="mt-1 text-xs text-white/60">
+            Ici, pas de bug et la transformation se fait de la tete aux pieds, en bien meilleure qualite
+            que l&apos;essai gratuit. C&apos;est le vrai logiciel.
+          </p>
         </div>
       </div>
 

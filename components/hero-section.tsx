@@ -123,6 +123,12 @@ export function HeroSection() {
             </motion.div>
           </Link>
 
+          {/* Precision : l'essai est juste un apercu */}
+          <p className="-mt-2 max-w-md text-sm text-gray-500">
+            L&apos;essai change juste ton visage, pour gouter. Le vrai logiciel{" "}
+            <span className="text-gray-300">te change de la tete aux pieds, sans bug et en bien plus beau</span>.
+          </p>
+
           {/* WhatsApp Contact Button */}
           <a href="https://wa.me/2250555560189" target="_blank" rel="noopener noreferrer">
             <motion.div
