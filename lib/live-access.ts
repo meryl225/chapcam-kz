@@ -193,14 +193,29 @@ function toHealthUrl(wsUrl: string): string {
   }
 }
 
-// Resout une spec en URL WebSocket concrete (+ URL de health).
+// --- Caches courts : evitent de marteler les tunnels/health quand des dizaines
+// d'utilisateurs se connectent en meme temps. ---
+const RESOLVE_TTL_MS = 10_000 // URL de tunnel : change rarement
+const HEALTH_TTL_MS = 2_000 // charge : doit rester fraiche pour le load-balancing
+const _resolveCache = new Map<string, { at: number; value: ResolvedWorker | null }>()
+const _healthCache = new Map<string, { at: number; value: WorkerHealth | null }>()
+
+function specKey(spec: WorkerSpec): string {
+  return spec.fixedUrl ? `url:${spec.fixedUrl}` : `pod:${spec.podId}`
+}
+
+// Resout une spec en URL WebSocket concrete (+ URL de health), avec cache court.
 // Pour un pod RunPod : interroge https://<pod>-8765.proxy.runpod.net/tunnel-url
 // (GET qui PASSE le proxy) pour recuperer l'URL Cloudflare courante.
 async function resolveWorker(spec: WorkerSpec): Promise<ResolvedWorker | null> {
+  const key = specKey(spec)
+  const cached = _resolveCache.get(key)
+  if (cached && Date.now() - cached.at < RESOLVE_TTL_MS) return cached.value
+
+  let value: ResolvedWorker | null = null
   if (spec.fixedUrl) {
-    return { wsUrl: spec.fixedUrl, healthUrl: toHealthUrl(spec.fixedUrl) }
-  }
-  if (spec.podId) {
+    value = { wsUrl: spec.fixedUrl, healthUrl: toHealthUrl(spec.fixedUrl) }
+  } else if (spec.podId) {
     const port = process.env.RUNPOD_HTTP_PORT || '8765'
     const base = `https://${spec.podId}-${port}.proxy.runpod.net`
     try {
@@ -208,34 +223,42 @@ async function resolveWorker(spec: WorkerSpec): Promise<ResolvedWorker | null> {
       const timer = setTimeout(() => ctrl.abort(), 8000)
       const res = await fetch(`${base}/tunnel-url`, { cache: 'no-store', signal: ctrl.signal })
       clearTimeout(timer)
-      if (!res.ok) {
+      if (res.ok) {
+        const data = (await res.json()) as { wss_url?: string }
+        const url = (data?.wss_url || '').trim()
+        // Le health-check passe par le proxy RunPod (GET simple, fiable).
+        value = url ? { wsUrl: url, healthUrl: `${base}/health` } : null
+      } else {
         console.error('[live-access] tunnel-url HTTP', res.status, spec.podId)
-        return null
       }
-      const data = (await res.json()) as { wss_url?: string }
-      const url = (data?.wss_url || '').trim()
-      // Le health-check passe par le proxy RunPod (GET simple, fiable).
-      return url ? { wsUrl: url, healthUrl: `${base}/health` } : null
     } catch (err: any) {
       console.error('[live-access] resolveWorker echec:', err?.message || err)
-      return null
     }
   }
-  return null
+
+  // On ne cache un echec que brievement (la moitie du TTL) pour re-essayer vite.
+  _resolveCache.set(key, { at: value ? Date.now() : Date.now() - RESOLVE_TTL_MS / 2, value })
+  return value
 }
 
-// Interroge la charge d'un worker. null si injoignable.
+// Interroge la charge d'un worker. null si injoignable OU pas pret (HTTP 503).
 async function fetchWorkerHealth(healthUrl: string): Promise<WorkerHealth | null> {
+  const cached = _healthCache.get(healthUrl)
+  if (cached && Date.now() - cached.at < HEALTH_TTL_MS) return cached.value
+
+  let value: WorkerHealth | null = null
   try {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), 4000)
     const res = await fetch(healthUrl, { cache: 'no-store', signal: ctrl.signal })
     clearTimeout(timer)
-    if (!res.ok) return null
-    return (await res.json()) as WorkerHealth
+    // 503 = worker en cours de chargement -> traite comme indisponible.
+    if (res.ok) value = (await res.json()) as WorkerHealth
   } catch {
-    return null
+    value = null
   }
+  _healthCache.set(healthUrl, { at: Date.now(), value })
+  return value
 }
 
 // Choix stable par hash de l'userId : un meme user retombe toujours sur le

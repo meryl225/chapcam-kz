@@ -30,7 +30,7 @@ import websockets
 
 from engine import SwapEngine, new_track
 from auth import verify_token
-from queue_manager import GpuQueue
+from queue_manager import GpuQueue, QueueFull
 
 HOST = os.getenv("CHAPCAM_HOST", "0.0.0.0")
 PORT = int(os.getenv("CHAPCAM_PORT", os.getenv("PORT", "8765")))
@@ -39,6 +39,10 @@ JPEG_QUALITY = int(os.getenv("CHAPCAM_JPEG_QUALITY", "70"))
 
 engine = SwapEngine()
 queue = GpuQueue()
+
+# Etat de sante du worker (expose sur /health).
+STARTED_AT = time.time()
+MODEL_READY = False  # passe a True une fois le modele charge en VRAM
 
 
 def _fetch_image_bytes(url: str, timeout: float = 10.0) -> bytes:
@@ -103,15 +107,22 @@ async def process_request(*args):
     is_tunnel_url = clean_path == "/tunnel-url"
     is_health = clean_path == "/health"
 
-    # Charge courante du worker (pour le load-balancing multi-GPU cote app).
+    # Charge courante + readiness du worker (pour le load-balancing multi-GPU).
+    # Tant que le modele n'est pas charge, on renvoie 503 : le superviseur patiente
+    # et l'app n'envoie aucun utilisateur sur ce worker.
     def _health_payload() -> dict:
-        free = max(0, queue.max_concurrent - queue.active)
+        free = max(0, queue.max_concurrent - queue.active) if MODEL_READY else 0
         return {
+            "ok": MODEL_READY,
+            "ready": MODEL_READY,
             "active": queue.active,
             "waiting": queue.waiting,
             "max": queue.max_concurrent,
             "free": free,
+            "uptime": round(time.time() - STARTED_AT, 1),
         }
+
+    health_status = HTTPStatus.OK if MODEL_READY else HTTPStatus.SERVICE_UNAVAILABLE
 
     # Nouvelle API (websockets >= 13) : (connection, request)
     if len(args) == 2 and hasattr(args[0], "respond"):
@@ -123,7 +134,7 @@ async def process_request(*args):
             return connection.respond(HTTPStatus.OK, body)
         if is_health:
             body = json.dumps(_health_payload()) + "\n"
-            return connection.respond(HTTPStatus.OK, body)
+            return connection.respond(health_status, body)
         return connection.respond(HTTPStatus.OK, "ChapCam GPU worker OK\n")
 
     # Ancienne API (websockets < 13) : (path, request_headers)
@@ -135,7 +146,7 @@ async def process_request(*args):
         return (HTTPStatus.OK, [("Content-Type", "application/json")], body)
     if is_health:
         body = (json.dumps(_health_payload()) + "\n").encode("utf-8")
-        return (HTTPStatus.OK, [("Content-Type", "application/json")], body)
+        return (health_status, [("Content-Type", "application/json")], body)
     return (HTTPStatus.OK, [("Content-Type", "text/plain")], b"ChapCam GPU worker OK\n")
 
 
@@ -188,7 +199,15 @@ async def handle(ws):
             except Exception:  # noqa: BLE001
                 pass
 
-        ticket = await queue.acquire(user_id, mode, on_position)
+        try:
+            ticket = await queue.acquire(user_id, mode, on_position)
+        except QueueFull:
+            await _send_json(ws, {
+                "type": "error",
+                "code": "busy",
+                "message": "Service sature, tous les GPU sont occupes. Reessaie dans un instant.",
+            })
+            return
 
         # 4) Preparer le visage source a partir de la premiere reference exploitable
         source_face = None
@@ -299,8 +318,10 @@ async def handle(ws):
 
 
 async def main():
+    global MODEL_READY
     print("[server] Chargement du moteur de face swap...")
     await asyncio.to_thread(engine.load)
+    MODEL_READY = True
     print(f"[server] Worker GPU pret. Sessions GPU simultanees max : {queue.max_concurrent}")
     print(f"[server] Ecoute WebSocket sur ws://{HOST}:{PORT}")
     async with websockets.serve(
@@ -308,7 +329,10 @@ async def main():
         HOST,
         PORT,
         max_size=8 * 1024 * 1024,
+        # ping_timeout : ferme une connexion morte (client parti, reseau coupe)
+        # au bout de 20 s -> le slot GPU est libere automatiquement.
         ping_interval=20,
+        ping_timeout=20,
         process_request=process_request,
     ):
         await asyncio.Future()
