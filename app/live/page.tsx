@@ -14,6 +14,7 @@ import {
   Camera,
   Users,
   Crown,
+  ArrowRight,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useLiveFaceSwap } from '@/hooks/use-live-face-swap'
@@ -193,6 +194,23 @@ export default function LivePage() {
             .
           </p>
         </div>
+
+        {/* Gros bouton abonnement en haut */}
+        <Link
+          href="/dashboard/plans"
+          className="mb-6 flex w-full items-center justify-between gap-3 rounded-2xl bg-[#00ff88] px-5 py-4 text-black shadow-[0_0_30px_rgba(0,255,136,0.35)] transition-colors hover:bg-[#00dd77]"
+        >
+          <span className="flex items-center gap-3">
+            <Crown className="h-6 w-6 flex-shrink-0" />
+            <span className="text-left">
+              <span className="block text-base font-bold sm:text-lg">Prendre un abonnement</span>
+              <span className="block text-xs font-medium text-black/70 sm:text-sm">
+                10x mieux - rendu haute qualite superieur
+              </span>
+            </span>
+          </span>
+          <ArrowRight className="h-5 w-5 flex-shrink-0" />
+        </Link>
 
         {/* Banniere d'acces */}
         {access && (
