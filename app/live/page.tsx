@@ -13,6 +13,7 @@ import {
   Info,
   Camera,
   Users,
+  Crown,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useLiveFaceSwap } from '@/hooks/use-live-face-swap'
@@ -328,6 +329,18 @@ export default function LivePage() {
             </p>
           </div>
         </div>
+
+        {/* Gros bouton : prendre un abonnement */}
+        <Link
+          href="/dashboard/plans"
+          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#00ff88] px-6 py-5 text-base font-bold text-black shadow-[0_0_30px_rgba(0,255,136,0.35)] transition-colors hover:bg-[#00dd77] sm:text-lg"
+        >
+          <Crown className="h-6 w-6" />
+          Prendre un abonnement
+        </Link>
+        <p className="mt-2 text-center text-xs text-gray-500">
+          Pas de bug, transformation de la tete aux pieds et bien meilleure qualite que l&apos;essai.
+        </p>
 
         {/* Comparatif : Live temps reel vs abonnement Lucy (premium) */}
         <EngineComparison />
