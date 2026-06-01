@@ -2,7 +2,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminRequest, ADMIN_EMAIL } from '@/lib/admin-auth'
 import { getPlan } from '@/lib/plans'
-import { sendSubscriptionApprovedEmail } from '@/lib/email'
+import { getLiveOffer } from '@/lib/live-offers'
+import { grantLiveWindow } from '@/lib/live-access'
+import { sendSubscriptionApprovedEmail, sendLiveAccessApprovedEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -48,6 +50,48 @@ export async function POST(req: NextRequest) {
     if (!EMAIL_RE.test(email)) {
       return NextResponse.json({ error: 'Email invalide.' }, { status: 400 })
     }
+
+    // L'offre Live Pro n'est PAS un abonnement a points : elle accorde une
+    // fenetre d'acces de 15 min (table live_access). On la traite a part.
+    const liveOffer = getLiveOffer(planId)
+    if (liveOffer) {
+      const adminLive = createAdminClient()
+      const liveUserId = await resolveUserIdByEmail(adminLive, email)
+      if (!liveUserId) {
+        return NextResponse.json(
+          {
+            error: `Aucun compte ChapCam ne correspond a "${email}". L'utilisateur doit d'abord creer un compte avec cet email.`,
+          },
+          { status: 404 },
+        )
+      }
+
+      // Nombre de fenetres a crediter (champ "duree" reutilise comme quantite).
+      const qtyRaw = Number.parseInt(String(durationDaysRaw ?? '1'), 10)
+      const windows = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1
+
+      await grantLiveWindow(adminLive, liveUserId, windows)
+
+      await adminLive.from('admin_logs').insert({
+        action: 'manual_live_access',
+        admin_email: ADMIN_EMAIL,
+        details: { email, offer: liveOffer.id, windows },
+      })
+
+      sendLiveAccessApprovedEmail(
+        email,
+        email.split('@')[0],
+        liveOffer.name,
+        liveOffer.price,
+        liveOffer.windowMinutes,
+      ).catch((e) => console.error('[admin/subscriptions] Email Live echoue:', e))
+
+      return NextResponse.json({
+        success: true,
+        message: `Acces ${liveOffer.name} credite pour ${email} (${windows} fenetre${windows > 1 ? 's' : ''} de ${liveOffer.windowMinutes} min).`,
+      })
+    }
+
     const plan = getPlan(planId)
     if (!plan) {
       return NextResponse.json({ error: 'Formule invalide.' }, { status: 400 })

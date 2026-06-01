@@ -51,13 +51,21 @@ interface UseLiveFaceSwapReturn {
   stop: () => void
 }
 
-// Reglages basse latence. Le vrai limiteur de cadence est MAX_IN_FLIGHT
-// (back-pressure) : on n'envoie une nouvelle frame que si moins de N sont
-// "en vol". TARGET_INTERVAL_MS ne sert que de garde-fou anti-flood.
-const MAX_IN_FLIGHT = 2
+// Reglages basse latence. Le limiteur de cadence est une FENETRE d'envoi
+// adaptative (nombre de frames "en vol") qui se regle toute seule facon AIMD
+// (comme un controle de congestion reseau) :
+//   - si la latence reste basse -> on AGRANDIT la fenetre (on nourrit le GPU,
+//     les FPS montent) ;
+//   - si la latence derape    -> on REDUIT la fenetre (on protege la latence).
+// C'est ce qui debloque le cas "GPU rapide mais tunnel a fort RTT" ou une
+// fenetre fixe a 2 bridait les FPS a 2*1000/RTT (~16 fps sur 120ms de RTT).
+const MIN_IN_FLIGHT = 2 // plancher (latence mini garantie)
+const MAX_IN_FLIGHT_CAP = 10 // plafond de securite (anti-accumulation)
+const LAT_GROW_MS = 220 // sous ce seuil de latence : on agrandit la fenetre
+const LAT_SHRINK_MS = 420 // au-dessus : on reduit la fenetre
 const CAPTURE_WIDTH = 480 // largeur d'envoi (downscale pour la vitesse)
 const JPEG_QUALITY = 0.6
-const TARGET_INTERVAL_MS = 25 // garde-fou ~40 fps (avant: 60 = bride a 16 fps)
+const TARGET_INTERVAL_MS = 12 // garde-fou anti-flood (~83 fps max, ne bride plus)
 const PERF_LOG = true // logs de performance detailles en console
 
 export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
@@ -84,6 +92,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const inFlightRef = useRef<number>(0)
+  const maxInFlightRef = useRef<number>(MIN_IN_FLIGHT) // fenetre d'envoi adaptative (AIMD)
   const sendTimesRef = useRef<number[]>([]) // FIFO des timestamps d'envoi
   const lastSendRef = useRef<number>(0)
   const recvTimesRef = useRef<number[]>([]) // timestamps de reception (pour le fps)
@@ -92,6 +101,8 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
 
   // --- Instrumentation perf cote client ---
   const lastGpuMsRef = useRef<number>(0) // dernier serverMs rapporte par le worker
+  const latEmaRef = useRef<number>(0) // latence totale lissee (pour l'AIMD)
+  const lastAdaptRef = useRef<number>(0) // dernier ajustement de fenetre
   const perfRef = useRef({
     frames: 0,
     encodeMs: 0, // temps de toBlob (encodage JPEG navigateur)
@@ -121,6 +132,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       streamRef.current = null
     }
     inFlightRef.current = 0
+    maxInFlightRef.current = MIN_IN_FLIGHT
     sendTimesRef.current = []
     recvTimesRef.current = []
     readyRef.current = false
@@ -157,7 +169,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     const now = performance.now()
     const elapsedSinceSend = now - lastSendRef.current
 
-    if (inFlightRef.current < MAX_IN_FLIGHT && elapsedSinceSend >= TARGET_INTERVAL_MS) {
+    if (inFlightRef.current < maxInFlightRef.current && elapsedSinceSend >= TARGET_INTERVAL_MS) {
       const vw = video.videoWidth
       const vh = video.videoHeight
       if (vw > 0 && vh > 0) {
@@ -216,12 +228,31 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     let lat = 0
     if (sentAt != null) {
       lat = performance.now() - sentAt
-      setLatencyMs((prev) => Math.round(prev ? prev * 0.7 + lat * 0.3 : lat))
+      latEmaRef.current = latEmaRef.current ? latEmaRef.current * 0.7 + lat * 0.3 : lat
+      setLatencyMs(Math.round(latEmaRef.current))
       // Reseau estime = latence totale - temps GPU rapporte par le worker
       const net = Math.max(0, lat - lastGpuMsRef.current)
       setNetworkMs((prev) => Math.round(prev ? prev * 0.7 + net * 0.3 : net))
     }
     inFlightRef.current = Math.max(0, inFlightRef.current - 1)
+
+    // --- AIMD : on regle la fenetre d'envoi selon la latence lissee ---
+    // Objectif : maximiser les FPS (nourrir le GPU malgre le RTT du tunnel)
+    // sans laisser la latence s'envoler. Ajuste au plus toutes les 500 ms.
+    const tAdapt = performance.now()
+    if (tAdapt - lastAdaptRef.current >= 500 && latEmaRef.current > 0) {
+      const l = latEmaRef.current
+      if (l < LAT_GROW_MS && maxInFlightRef.current < MAX_IN_FLIGHT_CAP) {
+        maxInFlightRef.current += 1 // additive increase : on nourrit le GPU
+      } else if (l > LAT_SHRINK_MS && maxInFlightRef.current > MIN_IN_FLIGHT) {
+        // multiplicative decrease : on degonfle vite pour proteger la latence
+        maxInFlightRef.current = Math.max(
+          MIN_IN_FLIGHT,
+          Math.floor(maxInFlightRef.current * 0.7),
+        )
+      }
+      lastAdaptRef.current = tAdapt
+    }
 
     // FPS : nombre de frames recues sur la derniere seconde
     const tnow = performance.now()
@@ -244,6 +275,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
         console.log(
           `[v0][perf] ${fpsr.toFixed(1)} fps | latence ${avgLat.toFixed(0)}ms ` +
             `= GPU ${gpu.toFixed(0)}ms + reseau ~${net.toFixed(0)}ms | ` +
+            `fenetre ${maxInFlightRef.current} en vol | ` +
             `client: draw ${(p.drawMs / p.frames).toFixed(1)}ms + encode ${(p.encodeMs / p.frames).toFixed(1)}ms`,
         )
         perfRef.current = { frames: 0, encodeMs: 0, drawMs: 0, latency: 0, lastLog: tnow }
