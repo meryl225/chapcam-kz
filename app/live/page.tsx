@@ -183,9 +183,8 @@ export default function LivePage() {
             Transforme ton visage en direct avec un moteur GPU dedie. Utilisable dans tes appels video.
           </p>
           <p className="mt-2 text-xs text-gray-500">
-            Outil <span className="text-gray-300">Live temps reel</span> (visage). Different de
-            l&apos;abonnement <span className="font-semibold text-[#00ff88]">Lucy</span> qui te transforme
-            de la tete aux pieds en bien meilleure qualite —{' '}
+            L&apos;outil Live est <span className="text-gray-300">different du logiciel ChapCam de depart</span>.
+            Avec un abonnement, la transformation est bien plus belle et te change en entier —{' '}
             <Link href="/dashboard/recharge" className="text-[#00ff88] underline-offset-2 hover:underline">
               voir les abonnements
             </Link>
