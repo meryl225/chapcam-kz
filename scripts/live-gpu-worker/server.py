@@ -99,7 +99,19 @@ async def process_request(*args):
       - websockets < 13  : process_request(path, request_headers)
     """
     path = _request_path(*args)
-    is_tunnel_url = path.split("?", 1)[0].rstrip("/") == "/tunnel-url"
+    clean_path = path.split("?", 1)[0].rstrip("/")
+    is_tunnel_url = clean_path == "/tunnel-url"
+    is_health = clean_path == "/health"
+
+    # Charge courante du worker (pour le load-balancing multi-GPU cote app).
+    def _health_payload() -> dict:
+        free = max(0, queue.max_concurrent - queue.active)
+        return {
+            "active": queue.active,
+            "waiting": queue.waiting,
+            "max": queue.max_concurrent,
+            "free": free,
+        }
 
     # Nouvelle API (websockets >= 13) : (connection, request)
     if len(args) == 2 and hasattr(args[0], "respond"):
@@ -109,6 +121,9 @@ async def process_request(*args):
         if is_tunnel_url:
             body = json.dumps({"wss_url": _read_tunnel_url()}) + "\n"
             return connection.respond(HTTPStatus.OK, body)
+        if is_health:
+            body = json.dumps(_health_payload()) + "\n"
+            return connection.respond(HTTPStatus.OK, body)
         return connection.respond(HTTPStatus.OK, "ChapCam GPU worker OK\n")
 
     # Ancienne API (websockets < 13) : (path, request_headers)
@@ -117,6 +132,9 @@ async def process_request(*args):
         return None
     if is_tunnel_url:
         body = (json.dumps({"wss_url": _read_tunnel_url()}) + "\n").encode("utf-8")
+        return (HTTPStatus.OK, [("Content-Type", "application/json")], body)
+    if is_health:
+        body = (json.dumps(_health_payload()) + "\n").encode("utf-8")
         return (HTTPStatus.OK, [("Content-Type", "application/json")], body)
     return (HTTPStatus.OK, [("Content-Type", "text/plain")], b"ChapCam GPU worker OK\n")
 
