@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { UserPlus, Loader2, ArrowLeft, Check } from 'lucide-react'
 import Link from 'next/link'
 import { PLANS } from '@/lib/plans'
+import { LIVE_OFFERS } from '@/lib/live-offers'
 
 export default function AdminSubscriptionsPage() {
   const [email, setEmail] = useState('')
@@ -14,6 +15,7 @@ export default function AdminSubscriptionsPage() {
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
 
   const selectedPlan = PLANS.find((p) => p.id === plan)
+  const selectedLiveOffer = LIVE_OFFERS.find((o) => o.id === plan)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -99,46 +101,80 @@ export default function AdminSubscriptionsPage() {
               onChange={(e) => setPlan(e.target.value as typeof plan)}
               className={inputClass}
             >
-              {PLANS.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} — {p.points.toLocaleString()} pts ({p.duration})
-                </option>
-              ))}
+              <optgroup label="Abonnements (points Decart)">
+                {PLANS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} — {p.points.toLocaleString()} pts ({p.duration})
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Acces Live Pro (fenetre temps reel)">
+                {LIVE_OFFERS.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name} — {o.price.toLocaleString()} FCFA ({o.windowMinutes} min)
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>
-                Duree (jours) <span className="text-gray-500">facultatif</span>
-              </label>
-              <input
-                type="number"
-                min={1}
-                value={durationDays}
-                onChange={(e) => setDurationDays(e.target.value)}
-                className={inputClass}
-                placeholder={String(selectedPlan?.durationDays ?? 30)}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>
-                Date d&apos;expiration <span className="text-gray-500">facultatif</span>
-              </label>
-              <input
-                type="datetime-local"
-                value={expiresAt}
-                onChange={(e) => setExpiresAt(e.target.value)}
-                className={inputClass}
-              />
-            </div>
-          </div>
+          {selectedLiveOffer ? (
+            <>
+              <div>
+                <label className={labelClass}>
+                  Nombre de fenetres <span className="text-gray-500">facultatif</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={durationDays}
+                  onChange={(e) => setDurationDays(e.target.value)}
+                  className={inputClass}
+                  placeholder="1"
+                />
+              </div>
+              <p className="rounded-lg border border-gray-800 bg-[#0a0a0a] px-3 py-2 text-xs text-gray-500">
+                Acces Live Pro : chaque fenetre ouvre {selectedLiveOffer.windowMinutes} min
+                d&apos;utilisation (le chrono demarre au premier lancement par le client). Aucun
+                point n&apos;est credite. Par defaut, 1 fenetre est accordee.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label className={labelClass}>
+                    Duree (jours) <span className="text-gray-500">facultatif</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={durationDays}
+                    onChange={(e) => setDurationDays(e.target.value)}
+                    className={inputClass}
+                    placeholder={String(selectedPlan?.durationDays ?? 30)}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>
+                    Date d&apos;expiration <span className="text-gray-500">facultatif</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={expiresAt}
+                    onChange={(e) => setExpiresAt(e.target.value)}
+                    className={inputClass}
+                  />
+                </div>
+              </div>
 
-          <p className="rounded-lg border border-gray-800 bg-[#0a0a0a] px-3 py-2 text-xs text-gray-500">
-            Si aucune valeur n&apos;est saisie, la duree par defaut de la formule (
-            {selectedPlan?.duration}) est appliquee. Une date d&apos;expiration explicite est
-            prioritaire sur la duree en jours.
-          </p>
+              <p className="rounded-lg border border-gray-800 bg-[#0a0a0a] px-3 py-2 text-xs text-gray-500">
+                Si aucune valeur n&apos;est saisie, la duree par defaut de la formule (
+                {selectedPlan?.duration}) est appliquee. Une date d&apos;expiration explicite est
+                prioritaire sur la duree en jours.
+              </p>
+            </>
+          )}
 
           <button
             type="submit"
