@@ -67,6 +67,8 @@ const CAPTURE_WIDTH = 480 // largeur d'envoi (downscale pour la vitesse)
 const JPEG_QUALITY = 0.6
 const TARGET_INTERVAL_MS = 12 // garde-fou anti-flood (~83 fps max, ne bride plus)
 const PERF_LOG = true // logs de performance detailles en console
+const MAX_RECONNECT = 4 // tentatives de reconnexion auto si le moteur tombe en session
+const RECONNECT_DELAY_MS = 2000 // delai entre deux tentatives de reconnexion
 
 export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const [status, setStatus] = useState<LiveStatus>('idle')
@@ -99,6 +101,13 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const readyRef = useRef<boolean>(false)
   const stoppingRef = useRef<boolean>(false)
 
+  // --- Reconnexion automatique (quand le pod GPU redemarre en pleine session) ---
+  const lastReferencesRef = useRef<string[]>([])
+  const reconnectAttemptsRef = useRef<number>(0)
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const secondsRemainingRef = useRef<number>(0)
+  const startRef = useRef<((opts: StartOptions) => Promise<void>) | null>(null)
+
   // --- Instrumentation perf cote client ---
   const lastGpuMsRef = useRef<number>(0) // dernier serverMs rapporte par le worker
   const latEmaRef = useRef<number>(0) // latence totale lissee (pour l'AIMD)
@@ -110,6 +119,11 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     latency: 0, // somme des latences totales
     lastLog: 0,
   })
+
+  // Garder une ref a jour du temps restant (pour decider d'une reconnexion hors render)
+  useEffect(() => {
+    secondsRemainingRef.current = secondsRemaining
+  }, [secondsRemaining])
 
   const cleanup = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current)
@@ -138,9 +152,20 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     readyRef.current = false
   }, [])
 
+  // Tenir startRef a jour pour permettre la reconnexion auto depuis ws.onclose
+  useEffect(() => {
+    startRef.current = start
+  })
+
   const stop = useCallback(() => {
     if (stoppingRef.current) return
     stoppingRef.current = true
+    // Annuler toute reconnexion auto en attente
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current)
+      reconnectTimerRef.current = null
+    }
+    reconnectAttemptsRef.current = 0
     // Battement final pour figer le compteur cote serveur
     fetch('/api/live/heartbeat', {
       method: 'POST',
@@ -288,6 +313,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       setError(null)
       setNotConfigured(false)
       stoppingRef.current = false
+      lastReferencesRef.current = references // memorise pour une eventuelle reconnexion
       setStatus('connecting')
 
       // 1. Demarrer la session cote serveur (credits + connexion GPU)
@@ -378,6 +404,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
               setQueuePosition(0)
               setQueueTotal(0)
               readyRef.current = true
+              reconnectAttemptsRef.current = 0 // reconnexion reussie : on remet le compteur a zero
               setStatus('running')
             } else if (msg.type === 'error') {
               setError(msg.message || 'Erreur du moteur Live.')
@@ -407,10 +434,26 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       }
 
       ws.onclose = () => {
-        if (!stoppingRef.current && status !== 'stopped') {
+        if (stoppingRef.current) return
+        // Reconnexion auto : si du temps reste et qu'on n'a pas epuise les tentatives,
+        // on relance la session (le pod a peut-etre juste redemarre). En mode 'paid'
+        // deja en cours, cela ne reconsomme pas la fenetre (elle tourne deja).
+        if (
+          secondsRemainingRef.current > 0 &&
+          reconnectAttemptsRef.current < MAX_RECONNECT &&
+          lastReferencesRef.current.length > 0
+        ) {
+          reconnectAttemptsRef.current += 1
           cleanup()
-          setStatus((s) => (s === 'error' ? s : 'stopped'))
+          setStatus('connecting')
+          reconnectTimerRef.current = setTimeout(() => {
+            startRef.current?.({ references: lastReferencesRef.current })
+          }, RECONNECT_DELAY_MS)
+          return
         }
+        // Plus de temps ou trop de tentatives : on arrete proprement
+        cleanup()
+        setStatus((s) => (s === 'error' ? s : 'stopped'))
       }
 
       // 4. Lancer la boucle de capture
@@ -447,7 +490,14 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
 
   // Nettoyage au demontage
   useEffect(() => {
-    return () => cleanup()
+    return () => {
+      stoppingRef.current = true
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current)
+        reconnectTimerRef.current = null
+      }
+      cleanup()
+    }
   }, [cleanup])
 
   return {

@@ -245,17 +245,16 @@ export default function LivePage() {
           </div>
         </div>
 
-        {/* Alerte moteur non configure */}
+        {/* Moteur temporairement indisponible (message client, sans details techniques) */}
         {(notConfigured || access?.gpuConfigured === false) && (
           <div className="mb-6 flex items-start gap-3 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4">
             <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-400" />
             <div className="text-sm text-yellow-200/90">
-              <p className="font-semibold text-yellow-400">Moteur Live non configure</p>
+              <p className="font-semibold text-yellow-400">Service Live momentanement indisponible</p>
               <p className="mt-1 text-gray-300">
-                Le pod GPU temps reel n&apos;est pas encore branche. Definis les variables
-                d&apos;environnement <code className="rounded bg-black/40 px-1">LIVE_GPU_WS_URL</code> et{' '}
-                <code className="rounded bg-black/40 px-1">LIVE_GPU_SHARED_SECRET</code>, puis deploie le
-                worker GPU (voir <code className="rounded bg-black/40 px-1">scripts/live-gpu-worker</code>).
+                Notre moteur est en cours de redemarrage a cause d&apos;une forte affluence. Ton
+                acces et ton temps ne sont pas debites. Reessaie dans quelques minutes en
+                appuyant a nouveau sur le bouton.
               </p>
             </div>
           </div>

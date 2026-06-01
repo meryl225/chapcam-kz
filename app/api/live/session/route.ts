@@ -38,6 +38,34 @@ export async function POST(_req: NextRequest) {
       )
     }
 
+    // IMPORTANT : on verifie que le moteur GPU repond AVANT de consommer une
+    // fenetre payee ou de demarrer le decompte d'essai. Sinon un abonne Live Pro
+    // perdrait sa fenetre de 15 min alors que le pod est eteint (erreur 502).
+    if (!isGpuConfigured()) {
+      return NextResponse.json({
+        configured: false,
+        mode: state.mode,
+        secondsRemaining: state.secondsRemaining,
+        windowExpiresAt: state.windowExpiresAt,
+        message:
+          'Le moteur Live (pod GPU) n\'est pas encore configure. Definissez LIVE_GPU_WS_URL et LIVE_GPU_SHARED_SECRET.',
+      })
+    }
+
+    const gpu = await getGpuConnectionAsync(user.id)
+
+    if (!gpu) {
+      return NextResponse.json({
+        configured: false,
+        mode: state.mode,
+        secondsRemaining: state.secondsRemaining,
+        windowExpiresAt: state.windowExpiresAt,
+        message:
+          'Le moteur Live est injoignable (tunnel non demarre ou pod eteint). Lance run-tunnel.sh sur le pod GPU.',
+      })
+    }
+
+    // Le moteur repond : on peut maintenant consommer la fenetre / lancer le decompte.
     const now = new Date()
     let mode = state.mode
     let secondsRemaining = state.secondsRemaining
@@ -66,30 +94,6 @@ export async function POST(_req: NextRequest) {
         .eq('user_id', user.id)
     }
     // mode 'paid' deja en cours : rien a faire, la fenetre tourne deja.
-
-    if (!isGpuConfigured()) {
-      return NextResponse.json({
-        configured: false,
-        mode,
-        secondsRemaining,
-        windowExpiresAt,
-        message:
-          'Le moteur Live (pod GPU) n\'est pas encore configure. Definissez LIVE_GPU_WS_URL et LIVE_GPU_SHARED_SECRET.',
-      })
-    }
-
-    const gpu = await getGpuConnectionAsync(user.id)
-
-    if (!gpu) {
-      return NextResponse.json({
-        configured: false,
-        mode,
-        secondsRemaining,
-        windowExpiresAt,
-        message:
-          'Le moteur Live est injoignable (tunnel non demarre ou pod eteint). Lance run-tunnel.sh sur le pod GPU.',
-      })
-    }
 
     return NextResponse.json({
       configured: true,
