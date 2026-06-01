@@ -105,18 +105,21 @@ export function HeroSection() {
             </motion.div>
           </Link>
 
-          {/* Free Trial CTA */}
-          <Link href="/live">
+          {/* Free Trial CTA - mis en avant */}
+          <Link href="/live" className="group relative w-fit">
             <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="flex w-fit items-center gap-2 rounded-full border border-[#00ff88]/50 bg-[#00ff88]/10 px-6 py-3 transition-colors hover:bg-[#00ff88]/20"
+              className="absolute -inset-1 rounded-full bg-[#00ff88] opacity-60 blur-lg"
+              animate={{ opacity: [0.4, 0.75, 0.4] }}
+              transition={{ duration: 1.8, repeat: Infinity }}
+            />
+            <motion.div
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              className="relative flex w-fit items-center gap-3 rounded-full bg-[#00ff88] px-8 py-4 font-bold text-black shadow-[0_0_30px_rgba(0,255,136,0.5)]"
             >
-              <Gift className="h-5 w-5 text-[#00ff88]" />
-              <span className="font-semibold text-[#00ff88]">Essai gratuit 2 min</span>
-              <span className="rounded-full bg-[#00ff88] px-2 py-0.5 text-xs font-bold text-black">
-                SANS CARTE
-              </span>
+              <Gift className="h-6 w-6" />
+              <span className="text-lg">Essai gratuit 2 min</span>
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </motion.div>
           </Link>
 
