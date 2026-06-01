@@ -18,6 +18,7 @@ import { useLiveFaceSwap } from '@/hooks/use-live-face-swap'
 import { PersonaPicker, type PersonaAvatar } from '@/components/live/persona-picker'
 import { LiveStage } from '@/components/live/live-stage'
 import { LiveAccessBanner } from '@/components/live/live-access-banner'
+import { EngineComparison } from '@/components/live/engine-comparison'
 import { PaymentConfirmModal } from '@/app/dashboard/plans/payment-confirm-modal'
 import type { PlanConfig } from '@/lib/plans'
 import { LIVE_OFFERS } from '@/lib/live-offers'
@@ -181,6 +182,15 @@ export default function LivePage() {
           <p className="mt-1 text-sm text-gray-400">
             Transforme ton visage en direct avec un moteur GPU dedie. Utilisable dans tes appels video.
           </p>
+          <p className="mt-2 text-xs text-gray-500">
+            Outil <span className="text-gray-300">Live temps reel</span> (visage). Different de
+            l&apos;abonnement <span className="font-semibold text-[#00ff88]">Lucy</span> qui te transforme
+            de la tete aux pieds en bien meilleure qualite —{' '}
+            <Link href="/dashboard/recharge" className="text-[#00ff88] underline-offset-2 hover:underline">
+              voir les abonnements
+            </Link>
+            .
+          </p>
         </div>
 
         {/* Banniere d'acces */}
@@ -300,6 +310,9 @@ export default function LivePage() {
             </p>
           </div>
         </div>
+
+        {/* Comparatif : Live temps reel vs abonnement Lucy (premium) */}
+        <EngineComparison />
 
         <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-gray-600">
           <Info className="h-3.5 w-3.5" />
