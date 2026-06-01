@@ -206,7 +206,7 @@ export function PricingSection() {
                   ))}
                 </ul>
 
-                <Link href={`/dashboard/recharge?plan=${plan.id}`}>
+                <Link href={`/dashboard/plans?plan=${plan.id}`}>
                   <Button 
                     className={`w-full py-6 text-base font-bold rounded-2xl transition-all ${
                       plan.popular 

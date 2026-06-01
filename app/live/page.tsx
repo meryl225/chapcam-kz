@@ -186,7 +186,7 @@ export default function LivePage() {
           <p className="mt-2 text-xs text-gray-500">
             L&apos;outil Live est <span className="text-gray-300">different du logiciel ChapCam de depart</span>.
             Avec un abonnement, il n&apos;y a pas de bug et la transformation se fait de la tete aux pieds —{' '}
-            <Link href="/dashboard/recharge" className="text-[#00ff88] underline-offset-2 hover:underline">
+            <Link href="/dashboard/plans" className="text-[#00ff88] underline-offset-2 hover:underline">
               voir les abonnements
             </Link>
             .
@@ -218,7 +218,7 @@ export default function LivePage() {
             <p className="mt-1 text-gray-400">
               L&apos;essai est gratuit, donc plusieurs personnes l&apos;utilisent en meme temps. Tu peux
               parfois attendre un peu avant que ca demarre. Avec un{' '}
-              <Link href="/dashboard/recharge" className="text-[#00ff88] underline-offset-2 hover:underline">
+              <Link href="/dashboard/plans" className="text-[#00ff88] underline-offset-2 hover:underline">
                 abonnement
               </Link>
               , tu passes en priorite, sans bug et avec une transformation de la tete aux pieds.

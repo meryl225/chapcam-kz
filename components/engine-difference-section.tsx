@@ -82,7 +82,7 @@ export function EngineDifferenceSection() {
               </li>
             </ul>
             <Link
-              href="/dashboard/recharge"
+              href="/dashboard/plans"
               className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-[#00ff88] py-3 text-sm font-bold text-black transition-colors hover:bg-[#00dd77]"
             >
               Prendre un abonnement
