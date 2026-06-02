@@ -75,6 +75,22 @@ export default function AdminPaymentsPage() {
   const [status, setStatus] = useState('pending')
   const [actioningId, setActioningId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [health, setHealth] = useState<{ ok: boolean; message: string } | null>(null)
+  const [healthChecking, setHealthChecking] = useState(false)
+
+  const checkPaydunya = async () => {
+    setHealthChecking(true)
+    setHealth(null)
+    try {
+      const res = await fetch('/api/admin/paydunya-health')
+      const data = await res.json()
+      setHealth({ ok: !!data.ok, message: data.message || 'Reponse inconnue.' })
+    } catch {
+      setHealth({ ok: false, message: 'Erreur de connexion au diagnostic.' })
+    } finally {
+      setHealthChecking(false)
+    }
+  }
 
   const load = useCallback(async () => {
     setRefreshing(true)
@@ -195,6 +211,18 @@ export default function AdminPaymentsPage() {
               Liens Wave
             </Link>
             <button
+              onClick={checkPaydunya}
+              disabled={healthChecking}
+              className="flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white disabled:opacity-60"
+            >
+              {healthChecking ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Shield className="h-4 w-4" />
+              )}
+              Tester PayDunya
+            </button>
+            <button
               onClick={load}
               disabled={refreshing}
               className="flex items-center gap-2 rounded-xl bg-[#00ff88] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
@@ -204,6 +232,24 @@ export default function AdminPaymentsPage() {
             </button>
           </div>
         </div>
+
+        {/* Resultat du diagnostic PayDunya */}
+        {health && (
+          <div
+            className={`mb-6 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm font-medium ${
+              health.ok
+                ? 'border-[#00ff88]/30 bg-[#00ff88]/10 text-[#00ff88]'
+                : 'border-red-500/30 bg-red-500/10 text-red-400'
+            }`}
+          >
+            {health.ok ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : (
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            )}
+            <span>{health.message}</span>
+          </div>
+        )}
 
         {/* Filtres */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row">
