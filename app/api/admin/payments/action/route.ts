@@ -4,6 +4,7 @@ import { isAdminRequest, ADMIN_EMAIL } from '@/lib/admin-auth'
 import { getPlan } from '@/lib/plans'
 import { getLiveOffer } from '@/lib/live-offers'
 import { grantLiveWindow } from '@/lib/live-access'
+import { resolveUserIdByEmail, activateSubscription } from '@/lib/fulfillment'
 import {
   sendSubscriptionApprovedEmail,
   sendSubscriptionRejectedEmail,
@@ -15,68 +16,6 @@ export const dynamic = 'force-dynamic'
 
 function fmtDate(d: Date) {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
-}
-
-// Cherche un compte par email (insensible a la casse). Retourne l'id ou null.
-async function resolveUserIdByEmail(
-  admin: ReturnType<typeof createAdminClient>,
-  email: string,
-): Promise<string | null> {
-  try {
-    const target = email.trim().toLowerCase()
-    // Pagination pour couvrir tous les comptes
-    for (let page = 1; page <= 10; page++) {
-      const { data } = await admin.auth.admin.listUsers({ page, perPage: 1000 })
-      const users = data?.users || []
-      const match = users.find((u) => u.email?.toLowerCase() === target)
-      if (match) return match.id
-      if (users.length < 1000) break // derniere page atteinte
-    }
-  } catch (e) {
-    console.warn('[action] Resolution user_id impossible:', e)
-  }
-  return null
-}
-
-// Credite les points / active l'abonnement pour un user donne.
-async function activateSubscription(
-  admin: ReturnType<typeof createAdminClient>,
-  userId: string,
-  email: string,
-  plan: { id: string; price: number; points: number; durationDays: number },
-) {
-  const now = new Date()
-  const end = new Date(now.getTime() + plan.durationDays * 24 * 60 * 60 * 1000)
-
-  const { data: existing } = await admin
-    .from('subscriptions')
-    .select('id')
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  const subPayload = {
-    user_id: userId,
-    email,
-    plan: plan.id,
-    amount: plan.price,
-    status: 'active',
-    points: plan.points,
-    max_points: plan.points,
-    is_active: true,
-    start_date: now.toISOString(),
-    end_date: end.toISOString(),
-    expires_at: end.toISOString(),
-  }
-
-  if (existing) {
-    const { error } = await admin.from('subscriptions').update(subPayload).eq('id', existing.id)
-    if (error) console.error('[action] Erreur update subscription:', error.message)
-  } else {
-    const { error } = await admin.from('subscriptions').insert(subPayload)
-    if (error) console.error('[action] Erreur insert subscription:', error.message)
-  }
-
-  return { now, end }
 }
 
 // POST admin : approuver ou refuser une demande de paiement.
