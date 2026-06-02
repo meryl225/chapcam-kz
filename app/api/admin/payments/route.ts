@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const search = (searchParams.get('search') || '').trim().toLowerCase()
     const status = (searchParams.get('status') || '').trim()
+    const method = (searchParams.get('method') || '').trim()
 
     const admin = createAdminClient()
     let query = admin
@@ -54,6 +55,10 @@ export async function GET(req: NextRequest) {
 
     if (status && ['pending', 'approved', 'rejected'].includes(status)) {
       query = query.eq('status', status)
+    }
+    // Filtre source de paiement : PayDunya = presence d'un token PayDunya.
+    if (method === 'paydunya') {
+      query = query.not('paydunya_token', 'is', null)
     }
     if (search) {
       query = query.or(`email.ilike.%${search}%,phone_number.ilike.%${search}%`)

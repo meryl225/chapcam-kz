@@ -73,6 +73,7 @@ export default function AdminPaymentsPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('pending')
+  const [method, setMethod] = useState<'' | 'paydunya'>('')
   const [actioningId, setActioningId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
   const [health, setHealth] = useState<{ ok: boolean; message: string } | null>(null)
@@ -98,6 +99,7 @@ export default function AdminPaymentsPage() {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (status) params.set('status', status)
+      if (method) params.set('method', method)
       const res = await fetch(`/api/admin/payments?${params.toString()}`)
       const data = await res.json()
       if (res.ok) setRequests(data.requests || [])
@@ -112,7 +114,7 @@ export default function AdminPaymentsPage() {
 
   useEffect(() => {
     load()
-  }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [status, method]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (toast) {
@@ -282,6 +284,17 @@ export default function AdminPaymentsPage() {
                 {f.label}
               </button>
             ))}
+            <button
+              onClick={() => setMethod((m) => (m === 'paydunya' ? '' : 'paydunya'))}
+              className={`rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
+                method === 'paydunya'
+                  ? 'border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]'
+                  : 'border-gray-700 bg-[#111] text-gray-400 hover:text-white'
+              }`}
+              title="Afficher uniquement les paiements PayDunya"
+            >
+              PayDunya
+            </button>
           </div>
         </div>
 
