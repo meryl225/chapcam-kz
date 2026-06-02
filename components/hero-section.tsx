@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowRight, Zap, Shield, Monitor, MessageCircle, Gift } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FeatureList } from "@/components/feature-list"
@@ -10,6 +11,43 @@ import { motion } from "framer-motion"
 export function HeroSection() {
   return (
     <section className="relative min-h-screen pt-28 pb-12 px-6 overflow-hidden">
+      {/* Drapeaux flottants - pays disponibles */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.3 }}
+        className="absolute left-4 top-24 z-20 md:left-6 lg:left-10"
+      >
+        <motion.div
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md"
+        >
+            {[
+              { src: "/images/flag-cote-divoire.png", alt: "Cote d'Ivoire" },
+              { src: "/images/flag-benin.png", alt: "Benin" },
+              { src: "/images/flag-togo.png", alt: "Togo" },
+              { src: "/images/flag-cameroun.png", alt: "Cameroun" },
+            ].map((flag, i) => (
+              <motion.div
+                key={flag.alt}
+                animate={{ y: [0, -4, 0] }}
+                transition={{ duration: 3, repeat: Infinity, delay: i * 0.2, ease: "easeInOut" }}
+                whileHover={{ scale: 1.15 }}
+                className="overflow-hidden rounded-md shadow-lg ring-1 ring-white/20"
+              >
+                <Image
+                  src={flag.src || "/placeholder.svg"}
+                  alt={`Drapeau ${flag.alt}`}
+                  width={48}
+                  height={32}
+                  className="h-8 w-12 object-cover"
+                />
+              </motion.div>
+            ))}
+        </motion.div>
+      </motion.div>
+
       <div className="max-w-7xl mx-auto grid lg:grid-cols-[1fr_1.2fr_1fr] gap-8 items-center min-h-[calc(100vh-8rem)]">
         {/* Left - Features */}
         <motion.div 
