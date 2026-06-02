@@ -1,0 +1,61 @@
+"use client"
+
+import Image from "next/image"
+import { motion } from "framer-motion"
+
+const COUNTRIES = [
+  { name: "Cote d'Ivoire", flag: "/images/flag-cote-divoire.png" },
+  { name: "Benin", flag: "/images/flag-benin.png" },
+  { name: "Togo", flag: "/images/flag-togo.png" },
+  { name: "Cameroun", flag: "/images/flag-cameroun.png" },
+]
+
+export function AvailableCountriesSection() {
+  return (
+    <section className="relative py-20 md:py-28">
+      <div className="mx-auto max-w-6xl px-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-12 text-center"
+        >
+          <p className="mb-3 text-sm font-bold uppercase tracking-widest text-[#00ff88]">
+            Disponible des maintenant
+          </p>
+          <h2 className="text-balance text-3xl font-black text-white md:text-5xl">
+            ChapCam est disponible dans ces 4 pays
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-pretty text-base text-gray-400 md:text-lg">
+            Paiement Mobile Money et carte bancaire pris en charge en Cote d&apos;Ivoire, au Benin,
+            au Togo et au Cameroun.
+          </p>
+        </motion.div>
+
+        <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
+          {COUNTRIES.map((country, index) => (
+            <motion.div
+              key={country.name}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.1 }}
+              className="flex flex-col items-center gap-4"
+            >
+              <div className="relative aspect-[3/2] w-full overflow-hidden rounded-2xl border-2 border-white/10 shadow-2xl transition-transform duration-300 hover:scale-105 hover:border-[#00ff88]/50">
+                <Image
+                  src={country.flag || "/placeholder.svg"}
+                  alt={`Drapeau ${country.name}`}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 50vw, 25vw"
+                />
+              </div>
+              <span className="text-lg font-bold text-white md:text-xl">{country.name}</span>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
