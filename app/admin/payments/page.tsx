@@ -14,6 +14,9 @@ import {
   Mail,
   UserPlus,
   Download,
+  CheckCircle2,
+  AlertTriangle,
+  UserX,
 } from 'lucide-react'
 import Link from 'next/link'
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_LOGOS } from '@/lib/payment-methods'
@@ -34,6 +37,11 @@ interface PaymentRequest {
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
   validated_at: string | null
+  account?: {
+    status: 'credited' | 'not_credited' | 'no_account'
+    kind: 'plan' | 'live' | null
+    label: string
+  }
 }
 
 const STATUS_FILTERS = [
@@ -298,6 +306,33 @@ export default function AdminPaymentsPage() {
                         {new Date(r.created_at).toLocaleString('fr-FR')}
                       </p>
                     </div>
+                    {r.account && (
+                      <div
+                        className={`mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
+                          r.account.status === 'credited'
+                            ? 'border-[#00ff88]/30 bg-[#00ff88]/10 text-[#00ff88]'
+                            : r.account.status === 'not_credited'
+                              ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
+                              : 'border-red-500/30 bg-red-500/10 text-red-400'
+                        }`}
+                      >
+                        {r.account.status === 'credited' ? (
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                        ) : r.account.status === 'not_credited' ? (
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        ) : (
+                          <UserX className="mt-0.5 h-4 w-4 shrink-0" />
+                        )}
+                        <span>
+                          {r.account.status === 'credited'
+                            ? 'Compte credite — '
+                            : r.account.status === 'not_credited'
+                              ? 'Non credite — '
+                              : ''}
+                          {r.account.label}
+                        </span>
+                      </div>
+                    )}
                     {r.comment && (
                       <p className="mt-2 rounded-lg border border-gray-800 bg-[#0a0a0a] px-3 py-2 text-sm text-gray-400">
                         <span className="text-gray-500">Commentaire :</span> {r.comment}
