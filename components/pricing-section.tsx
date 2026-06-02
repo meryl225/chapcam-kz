@@ -27,8 +27,8 @@ const plans = [
     icon: Zap
   },
   {
-    id: "popular",
-    name: "Popular",
+    id: "standard",
+    name: "Standard",
     duration: "30 JOURS",
     price: "25.000",
     oldPrice: "35.000",
@@ -47,8 +47,8 @@ const plans = [
     icon: Star
   },
   {
-    id: "pro",
-    name: "Pro",
+    id: "premium",
+    name: "Premium",
     duration: "90 JOURS",
     price: "50.000",
     oldPrice: "65.000",
@@ -67,8 +67,8 @@ const plans = [
     icon: Star
   },
   {
-    id: "vip",
-    name: "VIP Annuel",
+    id: "ultimate",
+    name: "Ultimate",
     duration: "365 JOURS",
     price: "85.000",
     oldPrice: "110.000",
