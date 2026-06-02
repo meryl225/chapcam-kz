@@ -1,18 +1,22 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Zap, Gift, Video } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { PLANS } from '@/lib/plans'
-import { LIVE_OFFERS, LIVE_TRIAL_SECONDS } from '@/lib/live-offers'
+import { useSearchParams } from 'next/navigation'
+import { PLANS, getPlan } from '@/lib/plans'
+import { LIVE_OFFERS, LIVE_TRIAL_SECONDS, getLiveOffer } from '@/lib/live-offers'
 
 const LIVE_OFFER = LIVE_OFFERS[0]
 
-export default function PlansPage() {
+function PlansContent() {
+  const searchParams = useSearchParams()
   // id du produit en cours de redirection vers PayDunya (pour le loader par bouton)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // evite de relancer le checkout auto plusieurs fois (ex: arrivee depuis l'accueil)
+  const autoStarted = useRef(false)
 
   const startCheckout = async (productId: string) => {
     setError(null)
@@ -37,6 +41,19 @@ export default function PlansPage() {
     }
   }
 
+  // Si l'utilisateur arrive depuis la page d'accueil avec ?plan=ID, on lance
+  // automatiquement le paiement PayDunya pour ce produit (formule ou Live Pro).
+  useEffect(() => {
+    if (autoStarted.current) return
+    const requested = searchParams.get('plan')
+    if (!requested) return
+    if (getPlan(requested) || getLiveOffer(requested)) {
+      autoStarted.current = true
+      startCheckout(requested)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   return (
     <div className="min-h-screen bg-[#050505] px-6 py-12">
       <div className="mx-auto max-w-7xl">
@@ -50,7 +67,7 @@ export default function PlansPage() {
                 <Sparkles className="h-5 w-5 text-[#00ff88]" />
               </div>
               <h3 className="mb-2 text-xl font-black text-white md:text-2xl">
-                Payez avec <span className="text-[#00ff88]">Wave, Orange, MTN ou Moov</span> via PayDunya
+                Payez par <span className="text-[#00ff88]">Carte bancaire, Wave, Orange, MTN, Moov ou Djamo</span> via PayDunya
               </h3>
               <p className="text-sm text-gray-300">
                 Activation automatique de votre compte des que le paiement est confirme.
@@ -256,5 +273,19 @@ export default function PlansPage() {
         </motion.div>
       </div>
     </div>
+  )
+}
+
+export default function PlansPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#050505]">
+          <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+        </div>
+      }
+    >
+      <PlansContent />
+    </Suspense>
   )
 }
