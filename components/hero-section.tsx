@@ -21,12 +21,8 @@ export function HeroSection() {
         <motion.div
           animate={{ y: [0, -8, 0] }}
           transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md"
+          className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md"
         >
-          <span className="text-xs font-bold uppercase tracking-wide text-[#00ff88]">
-            Disponible dans 4 pays
-          </span>
-          <div className="flex items-center gap-3">
             {[
               { src: "/images/flag-cote-divoire.png", alt: "Cote d'Ivoire" },
               { src: "/images/flag-benin.png", alt: "Benin" },
@@ -49,7 +45,6 @@ export function HeroSection() {
                 />
               </motion.div>
             ))}
-          </div>
         </motion.div>
       </motion.div>
 
