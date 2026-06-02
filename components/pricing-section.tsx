@@ -214,7 +214,7 @@ export function PricingSection() {
                         : "bg-white text-black hover:bg-gray-200"
                     }`}
                   >
-                    Choisir ce plan
+                    Recharger
                   </Button>
                 </Link>
               </motion.div>

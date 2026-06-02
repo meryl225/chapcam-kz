@@ -160,7 +160,7 @@ function PlansContent() {
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
-                      S&apos;abonner
+                      Recharger
                       <CreditCard className="h-4 w-4" />
                     </>
                   )}
