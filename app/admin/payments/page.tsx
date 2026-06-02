@@ -341,6 +341,28 @@ export default function AdminPaymentsPage() {
                         </button>
                       </>
                     )}
+                    {r.status === 'rejected' && (
+                      <button
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Confirmer que ${r.full_name} (${r.email}) a bien paye ?\n\nCela credite immediatement son compte ChapCam.`,
+                            )
+                          ) {
+                            handleAction(r.id, 'approve')
+                          }
+                        }}
+                        disabled={actioningId === r.id}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#00ff88] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
+                      >
+                        {actioningId === r.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                        Valider et crediter
+                      </button>
+                    )}
                     <button
                       onClick={() => handleRelink(r.id, r.email)}
                       disabled={actioningId === r.id}

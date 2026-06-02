@@ -48,11 +48,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Demande introuvable.' }, { status: 404 })
     }
 
-    // Anti double-traitement pour approve/reject : on ne traite qu'une demande "pending".
-    // 'relink' est autorise meme sur une demande deja approuvee (correction d'email).
-    if (action !== 'relink' && request.status !== 'pending') {
+    // Garde-fous de statut :
+    // - 'reject'  : uniquement sur une demande "pending".
+    // - 'approve' : sur "pending" OU "rejected" (l'admin peut crediter
+    //               manuellement un paiement qui avait ete refuse a tort,
+    //               typiquement quand l'auto-confirmation PayDunya a echoue).
+    //               Bloque si deja "approved" (idempotence).
+    // - 'relink'  : autorise quel que soit le statut (correction d'email).
+    if (action === 'reject' && request.status !== 'pending') {
       return NextResponse.json(
         { error: `Cette demande a deja ete traitee (${request.status}).` },
+        { status: 409 },
+      )
+    }
+    if (action === 'approve' && request.status === 'approved') {
+      return NextResponse.json(
+        { error: 'Cette demande est deja validee.' },
         { status: 409 },
       )
     }
@@ -198,12 +209,12 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Marquer la demande approuvee
+    // Marquer la demande approuvee (depuis pending OU rejected, jamais re-approuver)
     const { error: updErr } = await admin
       .from('payment_requests')
       .update({ status: 'approved', validated_at: now.toISOString(), user_id: userId })
       .eq('id', id)
-      .eq('status', 'pending')
+      .neq('status', 'approved')
 
     if (updErr) {
       console.error('[action] Erreur approbation:', updErr.message)
