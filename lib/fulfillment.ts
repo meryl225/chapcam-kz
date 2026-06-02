@@ -6,6 +6,7 @@
 // Tout passe par la cle service_role (createAdminClient).
 // ============================================================
 
+import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ADMIN_EMAIL } from '@/lib/admin-auth'
 import { getPlan, type PlanConfig } from '@/lib/plans'
@@ -200,16 +201,36 @@ export async function confirmPaydunyaInvoice(token: string): Promise<PaydunyaCon
   }
 }
 
-// Confirme + credite une facture PayDunya de maniere idempotente.
-// Appele par le callback IPN ET par la route de statut (resilience si l'IPN
-// n'arrive jamais). Retourne l'etat final pour l'affichage.
-export async function confirmAndFulfillPaydunya(
-  token: string,
-): Promise<{ status: 'completed' | 'pending' | 'cancelled' | 'error'; alreadyDone: boolean; result?: PurchaseResult }> {
-  const admin = createAdminClient()
-  const confirm = await confirmPaydunyaInvoice(token)
+// Verifie l'authenticite d'un IPN PayDunya via le hash SHA-512 de la Master Key.
+// PayDunya joint a chaque IPN un champ "hash" = sha512(MASTER_KEY).
+// Cette verification ne depend QUE de la Master Key (pas de la Private Key /
+// Token), donc le credit automatique fonctionne meme si la paire
+// Private Key + Token est mal configuree.
+export function verifyPaydunyaHash(receivedHash: string | null | undefined): boolean {
+  const masterKey = process.env.PAYDUNYA_MASTER_KEY
+  if (!masterKey || !receivedHash) return false
+  const expected = crypto.createHash('sha512').update(masterKey).digest('hex')
+  // Comparaison a temps constant pour eviter les attaques temporelles.
+  const a = Buffer.from(expected)
+  const b = Buffer.from(String(receivedHash))
+  if (a.length !== b.length) return false
+  return crypto.timingSafeEqual(a, b)
+}
 
-  if (!confirm) return { status: 'error', alreadyDone: false }
+// Cœur partage : credite une facture confirmee (peu importe la source de la
+// confirmation : API PayDunya OU IPN verifie par hash). Idempotent.
+async function fulfillConfirmedInvoice(params: {
+  token: string
+  status: string
+  totalAmount: number
+  customData: Record<string, any>
+}): Promise<{
+  status: 'completed' | 'pending' | 'cancelled' | 'error'
+  alreadyDone: boolean
+  result?: PurchaseResult
+}> {
+  const { token, status, totalAmount, customData } = params
+  const admin = createAdminClient()
 
   // Retrouver la demande liee a ce token.
   const { data: reqRow } = await admin
@@ -218,8 +239,8 @@ export async function confirmAndFulfillPaydunya(
     .eq('paydunya_token', token)
     .maybeSingle()
 
-  if (confirm.status !== 'completed') {
-    const mapped = confirm.status === 'cancelled' ? 'cancelled' : 'pending'
+  if (status !== 'completed') {
+    const mapped = status === 'cancelled' ? 'cancelled' : 'pending'
     return { status: mapped, alreadyDone: false }
   }
 
@@ -229,7 +250,7 @@ export async function confirmAndFulfillPaydunya(
   }
 
   // Metadonnees : priorite a la ligne en base, repli sur custom_data PayDunya.
-  const cd = confirm.customData || {}
+  const cd = customData || {}
   const productId = String(reqRow?.plan || cd.product_id || cd.plan || '')
   const email = String(reqRow?.email || cd.email || cd.user_email || '')
   const fullName = String(reqRow?.full_name || cd.full_name || cd.user_name || 'Client ChapCam')
@@ -245,7 +266,7 @@ export async function confirmAndFulfillPaydunya(
       .update({
         status: 'approved',
         validated_at: now.toISOString(),
-        paid_amount: confirm.totalAmount || reqRow.amount,
+        paid_amount: totalAmount || reqRow.amount,
         paid_at: now.toISOString(),
         user_id: userId,
       })
@@ -259,7 +280,7 @@ export async function confirmAndFulfillPaydunya(
       details: {
         token,
         product: productId,
-        amount: confirm.totalAmount,
+        amount: totalAmount,
         kind: result.kind,
         user_linked: result.userLinked,
         auto: true,
@@ -268,4 +289,32 @@ export async function confirmAndFulfillPaydunya(
   }
 
   return { status: 'completed', alreadyDone: false, result }
+}
+
+// Credite directement a partir d'un IPN PayDunya deja verifie par hash.
+// N'appelle PAS l'API de confirmation (donc independant de Private Key/Token).
+export async function fulfillFromVerifiedIpn(payload: {
+  token: string
+  status: string
+  totalAmount: number
+  customData: Record<string, any>
+}) {
+  return fulfillConfirmedInvoice(payload)
+}
+
+// Confirme + credite une facture PayDunya de maniere idempotente.
+// Appele par la route de statut (resilience si l'IPN n'arrive jamais) :
+// reconfirme aupres de PayDunya avec nos cles serveur.
+export async function confirmAndFulfillPaydunya(
+  token: string,
+): Promise<{ status: 'completed' | 'pending' | 'cancelled' | 'error'; alreadyDone: boolean; result?: PurchaseResult }> {
+  const confirm = await confirmPaydunyaInvoice(token)
+  if (!confirm) return { status: 'error', alreadyDone: false }
+
+  return fulfillConfirmedInvoice({
+    token,
+    status: confirm.status,
+    totalAmount: confirm.totalAmount,
+    customData: confirm.customData,
+  })
 }
