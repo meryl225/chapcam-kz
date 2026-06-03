@@ -94,21 +94,62 @@ export function InstallationRequestModal({ open, onClose }: Props) {
         </button>
 
         {done ? (
-          <div className="flex flex-col items-center py-6 text-center">
+          <div className="flex flex-col items-center py-4 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#2563eb]/20">
               <Check className="h-7 w-7 text-[#3b82f6]" />
             </div>
-            <h3 className="text-lg font-bold text-white">Demande envoyee</h3>
+            <h3 className="text-lg font-bold text-white">Demande enregistree</h3>
             <p className="mt-2 text-sm text-gray-400">
-              Notre equipe vous contactera au numero indique pour planifier
-              l&apos;installation de ChapCam avec vos applications.
+              Pour confirmer votre demande, reglez les frais d&apos;installation. Notre equipe vous
+              contactera ensuite au numero indique pour planifier l&apos;installation.
             </p>
+
+            {/* Recapitulatif frais */}
+            <div className="mt-5 w-full rounded-xl border border-[#2563eb]/30 bg-[#2563eb]/10 px-4 py-3 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-[#93c5fd]">Frais d&apos;installation</span>
+                <span className="text-lg font-bold text-white">
+                  {INSTALL_FEE.price.toLocaleString()} FCFA
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-gray-400">
+                Deplacement, configuration (WhatsApp et autres apps), tests et assistance inclus.
+              </p>
+            </div>
+
+            {payError && (
+              <p className="mt-4 w-full rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                {payError}
+              </p>
+            )}
+
+            <button
+              onClick={handlePayInstallation}
+              disabled={paying}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#00c66b] py-3 font-semibold text-white transition-colors hover:bg-[#00b35f] disabled:opacity-60"
+            >
+              {paying ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Redirection vers le paiement...
+                </>
+              ) : (
+                <>
+                  <CreditCard className="h-5 w-5" />
+                  Confirmer et payer {INSTALL_FEE.price.toLocaleString()} FCFA
+                </>
+              )}
+            </button>
+
             <button
               onClick={handleClose}
-              className="mt-6 rounded-lg bg-[#2563eb] px-6 py-2.5 font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+              className="mt-3 text-sm text-gray-400 transition-colors hover:text-white"
             >
-              Fermer
+              Payer plus tard
             </button>
+            <p className="mt-2 text-xs text-gray-500">
+              Vous pourrez aussi payer depuis &laquo; Mes demandes &raquo;.
+            </p>
           </div>
         ) : (
           <>
