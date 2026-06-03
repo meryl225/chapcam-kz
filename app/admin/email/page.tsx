@@ -13,22 +13,55 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 
-const DEFAULT_SUBJECT = 'Votre installation ChapCam est terminee'
+const DEFAULT_SUBJECT = 'Installation complete de ChapCam a domicile - 8 500 FCFA'
 
 const DEFAULT_MESSAGE = `Bonjour {nom},
 
-Bonne nouvelle : l'installation complete du logiciel ChapCam sur votre PC est maintenant terminee et operationnelle.
+Merci pour votre interet pour l'installation de ChapCam.
 
-Ce que comprend votre installation :
-- Le logiciel ChapCam installe et configure sur votre ordinateur
-- La configuration de WhatsApp (l'etape la plus technique) entierement prise en charge par notre equipe
-- Les tests de bon fonctionnement valides
+Notre equipe propose une installation complete a domicile afin de vous permettre d'utiliser ChapCam dans les meilleures conditions, notamment sur WhatsApp et les autres plateformes compatibles.
 
-Le tout pour 8500 FCFA, installation et configuration WhatsApp incluses.
+Conditions requises
 
-Vous pouvez des maintenant utiliser ChapCam. Si vous avez la moindre question, repondez simplement a cet email.
+Disposer d'un abonnement ChapCam actif.
 
-Merci de votre confiance,
+L'installation seule ne donne pas acces au service. Un abonnement ChapCam en cours de validite est obligatoire.
+
+Ce que comprend l'installation
+
+- Installation complete de ChapCam sur votre ordinateur
+- Configuration de votre compte
+- Configuration de WhatsApp
+- Configuration des autres reseaux sociaux et plateformes compatibles
+- Verification du bon fonctionnement
+- Tests en direct avec notre equipe
+- Assistance a la prise en main
+
+Deroulement de l'installation
+
+1. Vous souscrivez a un abonnement ChapCam actif.
+2. Vous confirmez votre demande d'installation.
+3. Vous effectuez le paiement des frais d'installation de 8 500 FCFA via PayDunya.
+4. Un membre de l'equipe ChapCam vous contacte pour fixer un rendez-vous.
+5. Notre equipe se deplace directement chez vous ou sur votre lieu de travail.
+6. Nous realisons l'installation, la configuration et les tests necessaires.
+
+Tarif
+
+Installation complete : 8 500 FCFA
+
+Ce montant couvre le deplacement, la configuration, les tests et l'assistance a la prise en main.
+
+Comment confirmer votre demande ?
+
+Connectez-vous simplement sur ChapCam.com et effectuez le paiement des frais d'installation de 8 500 FCFA via PayDunya.
+
+Des reception du paiement, notre equipe prendra contact avec vous pour organiser votre installation.
+
+Les demandes sont traitees par ordre de paiement et selon les disponibilites de notre equipe.
+
+Merci pour votre confiance.
+
 L'equipe ChapCam`
 
 interface Result {
@@ -41,7 +74,7 @@ interface Result {
 export default function AdminEmailPage() {
   const [subject, setSubject] = useState(DEFAULT_SUBJECT)
   const [message, setMessage] = useState(DEFAULT_MESSAGE)
-  const [ctaLabel, setCtaLabel] = useState('Ouvrir ChapCam')
+  const [ctaLabel, setCtaLabel] = useState("Confirmer ma demande d'installation")
   const [ctaUrl, setCtaUrl] = useState('https://chapcam.com')
   const [sending, setSending] = useState(false)
   const [confirming, setConfirming] = useState(false)
