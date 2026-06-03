@@ -55,6 +55,9 @@ export async function GET(req: NextRequest) {
 
     if (status && ['pending', 'approved', 'rejected'].includes(status)) {
       query = query.eq('status', status)
+    } else {
+      // Par defaut : masquer les demandes annulees (doublons / paiements abandonnes).
+      query = query.neq('status', 'cancelled')
     }
     // Filtre source de paiement : PayDunya = presence d'un token PayDunya.
     if (method === 'paydunya') {
