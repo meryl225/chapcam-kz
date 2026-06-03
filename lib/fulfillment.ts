@@ -11,8 +11,13 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { ADMIN_EMAIL } from '@/lib/admin-auth'
 import { getPlan, type PlanConfig } from '@/lib/plans'
 import { getLiveOffer, type LiveOffer } from '@/lib/live-offers'
+import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
 import { grantLiveWindow } from '@/lib/live-access'
-import { sendSubscriptionApprovedEmail, sendLiveAccessApprovedEmail } from '@/lib/email'
+import {
+  sendSubscriptionApprovedEmail,
+  sendLiveAccessApprovedEmail,
+  sendInstallationPaidEmail,
+} from '@/lib/email'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -87,7 +92,7 @@ export interface PurchaseInput {
 
 export interface PurchaseResult {
   ok: boolean
-  kind: 'plan' | 'live' | null
+  kind: 'plan' | 'live' | 'installation' | null
   userLinked: boolean
   message: string
 }
@@ -101,8 +106,9 @@ export async function creditPurchase(
 ): Promise<PurchaseResult> {
   const plan: PlanConfig | undefined = getPlan(input.productId)
   const liveOffer: LiveOffer | undefined = getLiveOffer(input.productId)
+  const installOffer: InstallOffer | undefined = getInstallOffer(input.productId)
 
-  if (!plan && !liveOffer) {
+  if (!plan && !liveOffer && !installOffer) {
     return { ok: false, kind: null, userLinked: false, message: `Produit inconnu : ${input.productId}` }
   }
 
@@ -112,13 +118,31 @@ export async function creditPurchase(
   if (!userId) {
     return {
       ok: false,
-      kind: liveOffer ? 'live' : 'plan',
+      kind: installOffer ? 'installation' : liveOffer ? 'live' : 'plan',
       userLinked: false,
       message: `Aucun compte ChapCam ne correspond a ${input.email}.`,
     }
   }
 
   const now = new Date()
+
+  if (installOffer) {
+    // Frais d'installation regles : on marque la (les) demande(s) d'installation
+    // en attente de ce client comme "payees" pour que l'equipe puisse planifier.
+    const { error: updErr } = await admin
+      .from('installation_requests')
+      .update({ paid: true, paid_at: now.toISOString() })
+      .eq('user_id', userId)
+      .eq('status', 'pending')
+    if (updErr) {
+      // Colonnes paid/paid_at peut-etre absentes : on n'echoue pas le credit.
+      console.warn('[fulfillment] Maj installation_requests (paid) ignoree:', updErr.message)
+    }
+    sendInstallationPaidEmail(input.email, input.fullName, installOffer.price).catch((e) =>
+      console.error('[fulfillment] Email installation echoue:', e),
+    )
+    return { ok: true, kind: 'installation', userLinked: true, message: "Frais d'installation regles." }
+  }
 
   if (liveOffer) {
     await grantLiveWindow(admin, userId, 1)
