@@ -86,11 +86,10 @@ function PlansContent() {
           </p>
         </div>
 
-        <div className="mx-auto mb-8 max-w-2xl rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-center">
-          <p className="text-sm font-semibold text-amber-300">
-            Important : apres avoir paye, restez sur la page PayDunya jusqu&apos;au message de
-            confirmation. Ne fermez pas la page et n&apos;appuyez pas sur retour, sinon votre compte
-            risque de ne pas etre credite immediatement.
+        <div className="mx-auto mb-8 max-w-2xl rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center">
+          <p className="text-sm font-semibold text-emerald-300">
+            Paiement 100% securise et instantane. Apres avoir paye, patientez quelques secondes sur
+            la page PayDunya : votre compte est credite automatiquement des la confirmation.
           </p>
         </div>
 
