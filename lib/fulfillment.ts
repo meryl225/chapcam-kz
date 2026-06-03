@@ -342,3 +342,66 @@ export async function confirmAndFulfillPaydunya(
     customData: confirm.customData,
   })
 }
+
+// ------------------------------------------------------------
+// RECONCILIATION : filet de securite pour le mobile money.
+// Beaucoup de clients paient puis ferment le navigateur sans revenir,
+// et l'IPN PayDunya n'arrive pas toujours. On interroge donc PayDunya
+// pour TOUTES les factures encore "pending" et on :
+//   - credite automatiquement celles "completed" (paye -> credite),
+//   - marque "cancelled" celles abandonnees (nettoie les doublons).
+// Idempotent : peut tourner aussi souvent qu'on veut.
+// ------------------------------------------------------------
+export async function reconcilePendingPaydunya(opts?: { maxAgeDays?: number; limit?: number }) {
+  const admin = createAdminClient()
+  const maxAgeDays = opts?.maxAgeDays ?? 7
+  const limit = opts?.limit ?? 200
+  const since = new Date(Date.now() - maxAgeDays * 24 * 60 * 60 * 1000).toISOString()
+
+  const { data: rows, error } = await admin
+    .from('payment_requests')
+    .select('id, paydunya_token, created_at')
+    .eq('payment_method', 'paydunya')
+    .eq('status', 'pending')
+    .not('paydunya_token', 'is', null)
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    console.error('[reconcile] Lecture pending echouee:', error.message)
+    return { checked: 0, credited: 0, cancelled: 0, stillPending: 0, errors: 1 }
+  }
+
+  let credited = 0
+  let cancelled = 0
+  let stillPending = 0
+  let errors = 0
+
+  for (const row of rows || []) {
+    const token = row.paydunya_token as string
+    try {
+      const r = await confirmAndFulfillPaydunya(token)
+      if (r.status === 'completed') {
+        credited++
+      } else if (r.status === 'cancelled') {
+        // Nettoyer : la facture a ete annulee/abandonnee cote PayDunya.
+        await admin
+          .from('payment_requests')
+          .update({ status: 'cancelled' })
+          .eq('id', row.id)
+          .eq('status', 'pending')
+        cancelled++
+      } else if (r.status === 'error') {
+        errors++
+      } else {
+        stillPending++
+      }
+    } catch (e) {
+      console.error('[reconcile] Token', token, 'echec:', e)
+      errors++
+    }
+  }
+
+  return { checked: rows?.length || 0, credited, cancelled, stillPending, errors }
+}

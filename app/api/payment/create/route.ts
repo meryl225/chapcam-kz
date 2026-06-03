@@ -109,11 +109,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Enregistrer une demande "pending" liee au token PayDunya.
-    // Le callback / la verification de statut la passera a "approved".
+    // Enregistrer / mettre a jour une demande "pending" liee au token PayDunya.
+    // ANTI-DOUBLON : si ce client a deja une demande "pending" PayDunya pour le
+    // meme produit (il a clique plusieurs fois / abandonne sans payer), on
+    // REUTILISE cette ligne en y mettant le nouveau token, au lieu d'en creer
+    // une nouvelle. Resultat : une seule ligne par client + produit.
     try {
       const admin = createAdminClient()
-      await admin.from('payment_requests').insert({
+      const row = {
         full_name: fullName,
         email: user.email,
         phone_number: phoneNumber,
@@ -124,7 +127,24 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         payment_method: 'paydunya',
         paydunya_token: data.token,
-      })
+      }
+
+      const { data: existing } = await admin
+        .from('payment_requests')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('plan', productId)
+        .eq('payment_method', 'paydunya')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (existing) {
+        await admin.from('payment_requests').update(row).eq('id', existing.id)
+      } else {
+        await admin.from('payment_requests').insert(row)
+      }
     } catch (dbErr) {
       // On n'echoue pas le paiement si l'insert echoue : le callback peut encore
       // crediter via custom_data. On log seulement.
