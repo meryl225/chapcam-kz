@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
@@ -265,7 +266,25 @@ export default function DashboardPage() {
             Change d&apos;apparence en live avec ChapCam
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          {/* Recharger (orange) */}
+          <Link
+            href="/dashboard/plans"
+            className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 font-semibold text-white shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-colors hover:bg-orange-600"
+          >
+            <CreditCard className="h-4 w-4" />
+            Recharger
+          </Link>
+
+          {/* Mes demandes */}
+          <Link
+            href="/dashboard/mes-demandes"
+            className="flex items-center gap-2 rounded-lg border border-[#333] bg-[#1a1a1a] px-4 py-2 font-semibold text-white transition-colors hover:border-[#555]"
+          >
+            <ClipboardList className="h-4 w-4" />
+            <span className="hidden sm:inline">Mes demandes</span>
+          </Link>
+
           {/* Demande d'installation (bleu) */}
           <button
             onClick={() => setShowInstallModal(true)}
@@ -499,6 +518,17 @@ export default function DashboardPage() {
         <div className="text-gray-400 text-sm">
           Avatar : <span className="text-white">{selectedAvatar?.name || 'Aucun'}</span>
         </div>
+      </div>
+
+      {/* Recharger (orange, bas a droite) */}
+      <div className="flex justify-end">
+        <Link
+          href="/dashboard/plans"
+          className="flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 font-semibold text-white shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-colors hover:bg-orange-600"
+        >
+          <CreditCard className="h-4 w-4" />
+          Recharger mes points
+        </Link>
       </div>
 
       {/* Bouton Swap */}
