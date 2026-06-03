@@ -482,6 +482,73 @@ export async function sendLiveAccessApprovedEmail(
   }
 }
 
+// Template email : frais d'installation regles, equipe prendra contact
+export async function sendInstallationPaidEmail(to: string, userName: string, amount: number) {
+  const client = await getResendClient()
+  if (!client) {
+    console.warn('[Email] Resend not configured - skipping email')
+    return { success: false, error: 'Email service not configured' }
+  }
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: 'ChapCam - Vos frais d\'installation sont confirmes',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background-color:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;margin:0 auto;padding:40px 20px;">
+            <tr><td style="text-align:center;padding-bottom:30px;">
+              <img src="https://chapcam.com/favicon.jpg" alt="ChapCam" width="80" height="80" style="border-radius:16px;">
+            </td></tr>
+            <tr><td style="background:linear-gradient(135deg,#1a1a1a 0%,#0d0d0d 100%);border-radius:16px;padding:40px;border:1px solid #222;">
+              <div style="text-align:center;margin-bottom:20px;">
+                <div style="display:inline-block;background:#00ff8820;border-radius:50%;padding:16px;"><span style="font-size:32px;">&#10003;</span></div>
+              </div>
+              <h1 style="color:#00ff88;margin:0 0 20px 0;font-size:24px;text-align:center;">Frais d'installation confirmes !</h1>
+              <p style="color:#ffffff;font-size:16px;line-height:1.6;margin:0 0 20px 0;">Bonjour <strong>${userName}</strong>,</p>
+              <p style="color:#cccccc;font-size:16px;line-height:1.6;margin:0 0 20px 0;">
+                Nous avons bien recu le paiement de vos frais d'installation. Un membre de l'equipe ChapCam va vous contacter tres prochainement
+                pour fixer un rendez-vous et proceder a l'installation complete (logiciel, configuration de votre compte, WhatsApp et autres plateformes).
+              </p>
+              <div style="background:#111111;border-radius:12px;padding:20px;margin:20px 0;border:1px solid #333;">
+                <table width="100%" cellspacing="0" cellpadding="8">
+                  <tr><td style="color:#888;font-size:14px;border-bottom:1px solid #222;">Prestation</td><td style="color:#fff;font-size:14px;text-align:right;border-bottom:1px solid #222;font-weight:bold;">Installation complete a domicile</td></tr>
+                  <tr><td style="color:#888;font-size:14px;">Montant regle</td><td style="color:#00ff88;font-size:14px;text-align:right;font-weight:bold;">${amount.toLocaleString()} FCFA</td></tr>
+                </table>
+              </div>
+              <p style="color:#cccccc;font-size:14px;line-height:1.6;margin:0 0 20px 0;">
+                Rappel : l'installation necessite un abonnement ChapCam actif pour utiliser le service.
+                Les demandes sont traitees par ordre de paiement et selon les disponibilites de notre equipe.
+              </p>
+              <div style="text-align:center;margin-top:30px;">
+                <a href="https://chapcam.com/dashboard/mes-demandes" style="display:inline-block;background:#00ff88;color:#000;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:bold;font-size:16px;">Voir mes demandes</a>
+              </div>
+            </td></tr>
+            <tr><td style="text-align:center;padding-top:30px;">
+              <p style="color:#666;font-size:12px;margin:0;">ChapCam - Face Swap en Temps Reel<br><a href="https://chapcam.com" style="color:#00ff88;text-decoration:none;">chapcam.com</a></p>
+            </td></tr>
+          </table>
+        </body>
+        </html>
+      `,
+    })
+
+    if (error) {
+      console.error('[Email] Error sending installation paid email:', error)
+      return { success: false, error }
+    }
+    console.log('[Email] Installation paid email sent:', data?.id)
+    return { success: true, id: data?.id }
+  } catch (error) {
+    console.error('[Email] Exception sending installation paid email:', error)
+    return { success: false, error }
+  }
+}
+
 // Envoi d'emails en batch pour les gros volumes (newsletters, etc.)
 export async function sendBatchEmails(
   emails: Array<{

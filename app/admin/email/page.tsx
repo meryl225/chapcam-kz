@@ -13,22 +13,55 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 
-const DEFAULT_SUBJECT = 'Votre installation ChapCam est terminee'
+const DEFAULT_SUBJECT = 'Installation complete de ChapCam a domicile - 8 500 FCFA'
 
 const DEFAULT_MESSAGE = `Bonjour {nom},
 
-Bonne nouvelle : l'installation complete du logiciel ChapCam sur votre PC est maintenant terminee et operationnelle.
+Merci pour votre interet pour l'installation de ChapCam.
 
-Ce que comprend votre installation :
-- Le logiciel ChapCam installe et configure sur votre ordinateur
-- La configuration de WhatsApp (l'etape la plus technique) entierement prise en charge par notre equipe
-- Les tests de bon fonctionnement valides
+Notre equipe propose une installation complete a domicile afin de vous permettre d'utiliser ChapCam dans les meilleures conditions, notamment sur WhatsApp et les autres plateformes compatibles.
 
-Le tout pour 8500 FCFA, installation et configuration WhatsApp incluses.
+Conditions requises
 
-Vous pouvez des maintenant utiliser ChapCam. Si vous avez la moindre question, repondez simplement a cet email.
+Disposer d'un abonnement ChapCam actif.
 
-Merci de votre confiance,
+L'installation seule ne donne pas acces au service. Un abonnement ChapCam en cours de validite est obligatoire.
+
+Ce que comprend l'installation
+
+- Installation complete de ChapCam sur votre ordinateur
+- Configuration de votre compte
+- Configuration de WhatsApp
+- Configuration des autres reseaux sociaux et plateformes compatibles
+- Verification du bon fonctionnement
+- Tests en direct avec notre equipe
+- Assistance a la prise en main
+
+Deroulement de l'installation
+
+1. Vous souscrivez a un abonnement ChapCam actif.
+2. Vous confirmez votre demande d'installation.
+3. Vous effectuez le paiement des frais d'installation de 8 500 FCFA via PayDunya.
+4. Un membre de l'equipe ChapCam vous contacte pour fixer un rendez-vous.
+5. Notre equipe se deplace directement chez vous ou sur votre lieu de travail.
+6. Nous realisons l'installation, la configuration et les tests necessaires.
+
+Tarif
+
+Installation complete : 8 500 FCFA
+
+Ce montant couvre le deplacement, la configuration, les tests et l'assistance a la prise en main.
+
+Comment confirmer votre demande ?
+
+Connectez-vous simplement sur ChapCam.com et effectuez le paiement des frais d'installation de 8 500 FCFA via PayDunya.
+
+Des reception du paiement, notre equipe prendra contact avec vous pour organiser votre installation.
+
+Les demandes sont traitees par ordre de paiement et selon les disponibilites de notre equipe.
+
+Merci pour votre confiance.
+
 L'equipe ChapCam`
 
 interface Result {
@@ -41,8 +74,9 @@ interface Result {
 export default function AdminEmailPage() {
   const [subject, setSubject] = useState(DEFAULT_SUBJECT)
   const [message, setMessage] = useState(DEFAULT_MESSAGE)
-  const [ctaLabel, setCtaLabel] = useState('Ouvrir ChapCam')
+  const [ctaLabel, setCtaLabel] = useState("Confirmer ma demande d'installation")
   const [ctaUrl, setCtaUrl] = useState('https://chapcam.com')
+  const [audience, setAudience] = useState<'all' | 'installers'>('installers')
   const [sending, setSending] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
@@ -55,7 +89,7 @@ export default function AdminEmailPage() {
       const res = await fetch('/api/admin/email-custom', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, message, ctaLabel, ctaUrl }),
+        body: JSON.stringify({ subject, message, ctaLabel, ctaUrl, audience }),
       })
       const data = await res.json()
       if (res.ok && data.success) {
@@ -87,9 +121,9 @@ export default function AdminEmailPage() {
               <Mail className="h-6 w-6 text-[#00ff88]" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Email aux inscrits</h1>
+              <h1 className="text-2xl font-bold text-white">Campagne email</h1>
               <p className="text-sm text-gray-400">
-                Redige ton message, il sera envoye a tous les utilisateurs inscrits.
+                Choisis les destinataires, redige ton message et envoie-le.
               </p>
             </div>
           </div>
@@ -104,6 +138,56 @@ export default function AdminEmailPage() {
 
         {/* Formulaire */}
         <div className="flex flex-col gap-5 rounded-2xl border border-gray-800 bg-[#111] p-6">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-300">Destinataires</label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setAudience('installers')}
+                className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
+                  audience === 'installers'
+                    ? 'border-[#00ff88] bg-[#00ff88]/10'
+                    : 'border-gray-700 bg-[#0a0a0a] hover:border-gray-600'
+                }`}
+              >
+                <Wrench
+                  className={`mt-0.5 h-5 w-5 flex-shrink-0 ${
+                    audience === 'installers' ? 'text-[#00ff88]' : 'text-gray-400'
+                  }`}
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-white">
+                    Demandeurs d&apos;installation
+                  </span>
+                  <span className="block text-xs text-gray-400">
+                    Uniquement ceux qui ont fait une demande d&apos;installation
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAudience('all')}
+                className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
+                  audience === 'all'
+                    ? 'border-[#00ff88] bg-[#00ff88]/10'
+                    : 'border-gray-700 bg-[#0a0a0a] hover:border-gray-600'
+                }`}
+              >
+                <Users
+                  className={`mt-0.5 h-5 w-5 flex-shrink-0 ${
+                    audience === 'all' ? 'text-[#00ff88]' : 'text-gray-400'
+                  }`}
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-white">Tous les inscrits</span>
+                  <span className="block text-xs text-gray-400">
+                    Tous les utilisateurs inscrits sur ChapCam
+                  </span>
+                </span>
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-300">Sujet</label>
             <input
@@ -163,15 +247,22 @@ export default function AdminEmailPage() {
               className="flex items-center justify-center gap-2 rounded-xl bg-[#00ff88] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-50"
             >
               <Send className="h-4 w-4" />
-              Envoyer a tous les inscrits
+              {audience === 'installers'
+                ? "Envoyer aux demandeurs d'installation"
+                : 'Envoyer a tous les inscrits'}
             </button>
           ) : (
             <div className="flex flex-col gap-3 rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4">
               <div className="flex items-start gap-2 text-sm text-yellow-200/90">
                 <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-400" />
                 <span>
-                  Cet email va etre envoye a <strong>TOUS les utilisateurs inscrits</strong>. Cette
-                  action est irreversible. Confirmer l&apos;envoi ?
+                  Cet email va etre envoye a{' '}
+                  <strong>
+                    {audience === 'installers'
+                      ? "TOUS les clients ayant fait une demande d'installation"
+                      : 'TOUS les utilisateurs inscrits'}
+                  </strong>
+                  . Cette action est irreversible. Confirmer l&apos;envoi ?
                 </span>
               </div>
               <div className="flex gap-2">

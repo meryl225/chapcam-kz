@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPlan } from '@/lib/plans'
 import { getLiveOffer } from '@/lib/live-offers'
+import { getInstallOffer } from '@/lib/install-offer'
 import { paydunyaHeaders } from '@/lib/fulfillment'
 
 export const runtime = 'nodejs'
@@ -33,18 +34,25 @@ export async function POST(request: NextRequest) {
       String(body.fullName || user.user_metadata?.full_name || '').trim() || 'Client ChapCam'
     const phoneNumber = String(body.phoneNumber || '').trim() || 'PayDunya'
 
-    // Determiner le produit : formule a points ou offre Live Pro.
+    // Determiner le produit : formule a points, offre Live Pro ou frais d'installation.
     const plan = getPlan(productId)
     const liveOffer = getLiveOffer(productId)
-    if (!plan && !liveOffer) {
+    const installOffer = getInstallOffer(productId)
+    if (!plan && !liveOffer && !installOffer) {
       return NextResponse.json({ success: false, error: 'Produit inconnu.' }, { status: 400 })
     }
 
-    const amount = plan ? plan.price : liveOffer!.price
-    const kind: 'plan' | 'live' = plan ? 'plan' : 'live'
+    const amount = plan ? plan.price : liveOffer ? liveOffer.price : installOffer!.price
+    const kind: 'plan' | 'live' | 'installation' = plan
+      ? 'plan'
+      : liveOffer
+        ? 'live'
+        : 'installation'
     const label = plan
       ? `Formule ${plan.name} (${plan.points} points, ${plan.duration})`
-      : `${liveOffer!.name} (${liveOffer!.windowMinutes} min d'acces Live)`
+      : liveOffer
+        ? `${liveOffer.name} (${liveOffer.windowMinutes} min d'acces Live)`
+        : installOffer!.name
 
     const headers = paydunyaHeaders()
     if (!headers) {

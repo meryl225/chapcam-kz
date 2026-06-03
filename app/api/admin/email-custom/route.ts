@@ -101,6 +101,9 @@ export async function POST(request: NextRequest) {
     const message = String(body?.message || '').trim()
     const ctaLabel = String(body?.ctaLabel || '').trim()
     const ctaUrl = String(body?.ctaUrl || '').trim()
+    // Cible des destinataires : 'all' (tous les inscrits) ou 'installers'
+    // (uniquement ceux qui ont fait une demande d'installation).
+    const audience = body?.audience === 'installers' ? 'installers' : 'all'
 
     if (!subject) {
       return NextResponse.json({ error: 'Le sujet est obligatoire.' }, { status: 400 })
@@ -109,38 +112,73 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Le message est obligatoire.' }, { status: 400 })
     }
 
-    // Recuperer TOUS les utilisateurs via le client admin (service_role)
     const admin = createAdminClient()
     const allUsers: { email: string; name: string }[] = []
     let skippedInvalid = 0
 
-    let page = 1
-    const perPage = 1000
-    while (true) {
-      const { data, error: listError } = await admin.auth.admin.listUsers({ page, perPage })
-      if (listError) {
-        console.error('[Email Custom] Erreur listUsers:', listError)
-        return NextResponse.json({ error: 'Impossible de recuperer les utilisateurs' }, { status: 500 })
-      }
-      const batch = data?.users ?? []
-      for (const u of batch) {
-        if (!u.email) continue
-        const email = u.email.trim().toLowerCase()
-        if (!isValidEmail(email)) {
-          skippedInvalid++
-          continue
+    if (audience === 'installers') {
+      // Destinataires = clients ayant une demande d'installation (emails uniques).
+      const seen = new Set<string>()
+      let from = 0
+      const pageSize = 1000
+      while (true) {
+        const { data, error: insErr } = await admin
+          .from('installation_requests')
+          .select('email, full_name')
+          .not('email', 'is', null)
+          .range(from, from + pageSize - 1)
+        if (insErr) {
+          console.error('[Email Custom] Erreur lecture installation_requests:', insErr.message)
+          return NextResponse.json(
+            { error: "Impossible de recuperer les demandes d'installation" },
+            { status: 500 },
+          )
         }
-        const name = (u.user_metadata?.name as string) || email.split('@')[0]
-        allUsers.push({ email, name })
+        const rows = data ?? []
+        for (const r of rows) {
+          const email = String(r.email || '').trim().toLowerCase()
+          if (!email || seen.has(email)) continue
+          if (!isValidEmail(email)) {
+            skippedInvalid++
+            continue
+          }
+          seen.add(email)
+          const name = (r.full_name as string) || email.split('@')[0]
+          allUsers.push({ email, name })
+        }
+        if (rows.length < pageSize) break
+        from += pageSize
       }
-      if (batch.length < perPage) break
-      page++
+    } else {
+      // Destinataires = TOUS les utilisateurs inscrits (service_role).
+      let page = 1
+      const perPage = 1000
+      while (true) {
+        const { data, error: listError } = await admin.auth.admin.listUsers({ page, perPage })
+        if (listError) {
+          console.error('[Email Custom] Erreur listUsers:', listError)
+          return NextResponse.json({ error: 'Impossible de recuperer les utilisateurs' }, { status: 500 })
+        }
+        const batch = data?.users ?? []
+        for (const u of batch) {
+          if (!u.email) continue
+          const email = u.email.trim().toLowerCase()
+          if (!isValidEmail(email)) {
+            skippedInvalid++
+            continue
+          }
+          const name = (u.user_metadata?.name as string) || email.split('@')[0]
+          allUsers.push({ email, name })
+        }
+        if (batch.length < perPage) break
+        page++
+      }
     }
 
-    console.log(`[Email Custom] ${allUsers.length} adresses valides (${skippedInvalid} invalides ignorees)`)
+    console.log(`[Email Custom] audience=${audience} - ${allUsers.length} adresses valides (${skippedInvalid} invalides ignorees)`)
 
     if (!allUsers.length) {
-      return NextResponse.json({ error: 'Aucun utilisateur valide trouve' }, { status: 404 })
+      return NextResponse.json({ error: 'Aucun destinataire valide trouve' }, { status: 404 })
     }
 
     let successCount = 0
