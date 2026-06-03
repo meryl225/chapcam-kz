@@ -12,6 +12,9 @@ import {
   Clock,
   Wallet,
   ArrowLeft,
+  Wrench,
+  MapPin,
+  Phone,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -29,10 +32,26 @@ interface CreditedClient {
   expiresAt: string | null
 }
 
+interface Installation {
+  id: string
+  fullName: string | null
+  email: string | null
+  phone: string | null
+  location: string | null
+  status: string | null
+  paid: boolean
+  paidAt: string | null
+  createdAt: string | null
+}
+
 interface Stats {
   total: number
   active: number
   expired: number
+  subRevenue: number
+  installTotal: number
+  installPaid: number
+  installRevenue: number
   totalRevenue: number
 }
 
@@ -43,7 +62,9 @@ function fmtDate(d: string | null) {
 
 export default function AdminPaymentsPage() {
   const [clients, setClients] = useState<CreditedClient[]>([])
+  const [installations, setInstallations] = useState<Installation[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
+  const [tab, setTab] = useState<'abonnements' | 'installations'>('abonnements')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
@@ -61,6 +82,7 @@ export default function AdminPaymentsPage() {
         return
       }
       setClients(data.clients || [])
+      setInstallations(data.installations || [])
       setStats(data.stats || null)
     } catch {
       setError('Erreur de connexion.')
@@ -74,13 +96,25 @@ export default function AdminPaymentsPage() {
     load()
   }, [load])
 
-  const filtered = useMemo(() => {
+  const filteredClients = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return clients
     return clients.filter(
       (c) => c.email?.toLowerCase().includes(q) || c.planName?.toLowerCase().includes(q),
     )
   }, [clients, search])
+
+  const filteredInstalls = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return installations
+    return installations.filter(
+      (i) =>
+        i.email?.toLowerCase().includes(q) ||
+        i.fullName?.toLowerCase().includes(q) ||
+        i.phone?.toLowerCase().includes(q) ||
+        i.location?.toLowerCase().includes(q),
+    )
+  }, [installations, search])
 
   return (
     <div className="min-h-screen bg-[#050505] px-4 py-8 md:px-8">
@@ -92,8 +126,8 @@ export default function AdminPaymentsPage() {
               <Shield className="h-6 w-6 text-[#00ff88]" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Paiements credites</h1>
-              <p className="text-sm text-gray-500">Clients avec abonnement actif et solde de points</p>
+              <h1 className="text-2xl font-bold text-white">Paiements</h1>
+              <p className="text-sm text-gray-500">Abonnements credites et demandes d&apos;installation</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -120,10 +154,20 @@ export default function AdminPaymentsPage() {
           <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard icon={Users} label="Clients credites" value={stats.total.toString()} color="text-white" />
             <StatCard icon={CheckCircle2} label="Abonnements actifs" value={stats.active.toString()} color="text-[#00ff88]" />
-            <StatCard icon={Clock} label="Expires" value={stats.expired.toString()} color="text-yellow-400" />
+            <StatCard icon={Wrench} label="Demandes install." value={`${stats.installPaid}/${stats.installTotal}`} color="text-white" />
             <StatCard icon={Wallet} label="Revenu total" value={`${stats.totalRevenue.toLocaleString()} F`} color="text-[#00ff88]" />
           </div>
         )}
+
+        {/* Tabs */}
+        <div className="mb-6 flex gap-2">
+          <TabButton active={tab === 'abonnements'} onClick={() => setTab('abonnements')}>
+            Abonnements ({clients.length})
+          </TabButton>
+          <TabButton active={tab === 'installations'} onClick={() => setTab('installations')}>
+            Installations ({installations.length})
+          </TabButton>
+        </div>
 
         {/* Search */}
         <div className="relative mb-6">
@@ -132,7 +176,7 @@ export default function AdminPaymentsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Rechercher par email ou formule..."
+            placeholder={tab === 'abonnements' ? 'Rechercher par email ou formule...' : 'Rechercher par nom, email, tel, ville...'}
             className="w-full rounded-xl border border-white/10 bg-[#111] py-3 pl-12 pr-4 text-white placeholder-gray-600 outline-none transition-colors focus:border-[#00ff88]"
           />
         </div>
@@ -148,67 +192,120 @@ export default function AdminPaymentsPage() {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-2xl border border-white/10 bg-[#111] py-16 text-center text-gray-500">
-            Aucun client credite pour le moment.
-          </div>
+        ) : tab === 'abonnements' ? (
+          filteredClients.length === 0 ? (
+            <EmptyState text="Aucun client credite pour le moment." />
+          ) : (
+            <div className="space-y-3">
+              {filteredClients.map((c) => {
+                const pct = c.maxPoints > 0 ? Math.round((c.points / c.maxPoints) * 100) : 0
+                return (
+                  <div
+                    key={c.id}
+                    className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#111] p-5 transition-colors hover:border-white/20 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-semibold text-white">{c.email}</span>
+                        <span
+                          className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${
+                            c.active
+                              ? 'border-[#00ff88]/30 bg-[#00ff88]/15 text-[#00ff88]'
+                              : 'border-yellow-500/30 bg-yellow-500/15 text-yellow-400'
+                          }`}
+                        >
+                          {c.active ? 'Actif' : 'Expire'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {c.planName} · {c.amount.toLocaleString()} FCFA · expire le {fmtDate(c.expiresAt)}
+                      </p>
+                    </div>
+                    <div className="sm:w-56">
+                      <div className="mb-1.5 flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <Battery className="h-4 w-4 text-[#00ff88]" />
+                          <span className="text-xs font-medium text-gray-400">Solde points</span>
+                        </div>
+                        <span className="text-sm font-bold text-white">
+                          {c.points.toLocaleString()}/{c.maxPoints.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full rounded-full bg-[#00ff88] transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        ) : filteredInstalls.length === 0 ? (
+          <EmptyState text="Aucune demande d'installation." />
         ) : (
           <div className="space-y-3">
-            {filtered.map((c) => {
-              const pct = c.maxPoints > 0 ? Math.round((c.points / c.maxPoints) * 100) : 0
-              return (
-                <div
-                  key={c.id}
-                  className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-[#111] p-5 transition-colors hover:border-white/20 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  {/* Client + plan */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate font-semibold text-white">{c.email}</span>
-                      <span
-                        className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${
-                          c.active
-                            ? 'border-[#00ff88]/30 bg-[#00ff88]/15 text-[#00ff88]'
-                            : 'border-yellow-500/30 bg-yellow-500/15 text-yellow-400'
-                        }`}
-                      >
-                        {c.active ? 'Actif' : 'Expire'}
-                      </span>
-                    </div>
-                    <p className="mt-1 text-sm text-gray-500">
-                      {c.planName} · {c.amount.toLocaleString()} FCFA · expire le {fmtDate(c.expiresAt)}
-                    </p>
+            {filteredInstalls.map((i) => (
+              <div
+                key={i.id}
+                className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#111] p-5 transition-colors hover:border-white/20 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="truncate font-semibold text-white">{i.fullName || i.email || 'Client'}</span>
+                    <span
+                      className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${
+                        i.paid
+                          ? 'border-[#00ff88]/30 bg-[#00ff88]/15 text-[#00ff88]'
+                          : 'border-gray-500/30 bg-gray-500/15 text-gray-400'
+                      }`}
+                    >
+                      {i.paid ? 'Paye · 8 500 F' : 'En attente'}
+                    </span>
                   </div>
-
-                  {/* Points balance */}
-                  <div className="sm:w-56">
-                    <div className="mb-1.5 flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Battery className="h-4 w-4 text-[#00ff88]" />
-                        <span className="text-xs font-medium text-gray-400">Solde points</span>
-                      </div>
-                      <span className="text-sm font-bold text-white">
-                        {c.points.toLocaleString()}/{c.maxPoints.toLocaleString()}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                    {i.email && <span className="truncate">{i.email}</span>}
+                    {i.phone && (
+                      <span className="inline-flex items-center gap-1">
+                        <Phone className="h-3.5 w-3.5" />
+                        {i.phone}
                       </span>
-                    </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className="h-full rounded-full bg-[#00ff88] transition-all"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    <p className="mt-1 text-right text-xs text-gray-600">
-                      = {Math.floor(c.points / 2 / 60)} min de swap
-                    </p>
+                    )}
+                    {i.location && (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {i.location}
+                      </span>
+                    )}
                   </div>
                 </div>
-              )
-            })}
+                <div className="text-right text-xs text-gray-600">
+                  <p>Demande le {fmtDate(i.createdAt)}</p>
+                  {i.paid && i.paidAt && <p className="text-[#00ff88]">Paye le {fmtDate(i.paidAt)}</p>}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
     </div>
   )
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${
+        active ? 'bg-[#00ff88] text-black' : 'border border-white/10 bg-[#111] text-gray-400 hover:text-white'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function EmptyState({ text }: { text: string }) {
+  return <div className="rounded-2xl border border-white/10 bg-[#111] py-16 text-center text-gray-500">{text}</div>
 }
 
 function StatCard({

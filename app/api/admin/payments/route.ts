@@ -48,15 +48,41 @@ export async function GET() {
       }
     })
 
-    const totalRevenue = clients.reduce((sum, c) => sum + (c.amount || 0), 0)
+    const subRevenue = clients.reduce((sum, c) => sum + (c.amount || 0), 0)
+
+    // Demandes d'installation : total recu + celles payees (8500 FCFA chacune).
+    const INSTALL_PRICE = 8500
+    const { data: installs } = await admin
+      .from('installation_requests')
+      .select('id, full_name, email, phone, location, status, paid, paid_at, created_at')
+      .order('created_at', { ascending: false })
+
+    const installList = installs || []
+    const paidInstalls = installList.filter((i) => i.paid)
+    const installRevenue = paidInstalls.length * INSTALL_PRICE
 
     return NextResponse.json({
       clients,
+      installations: installList.map((i) => ({
+        id: i.id,
+        fullName: i.full_name,
+        email: i.email,
+        phone: i.phone,
+        location: i.location,
+        status: i.status,
+        paid: !!i.paid,
+        paidAt: i.paid_at,
+        createdAt: i.created_at,
+      })),
       stats: {
         total: clients.length,
         active: clients.filter((c) => c.active).length,
         expired: clients.filter((c) => c.expired).length,
-        totalRevenue,
+        subRevenue,
+        installTotal: installList.length,
+        installPaid: paidInstalls.length,
+        installRevenue,
+        totalRevenue: subRevenue + installRevenue,
       },
     })
   } catch (err: any) {
