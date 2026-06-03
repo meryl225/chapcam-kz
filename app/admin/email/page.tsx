@@ -76,6 +76,7 @@ export default function AdminEmailPage() {
   const [message, setMessage] = useState(DEFAULT_MESSAGE)
   const [ctaLabel, setCtaLabel] = useState("Confirmer ma demande d'installation")
   const [ctaUrl, setCtaUrl] = useState('https://chapcam.com')
+  const [audience, setAudience] = useState<'all' | 'installers'>('installers')
   const [sending, setSending] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
@@ -88,7 +89,7 @@ export default function AdminEmailPage() {
       const res = await fetch('/api/admin/email-custom', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subject, message, ctaLabel, ctaUrl }),
+        body: JSON.stringify({ subject, message, ctaLabel, ctaUrl, audience }),
       })
       const data = await res.json()
       if (res.ok && data.success) {
@@ -120,9 +121,9 @@ export default function AdminEmailPage() {
               <Mail className="h-6 w-6 text-[#00ff88]" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">Email aux inscrits</h1>
+              <h1 className="text-2xl font-bold text-white">Campagne email</h1>
               <p className="text-sm text-gray-400">
-                Redige ton message, il sera envoye a tous les utilisateurs inscrits.
+                Choisis les destinataires, redige ton message et envoie-le.
               </p>
             </div>
           </div>
@@ -137,6 +138,56 @@ export default function AdminEmailPage() {
 
         {/* Formulaire */}
         <div className="flex flex-col gap-5 rounded-2xl border border-gray-800 bg-[#111] p-6">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-gray-300">Destinataires</label>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setAudience('installers')}
+                className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
+                  audience === 'installers'
+                    ? 'border-[#00ff88] bg-[#00ff88]/10'
+                    : 'border-gray-700 bg-[#0a0a0a] hover:border-gray-600'
+                }`}
+              >
+                <Wrench
+                  className={`mt-0.5 h-5 w-5 flex-shrink-0 ${
+                    audience === 'installers' ? 'text-[#00ff88]' : 'text-gray-400'
+                  }`}
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-white">
+                    Demandeurs d&apos;installation
+                  </span>
+                  <span className="block text-xs text-gray-400">
+                    Uniquement ceux qui ont fait une demande d&apos;installation
+                  </span>
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAudience('all')}
+                className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-colors ${
+                  audience === 'all'
+                    ? 'border-[#00ff88] bg-[#00ff88]/10'
+                    : 'border-gray-700 bg-[#0a0a0a] hover:border-gray-600'
+                }`}
+              >
+                <Users
+                  className={`mt-0.5 h-5 w-5 flex-shrink-0 ${
+                    audience === 'all' ? 'text-[#00ff88]' : 'text-gray-400'
+                  }`}
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-white">Tous les inscrits</span>
+                  <span className="block text-xs text-gray-400">
+                    Tous les utilisateurs inscrits sur ChapCam
+                  </span>
+                </span>
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="mb-1.5 block text-sm font-medium text-gray-300">Sujet</label>
             <input
@@ -196,15 +247,22 @@ export default function AdminEmailPage() {
               className="flex items-center justify-center gap-2 rounded-xl bg-[#00ff88] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-50"
             >
               <Send className="h-4 w-4" />
-              Envoyer a tous les inscrits
+              {audience === 'installers'
+                ? "Envoyer aux demandeurs d'installation"
+                : 'Envoyer a tous les inscrits'}
             </button>
           ) : (
             <div className="flex flex-col gap-3 rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4">
               <div className="flex items-start gap-2 text-sm text-yellow-200/90">
                 <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-400" />
                 <span>
-                  Cet email va etre envoye a <strong>TOUS les utilisateurs inscrits</strong>. Cette
-                  action est irreversible. Confirmer l&apos;envoi ?
+                  Cet email va etre envoye a{' '}
+                  <strong>
+                    {audience === 'installers'
+                      ? "TOUS les clients ayant fait une demande d'installation"
+                      : 'TOUS les utilisateurs inscrits'}
+                  </strong>
+                  . Cette action est irreversible. Confirmer l&apos;envoi ?
                 </span>
               </div>
               <div className="flex gap-2">
