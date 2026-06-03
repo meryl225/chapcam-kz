@@ -25,6 +25,47 @@ function fmtDate(d: Date) {
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
+// Journalise chaque tentative de credit PayDunya dans payment_logs.
+// Ne fait jamais echouer le flux de credit si l'insert echoue.
+export async function logPaymentEvent(
+  admin: Admin,
+  entry: {
+    source?: string
+    token?: string | null
+    transactionId?: string | null
+    email?: string | null
+    productId?: string | null
+    amount?: number
+    status?: string
+    credited?: boolean
+    alreadyDone?: boolean
+    creditKind?: string | null
+    userLinked?: boolean
+    failureReason?: string | null
+    raw?: any
+  },
+) {
+  try {
+    await admin.from('payment_logs').insert({
+      source: entry.source || 'callback',
+      token: entry.token || null,
+      transaction_id: entry.transactionId || null,
+      email: entry.email || null,
+      product_id: entry.productId || null,
+      amount: entry.amount || 0,
+      status: entry.status || null,
+      credited: !!entry.credited,
+      already_done: !!entry.alreadyDone,
+      credit_kind: entry.creditKind || null,
+      user_linked: !!entry.userLinked,
+      failure_reason: entry.failureReason || null,
+      raw: entry.raw ?? null,
+    })
+  } catch (e) {
+    console.error('[fulfillment] Insert payment_logs echoue:', e)
+  }
+}
+
 // Cherche un compte par email (insensible a la casse). Retourne l'id ou null.
 export async function resolveUserIdByEmail(admin: Admin, email: string): Promise<string | null> {
   try {
@@ -248,12 +289,14 @@ async function fulfillConfirmedInvoice(params: {
   status: string
   totalAmount: number
   customData: Record<string, any>
+  source?: string
+  transactionId?: string | null
 }): Promise<{
   status: 'completed' | 'pending' | 'cancelled' | 'error'
   alreadyDone: boolean
   result?: PurchaseResult
 }> {
-  const { token, status, totalAmount, customData } = params
+  const { token, status, totalAmount, customData, source = 'callback', transactionId = null } = params
   const admin = createAdminClient()
 
   // Retrouver la demande liee a ce token.
@@ -265,11 +308,39 @@ async function fulfillConfirmedInvoice(params: {
 
   if (status !== 'completed') {
     const mapped = status === 'cancelled' ? 'cancelled' : 'pending'
+    await logPaymentEvent(admin, {
+      source,
+      token,
+      transactionId,
+      email: reqRow?.email || customData?.email || customData?.user_email || null,
+      productId: reqRow?.plan || customData?.product_id || customData?.plan || null,
+      amount: totalAmount,
+      status: mapped,
+      credited: false,
+      failureReason:
+        mapped === 'cancelled'
+          ? 'Paiement annule ou abandonne cote PayDunya'
+          : 'Paiement non complete (statut en attente)',
+      raw: customData,
+    })
     return { status: mapped, alreadyDone: false }
   }
 
   // Idempotence : deja credite ?
   if (reqRow && reqRow.status === 'approved') {
+    await logPaymentEvent(admin, {
+      source,
+      token,
+      transactionId,
+      email: reqRow.email,
+      productId: reqRow.plan,
+      amount: totalAmount || reqRow.amount,
+      status: 'completed',
+      credited: true,
+      alreadyDone: true,
+      userLinked: true,
+      raw: customData,
+    })
     return { status: 'completed', alreadyDone: true }
   }
 
@@ -281,6 +352,22 @@ async function fulfillConfirmedInvoice(params: {
   const userId = (reqRow?.user_id as string | null) || (cd.user_id ? String(cd.user_id) : null)
 
   const result = await creditPurchase(admin, { productId, email, fullName, userId })
+
+  // Journaliser le resultat exact du credit (raison precise si echec).
+  await logPaymentEvent(admin, {
+    source,
+    token,
+    transactionId,
+    email,
+    productId,
+    amount: totalAmount,
+    status: 'completed',
+    credited: result.ok,
+    creditKind: result.kind,
+    userLinked: result.userLinked,
+    failureReason: result.ok ? null : result.message,
+    raw: customData,
+  })
 
   // Marquer la demande approuvee (si elle existe).
   const now = new Date()
@@ -322,8 +409,9 @@ export async function fulfillFromVerifiedIpn(payload: {
   status: string
   totalAmount: number
   customData: Record<string, any>
+  transactionId?: string | null
 }) {
-  return fulfillConfirmedInvoice(payload)
+  return fulfillConfirmedInvoice({ ...payload, source: 'callback' })
 }
 
 // Confirme + credite une facture PayDunya de maniere idempotente.
@@ -331,15 +419,40 @@ export async function fulfillFromVerifiedIpn(payload: {
 // reconfirme aupres de PayDunya avec nos cles serveur.
 export async function confirmAndFulfillPaydunya(
   token: string,
+  source: string = 'status',
 ): Promise<{ status: 'completed' | 'pending' | 'cancelled' | 'error'; alreadyDone: boolean; result?: PurchaseResult }> {
   const confirm = await confirmPaydunyaInvoice(token)
-  if (!confirm) return { status: 'error', alreadyDone: false }
+  if (!confirm) {
+    // Confirmation impossible (cles Private/Token invalides ou reseau) : on trace.
+    try {
+      await logPaymentEvent(createAdminClient(), {
+        source,
+        token,
+        status: 'error',
+        credited: false,
+        failureReason: 'Confirmation PayDunya impossible (cles Private/Token ou reseau)',
+      })
+    } catch {
+      /* noop */
+    }
+    return { status: 'error', alreadyDone: false }
+  }
+
+  const transactionId =
+    String(
+      confirm.raw?.invoice?.receipt_url ||
+        confirm.raw?.receipt_identifier ||
+        confirm.customData?.transaction_id ||
+        '',
+    ) || null
 
   return fulfillConfirmedInvoice({
     token,
     status: confirm.status,
     totalAmount: confirm.totalAmount,
     customData: confirm.customData,
+    source,
+    transactionId,
   })
 }
 
@@ -381,7 +494,7 @@ export async function reconcilePendingPaydunya(opts?: { maxAgeDays?: number; lim
   for (const row of rows || []) {
     const token = row.paydunya_token as string
     try {
-      const r = await confirmAndFulfillPaydunya(token)
+      const r = await confirmAndFulfillPaydunya(token, 'reconcile')
       if (r.status === 'completed') {
         credited++
       } else if (r.status === 'cancelled') {

@@ -128,7 +128,16 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const ip = getClientIP(request)
   const userAgent = request.headers.get('user-agent') || ''
-  
+
+  // Webhooks serveur-a-serveur (IPN PayDunya, etc.) : ils arrivent depuis un
+  // serveur (UA non-navigateur, souvent vide ou de type PHP/Guzzle) et SANS
+  // cookie. Ils ne doivent jamais etre bloques par l'anti-scraping ni le
+  // rate-limit, sinon le credit automatique ne se declenche pas.
+  const isServerWebhook =
+    pathname.includes('/webhook') ||
+    pathname === '/api/payment/callback' ||
+    pathname.startsWith('/api/cron')
+
   // 1. Block suspicious patterns (anti-scraping)
   for (const pattern of BLOCKED_PATTERNS) {
     if (pattern.test(pathname)) {
@@ -142,14 +151,14 @@ export async function middleware(request: NextRequest) {
     const isEmptyUA = !userAgent || userAgent.length < 10
     
     // Allow empty UA only for webhooks
-    if ((isSuspicious || isEmptyUA) && !pathname.includes('/webhook')) {
+    if ((isSuspicious || isEmptyUA) && !isServerWebhook) {
       console.log(`[Security] Blocked suspicious request: ${ip} - ${userAgent}`)
       return new NextResponse('Forbidden', { status: 403 })
     }
   }
   
-  // 3. Rate limiting for API routes
-  if (pathname.startsWith('/api/')) {
+  // 3. Rate limiting for API routes (les webhooks serveur sont exemptes)
+  if (pathname.startsWith('/api/') && !isServerWebhook) {
     const { allowed, remaining } = checkRateLimit(ip, pathname)
     
     if (!allowed) {

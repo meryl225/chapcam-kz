@@ -78,10 +78,16 @@ export async function POST(request: NextRequest) {
   const hash: string | null = data?.hash || body?.hash || null
   const totalAmount = Number(data?.invoice?.total_amount || data?.total_amount || 0)
   const customData = data?.invoice?.custom_data || data?.custom_data || {}
+  const transactionId: string | null =
+    data?.invoice?.receipt_url ||
+    data?.receipt_identifier ||
+    data?.invoice?.transaction_id ||
+    customData?.transaction_id ||
+    null
 
   // 1) Chemin prioritaire : IPN authentifie par hash Master Key.
   if (verifyPaydunyaHash(hash)) {
-    const outcome = await fulfillFromVerifiedIpn({ token, status, totalAmount, customData })
+    const outcome = await fulfillFromVerifiedIpn({ token, status, totalAmount, customData, transactionId })
     console.log(
       `[PayDunya Callback] (hash OK) token=${token} status=${outcome.status} ` +
         `alreadyDone=${outcome.alreadyDone}` +
@@ -92,7 +98,7 @@ export async function POST(request: NextRequest) {
 
   // 2) Repli : reconfirmation via API (necessite des cles Private/Token valides).
   console.warn('[PayDunya Callback] Hash absent/invalide, repli sur confirmation API')
-  const outcome = await confirmAndFulfillPaydunya(token)
+  const outcome = await confirmAndFulfillPaydunya(token, 'callback')
   console.log(
     `[PayDunya Callback] (API) token=${token} status=${outcome.status} alreadyDone=${outcome.alreadyDone}` +
       (outcome.result ? ` kind=${outcome.result.kind} linked=${outcome.result.userLinked}` : ''),

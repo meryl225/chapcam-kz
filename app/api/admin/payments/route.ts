@@ -61,6 +61,19 @@ export async function GET() {
     const paidInstalls = installList.filter((i) => i.paid)
     const installRevenue = paidInstalls.length * INSTALL_PRICE
 
+    // Journal PayDunya : tous les callbacks recus, recents en premier.
+    const startOfDay = new Date()
+    startOfDay.setHours(0, 0, 0, 0)
+    const { data: logs } = await admin
+      .from('payment_logs')
+      .select('id, source, token, transaction_id, email, product_id, amount, status, credited, already_done, credit_kind, user_linked, failure_reason, created_at')
+      .order('created_at', { ascending: false })
+      .limit(200)
+
+    const logList = logs || []
+    const todayLogs = logList.filter((l) => new Date(l.created_at) >= startOfDay)
+    const failedLogs = logList.filter((l) => l.status === 'completed' && !l.credited)
+
     return NextResponse.json({
       clients,
       installations: installList.map((i) => ({
@@ -74,6 +87,22 @@ export async function GET() {
         paidAt: i.paid_at,
         createdAt: i.created_at,
       })),
+      paydunyaLogs: logList.map((l) => ({
+        id: l.id,
+        source: l.source,
+        token: l.token,
+        transactionId: l.transaction_id,
+        email: l.email,
+        productId: l.product_id,
+        amount: l.amount,
+        status: l.status,
+        credited: l.credited,
+        alreadyDone: l.already_done,
+        creditKind: l.credit_kind,
+        userLinked: l.user_linked,
+        failureReason: l.failure_reason,
+        createdAt: l.created_at,
+      })),
       stats: {
         total: clients.length,
         active: clients.filter((c) => c.active).length,
@@ -83,6 +112,9 @@ export async function GET() {
         installPaid: paidInstalls.length,
         installRevenue,
         totalRevenue: subRevenue + installRevenue,
+        paydunyaToday: todayLogs.length,
+        paydunyaCreditedToday: todayLogs.filter((l) => l.credited).length,
+        paydunyaFailed: failedLogs.length,
       },
     })
   } catch (err: any) {
