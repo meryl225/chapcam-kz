@@ -23,19 +23,10 @@ import { LiveStage } from '@/components/live/live-stage'
 import { GpuSetupOverlay } from '@/components/live/gpu-setup-overlay'
 import { LiveAccessBanner } from '@/components/live/live-access-banner'
 import { EngineComparison } from '@/components/live/engine-comparison'
-import { PaymentConfirmModal } from '@/app/dashboard/plans/payment-confirm-modal'
-import type { PlanConfig } from '@/lib/plans'
 import { LIVE_OFFERS } from '@/lib/live-offers'
 
 const MAX_PERSONA = 4
 const OFFER = LIVE_OFFERS[0]
-
-// Objet compatible avec le modal de paiement existant (reutilise le flux Wave/Orange/MTN/Moov).
-const LIVE_OFFER_AS_PLAN = {
-  id: OFFER.id,
-  name: OFFER.name,
-  price: OFFER.price,
-} as unknown as PlanConfig
 
 interface AccessState {
   mode: 'paid' | 'ready' | 'trial' | 'none'
@@ -53,8 +44,6 @@ export default function LivePage() {
   const [avatars, setAvatars] = useState<PersonaAvatar[]>([])
   const [selected, setSelected] = useState<string[]>([])
   const [access, setAccess] = useState<AccessState | null>(null)
-  const [waveUrl, setWaveUrl] = useState<string | undefined>(undefined)
-  const [showPayment, setShowPayment] = useState(false)
 
   const {
     status,
@@ -116,14 +105,6 @@ export default function LivePage() {
       setLoading(false)
     }
     init()
-
-    fetch('/api/wave-links')
-      .then((r) => r.json())
-      .then((d) => {
-        const link = (d.links ?? []).find((l: any) => l.plan === OFFER.id)
-        if (link?.wave_url) setWaveUrl(link.wave_url)
-      })
-      .catch(() => {})
 
     return () => {
       active = false
@@ -190,7 +171,7 @@ export default function LivePage() {
           <p className="mt-2 text-xs text-gray-500">
             L&apos;outil Live est <span className="text-gray-300">different du logiciel ChapCam de depart</span>.
             Avec un abonnement, il n&apos;y a pas de bug et la transformation se fait de la tete aux pieds —{' '}
-            <Link href="/dashboard/plans" className="text-[#00ff88] underline-offset-2 hover:underline">
+            <Link href="/dashboard" className="text-[#00ff88] underline-offset-2 hover:underline">
               voir les abonnements
             </Link>
             .
@@ -199,7 +180,7 @@ export default function LivePage() {
 
         {/* Gros bouton abonnement en haut */}
         <Link
-          href="/dashboard/plans"
+          href="/dashboard"
           className="mb-6 flex w-full items-center justify-between gap-3 rounded-2xl bg-[#00ff88] px-5 py-4 text-black shadow-[0_0_30px_rgba(0,255,136,0.35)] transition-colors hover:bg-[#00dd77]"
         >
           <span className="flex items-center gap-3">
@@ -224,7 +205,7 @@ export default function LivePage() {
               pendingWindows={access.pendingWindows}
               offerName={OFFER.name}
               offerPrice={OFFER.price}
-              onBuy={() => setShowPayment(true)}
+              onBuy={() => {}}
             />
           </div>
         )}
@@ -239,9 +220,9 @@ export default function LivePage() {
             <p className="mt-1 text-gray-400">
               L&apos;essai est gratuit, donc plusieurs personnes l&apos;utilisent en meme temps. Tu peux
               parfois attendre un peu avant que ca demarre. Avec un{' '}
-              <Link href="/dashboard/plans" className="text-[#00ff88] underline-offset-2 hover:underline">
-                abonnement
-              </Link>
+            <Link href="/dashboard" className="text-[#00ff88] underline-offset-2 hover:underline">
+              abonnement
+            </Link>
               , tu passes en priorite, sans bug et avec une transformation de la tete aux pieds.
             </p>
           </div>
@@ -354,7 +335,7 @@ export default function LivePage() {
 
         {/* Gros bouton : prendre un abonnement */}
         <Link
-          href="/dashboard/plans"
+          href="/dashboard"
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#00ff88] px-6 py-5 text-base font-bold text-black shadow-[0_0_30px_rgba(0,255,136,0.35)] transition-colors hover:bg-[#00dd77] sm:text-lg"
         >
           <Crown className="h-6 w-6" />
@@ -382,17 +363,6 @@ export default function LivePage() {
         saturated={saturated}
         onClose={stop}
       />
-
-      {showPayment && (
-        <PaymentConfirmModal
-          plan={LIVE_OFFER_AS_PLAN}
-          waveUrl={waveUrl}
-          onClose={() => {
-            setShowPayment(false)
-            refreshAccess()
-          }}
-        />
-      )}
     </div>
   )
 }
