@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminRequest } from '@/lib/admin-auth'
 import { getPlan } from '@/lib/plans'
 import { getLiveOffer } from '@/lib/live-offers'
+import { reconcilePendingPaydunya } from '@/lib/fulfillment'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -47,6 +48,15 @@ export async function GET(req: NextRequest) {
     const method = (searchParams.get('method') || '').trim()
 
     const admin = createAdminClient()
+
+    // Reconciliation a l'ouverture : credite les paiements PayDunya completes
+    // et annule les factures abandonnees, pour qu'elles ne polluent plus la liste.
+    try {
+      await reconcilePendingPaydunya({ maxAgeDays: 3, limit: 60 })
+    } catch (e) {
+      console.warn('[admin/payments] reconcile echec:', e)
+    }
+
     let query = admin
       .from('payment_requests')
       .select('*')
