@@ -43,6 +43,7 @@ interface UseLiveFaceSwapReturn {
   networkMs: number // latence reseau estimee (total - GPU)
   queuePosition: number
   queueTotal: number
+  saturated: boolean
   error: string | null
   notConfigured: boolean
   videoRef: React.RefObject<HTMLVideoElement | null>
@@ -69,6 +70,7 @@ const TARGET_INTERVAL_MS = 12 // garde-fou anti-flood (~83 fps max, ne bride plu
 const PERF_LOG = true // logs de performance detailles en console
 const MAX_RECONNECT = 4 // tentatives de reconnexion auto si le moteur tombe en session
 const RECONNECT_DELAY_MS = 2000 // delai entre deux tentatives de reconnexion
+const BUSY_RETRY_DELAY_MS = 4000 // file pleine : delai avant de retenter automatiquement un creneau
 
 export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const [status, setStatus] = useState<LiveStatus>('idle')
@@ -80,6 +82,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const [networkMs, setNetworkMs] = useState(0)
   const [queuePosition, setQueuePosition] = useState(0)
   const [queueTotal, setQueueTotal] = useState(0)
+  const [saturated, setSaturated] = useState(false) // tous les GPU pleins : on retente en boucle
   const [error, setError] = useState<string | null>(null)
   const [notConfigured, setNotConfigured] = useState(false)
 
@@ -178,6 +181,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     setLatencyMs(0)
     setQueuePosition(0)
     setQueueTotal(0)
+    setSaturated(false)
     stoppingRef.current = false
   }, [cleanup])
 
@@ -312,6 +316,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     async ({ references }: StartOptions) => {
       setError(null)
       setNotConfigured(false)
+      setSaturated(false)
       stoppingRef.current = false
       lastReferencesRef.current = references // memorise pour une eventuelle reconnexion
       setStatus('connecting')
@@ -398,15 +403,33 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
             const msg = JSON.parse(ev.data)
             if (msg.type === 'queue') {
               setStatus('queued')
+              setSaturated(false)
               setQueuePosition(typeof msg.position === 'number' ? msg.position : 0)
               setQueueTotal(typeof msg.total === 'number' ? msg.total : 0)
             } else if (msg.type === 'ready') {
               setQueuePosition(0)
               setQueueTotal(0)
+              setSaturated(false)
               readyRef.current = true
               reconnectAttemptsRef.current = 0 // reconnexion reussie : on remet le compteur a zero
               setStatus('running')
             } else if (msg.type === 'error') {
+              // File pleine sur tous les GPU : on n'echoue PAS, on garde l'utilisateur
+              // en attente et on retente automatiquement un creneau (comme LiveSync).
+              if (msg.code === 'busy') {
+                setStatus('queued')
+                setSaturated(true)
+                setQueuePosition(0)
+                setQueueTotal(0)
+                setError(null)
+                cleanup() // ferme proprement (onclose neutralise) avant de reprogrammer
+                if (!stoppingRef.current && lastReferencesRef.current.length > 0) {
+                  reconnectTimerRef.current = setTimeout(() => {
+                    startRef.current?.({ references: lastReferencesRef.current })
+                  }, BUSY_RETRY_DELAY_MS)
+                }
+                return
+              }
               setError(msg.message || 'Erreur du moteur Live.')
               setStatus('error')
               cleanup()
@@ -510,6 +533,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     networkMs,
     queuePosition,
     queueTotal,
+    saturated,
     error,
     notConfigured,
     videoRef,

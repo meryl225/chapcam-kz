@@ -22,6 +22,11 @@ from typing import Optional
 _PRIORITY = {"paid": 0, "ready": 0, "trial": 1, "none": 2}
 
 
+class QueueFull(Exception):
+    """File d'attente saturee : on refuse l'entree plutot que de faire attendre
+    indefiniment (le worker reste sain et continue de servir les sessions actives)."""
+
+
 @dataclass(order=True)
 class _Waiter:
     sort_key: tuple = field(init=False)
@@ -36,8 +41,10 @@ class _Waiter:
 
 
 class GpuQueue:
-    def __init__(self, max_concurrent: Optional[int] = None):
+    def __init__(self, max_concurrent: Optional[int] = None, max_queue: Optional[int] = None):
         self.max_concurrent = max_concurrent or int(os.getenv("CHAPCAM_MAX_CONCURRENT", "2"))
+        # Taille max de la file d'attente avant rejet (0 = illimite).
+        self.max_queue = max_queue if max_queue is not None else int(os.getenv("CHAPCAM_MAX_QUEUE", "20"))
         self._active = 0
         self._waiters: list[_Waiter] = []
         self._seq = itertools.count()
@@ -70,6 +77,11 @@ class GpuQueue:
             if self._active < self.max_concurrent and not self._waiters:
                 self._active += 1
                 return QueueTicket(self, user_id)
+
+            # File saturee : on refuse plutot que de faire patienter sans fin.
+            active_waiters = len([w for w in self._waiters if not w.cancelled])
+            if self.max_queue > 0 and active_waiters >= self.max_queue:
+                raise QueueFull()
 
             waiter = _Waiter(priority=_PRIORITY.get(mode, 2), seq=next(self._seq), user_id=user_id, event=asyncio.Event())
             self._waiters.append(waiter)

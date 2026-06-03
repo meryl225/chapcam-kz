@@ -72,7 +72,7 @@ export interface CloudSwapConfig {
   avatarUrl: string
   quality: QualitySettings
   userId: string
-  userTier: 'free' | 'starter' | 'popular' | 'pro' | 'ultimate'
+  userTier: 'free' | 'starter' | 'standard' | 'premium' | 'ultimate'
   maxDuration?: number
   enableAdaptiveQuality: boolean
 }
@@ -100,7 +100,7 @@ export interface ProcessedFrame {
 
 export interface UserPlan {
   id: string
-  name: 'free' | 'starter' | 'popular' | 'pro' | 'ultimate'
+  name: 'free' | 'starter' | 'standard' | 'premium' | 'ultimate'
   points: number
   maxPoints: number
   maxResolution: '480p' | '720p' | '1080p' | '4k'
@@ -133,22 +133,22 @@ export const PLAN_LIMITS: Record<string, UserPlan> = {
     priorityQueue: false,
     maxSessionDuration: 600 // 10 minutes
   },
-  popular: {
-    id: 'popular',
-    name: 'popular',
-    points: 6000,
-    maxPoints: 6000,
+  standard: {
+    id: 'standard',
+    name: 'standard',
+    points: 1250,
+    maxPoints: 1250,
     maxResolution: '1080p',
     maxFps: 30,
     cloudProcessingEnabled: true,
     priorityQueue: false,
     maxSessionDuration: -1 // unlimited
   },
-  pro: {
-    id: 'pro',
-    name: 'pro',
-    points: 16000,
-    maxPoints: 16000,
+  premium: {
+    id: 'premium',
+    name: 'premium',
+    points: 2500,
+    maxPoints: 2500,
     maxResolution: '1080p',
     maxFps: 30,
     cloudProcessingEnabled: true,
@@ -158,8 +158,8 @@ export const PLAN_LIMITS: Record<string, UserPlan> = {
   ultimate: {
     id: 'ultimate',
     name: 'ultimate',
-    points: 45000,
-    maxPoints: 45000,
+    points: 4250,
+    maxPoints: 4250,
     maxResolution: '4k',
     maxFps: 60,
     cloudProcessingEnabled: true,

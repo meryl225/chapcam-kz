@@ -22,7 +22,7 @@ interface CloudSwapPlayerProps {
   userId: string
   avatarUrl: string
   onPointsUpdate?: (points: number) => void
-  userPlan: 'free' | 'starter' | 'popular' | 'pro' | 'ultimate'
+  userPlan: 'free' | 'starter' | 'standard' | 'premium' | 'ultimate'
   maxPoints: number
   currentPoints: number
 }
@@ -69,7 +69,7 @@ export function CloudSwapPlayer({
   } = useCloudSwap({
     userId,
     avatarUrl,
-    quality: userPlan === 'free' ? 'low' : userPlan === 'pro' || userPlan === 'ultimate' ? 'high' : 'medium',
+    quality: userPlan === 'free' ? 'low' : userPlan === 'premium' || userPlan === 'ultimate' ? 'high' : 'medium',
     onFrame: handleProcessedFrame,
     onStatsUpdate: handleStatsUpdate
   })

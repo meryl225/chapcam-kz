@@ -27,8 +27,8 @@ const plans = [
     icon: Zap
   },
   {
-    id: "popular",
-    name: "Popular",
+    id: "standard",
+    name: "Standard",
     duration: "30 JOURS",
     price: "25.000",
     oldPrice: "35.000",
@@ -47,8 +47,8 @@ const plans = [
     icon: Star
   },
   {
-    id: "pro",
-    name: "Pro",
+    id: "premium",
+    name: "Premium",
     duration: "90 JOURS",
     price: "50.000",
     oldPrice: "65.000",
@@ -67,8 +67,8 @@ const plans = [
     icon: Star
   },
   {
-    id: "vip",
-    name: "VIP Annuel",
+    id: "ultimate",
+    name: "Ultimate",
     duration: "365 JOURS",
     price: "85.000",
     oldPrice: "110.000",
@@ -214,7 +214,7 @@ export function PricingSection() {
                         : "bg-white text-black hover:bg-gray-200"
                     }`}
                   >
-                    Choisir ce plan
+                    Recharger
                   </Button>
                 </Link>
               </motion.div>
@@ -279,7 +279,7 @@ export function PricingSection() {
                     Essayer gratuitement
                   </Button>
                 </Link>
-                <Link href="/live" className="w-full">
+                <Link href="/dashboard/plans?plan=live15" className="w-full">
                   <Button className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500 py-6 text-base font-bold text-white transition-colors hover:bg-red-600">
                     Acheter 15 min
                     <CreditCard className="h-5 w-5" />
@@ -310,48 +310,62 @@ export function PricingSection() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mt-16 text-center"
+          className="mt-16"
         >
-          <p className="text-gray-400 mb-6">Moyens de paiement acceptes</p>
-          <div className="flex items-center justify-center gap-6 flex-wrap">
-            <div className="bg-white rounded-xl p-3 w-20 h-14 flex items-center justify-center">
-              <Image 
-                src="/images/orange-money-logo.png" 
-                alt="Orange Money" 
-                width={60} 
-                height={40}
-                className="object-contain"
-              />
-            </div>
-            <div className="bg-white rounded-xl p-3 w-20 h-14 flex items-center justify-center">
-              <Image 
-                src="/images/mtn-momo-logo.jpg" 
-                alt="MTN Mobile Money" 
-                width={60} 
-                height={40}
-                className="object-contain"
-              />
-            </div>
-            <div className="bg-[#1DC8FF] rounded-xl p-2 w-20 h-14 flex items-center justify-center">
-              <Image 
-                src="/images/wave-logo.png" 
-                alt="Wave" 
-                width={50} 
-                height={40}
-                className="object-contain"
-              />
-            </div>
-            <div className="bg-white rounded-xl p-3 w-20 h-14 flex items-center justify-center">
-              <Image 
-                src="/images/djamo-logo.png" 
-                alt="Djamo" 
-                width={60} 
-                height={40}
-                className="object-contain"
-              />
+          <p className="mb-6 text-center text-gray-400">Moyens de paiement acceptes</p>
+
+          {/* Carte bancaire mise en avant */}
+          <div className="mx-auto mb-8 flex max-w-md items-center justify-center gap-3 rounded-2xl border border-white/10 bg-[#111] px-6 py-4">
+            <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#00ff88]/15">
+              <CreditCard className="h-6 w-6 text-[#00ff88]" />
+            </span>
+            <div className="text-left">
+              <p className="font-bold text-white">Carte bancaire</p>
+              <p className="text-sm text-gray-400">Visa &amp; Mastercard acceptees</p>
             </div>
           </div>
-          <p className="text-gray-500 text-sm mt-4">Paiement securise via PayDunya</p>
+
+          {/* Logos Mobile Money principaux */}
+          <div className="mb-8 flex flex-wrap items-center justify-center gap-4">
+            <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
+              <Image src="/images/orange-money-logo.png" alt="Orange Money" width={60} height={40} className="object-contain" />
+            </div>
+            <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
+              <Image src="/images/mtn-momo-logo.jpg" alt="MTN Mobile Money" width={60} height={40} className="object-contain" />
+            </div>
+            <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-[#1DC8FF] p-2">
+              <Image src="/images/wave-logo.png" alt="Wave" width={50} height={40} className="object-contain" />
+            </div>
+            <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
+              <Image src="/images/djamo-logo.png" alt="Djamo" width={60} height={40} className="object-contain" />
+            </div>
+          </div>
+
+          {/* Methodes par pays */}
+          <div className="mx-auto grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { country: "Cote d'Ivoire", methods: ["Orange Money", "MTN", "Moov", "Wave", "Djamo"] },
+              { country: "Benin", methods: ["Moov", "MTN"] },
+              { country: "Togo", methods: ["T-Money", "Moov"] },
+              { country: "Cameroun", methods: ["MTN"] },
+            ].map((item) => (
+              <div key={item.country} className="rounded-2xl border border-white/10 bg-[#111] p-5">
+                <p className="mb-3 text-sm font-bold uppercase tracking-wide text-[#00ff88]">{item.country}</p>
+                <div className="flex flex-wrap gap-2">
+                  {item.methods.map((m) => (
+                    <span
+                      key={m}
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-gray-300"
+                    >
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p className="mt-8 text-center text-sm text-gray-500">Paiement securise via PayDunya</p>
         </motion.div>
       </div>
     </section>

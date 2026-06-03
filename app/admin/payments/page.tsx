@@ -14,6 +14,9 @@ import {
   Mail,
   UserPlus,
   Download,
+  CheckCircle2,
+  AlertTriangle,
+  UserX,
 } from 'lucide-react'
 import Link from 'next/link'
 import { PAYMENT_METHOD_LABELS, PAYMENT_METHOD_LOGOS } from '@/lib/payment-methods'
@@ -34,6 +37,11 @@ interface PaymentRequest {
   status: 'pending' | 'approved' | 'rejected'
   created_at: string
   validated_at: string | null
+  account?: {
+    status: 'credited' | 'not_credited' | 'no_account'
+    kind: 'plan' | 'live' | null
+    label: string
+  }
 }
 
 const STATUS_FILTERS = [
@@ -65,8 +73,25 @@ export default function AdminPaymentsPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('pending')
+  const [method, setMethod] = useState<'' | 'paydunya'>('')
   const [actioningId, setActioningId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [health, setHealth] = useState<{ ok: boolean; message: string } | null>(null)
+  const [healthChecking, setHealthChecking] = useState(false)
+
+  const checkPaydunya = async () => {
+    setHealthChecking(true)
+    setHealth(null)
+    try {
+      const res = await fetch('/api/admin/paydunya-health')
+      const data = await res.json()
+      setHealth({ ok: !!data.ok, message: data.message || 'Reponse inconnue.' })
+    } catch {
+      setHealth({ ok: false, message: 'Erreur de connexion au diagnostic.' })
+    } finally {
+      setHealthChecking(false)
+    }
+  }
 
   const load = useCallback(async () => {
     setRefreshing(true)
@@ -74,6 +99,7 @@ export default function AdminPaymentsPage() {
       const params = new URLSearchParams()
       if (search) params.set('search', search)
       if (status) params.set('status', status)
+      if (method) params.set('method', method)
       const res = await fetch(`/api/admin/payments?${params.toString()}`)
       const data = await res.json()
       if (res.ok) setRequests(data.requests || [])
@@ -88,7 +114,7 @@ export default function AdminPaymentsPage() {
 
   useEffect(() => {
     load()
-  }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [status, method]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (toast) {
@@ -187,6 +213,18 @@ export default function AdminPaymentsPage() {
               Liens Wave
             </Link>
             <button
+              onClick={checkPaydunya}
+              disabled={healthChecking}
+              className="flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white disabled:opacity-60"
+            >
+              {healthChecking ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Shield className="h-4 w-4" />
+              )}
+              Tester PayDunya
+            </button>
+            <button
               onClick={load}
               disabled={refreshing}
               className="flex items-center gap-2 rounded-xl bg-[#00ff88] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
@@ -196,6 +234,24 @@ export default function AdminPaymentsPage() {
             </button>
           </div>
         </div>
+
+        {/* Resultat du diagnostic PayDunya */}
+        {health && (
+          <div
+            className={`mb-6 flex items-start gap-2 rounded-xl border px-4 py-3 text-sm font-medium ${
+              health.ok
+                ? 'border-[#00ff88]/30 bg-[#00ff88]/10 text-[#00ff88]'
+                : 'border-red-500/30 bg-red-500/10 text-red-400'
+            }`}
+          >
+            {health.ok ? (
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+            ) : (
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            )}
+            <span>{health.message}</span>
+          </div>
+        )}
 
         {/* Filtres */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row">
@@ -228,6 +284,17 @@ export default function AdminPaymentsPage() {
                 {f.label}
               </button>
             ))}
+            <button
+              onClick={() => setMethod((m) => (m === 'paydunya' ? '' : 'paydunya'))}
+              className={`rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
+                method === 'paydunya'
+                  ? 'border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]'
+                  : 'border-gray-700 bg-[#111] text-gray-400 hover:text-white'
+              }`}
+              title="Afficher uniquement les paiements PayDunya"
+            >
+              PayDunya
+            </button>
           </div>
         </div>
 
@@ -298,6 +365,33 @@ export default function AdminPaymentsPage() {
                         {new Date(r.created_at).toLocaleString('fr-FR')}
                       </p>
                     </div>
+                    {r.account && (
+                      <div
+                        className={`mt-3 flex items-start gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
+                          r.account.status === 'credited'
+                            ? 'border-[#00ff88]/30 bg-[#00ff88]/10 text-[#00ff88]'
+                            : r.account.status === 'not_credited'
+                              ? 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
+                              : 'border-red-500/30 bg-red-500/10 text-red-400'
+                        }`}
+                      >
+                        {r.account.status === 'credited' ? (
+                          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+                        ) : r.account.status === 'not_credited' ? (
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        ) : (
+                          <UserX className="mt-0.5 h-4 w-4 shrink-0" />
+                        )}
+                        <span>
+                          {r.account.status === 'credited'
+                            ? 'Compte credite — '
+                            : r.account.status === 'not_credited'
+                              ? 'Non credite — '
+                              : ''}
+                          {r.account.label}
+                        </span>
+                      </div>
+                    )}
                     {r.comment && (
                       <p className="mt-2 rounded-lg border border-gray-800 bg-[#0a0a0a] px-3 py-2 text-sm text-gray-400">
                         <span className="text-gray-500">Commentaire :</span> {r.comment}
@@ -340,6 +434,28 @@ export default function AdminPaymentsPage() {
                           Refuser
                         </button>
                       </>
+                    )}
+                    {r.status === 'rejected' && (
+                      <button
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Confirmer que ${r.full_name} (${r.email}) a bien paye ?\n\nCela credite immediatement son compte ChapCam.`,
+                            )
+                          ) {
+                            handleAction(r.id, 'approve')
+                          }
+                        }}
+                        disabled={actioningId === r.id}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#00ff88] px-5 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
+                      >
+                        {actioningId === r.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                        Valider et crediter
+                      </button>
                     )}
                     <button
                       onClick={() => handleRelink(r.id, r.email)}

@@ -1,38 +1,58 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
 import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Zap, Gift, Video } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
-import { PLANS, type PlanConfig } from '@/lib/plans'
-import { LIVE_OFFERS, LIVE_TRIAL_SECONDS } from '@/lib/live-offers'
-import { PaymentConfirmModal } from './payment-confirm-modal'
+import { useSearchParams } from 'next/navigation'
+import { PLANS, getPlan } from '@/lib/plans'
+import { LIVE_OFFERS, LIVE_TRIAL_SECONDS, getLiveOffer } from '@/lib/live-offers'
 
 const LIVE_OFFER = LIVE_OFFERS[0]
-const LIVE_OFFER_AS_PLAN = {
-  id: LIVE_OFFER.id,
-  name: LIVE_OFFER.name,
-  price: LIVE_OFFER.price,
-} as unknown as PlanConfig
 
-type WaveLinkMap = Record<string, { plan: string; label: string; amount: number; wave_url: string }>
+function PlansContent() {
+  const searchParams = useSearchParams()
+  // id du produit en cours de redirection vers PayDunya (pour le loader par bouton)
+  const [pendingId, setPendingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  // evite de relancer le checkout auto plusieurs fois (ex: arrivee depuis l'accueil)
+  const autoStarted = useRef(false)
 
-export default function PlansPage() {
-  const [waveLinks, setWaveLinks] = useState<WaveLinkMap>({})
-  const [loadingLinks, setLoadingLinks] = useState(true)
-  const [modalPlan, setModalPlan] = useState<PlanConfig | null>(null)
-
-  useEffect(() => {
-    fetch('/api/wave-links')
-      .then((r) => r.json())
-      .then((d) => {
-        const map: WaveLinkMap = {}
-        for (const l of d.links ?? []) map[l.plan] = l
-        setWaveLinks(map)
+  const startCheckout = async (productId: string) => {
+    setError(null)
+    setPendingId(productId)
+    try {
+      const res = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId }),
       })
-      .catch(() => {})
-      .finally(() => setLoadingLinks(false))
-  }, [])
+      const data = await res.json()
+      if (res.ok && data.success && data.invoice_url) {
+        // Redirection vers la page de paiement securisee PayDunya.
+        window.location.href = data.invoice_url
+        return
+      }
+      setError(data.error || 'Impossible de demarrer le paiement. Reessayez.')
+    } catch {
+      setError('Erreur de connexion. Reessayez.')
+    } finally {
+      setPendingId(null)
+    }
+  }
+
+  // Si l'utilisateur arrive depuis la page d'accueil avec ?plan=ID, on lance
+  // automatiquement le paiement PayDunya pour ce produit (formule ou Live Pro).
+  useEffect(() => {
+    if (autoStarted.current) return
+    const requested = searchParams.get('plan')
+    if (!requested) return
+    if (getPlan(requested) || getLiveOffer(requested)) {
+      autoStarted.current = true
+      startCheckout(requested)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
 
   return (
     <div className="min-h-screen bg-[#050505] px-6 py-12">
@@ -43,14 +63,14 @@ export default function PlansPage() {
             <div className="relative z-10 text-center">
               <div className="mb-2 flex items-center justify-center gap-2">
                 <Sparkles className="h-5 w-5 text-[#00ff88]" />
-                <span className="text-lg font-bold text-[#00ff88]">PAIEMENT MOBILE SECURISE</span>
+                <span className="text-lg font-bold text-[#00ff88]">PAIEMENT EN LIGNE SECURISE</span>
                 <Sparkles className="h-5 w-5 text-[#00ff88]" />
               </div>
               <h3 className="mb-2 text-xl font-black text-white md:text-2xl">
-                Payez avec <span className="text-[#00ff88]">Wave, Orange, MTN ou Moov</span>
+                Payez par <span className="text-[#00ff88]">Carte bancaire, Wave, Orange, MTN, Moov ou Djamo</span> via PayDunya
               </h3>
               <p className="text-sm text-gray-300">
-                Apres le paiement, confirmez votre transaction pour activer votre abonnement.
+                Activation automatique de votre compte des que le paiement est confirme.
               </p>
             </div>
           </div>
@@ -66,8 +86,15 @@ export default function PlansPage() {
           </p>
         </div>
 
+        {error && (
+          <div className="mx-auto mb-8 max-w-xl rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan, index) => {
+            const loading = pendingId === plan.id
             return (
               <motion.div
                 key={plan.id}
@@ -121,19 +148,19 @@ export default function PlansPage() {
                 </ul>
 
                 <button
-                  onClick={() => setModalPlan(plan)}
-                  disabled={loadingLinks}
+                  onClick={() => startCheckout(plan.id)}
+                  disabled={!!pendingId}
                   className={`mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all disabled:opacity-60 ${
                     plan.popular
                       ? 'bg-[#00ff88] text-black hover:bg-[#00dd77]'
                       : 'bg-white text-black hover:bg-gray-200'
                   }`}
                 >
-                  {loadingLinks ? (
+                  {loading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
-                      S&apos;abonner
+                      Recharger
                       <CreditCard className="h-4 w-4" />
                     </>
                   )}
@@ -205,11 +232,11 @@ export default function PlansPage() {
                   Essayer gratuitement
                 </Link>
                 <button
-                  onClick={() => setModalPlan(LIVE_OFFER_AS_PLAN)}
-                  disabled={loadingLinks}
+                  onClick={() => startCheckout(LIVE_OFFER.id)}
+                  disabled={!!pendingId}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500 py-3 font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
                 >
-                  {loadingLinks ? (
+                  {pendingId === LIVE_OFFER.id ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
@@ -229,10 +256,10 @@ export default function PlansPage() {
           transition={{ delay: 0.5 }}
           className="mt-12 text-center"
         >
-          <div className="inline-flex flex-col items-center gap-3 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 px-6 py-4 sm:flex-row">
-            <Clock className="h-5 w-5 flex-shrink-0 text-yellow-400" />
-            <p className="font-semibold text-yellow-400">
-              Votre abonnement est active manuellement apres verification du paiement.
+          <div className="inline-flex flex-col items-center gap-3 rounded-2xl border border-[#00ff88]/30 bg-[#00ff88]/10 px-6 py-4 sm:flex-row">
+            <Clock className="h-5 w-5 flex-shrink-0 text-[#00ff88]" />
+            <p className="font-semibold text-[#00ff88]">
+              Activation automatique et immediate apres confirmation du paiement.
             </p>
           </div>
           <div className="mt-6">
@@ -245,14 +272,20 @@ export default function PlansPage() {
           </div>
         </motion.div>
       </div>
-
-      {modalPlan && (
-        <PaymentConfirmModal
-          plan={modalPlan}
-          waveUrl={waveLinks[modalPlan.id]?.wave_url}
-          onClose={() => setModalPlan(null)}
-        />
-      )}
     </div>
+  )
+}
+
+export default function PlansPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#050505]">
+          <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+        </div>
+      }
+    >
+      <PlansContent />
+    </Suspense>
   )
 }

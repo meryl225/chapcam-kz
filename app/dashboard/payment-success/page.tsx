@@ -1,119 +1,202 @@
-"use client"
+'use client'
 
-import { motion } from "framer-motion"
-import { CheckCircle, ArrowRight, Zap, Gift } from "lucide-react"
-import Link from "next/link"
-import { useSearchParams } from "next/navigation"
-import { Suspense } from "react"
+import { useEffect, useState, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { CheckCircle, Loader2, XCircle, Clock, Sparkles, Video } from 'lucide-react'
+
+type Status = 'checking' | 'completed' | 'pending' | 'cancelled' | 'error'
+
+const MAX_ATTEMPTS = 8 // ~16s de polling pour absorber le delai de l'IPN PayDunya
 
 function PaymentSuccessContent() {
   const searchParams = useSearchParams()
-  const token = searchParams.get("token")
+  const token = searchParams.get('token')
+  const [status, setStatus] = useState<Status>('checking')
+  const [kind, setKind] = useState<'plan' | 'live' | null>(null)
+
+  const check = useCallback(async () => {
+    if (!token) {
+      setStatus('error')
+      return true
+    }
+    try {
+      const res = await fetch(`/api/payment/status?token=${encodeURIComponent(token)}`, {
+        cache: 'no-store',
+      })
+      const data = await res.json()
+      if (data.status === 'completed') {
+        setKind(data.kind ?? null)
+        setStatus('completed')
+        return true
+      }
+      if (data.status === 'cancelled') {
+        setStatus('cancelled')
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
+  }, [token])
+
+  useEffect(() => {
+    if (!token) {
+      setStatus('error')
+      return
+    }
+    let active = true
+    let timer: ReturnType<typeof setTimeout>
+
+    const run = async (attempt: number) => {
+      const done = await check()
+      if (!active) return
+      if (done) return
+      if (attempt >= MAX_ATTEMPTS) {
+        setStatus('pending')
+        return
+      }
+      timer = setTimeout(() => run(attempt + 1), 2000)
+    }
+
+    run(0)
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [token, check])
 
   return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      {/* Background */}
-      <div className="fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black" />
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#00ff88]/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" />
+    <div className="flex min-h-screen items-center justify-center bg-[#050505] px-6 py-12">
+      <div className="w-full max-w-md rounded-3xl border border-gray-800 bg-[#111] p-8 text-center">
+        {status === 'checking' && (
+          <>
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#00ff88]/15">
+              <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-white">Verification du paiement...</h1>
+            <p className="text-sm leading-relaxed text-gray-400">
+              Nous confirmons votre transaction aupres de PayDunya. Patientez quelques secondes.
+            </p>
+          </>
+        )}
+
+        {status === 'completed' && (
+          <>
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#00ff88]/15">
+              {kind === 'live' ? (
+                <Video className="h-8 w-8 text-[#00ff88]" />
+              ) : (
+                <CheckCircle className="h-8 w-8 text-[#00ff88]" />
+              )}
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-white">Paiement confirme</h1>
+            <p className="text-sm leading-relaxed text-gray-400">
+              {kind === 'live'
+                ? 'Votre acces Live Pro a ete credite. Lancez votre session quand vous voulez.'
+                : 'Vos points ont ete credites sur votre compte. Vous pouvez commencer a creer.'}
+            </p>
+            <div className="mt-6 flex flex-col gap-3">
+              {kind === 'live' ? (
+                <Link
+                  href="/live"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#00ff88] py-3 font-semibold text-black transition-colors hover:bg-[#00dd77]"
+                >
+                  <Video className="h-4 w-4" />
+                  Demarrer le Live Pro
+                </Link>
+              ) : (
+                <Link
+                  href="/dashboard"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#00ff88] py-3 font-semibold text-black transition-colors hover:bg-[#00dd77]"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Aller au tableau de bord
+                </Link>
+              )}
+            </div>
+          </>
+        )}
+
+        {status === 'pending' && (
+          <>
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-500/15">
+              <Clock className="h-8 w-8 text-yellow-400" />
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-white">Paiement en cours de traitement</h1>
+            <p className="text-sm leading-relaxed text-gray-400">
+              Votre paiement n&apos;est pas encore confirme. Si vous avez bien paye, votre compte
+              sera credite automatiquement sous peu.
+            </p>
+            <div className="mt-6 flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  setStatus('checking')
+                  void check()
+                }}
+                className="w-full rounded-2xl bg-[#00ff88] py-3 font-semibold text-black transition-colors hover:bg-[#00dd77]"
+              >
+                Verifier a nouveau
+              </button>
+              <Link
+                href="/dashboard/mes-demandes"
+                className="w-full rounded-2xl border border-gray-700 py-3 font-semibold text-gray-300 transition-colors hover:border-gray-500 hover:text-white"
+              >
+                Suivre mes demandes
+              </Link>
+            </div>
+          </>
+        )}
+
+        {status === 'cancelled' && (
+          <>
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15">
+              <XCircle className="h-8 w-8 text-red-400" />
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-white">Paiement annule</h1>
+            <p className="text-sm leading-relaxed text-gray-400">
+              La transaction a ete annulee. Aucun montant n&apos;a ete debite.
+            </p>
+            <Link
+              href="/dashboard/plans"
+              className="mt-6 flex w-full items-center justify-center rounded-2xl bg-[#00ff88] py-3 font-semibold text-black transition-colors hover:bg-[#00dd77]"
+            >
+              Revenir aux formules
+            </Link>
+          </>
+        )}
+
+        {status === 'error' && (
+          <>
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15">
+              <XCircle className="h-8 w-8 text-red-400" />
+            </div>
+            <h1 className="mb-2 text-2xl font-bold text-white">Lien invalide</h1>
+            <p className="text-sm leading-relaxed text-gray-400">
+              Impossible de verifier ce paiement. Si vous avez ete debite, contactez le support.
+            </p>
+            <Link
+              href="/dashboard/plans"
+              className="mt-6 flex w-full items-center justify-center rounded-2xl bg-[#00ff88] py-3 font-semibold text-black transition-colors hover:bg-[#00dd77]"
+            >
+              Revenir aux formules
+            </Link>
+          </>
+        )}
       </div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 max-w-md mx-auto px-4 text-center"
-      >
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          className="w-24 h-24 bg-[#00ff88]/20 rounded-full flex items-center justify-center mx-auto mb-6"
-        >
-          <CheckCircle className="w-14 h-14 text-[#00ff88]" />
-        </motion.div>
-
-        <motion.h1
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-3xl font-bold mb-4"
-        >
-          Paiement reussi !
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-gray-400 mb-8"
-        >
-          Vos points ont ete credites sur votre compte. Vous pouvez maintenant profiter de ChapCam !
-        </motion.p>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 mb-8"
-        >
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <Zap className="w-6 h-6 text-[#00ff88]" />
-            <span className="text-lg font-semibold">Points ajoutes</span>
-          </div>
-          
-          <div className="text-4xl font-bold text-[#00ff88] mb-2">
-            + Points
-          </div>
-          
-          <p className="text-sm text-gray-500">
-            Disponibles immediatement
-          </p>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
-          className="flex flex-col gap-3"
-        >
-          <Link
-            href="/dashboard"
-            className="w-full py-4 bg-[#00ff88] hover:bg-[#00ff88]/90 text-black font-bold rounded-xl transition-all flex items-center justify-center gap-2"
-          >
-            Aller au Dashboard
-            <ArrowRight className="w-5 h-5" />
-          </Link>
-          
-          <Link
-            href="/dashboard/plans"
-            className="w-full py-4 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-xl transition-all flex items-center justify-center gap-2 border border-white/10"
-          >
-            <Gift className="w-5 h-5" />
-            Voir mes avantages
-          </Link>
-        </motion.div>
-
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="text-xs text-gray-500 mt-6"
-        >
-          Un recu a ete envoye a votre adresse email
-        </motion.p>
-      </motion.div>
     </div>
   )
 }
 
 export default function PaymentSuccessPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-2 border-[#00ff88] border-t-transparent rounded-full" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-[#050505]">
+          <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+        </div>
+      }
+    >
       <PaymentSuccessContent />
     </Suspense>
   )

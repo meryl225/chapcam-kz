@@ -20,6 +20,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useLiveFaceSwap } from '@/hooks/use-live-face-swap'
 import { PersonaPicker, type PersonaAvatar } from '@/components/live/persona-picker'
 import { LiveStage } from '@/components/live/live-stage'
+import { GpuSetupOverlay } from '@/components/live/gpu-setup-overlay'
 import { LiveAccessBanner } from '@/components/live/live-access-banner'
 import { EngineComparison } from '@/components/live/engine-comparison'
 import { PaymentConfirmModal } from '@/app/dashboard/plans/payment-confirm-modal'
@@ -63,6 +64,7 @@ export default function LivePage() {
     latencyMs,
     queuePosition,
     queueTotal,
+    saturated,
     error,
     notConfigured,
     videoRef,
@@ -267,6 +269,7 @@ export default function LivePage() {
           latencyMs={latencyMs}
           queuePosition={queuePosition}
           queueTotal={queueTotal}
+          saturated={saturated}
           videoRef={videoRef}
           outputCanvasRef={outputCanvasRef}
         />
@@ -292,9 +295,11 @@ export default function LivePage() {
                   {status === 'connecting'
                     ? 'Connexion...'
                     : status === 'queued'
-                      ? queuePosition > 0
-                        ? `File d\u2019attente (position ${queuePosition})`
-                        : 'File d\u2019attente...'
+                      ? saturated
+                        ? 'Tous les GPU occupes, nouvel essai...'
+                        : queuePosition > 0
+                          ? `File d\u2019attente (position ${queuePosition})`
+                          : 'File d\u2019attente...'
                       : 'Preparation...'}
                 </>
               ) : (
@@ -367,6 +372,16 @@ export default function LivePage() {
           La latence depend de ta connexion et de la charge du GPU.
         </p>
       </div>
+
+      {/* Overlay bloquant facon LiveSync : empeche la surcharge GPU pendant
+          le demarrage et fait patienter en file d'attente. */}
+      <GpuSetupOverlay
+        status={status}
+        queuePosition={queuePosition}
+        queueTotal={queueTotal}
+        saturated={saturated}
+        onClose={stop}
+      />
 
       {showPayment && (
         <PaymentConfirmModal

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Mail, Send, Users, Calendar, Clock, CheckCircle, XCircle, Loader2, Rocket, Bell, CalendarDays } from "lucide-react"
+import { Mail, Send, Users, Calendar, Clock, CheckCircle, XCircle, Loader2, Rocket, Bell, CalendarDays, Gift, Eye } from "lucide-react"
 import Link from "next/link"
 
 export default function AdminCampaignPage() {
@@ -16,6 +16,59 @@ export default function AdminCampaignPage() {
       errorSamples?: { email: string; error: string }[]
     }[]
   >([])
+
+  // --- Campagne bonus Live Pro (premiers utilisateurs) ---
+  const [bonusBusy, setBonusBusy] = useState<null | "preview" | "run">(null)
+  const [bonusInfo, setBonusInfo] = useState<string | null>(null)
+  const [bonusStats, setBonusStats] = useState<
+    | { uniqueUsers: number; eligible: number; alreadyGranted: number; missingUser: number; credited?: number; emailsSent?: number; emailsFailed?: number }
+    | null
+  >(null)
+
+  const previewBonus = async () => {
+    setBonusBusy("preview")
+    setBonusInfo(null)
+    try {
+      const res = await fetch("/api/admin/live-bonus", { method: "GET" })
+      const data = await res.json()
+      if (data.success) {
+        setBonusStats(data.stats)
+        setBonusInfo(
+          `${data.stats.eligible} utilisateur(s) recevront 1h de Live Pro. ${data.stats.alreadyGranted} deja servi(s), ${data.stats.missingUser} paiement(s) sans compte ignore(s).`,
+        )
+      } else {
+        setBonusInfo(data.error || "Erreur lors de l'apercu")
+      }
+    } catch (e: any) {
+      setBonusInfo(e.message || "Erreur de connexion")
+    } finally {
+      setBonusBusy(null)
+    }
+  }
+
+  const runBonus = async () => {
+    if (!confirm("Confirmer : crediter 1h de Live Pro a tous les payeurs approuves et leur envoyer un email ?")) return
+    setBonusBusy("run")
+    setBonusInfo(null)
+    try {
+      const res = await fetch("/api/admin/live-bonus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sendEmails: true }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setBonusStats(data.stats)
+        setBonusInfo(data.message)
+      } else {
+        setBonusInfo(data.error || "Erreur lors de l'execution")
+      }
+    } catch (e: any) {
+      setBonusInfo(e.message || "Erreur de connexion")
+    } finally {
+      setBonusBusy(null)
+    }
+  }
 
   const sendCampaign = async (type: "D2" | "D1" | "DJ") => {
     setSending(type)
@@ -96,6 +149,94 @@ export default function AdminCampaignPage() {
             Envoie les emails de rappel aux utilisateurs inscrits pour le lancement du <span className="text-[#00ff88] font-bold">Samedi 30 Mai a 19h GMT</span>
           </p>
         </div>
+
+        {/* Bonus Live Pro - premiers utilisateurs */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-6xl mx-auto mb-10"
+        >
+          <div className="bg-gradient-to-br from-[#0f2a1f] to-[#0f1420] border border-[#00ff88]/30 rounded-2xl p-6">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-12 h-12 rounded-xl bg-[#00ff88]/15 flex items-center justify-center flex-shrink-0">
+                <Gift className="w-6 h-6 text-[#00ff88]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-1">Bonus Live Pro - Premiers utilisateurs</h3>
+                <p className="text-gray-400 text-sm">
+                  Offre <strong className="text-[#00ff88]">1h de Live Pro</strong> (4 fenetres de 15 min) a chaque
+                  personne ayant un paiement approuve. Chaque utilisateur n&apos;est credite qu&apos;une seule fois.
+                </p>
+              </div>
+            </div>
+
+            {bonusInfo && (
+              <div className="mb-4 rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-sm text-gray-200">
+                {bonusInfo}
+              </div>
+            )}
+
+            {bonusStats && (
+              <div className="mb-5 grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="rounded-lg bg-white/5 px-3 py-2 text-center">
+                  <p className="text-lg font-bold text-white">{bonusStats.uniqueUsers}</p>
+                  <p className="text-xs text-gray-400">Payeurs</p>
+                </div>
+                <div className="rounded-lg bg-[#00ff88]/10 px-3 py-2 text-center">
+                  <p className="text-lg font-bold text-[#00ff88]">
+                    {bonusStats.credited ?? bonusStats.eligible}
+                  </p>
+                  <p className="text-xs text-gray-400">{bonusStats.credited != null ? "Credites" : "Eligibles"}</p>
+                </div>
+                <div className="rounded-lg bg-white/5 px-3 py-2 text-center">
+                  <p className="text-lg font-bold text-white">{bonusStats.alreadyGranted}</p>
+                  <p className="text-xs text-gray-400">Deja servis</p>
+                </div>
+                <div className="rounded-lg bg-[#00d4ff]/10 px-3 py-2 text-center">
+                  <p className="text-lg font-bold text-[#00d4ff]">{bonusStats.emailsSent ?? "-"}</p>
+                  <p className="text-xs text-gray-400">Emails envoyes</p>
+                </div>
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={previewBonus}
+                disabled={bonusBusy !== null}
+                className="flex-1 py-3 px-4 rounded-xl bg-white/10 text-white font-bold flex items-center justify-center gap-2 hover:bg-white/15 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {bonusBusy === "preview" ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Calcul...
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-5 h-5" />
+                    Apercu (ne credite rien)
+                  </>
+                )}
+              </button>
+              <button
+                onClick={runBonus}
+                disabled={bonusBusy !== null}
+                className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {bonusBusy === "run" ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Attribution en cours...
+                  </>
+                ) : (
+                  <>
+                    <Gift className="w-5 h-5" />
+                    Lancer le bonus + email
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </motion.div>
 
         {/* Campaign Cards */}
         <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto mb-12">
