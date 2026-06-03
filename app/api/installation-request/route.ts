@@ -17,6 +17,38 @@ const ALLOWED_APPS = [
   'Autre',
 ]
 
+// GET : renvoie les demandes d'installation de l'utilisateur connecte
+// (pour le suivi + le bouton de paiement des frais d'installation).
+export async function GET() {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Vous devez etre connecte.' }, { status: 401 })
+    }
+
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from('installation_requests')
+      .select('id, location, apps, status, paid, paid_at, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (error) {
+      console.error('[installation-request] Erreur lecture:', error.message)
+      return NextResponse.json({ error: 'Erreur de lecture.' }, { status: 500 })
+    }
+
+    return NextResponse.json({ requests: data ?? [] })
+  } catch (err: any) {
+    console.error('[installation-request] Exception GET:', err?.message || err)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
+  }
+}
+
 // POST : un client connecte demande l'installation de ChapCam avec ses apps
 // d'appel video (lieu d'installation + numero joignable).
 export async function POST(req: NextRequest) {
