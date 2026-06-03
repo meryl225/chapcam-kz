@@ -38,7 +38,22 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Erreur lecture.' }, { status: 500 })
     }
 
-    return NextResponse.json({ requests: data ?? [] })
+    // Compteurs globaux (independants des filtres) : total + par statut.
+    const [totalRes, pendingRes, doneRes, cancelledRes] = await Promise.all([
+      admin.from('installation_requests').select('*', { count: 'exact', head: true }),
+      admin.from('installation_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+      admin.from('installation_requests').select('*', { count: 'exact', head: true }).eq('status', 'done'),
+      admin.from('installation_requests').select('*', { count: 'exact', head: true }).eq('status', 'cancelled'),
+    ])
+
+    const counts = {
+      total: totalRes.count ?? 0,
+      pending: pendingRes.count ?? 0,
+      done: doneRes.count ?? 0,
+      cancelled: cancelledRes.count ?? 0,
+    }
+
+    return NextResponse.json({ requests: data ?? [], counts })
   } catch (err: any) {
     console.error('[admin/installations] Exception:', err?.message || err)
     return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })

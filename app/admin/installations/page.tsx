@@ -51,6 +51,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function AdminInstallationsPage() {
   const [requests, setRequests] = useState<InstallationRequest[]>([])
+  const [counts, setCounts] = useState<{ total: number; pending: number; done: number; cancelled: number } | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
@@ -66,8 +67,10 @@ export default function AdminInstallationsPage() {
       if (status) params.set('status', status)
       const res = await fetch(`/api/admin/installations?${params.toString()}`)
       const data = await res.json()
-      if (res.ok) setRequests(data.requests || [])
-      else setToast({ type: 'err', msg: data.error || 'Erreur de chargement' })
+      if (res.ok) {
+        setRequests(data.requests || [])
+        if (data.counts) setCounts(data.counts)
+      } else setToast({ type: 'err', msg: data.error || 'Erreur de chargement' })
     } catch {
       setToast({ type: 'err', msg: 'Erreur de connexion' })
     } finally {
@@ -133,6 +136,13 @@ export default function AdminInstallationsPage() {
               <ArrowLeft className="h-4 w-4" />
               Paiements
             </Link>
+            <Link
+              href="/admin/email"
+              className="flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white"
+            >
+              <Mail className="h-4 w-4" />
+              Email aux inscrits
+            </Link>
             <button
               onClick={load}
               disabled={refreshing}
@@ -143,6 +153,28 @@ export default function AdminInstallationsPage() {
             </button>
           </div>
         </div>
+
+        {/* Compteurs */}
+        {counts && (
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="rounded-2xl border border-gray-800 bg-[#111] p-4">
+              <p className="text-2xl font-bold text-white">{counts.total}</p>
+              <p className="text-xs text-gray-400">Demandes au total</p>
+            </div>
+            <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/5 p-4">
+              <p className="text-2xl font-bold text-yellow-400">{counts.pending}</p>
+              <p className="text-xs text-gray-400">En attente</p>
+            </div>
+            <div className="rounded-2xl border border-[#00ff88]/30 bg-[#00ff88]/5 p-4">
+              <p className="text-2xl font-bold text-[#00ff88]">{counts.done}</p>
+              <p className="text-xs text-gray-400">Installees</p>
+            </div>
+            <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-4">
+              <p className="text-2xl font-bold text-red-400">{counts.cancelled}</p>
+              <p className="text-xs text-gray-400">Annulees</p>
+            </div>
+          </div>
+        )}
 
         {/* Filtres */}
         <div className="mb-6 flex flex-col gap-3 sm:flex-row">
