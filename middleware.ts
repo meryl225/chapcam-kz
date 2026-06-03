@@ -134,7 +134,9 @@ export async function middleware(request: NextRequest) {
   // cookie. Ils ne doivent jamais etre bloques par l'anti-scraping ni le
   // rate-limit, sinon le credit automatique ne se declenche pas.
   const isServerWebhook =
-    pathname.includes('/webhook') || pathname === '/api/payment/callback'
+    pathname.includes('/webhook') ||
+    pathname === '/api/payment/callback' ||
+    pathname.startsWith('/api/cron')
 
   // 1. Block suspicious patterns (anti-scraping)
   for (const pattern of BLOCKED_PATTERNS) {

@@ -15,6 +15,9 @@ import {
   Wrench,
   MapPin,
   Phone,
+  Receipt,
+  AlertTriangle,
+  RotateCcw,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -44,6 +47,23 @@ interface Installation {
   createdAt: string | null
 }
 
+interface PaydunyaLog {
+  id: string
+  source: string
+  token: string | null
+  transactionId: string | null
+  email: string | null
+  productId: string | null
+  amount: number
+  status: string | null
+  credited: boolean
+  alreadyDone: boolean
+  creditKind: string | null
+  userLinked: boolean
+  failureReason: string | null
+  createdAt: string
+}
+
 interface Stats {
   total: number
   active: number
@@ -53,6 +73,9 @@ interface Stats {
   installPaid: number
   installRevenue: number
   totalRevenue: number
+  paydunyaToday: number
+  paydunyaCreditedToday: number
+  paydunyaFailed: number
 }
 
 function fmtDate(d: string | null) {
@@ -60,15 +83,27 @@ function fmtDate(d: string | null) {
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
+function fmtDateTime(d: string | null) {
+  if (!d) return '—'
+  return new Date(d).toLocaleString('fr-FR', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export default function AdminPaymentsPage() {
   const [clients, setClients] = useState<CreditedClient[]>([])
   const [installations, setInstallations] = useState<Installation[]>([])
+  const [paydunyaLogs, setPaydunyaLogs] = useState<PaydunyaLog[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
-  const [tab, setTab] = useState<'abonnements' | 'installations'>('abonnements')
+  const [tab, setTab] = useState<'abonnements' | 'installations' | 'paydunya'>('abonnements')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [recrediting, setRecrediting] = useState<string | null>(null)
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
@@ -83,6 +118,7 @@ export default function AdminPaymentsPage() {
       }
       setClients(data.clients || [])
       setInstallations(data.installations || [])
+      setPaydunyaLogs(data.paydunyaLogs || [])
       setStats(data.stats || null)
     } catch {
       setError('Erreur de connexion.')
@@ -91,6 +127,27 @@ export default function AdminPaymentsPage() {
       setRefreshing(false)
     }
   }, [])
+
+  const handleRecredit = useCallback(
+    async (token: string | null) => {
+      if (!token) return
+      setRecrediting(token)
+      try {
+        const res = await fetch('/api/admin/payments/recredit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        })
+        await res.json()
+        await load(true)
+      } catch {
+        setError('Re-credit impossible.')
+      } finally {
+        setRecrediting(null)
+      }
+    },
+    [load],
+  )
 
   useEffect(() => {
     load()
@@ -115,6 +172,18 @@ export default function AdminPaymentsPage() {
         i.location?.toLowerCase().includes(q),
     )
   }, [installations, search])
+
+  const filteredLogs = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return paydunyaLogs
+    return paydunyaLogs.filter(
+      (l) =>
+        l.email?.toLowerCase().includes(q) ||
+        l.productId?.toLowerCase().includes(q) ||
+        l.token?.toLowerCase().includes(q) ||
+        l.transactionId?.toLowerCase().includes(q),
+    )
+  }, [paydunyaLogs, search])
 
   return (
     <div className="min-h-screen bg-[#050505] px-4 py-8 md:px-8">
@@ -167,7 +236,19 @@ export default function AdminPaymentsPage() {
           <TabButton active={tab === 'installations'} onClick={() => setTab('installations')}>
             Installations ({installations.length})
           </TabButton>
+          <TabButton active={tab === 'paydunya'} onClick={() => setTab('paydunya')}>
+            Paiements PayDunya ({paydunyaLogs.length})
+          </TabButton>
         </div>
+
+        {/* Stats PayDunya (onglet dedie) */}
+        {tab === 'paydunya' && stats && (
+          <div className="mb-6 grid grid-cols-3 gap-4">
+            <StatCard icon={Receipt} label="Recus aujourd'hui" value={stats.paydunyaToday.toString()} color="text-white" />
+            <StatCard icon={CheckCircle2} label="Credites aujourd'hui" value={stats.paydunyaCreditedToday.toString()} color="text-[#00ff88]" />
+            <StatCard icon={AlertTriangle} label="Echecs de credit" value={stats.paydunyaFailed.toString()} color="text-red-400" />
+          </div>
+        )}
 
         {/* Search */}
         <div className="relative mb-6">
@@ -176,7 +257,13 @@ export default function AdminPaymentsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder={tab === 'abonnements' ? 'Rechercher par email ou formule...' : 'Rechercher par nom, email, tel, ville...'}
+            placeholder={
+              tab === 'abonnements'
+                ? 'Rechercher par email ou formule...'
+                : tab === 'installations'
+                  ? 'Rechercher par nom, email, tel, ville...'
+                  : 'Rechercher par email, produit, token...'
+            }
             className="w-full rounded-xl border border-white/10 bg-[#111] py-3 pl-12 pr-4 text-white placeholder-gray-600 outline-none transition-colors focus:border-[#00ff88]"
           />
         </div>
@@ -240,7 +327,8 @@ export default function AdminPaymentsPage() {
               })}
             </div>
           )
-        ) : filteredInstalls.length === 0 ? (
+        ) : tab === 'installations' ? (
+          filteredInstalls.length === 0 ? (
           <EmptyState text="Aucune demande d'installation." />
         ) : (
           <div className="space-y-3">
@@ -284,6 +372,67 @@ export default function AdminPaymentsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )
+        ) : filteredLogs.length === 0 ? (
+          <EmptyState text="Aucun paiement PayDunya enregistre." />
+        ) : (
+          <div className="space-y-3">
+            {filteredLogs.map((l) => {
+              const failed = l.status === 'completed' && !l.credited
+              return (
+                <div
+                  key={l.id}
+                  className={`flex flex-col gap-3 rounded-2xl border bg-[#111] p-5 transition-colors sm:flex-row sm:items-center sm:justify-between ${
+                    failed ? 'border-red-500/40' : 'border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate font-semibold text-white">{l.email || 'Inconnu'}</span>
+                      <span
+                        className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${
+                          l.credited
+                            ? 'border-[#00ff88]/30 bg-[#00ff88]/15 text-[#00ff88]'
+                            : l.status === 'completed'
+                              ? 'border-red-500/30 bg-red-500/15 text-red-400'
+                              : 'border-gray-500/30 bg-gray-500/15 text-gray-400'
+                        }`}
+                      >
+                        {l.credited ? (l.alreadyDone ? 'Deja credite' : 'Credite') : l.status === 'completed' ? 'Echec credit' : l.status === 'cancelled' ? 'Annule' : 'En attente'}
+                      </span>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-medium text-gray-400">
+                        {l.source}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500">
+                      {l.productId || '—'} · {Number(l.amount).toLocaleString()} FCFA
+                      {l.creditKind ? ` · ${l.creditKind}` : ''} · {fmtDateTime(l.createdAt)}
+                    </p>
+                    {failed && l.failureReason && (
+                      <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs text-red-400">
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        {l.failureReason}
+                      </p>
+                    )}
+                  </div>
+                  {failed && (
+                    <button
+                      onClick={() => handleRecredit(l.token)}
+                      disabled={recrediting === l.token}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#00ff88] px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
+                    >
+                      {recrediting === l.token ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RotateCcw className="h-4 w-4" />
+                      )}
+                      Recrediter
+                    </button>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
