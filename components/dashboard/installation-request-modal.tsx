@@ -27,6 +27,32 @@ export function InstallationRequestModal({ open, onClose }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
+  const [paying, setPaying] = useState(false)
+
+  const INSTALL_FEE = 8500
+
+  const handlePay = async () => {
+    setError(null)
+    setPaying(true)
+    try {
+      const res = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: 'install', phoneNumber: phone.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success || !data.invoice_url) {
+        setError(data.error || 'Erreur lors du lancement du paiement.')
+        return
+      }
+      // Redirection directe vers PayDunya : credit automatique au retour.
+      window.location.href = data.invoice_url
+    } catch {
+      setError('Erreur reseau. Reessayez.')
+    } finally {
+      setPaying(false)
+    }
+  }
 
   if (!open) return null
 
@@ -100,14 +126,50 @@ export function InstallationRequestModal({ open, onClose }: Props) {
             </div>
             <h3 className="text-lg font-bold text-white">Demande envoyee</h3>
             <p className="mt-2 text-sm text-gray-400">
-              Notre equipe vous contactera au numero indique pour planifier
-              l&apos;installation de ChapCam avec vos applications.
+              Pour finaliser, validez votre demande en reglant les frais
+              d&apos;installation. Notre equipe vous contactera ensuite au numero
+              indique pour planifier l&apos;intervention.
             </p>
+
+            <div className="mt-4 w-full rounded-lg border border-[#2563eb]/30 bg-[#2563eb]/10 px-4 py-3 text-left">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-300">Frais d&apos;installation</span>
+                <span className="text-lg font-bold text-white">8 500 F</span>
+              </div>
+              <p className="mt-1 text-xs text-gray-400">
+                Paiement securise via PayDunya. Compte credite automatiquement.
+              </p>
+            </div>
+
+            {error && (
+              <p className="mt-3 w-full rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                {error}
+              </p>
+            )}
+
+            <button
+              onClick={handlePay}
+              disabled={paying}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-[#2563eb] py-3 font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-60"
+            >
+              {paying ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Redirection...
+                </>
+              ) : (
+                <>
+                  <Download className="h-5 w-5" />
+                  Valider ma demande (8 500 F)
+                </>
+              )}
+            </button>
+
             <button
               onClick={handleClose}
-              className="mt-6 rounded-lg bg-[#2563eb] px-6 py-2.5 font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
+              className="mt-2 text-sm text-gray-400 transition-colors hover:text-white"
             >
-              Fermer
+              Plus tard
             </button>
           </div>
         ) : (
