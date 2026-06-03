@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, Video } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, Video, CreditCard } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -49,6 +49,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard/avatars', icon: Users, label: 'MES AVATARS' },
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES' },
   { href: '/dashboard/settings', icon: Settings, label: 'PARAMETRES' },
+  { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGER' },
 ]
 
 interface SidebarContentProps {
@@ -159,9 +160,15 @@ function SidebarContent({
 
         {showUpgradeBanner && (
           <div className="mb-3 rounded-lg bg-orange-500/20 p-3">
-            <p className="text-xs text-orange-300">
-              Tes points sont epuises. Contacte le support pour recharger ton compte.
+            <p className="mb-2 text-xs text-orange-300">
+              Recharge tes points pour continuer
             </p>
+            <Link
+              href="/dashboard/plans"
+              className="block rounded-lg bg-orange-500 py-2 text-center text-xs font-bold uppercase text-white transition-colors hover:bg-orange-600"
+            >
+              VOIR LES OFFRES
+            </Link>
           </div>
         )}
 
@@ -277,10 +284,16 @@ export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0
     <div className="fixed left-0 right-0 top-14 z-40 flex items-center justify-between bg-orange-500 px-4 py-2 md:left-[240px] md:top-0">
       <p className="text-sm font-medium text-white">
         {pointsRemaining <= 0 
-          ? 'Tu as epuise tes points — Contacte le support pour recharger'
-          : 'Tu es sur le plan gratuit — Contacte le support pour activer un abonnement'
+          ? 'Tu as epuise tes points — Recharge pour continuer le swap'
+          : 'Tu es sur le plan gratuit — Active un abonnement pour demarrer le swap'
         }
       </p>
+      <Link
+        href="/dashboard/plans"
+        className="rounded-lg bg-white px-4 py-1.5 text-xs font-bold uppercase text-orange-500 transition-colors hover:bg-gray-100"
+      >
+        RECHARGER
+      </Link>
     </div>
   )
 }
