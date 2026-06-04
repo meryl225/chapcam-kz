@@ -31,6 +31,7 @@ import { LiveStage } from '@/components/live/live-stage'
 import { GpuSetupOverlay } from '@/components/live/gpu-setup-overlay'
 import { LiveAccessBanner } from '@/components/live/live-access-banner'
 import { EngineComparison } from '@/components/live/engine-comparison'
+import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
 import { LIVE_OFFERS } from '@/lib/live-offers'
 
 const MAX_PERSONA = 4
@@ -327,6 +328,9 @@ export default function LivePage() {
             videoRef={videoRef}
             outputCanvasRef={outputCanvasRef}
           />
+
+          {/* Indicateur d'etat de la camera virtuelle ChapCam (app de bureau uniquement) */}
+          <VirtualCameraIndicator className="mt-3" />
         </div>
 
         {/* 4 cartes d'etat */}

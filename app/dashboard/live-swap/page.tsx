@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2 } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
+import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
@@ -551,6 +552,9 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Indicateur d'etat de la camera virtuelle ChapCam (app de bureau uniquement) */}
+              <VirtualCameraIndicator className="m-3" />
             </div>
 
             {/* Cercle IA anime au centre */}

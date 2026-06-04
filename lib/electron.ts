@@ -1,3 +1,14 @@
+// Etat de la camera virtuelle ChapCam
+export interface VirtualCameraState {
+  running: boolean
+  deviceName: string
+  driverInstalled: boolean
+  width?: number
+  height?: number
+  fps?: number
+  error?: string | null
+}
+
 // Electron API types for ChapCam Desktop
 export interface ElectronAPI {
   // Camera access
@@ -10,6 +21,12 @@ export interface ElectronAPI {
   
   // Virtual camera
   onVirtualCameraToggle: (callback: (enabled: boolean) => void) => void
+  virtualCamera: {
+    start: (opts?: { width?: number; height?: number; fps?: number }) => Promise<VirtualCameraState>
+    stop: () => Promise<VirtualCameraState>
+    status: () => Promise<VirtualCameraState>
+  }
+  onVirtualCameraState: (callback: (state: VirtualCameraState) => void) => void
   
   // Navigation events
   onOpenPreferences: (callback: () => void) => void
