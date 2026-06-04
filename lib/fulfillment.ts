@@ -91,13 +91,23 @@ export async function activateSubscription(
   plan: { id: string; price: number; points: number; durationDays: number },
 ): Promise<{ now: Date; end: Date }> {
   const now = new Date()
-  const end = new Date(now.getTime() + plan.durationDays * 24 * 60 * 60 * 1000)
+  const durationMs = plan.durationDays * 24 * 60 * 60 * 1000
 
   const { data: existing } = await admin
     .from('subscriptions')
-    .select('id')
+    .select('id, points, max_points, end_date, is_active')
     .eq('user_id', userId)
     .maybeSingle()
+
+  // Une recharge CUMULE : on ajoute les points au solde restant et on prolonge
+  // la duree a partir de la fin en cours (si encore active), jamais on n'ecrase.
+  const prevActive = existing && existing.is_active && existing.end_date
+    ? new Date(existing.end_date) > now
+    : false
+  const prevPoints = prevActive ? Number(existing?.points ?? 0) : 0
+  const prevMax = prevActive ? Number(existing?.max_points ?? 0) : 0
+  const base = prevActive && existing?.end_date ? new Date(existing.end_date) : now
+  const end = new Date(base.getTime() + durationMs)
 
   const subPayload = {
     user_id: userId,
@@ -105,8 +115,8 @@ export async function activateSubscription(
     plan: plan.id,
     amount: plan.price,
     status: 'active',
-    points: plan.points,
-    max_points: plan.points,
+    points: prevPoints + plan.points,
+    max_points: prevMax + plan.points,
     is_active: true,
     start_date: now.toISOString(),
     end_date: end.toISOString(),
@@ -326,7 +336,8 @@ async function fulfillConfirmedInvoice(params: {
     return { status: mapped, alreadyDone: false }
   }
 
-  // Idempotence : deja credite ?
+  // Garde-fou rapide : si la demande liee est deja approuvee, on ne recredite
+  // pas (couvre aussi les paiements traites avant la mise en place du verrou).
   if (reqRow && reqRow.status === 'approved') {
     await logPaymentEvent(admin, {
       source,
@@ -351,7 +362,45 @@ async function fulfillConfirmedInvoice(params: {
   const fullName = String(reqRow?.full_name || cd.full_name || cd.user_name || 'Client ChapCam')
   const userId = (reqRow?.user_id as string | null) || (cd.user_id ? String(cd.user_id) : null)
 
+  // Idempotence ATOMIQUE : on tente de "reserver" le token AVANT de crediter.
+  // La cle primaire sur processed_payments garantit qu'une seule des sources
+  // concurrentes (callback / status / reconcile) reussit l'insert ; les autres
+  // recoivent une violation de cle unique et n'ajoutent donc pas de points.
+  const { error: claimErr } = await admin.from('processed_payments').insert({
+    token,
+    email,
+    product_id: productId,
+    amount: totalAmount,
+    credited: false,
+  })
+  if (claimErr) {
+    // 23505 = unique_violation : ce token a deja ete pris en charge.
+    await logPaymentEvent(admin, {
+      source,
+      token,
+      transactionId,
+      email,
+      productId,
+      amount: totalAmount,
+      status: 'completed',
+      credited: true,
+      alreadyDone: true,
+      userLinked: true,
+      raw: customData,
+    })
+    return { status: 'completed', alreadyDone: true }
+  }
+
   const result = await creditPurchase(admin, { productId, email, fullName, userId })
+
+  // Marquer le token comme effectivement credite (pour audit).
+  if (result.ok) {
+    await admin.from('processed_payments').update({ credited: true }).eq('token', token)
+  } else {
+    // Credit echoue : on libere le token pour permettre une nouvelle tentative
+    // (re-credit manuel ou cron de reconciliation).
+    await admin.from('processed_payments').delete().eq('token', token)
+  }
 
   // Journaliser le resultat exact du credit (raison precise si echec).
   await logPaymentEvent(admin, {
