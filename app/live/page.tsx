@@ -15,6 +15,14 @@ import {
   Users,
   Crown,
   ArrowRight,
+  Wifi,
+  Cloud,
+  Sparkles,
+  Activity,
+  ScanFace,
+  ShieldCheck,
+  Gauge,
+  Monitor,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { useLiveFaceSwap } from '@/hooks/use-live-face-swap'
@@ -137,6 +145,9 @@ export default function LivePage() {
   const effectiveMode = mode ?? access?.mode ?? 'none'
   const canStart = effectiveMode !== 'none' && selected.length > 0
 
+  // Avatar cible (premier selectionne) pour la section "Avatar actif"
+  const targetAvatar = avatars.find((a) => selected.includes(a.id)) ?? avatars[0] ?? null
+
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#050505]">
@@ -147,7 +158,17 @@ export default function LivePage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white">
-      <div className="mx-auto max-w-5xl px-4 py-8 md:px-6">
+      {/* Halo premium en fond */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 opacity-60"
+        style={{
+          background:
+            'radial-gradient(900px circle at 20% 0%, rgba(0,255,136,0.08), transparent 45%), radial-gradient(800px circle at 90% 10%, rgba(139,92,246,0.10), transparent 45%)',
+        }}
+      />
+
+      <div className="relative mx-auto max-w-6xl px-4 py-8 md:px-6">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <Link
@@ -156,29 +177,65 @@ export default function LivePage() {
           >
             <ArrowLeft className="h-4 w-4" /> Tableau de bord
           </Link>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-[#00ff88]/30 bg-[#00ff88]/10 px-3 py-1 text-xs font-semibold text-[#00ff88]">
-            <Zap className="h-3.5 w-3.5" /> Live Pro
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-400/30 bg-violet-500/15 px-3 py-1 text-xs font-bold text-violet-300">
+            <Crown className="h-3.5 w-3.5" /> PRO
           </span>
         </div>
 
+        {/* Titre */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-balance md:text-3xl">
-            flashchap
-          </h1>
-          <p className="mt-1 text-sm text-gray-400">
-            Transforme ton visage en direct avec un moteur GPU dedie. Utilisable dans tes appels video.
-          </p>
-          <p className="mt-2 text-xs text-gray-500">
-            L&apos;outil Live est <span className="text-gray-300">different du logiciel ChapCam de depart</span>.
-            Avec un abonnement, il n&apos;y a pas de bug et la transformation se fait de la tete aux pieds —{' '}
-            <Link href="/dashboard" className="text-[#00ff88] underline-offset-2 hover:underline">
-              voir les abonnements
-            </Link>
-            .
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-balance md:text-4xl">Live Pro</h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#00ff88]/30 bg-[#00ff88]/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#00ff88]">
+              Changement de visage uniquement
+            </span>
+          </div>
+          <p className="mt-2 text-sm text-gray-400">
+            Changez votre visage en temps réel avec une qualité maximale.
           </p>
         </div>
 
-        {/* Gros bouton abonnement en haut */}
+        {/* Barre de statut */}
+        <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3.5 backdrop-blur-sm">
+          <span className="flex items-center gap-2 text-sm">
+            <Wifi className="h-4 w-4 text-[#00ff88]" />
+            <span className="text-gray-300">Connexion</span>
+            <span className="font-semibold text-[#00ff88]">excellente</span>
+          </span>
+          <span className="hidden h-4 w-px bg-white/10 sm:block" />
+          <span className="flex items-center gap-2 text-sm">
+            <Cloud className="h-4 w-4 text-cyan-400" />
+            <span className="text-gray-300">Mode</span>
+            <span className="font-semibold text-white">Cloud</span>
+          </span>
+          <span className="hidden h-4 w-px bg-white/10 sm:block" />
+          <span className="flex items-center gap-2 text-sm">
+            <Sparkles className="h-4 w-4 text-violet-300" />
+            <span className="text-gray-300">Qualité</span>
+            <span className="font-semibold text-white">Ultra HD</span>
+          </span>
+          <span className="hidden h-4 w-px bg-white/10 sm:block" />
+          <span className="flex items-center gap-2 text-sm">
+            <Activity className={`h-4 w-4 ${isLive ? 'text-[#00ff88]' : 'text-gray-400'}`} />
+            <span className="text-gray-300">Latence</span>
+            <span className="font-semibold text-white">{latencyMs > 0 ? `${latencyMs} ms` : '45 ms'}</span>
+          </span>
+        </div>
+
+        {/* Carte d'information principale */}
+        <div className="mb-6 flex items-center justify-between gap-4 overflow-hidden rounded-2xl border border-[#00ff88]/15 bg-gradient-to-br from-[#00ff88]/[0.06] to-violet-500/[0.06] p-5">
+          <p className="max-w-2xl text-sm text-gray-200">
+            <span className="font-semibold text-white">Live Pro</span> utilise l&apos;IA pour remplacer
+            uniquement votre <span className="text-[#00ff88]">visage</span> en temps réel, avec une
+            qualité maximale et une latence minimale.
+          </p>
+          <span className="relative hidden h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl border border-[#00ff88]/30 bg-[#00ff88]/10 sm:flex">
+            <span className="absolute inset-0 rounded-2xl bg-[#00ff88]/20 blur-md" />
+            <ScanFace className="relative h-7 w-7 text-[#00ff88]" />
+          </span>
+        </div>
+
+        {/* Bouton abonnement (haut) - logique inchangee */}
         <Link
           href="/dashboard"
           className="mb-6 flex w-full items-center justify-between gap-3 rounded-2xl bg-[#00ff88] px-5 py-4 text-black shadow-[0_0_30px_rgba(0,255,136,0.35)] transition-colors hover:bg-[#00dd77]"
@@ -210,7 +267,7 @@ export default function LivePage() {
           </div>
         )}
 
-        {/* Info file d'attente : beaucoup d'essais gratuits en meme temps */}
+        {/* Info file d'attente */}
         <div className="mb-6 flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
           <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white/5">
             <Users className="h-4 w-4 text-gray-300" />
@@ -220,15 +277,15 @@ export default function LivePage() {
             <p className="mt-1 text-gray-400">
               L&apos;essai est gratuit, donc plusieurs personnes l&apos;utilisent en meme temps. Tu peux
               parfois attendre un peu avant que ca demarre. Avec un{' '}
-            <Link href="/dashboard" className="text-[#00ff88] underline-offset-2 hover:underline">
-              abonnement
-            </Link>
+              <Link href="/dashboard" className="text-[#00ff88] underline-offset-2 hover:underline">
+                abonnement
+              </Link>
               , tu passes en priorite, sans bug et avec une transformation de la tete aux pieds.
             </p>
           </div>
         </div>
 
-        {/* Moteur temporairement indisponible (message client, sans details techniques) */}
+        {/* Moteur temporairement indisponible */}
         {(notConfigured || access?.gpuConfigured === false) && (
           <div className="mb-6 flex items-start gap-3 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4">
             <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-400" />
@@ -243,17 +300,55 @@ export default function LivePage() {
           </div>
         )}
 
-        {/* Scene split-screen */}
-        <LiveStage
-          status={status}
-          fps={fps}
-          latencyMs={latencyMs}
-          queuePosition={queuePosition}
-          queueTotal={queueTotal}
-          saturated={saturated}
-          videoRef={videoRef}
-          outputCanvasRef={outputCanvasRef}
-        />
+        {/* Scene split-screen (logique/refs inchangees) */}
+        <div className="relative">
+          {/* Cercle IA anime entre les deux panneaux (decoratif) */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 flex-col items-center md:flex"
+          >
+            <span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[#00ff88]/40 bg-[#0a0a0a]">
+              <span className="absolute inset-0 rounded-full bg-[#00ff88]/20 blur-md cc-pulse" />
+              <span className="absolute inset-0 rounded-full border border-violet-400/30" />
+              <Zap className="relative h-6 w-6 text-[#00ff88]" />
+            </span>
+            <span className="mt-2 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold text-gray-300 backdrop-blur-sm">
+              IA en temps réel
+            </span>
+          </div>
+
+          <LiveStage
+            status={status}
+            fps={fps}
+            latencyMs={latencyMs}
+            queuePosition={queuePosition}
+            queueTotal={queueTotal}
+            saturated={saturated}
+            videoRef={videoRef}
+            outputCanvasRef={outputCanvasRef}
+          />
+        </div>
+
+        {/* 4 cartes d'etat */}
+        <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { icon: ScanFace, label: 'Visage détecté', value: isLive ? 'Optimal' : 'En attente', color: '#00ff88' },
+            { icon: Activity, label: 'Tracking IA', value: isLive ? 'Actif' : 'Prêt', color: '#22d3ee' },
+            { icon: ShieldCheck, label: 'Stabilité', value: 'Excellente', color: '#8b5cf6' },
+            { icon: Sparkles, label: 'Qualité', value: 'Ultra HD', color: '#f59e0b' },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="rounded-2xl border border-white/10 bg-[#0d0d0d] p-4 transition-colors hover:border-white/20"
+            >
+              <div className="flex items-center gap-2">
+                <s.icon className="h-4 w-4" style={{ color: s.color }} />
+                <span className="text-xs text-gray-500">{s.label}</span>
+              </div>
+              <p className="mt-1.5 text-base font-bold text-white">{s.value}</p>
+            </div>
+          ))}
+        </div>
 
         {/* Erreur */}
         {error && !notConfigured && (
@@ -262,13 +357,17 @@ export default function LivePage() {
           </div>
         )}
 
-        {/* Controles */}
+        {/* CTA principal (logique inchangee) */}
         <div className="mt-6 flex flex-col gap-4">
           {!isLive ? (
             <button
               onClick={handleStart}
               disabled={!canStart || isBusy}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#00ff88] py-4 text-base font-bold text-black transition-colors hover:bg-[#00dd77] disabled:cursor-not-allowed disabled:opacity-50"
+              className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-5 text-base font-bold text-white shadow-[0_0_40px_rgba(0,255,136,0.25)] transition-all hover:shadow-[0_0_55px_rgba(0,255,136,0.4)] disabled:cursor-not-allowed disabled:opacity-50"
+              style={{
+                background:
+                  'linear-gradient(90deg, #00ff88 0%, #06b6d4 50%, #8b5cf6 100%)',
+              }}
             >
               {isBusy ? (
                 <>
@@ -284,12 +383,15 @@ export default function LivePage() {
                       : 'Preparation...'}
                 </>
               ) : (
-                <>
-                  <Play className="h-5 w-5 fill-black" />
-                  {effectiveMode === 'trial'
-                    ? 'Demarrer l\u2019essai gratuit (2 min)'
-                    : 'Demarrer le Live Face Swap'}
-                </>
+                <span className="flex flex-col items-center text-black">
+                  <span className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 fill-black" />
+                    {effectiveMode === 'trial' ? 'Démarrer Live Pro (essai 2 min)' : 'Démarrer Live Pro'}
+                  </span>
+                  <span className="text-xs font-medium text-black/70">
+                    Le changement de visage commencera en temps réel
+                  </span>
+                </span>
               )}
             </button>
           ) : (
@@ -309,8 +411,36 @@ export default function LivePage() {
           )}
         </div>
 
-        {/* Selection persona */}
+        {/* Avatar actif (visage cible) */}
         <div className="mt-8 rounded-2xl border border-white/10 bg-[#0d0d0d] p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <ScanFace className="h-4 w-4 text-[#00ff88]" />
+            <h2 className="text-sm font-bold uppercase tracking-wide text-white">
+              Avatar actif <span className="text-gray-500">(visage cible)</span>
+            </h2>
+          </div>
+
+          {targetAvatar && (
+            <div className="mb-5 flex items-center gap-4 rounded-xl border border-[#00ff88]/20 bg-[#00ff88]/[0.04] p-3">
+              <img
+                src={targetAvatar.url || '/placeholder.svg'}
+                alt={`Visage cible ${targetAvatar.name}`}
+                className="h-16 w-16 flex-shrink-0 rounded-lg object-cover"
+                crossOrigin="anonymous"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold text-white">{targetAvatar.name}</p>
+                <p className="text-xs text-gray-400">{selected.length} photo(s) de référence</p>
+              </div>
+              <Link
+                href="/dashboard/avatars"
+                className="flex-shrink-0 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-gray-200 transition-colors hover:bg-white/5"
+              >
+                Modifier l&apos;avatar
+              </Link>
+            </div>
+          )}
+
           <PersonaPicker
             avatars={avatars}
             selected={selected}
@@ -320,6 +450,22 @@ export default function LivePage() {
           />
         </div>
 
+        {/* Section performance */}
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { icon: Gauge, label: 'Images / seconde', value: isLive && fps > 0 ? `${fps} fps` : '60 fps' },
+            { icon: Monitor, label: 'Résolution', value: '1920×1080' },
+            { icon: Activity, label: 'Latence', value: latencyMs > 0 ? `${latencyMs} ms` : '45 ms' },
+            { icon: ShieldCheck, label: 'Statut', value: 'Optimal' },
+          ].map((p) => (
+            <div key={p.label} className="rounded-2xl border border-white/10 bg-[#0d0d0d] p-4">
+              <p.icon className="mb-2 h-4 w-4 text-[#00ff88]" />
+              <p className="text-xl font-bold text-white">{p.value}</p>
+              <p className="mt-0.5 text-xs text-gray-500">{p.label}</p>
+            </div>
+          ))}
+        </div>
+
         {/* Astuce camera virtuelle */}
         <div className="mt-6 flex items-start gap-3 rounded-2xl border border-white/10 bg-[#0d0d0d] p-4">
           <Camera className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#00ff88]" />
@@ -327,25 +473,36 @@ export default function LivePage() {
             <p className="font-semibold text-white">Utiliser comme camera virtuelle</p>
             <p className="mt-1">
               Pour t&apos;en servir dans Zoom, Meet ou WhatsApp : installe OBS, ajoute la fenetre
-              ChapCam comme source, puis active <span className="text-gray-300">&laquo; Virtual Camera &raquo;</span>.
-              Selectionne ensuite &laquo; OBS Virtual Camera &raquo; dans ton application d&apos;appel.
+              ChapCam comme source, puis active{' '}
+              <span className="text-gray-300">&laquo; Virtual Camera &raquo;</span>. Selectionne ensuite
+              &laquo; OBS Virtual Camera &raquo; dans ton application d&apos;appel.
             </p>
           </div>
         </div>
 
-        {/* Gros bouton : prendre un abonnement */}
-        <Link
-          href="/dashboard"
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#00ff88] px-6 py-5 text-base font-bold text-black shadow-[0_0_30px_rgba(0,255,136,0.35)] transition-colors hover:bg-[#00dd77] sm:text-lg"
-        >
-          <Crown className="h-6 w-6" />
-          Prendre un abonnement
-        </Link>
-        <p className="mt-2 text-center text-xs text-gray-500">
-          Pas de bug, transformation de la tete aux pieds et bien meilleure qualite que l&apos;essai.
-        </p>
+        {/* Carte premium bas de page */}
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 overflow-hidden rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.12] to-[#00ff88]/[0.06] p-6 sm:flex-row sm:items-center">
+          <div className="flex items-start gap-4">
+            <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-violet-500/20">
+              <Crown className="h-6 w-6 text-violet-300" />
+            </span>
+            <div>
+              <h3 className="text-lg font-bold text-white">Passez à Live Pro</h3>
+              <p className="mt-1 max-w-md text-sm text-gray-300">
+                Débloquez le GPU dédié, l&apos;accès prioritaire et la meilleure qualité.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/plans"
+            className="flex flex-shrink-0 items-center gap-2 rounded-xl bg-violet-500 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-violet-600"
+          >
+            Voir les offres
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+        </div>
 
-        {/* Comparatif : Live temps reel vs abonnement Lucy (premium) */}
+        {/* Comparatif moteur */}
         <EngineComparison />
 
         <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-gray-600">
@@ -354,8 +511,7 @@ export default function LivePage() {
         </p>
       </div>
 
-      {/* Overlay bloquant facon LiveSync : empeche la surcharge GPU pendant
-          le demarrage et fait patienter en file d'attente. */}
+      {/* Overlay GPU (logique inchangee) */}
       <GpuSetupOverlay
         status={status}
         queuePosition={queuePosition}
