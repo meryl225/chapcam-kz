@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2 } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
@@ -48,6 +48,26 @@ export default function DashboardPage() {
   const [colorCorrection, setColorCorrection] = useState(true)
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
+
+  // Agrandissement de la camera ChapCam (plein ecran natif pour faciliter le cadrage / OBS)
+  const chapCamRef = useRef<HTMLDivElement | null>(null)
+  const [isCamFullscreen, setIsCamFullscreen] = useState(false)
+
+  const toggleCamFullscreen = useCallback(() => {
+    const el = chapCamRef.current
+    if (!el) return
+    if (!document.fullscreenElement) {
+      el.requestFullscreen?.().catch(() => {})
+    } else {
+      document.exitFullscreen?.().catch(() => {})
+    }
+  }, [])
+
+  useEffect(() => {
+    const onFsChange = () => setIsCamFullscreen(document.fullscreenElement === chapCamRef.current)
+    document.addEventListener('fullscreenchange', onFsChange)
+    return () => document.removeEventListener('fullscreenchange', onFsChange)
+  }, [])
 
   const {
     isConnected,
@@ -459,15 +479,25 @@ export default function DashboardPage() {
               <div className="flex items-center gap-2 border-b border-[#00ff88]/20 bg-white/[0.03] px-4 py-2.5 backdrop-blur-md">
                 <Zap className="h-4 w-4 text-[#00ff88]" />
                 <span className="text-sm font-medium text-white">Caméra ChapCam</span>
-                {isConnected && (
-                  <div className="ml-auto flex items-center gap-2 text-[11px]">
-                    <span className="font-semibold text-[#00ff88]">{stats.fps} FPS</span>
-                    <span className="text-white/30">|</span>
-                    <span className="text-white/60">{stats.resolution}</span>
-                  </div>
-                )}
+                <div className="ml-auto flex items-center gap-2 text-[11px]">
+                  {isConnected && (
+                    <>
+                      <span className="font-semibold text-[#00ff88]">{stats.fps} FPS</span>
+                      <span className="text-white/30">|</span>
+                      <span className="text-white/60">{stats.resolution}</span>
+                    </>
+                  )}
+                  <button
+                    onClick={toggleCamFullscreen}
+                    aria-label={isCamFullscreen ? 'Réduire la caméra' : 'Agrandir la caméra'}
+                    title={isCamFullscreen ? 'Réduire' : 'Agrandir en plein écran'}
+                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[#00ff88]/30 bg-[#00ff88]/10 text-[#00ff88] transition-colors hover:bg-[#00ff88]/20"
+                  >
+                    {isCamFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
               </div>
-              <div className="relative aspect-video bg-[#0a0a0a]">
+              <div ref={chapCamRef} className="cc-cam-stage relative aspect-video bg-[#0a0a0a]">
                 <video
                   ref={remoteVideoRef}
                   autoPlay
@@ -480,6 +510,15 @@ export default function DashboardPage() {
                   <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
                   ChapCam • {processingMode === 'local' ? 'Local' : 'Cloud'}
                 </div>
+
+                <button
+                  onClick={toggleCamFullscreen}
+                  aria-label={isCamFullscreen ? 'Réduire la caméra' : 'Agrandir la caméra'}
+                  title={isCamFullscreen ? 'Réduire' : 'Agrandir en plein écran'}
+                  className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white/80 backdrop-blur-md transition-colors hover:bg-black/70"
+                >
+                  {isCamFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                </button>
 
                 {!isConnected && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a] text-gray-500">

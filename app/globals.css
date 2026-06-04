@@ -272,6 +272,19 @@ html {
   .cc-wave-bar, .cc-flow, .cc-pulse, .cc-blink { animation: none; }
 }
 
+/* Camera ChapCam en plein ecran (cadrage / OBS) */
+.cc-cam-stage:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+  background: #000;
+}
+.cc-cam-stage:fullscreen video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* Range slider thumb (Voice Changer reglages) */
 .cc-range::-webkit-slider-thumb {
   -webkit-appearance: none;
