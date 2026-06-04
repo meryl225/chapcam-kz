@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, Video, CreditCard } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, Video, CreditCard, Home, Mic, Languages, ImageIcon, Film, HelpCircle } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -41,15 +41,21 @@ interface NavItem {
   href: string
   icon: React.ElementType
   label: string
+  badge?: 'NEW' | 'PRO'
 }
 
 const navItems: NavItem[] = [
-  { href: '/dashboard', icon: Zap, label: 'LIVE SWAP' },
-  { href: '/live', icon: Video, label: 'LIVE PRO' },
+  { href: '/dashboard', icon: Home, label: 'DASHBOARD' },
+  { href: '/dashboard/live-swap', icon: Zap, label: 'LIVE SWAP' },
+  { href: '/live', icon: Video, label: 'LIVE PRO', badge: 'PRO' },
+  { href: '/dashboard/voice-changer', icon: Mic, label: 'VOICE CHANGER V1', badge: 'NEW' },
+  { href: '/dashboard/voice-translator', icon: Languages, label: 'VOICE TRADUCTEUR', badge: 'NEW' },
+  { href: '/dashboard/photo-video', icon: ImageIcon, label: 'PHOTOS EN VIDEO', badge: 'NEW' },
+  { href: '/dashboard/video-translation', icon: Film, label: 'TRADUCTION VIDEO', badge: 'NEW' },
   { href: '/dashboard/avatars', icon: Users, label: 'MES AVATARS' },
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES' },
-  { href: '/dashboard/settings', icon: Settings, label: 'PARAMETRES' },
   { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGER' },
+  { href: '/dashboard/settings', icon: Settings, label: 'PARAMETRES' },
 ]
 
 interface SidebarContentProps {
@@ -95,32 +101,53 @@ function SidebarContent({
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3">
+      <nav className="flex-1 overflow-y-auto px-3 py-1">
         {navItems.map((item) => {
           const isActivePath = pathname === item.href
           return (
             <Link
               key={item.href}
               href={item.href}
-              className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-bold uppercase transition-all duration-200 ${
+              className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 ${
                 isActivePath
-                  ? 'border-l-2 border-[#00ff88] bg-white/5 text-[#00ff88]'
-                  : 'text-gray-400 hover:bg-white/5'
+                  ? 'border-l-2 border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]'
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <item.icon className="h-5 w-5" />
-              {item.label}
+              <item.icon className="h-[18px] w-[18px] shrink-0" />
+              <span className="flex-1 truncate">{item.label}</span>
+              {item.badge === 'NEW' && (
+                <span className="rounded-full bg-[#00ff88]/15 px-2 py-0.5 text-[10px] font-bold text-[#00ff88]">
+                  NEW
+                </span>
+              )}
+              {item.badge === 'PRO' && (
+                <span className="rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold text-violet-300">
+                  PRO
+                </span>
+              )}
             </Link>
           )
         })}
+
+        {/* Aide & Support */}
+        <a
+          href="https://t.me/chapcam_support"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight text-gray-400 transition-all duration-200 hover:bg-white/5 hover:text-white"
+        >
+          <HelpCircle className="h-[18px] w-[18px] shrink-0" />
+          <span className="flex-1 truncate">AIDE & SUPPORT</span>
+        </a>
 
         {/* Lien Secret Admin Stats */}
         {isAdmin && (
           <Link
             href="/admin/stats"
-            className="mb-1 flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-bold uppercase transition-all duration-200 text-[#00ff88] hover:bg-white/5 border-l-2 border-[#00ff88]"
+            className="mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight text-[#00ff88] transition-all duration-200 hover:bg-white/5 border-l-2 border-[#00ff88]"
           >
-            <Shield className="h-5 w-5" />
+            <Shield className="h-[18px] w-[18px] shrink-0" />
             ADMIN STATS
           </Link>
         )}
