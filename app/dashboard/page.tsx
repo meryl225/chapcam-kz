@@ -88,11 +88,11 @@ export default async function DashboardHubPage() {
       {/* Header */}
       <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white md:text-3xl text-balance">
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl text-balance">
             {`Bienvenue ${displayName} `}
             <span aria-hidden>👋</span>
           </h1>
-          <p className="mt-1 text-sm text-gray-400">Voici un aperçu de tous les outils ChapCam.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Voici un aperçu de tous les outils ChapCam.</p>
         </div>
         <HeaderActions />
       </header>
@@ -105,7 +105,7 @@ export default async function DashboardHubPage() {
         {infoCards.map((c) => (
           <div
             key={c.label}
-            className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#111] p-4"
+            className="flex items-center gap-3 rounded-2xl border border-hairline bg-card p-4"
           >
             <div
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
@@ -114,8 +114,8 @@ export default async function DashboardHubPage() {
               <c.icon className="h-5 w-5" style={{ color: c.color }} />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-gray-500">{c.label}</p>
-              <p className="truncate text-sm font-bold text-white">{c.value}</p>
+              <p className="text-xs text-text-faint">{c.label}</p>
+              <p className="truncate text-sm font-bold text-foreground">{c.value}</p>
             </div>
           </div>
         ))}
@@ -124,15 +124,15 @@ export default async function DashboardHubPage() {
       {/* Tools */}
       <section aria-label="Outils ChapCam">
         <div className="mb-5">
-          <h2 className="text-xl font-bold text-white">Tous les outils ChapCam</h2>
-          <p className="mt-1 text-sm text-gray-400">Choisissez l’outil que vous souhaitez utiliser.</p>
+          <h2 className="text-xl font-bold text-foreground">Tous les outils ChapCam</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Choisissez l’outil que vous souhaitez utiliser.</p>
         </div>
         <ToolsGrid />
       </section>
 
       {/* Utilisation rapide */}
       <section aria-label="Utilisation rapide" className="mt-8">
-        <h2 className="mb-4 text-xl font-bold text-white">Utilisation rapide</h2>
+        <h2 className="mb-4 text-xl font-bold text-foreground">Utilisation rapide</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
             { icon: Zap, label: 'Swaps aujourd’hui', value: String(swapsToday), color: '#00ff88' },
@@ -142,7 +142,7 @@ export default async function DashboardHubPage() {
           ].map((s) => (
             <div
               key={s.label}
-              className="rounded-2xl border border-white/10 bg-[#111] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00ff88]/30"
+              className="rounded-2xl border border-hairline bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30"
             >
               <div
                 className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg"
@@ -150,8 +150,8 @@ export default async function DashboardHubPage() {
               >
                 <s.icon className="h-5 w-5" style={{ color: s.color }} />
               </div>
-              <p className="text-2xl font-bold text-white">{s.value}</p>
-              <p className="mt-0.5 text-xs text-gray-500">{s.label}</p>
+              <p className="text-2xl font-bold text-foreground">{s.value}</p>
+              <p className="mt-0.5 text-xs text-text-faint">{s.label}</p>
             </div>
           ))}
         </div>
@@ -159,19 +159,19 @@ export default async function DashboardHubPage() {
 
       {/* Premium banner */}
       {!isPro && (
-        <section className="mt-8 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-r from-[#00ff88]/15 via-[#0f1a14] to-violet-600/20 p-6 md:p-8">
+        <section className="mt-8 overflow-hidden rounded-2xl border border-hairline bg-gradient-to-r from-primary/15 via-[#0f1a14] to-violet-600/20 p-6 md:p-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="mb-3 flex items-center gap-2">
-                <Crown className="h-5 w-5 text-[#00ff88]" />
-                <h3 className="text-lg font-bold text-white md:text-xl text-balance">
+                <Crown className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-bold text-foreground md:text-xl text-balance">
                   Passez en Pro et débloquez tout le potentiel de ChapCam
                 </h3>
               </div>
-              <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-300">
+              <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
                 {['Plus de crédits', 'Qualité 4K', 'Avatars premium', 'Support prioritaire'].map((b) => (
                   <li key={b} className="flex items-center gap-1.5">
-                    <Check className="h-4 w-4 text-[#00ff88]" />
+                    <Check className="h-4 w-4 text-primary" />
                     {b}
                   </li>
                 ))}
@@ -179,7 +179,7 @@ export default async function DashboardHubPage() {
             </div>
             <Link
               href="/dashboard/plans"
-              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-[#00ff88] px-6 py-3 font-bold text-black transition-colors hover:bg-[#00dd77]"
+              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-primary px-6 py-3 font-bold text-black transition-colors hover:bg-primary/90"
             >
               Voir les offres
             </Link>

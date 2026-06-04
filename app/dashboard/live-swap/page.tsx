@@ -297,11 +297,11 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2 md:text-3xl">
-            <Zap className="w-6 h-6 text-[#00ff88]" />
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2 md:text-3xl">
+            <Zap className="w-6 h-6 text-primary" />
             Live Swap
           </h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="mt-1 text-sm text-muted-foreground">
             Transformez votre apparence en temps réel avec l&apos;IA.
           </p>
         </div>
@@ -309,7 +309,7 @@ export default function DashboardPage() {
           {/* Guide d'utilisation */}
           <Link
             href="/dashboard/mes-demandes"
-            className="hidden items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:border-white/20 sm:flex"
+            className="hidden items-center gap-2 rounded-lg border border-hairline bg-muted px-4 py-2 text-sm font-semibold text-foreground backdrop-blur-md transition-colors hover:border-hairline-strong sm:flex"
           >
             <BookOpen className="h-4 w-4" />
             Mes demandes
@@ -335,54 +335,54 @@ export default function DashboardPage() {
           </button>
 
           {/* Credits restants */}
-          <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-md">
+          <div className="flex items-center gap-2 rounded-lg border border-hairline bg-muted px-4 py-2 backdrop-blur-md">
             <Coins className="w-4 h-4 text-yellow-500" />
-            <span className="text-white font-bold">{userPoints.toLocaleString()}</span>
-            <span className="text-gray-400 text-sm">points</span>
+            <span className="text-foreground font-bold">{userPoints.toLocaleString()}</span>
+            <span className="text-muted-foreground text-sm">points</span>
           </div>
         </div>
       </div>
 
       {/* Status bar */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-white/10 bg-white/[0.03] px-5 py-3 backdrop-blur-xl">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-hairline bg-muted px-5 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-2">
-          {isConnected ? <Wifi className="h-4 w-4 text-[#00ff88]" /> : <WifiOff className="h-4 w-4 text-gray-500" />}
-          <span className={`text-sm font-medium ${isConnected ? 'text-[#00ff88]' : 'text-gray-400'}`}>
+          {isConnected ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-text-faint" />}
+          <span className={`text-sm font-medium ${isConnected ? 'text-primary' : 'text-muted-foreground'}`}>
             {isConnected ? 'Connexion excellente' : 'Connexion prête'}
           </span>
         </div>
-        <div className="hidden h-4 w-px bg-white/10 sm:block" />
+        <div className="hidden h-4 w-px bg-muted sm:block" />
         <div className="flex items-center gap-2 text-sm">
           {processingMode === 'local' ? <Monitor className="h-4 w-4 text-green-400" /> : <Cloud className="h-4 w-4 text-blue-400" />}
-          <span className="text-gray-400">Mode :</span>
-          <span className="font-medium text-white">{processingMode === 'local' ? 'Local' : 'Cloud'}</span>
+          <span className="text-muted-foreground">Mode :</span>
+          <span className="font-medium text-foreground">{processingMode === 'local' ? 'Local' : 'Cloud'}</span>
         </div>
-        <div className="hidden h-4 w-px bg-white/10 sm:block" />
+        <div className="hidden h-4 w-px bg-muted sm:block" />
         <div className="flex items-center gap-2 text-sm">
-          <span className="rounded bg-[#00ff88]/15 px-1.5 py-0.5 text-[10px] font-bold text-[#00ff88]">
+          <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
             {renderQuality === 'ultra' ? '4K' : renderQuality === 'hd' ? 'HD' : 'SD'}
           </span>
-          <span className="text-gray-400">Qualité :</span>
-          <span className="font-medium text-white">
+          <span className="text-muted-foreground">Qualité :</span>
+          <span className="font-medium text-foreground">
             {renderQuality === 'ultra' ? 'Ultra HD' : renderQuality === 'hd' ? 'HD' : 'Standard'}
           </span>
         </div>
-        <div className="hidden h-4 w-px bg-white/10 sm:block" />
+        <div className="hidden h-4 w-px bg-muted sm:block" />
         <div className="flex items-center gap-2 text-sm">
-          <Zap className="h-4 w-4 text-[#00ff88]" />
-          <span className="text-gray-400">Latence :</span>
-          <span className="font-medium text-white">{stats.latency || 120} ms</span>
+          <Zap className="h-4 w-4 text-primary" />
+          <span className="text-muted-foreground">Latence :</span>
+          <span className="font-medium text-foreground">{stats.latency || 120} ms</span>
         </div>
       </div>
 
       {/* Rappel : c'est la vraie version premium */}
-      <div className="flex items-start gap-3 rounded-xl border border-[#00ff88]/30 bg-gradient-to-r from-[#00ff88]/10 to-transparent p-4">
-        <div className="rounded-lg bg-[#00ff88]/20 p-2">
-          <Crown className="h-5 w-5 text-[#00ff88]" />
+      <div className="flex items-start gap-3 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent p-4">
+        <div className="rounded-lg bg-primary/20 p-2">
+          <Crown className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-white">Tu utilises la vraie version ChapCam</p>
-          <p className="mt-1 text-xs text-white/60">
+          <p className="text-sm font-semibold text-foreground">Tu utilises la vraie version ChapCam</p>
+          <p className="mt-1 text-xs text-foreground/60">
             Ici, pas de bug et la transformation se fait de la tete aux pieds, en bien meilleure qualite
             que l&apos;essai gratuit. C&apos;est le vrai logiciel.
           </p>
@@ -398,7 +398,7 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-sm font-medium text-green-400">PC Gaming detecte - Traitement local disponible</p>
-              <p className="text-xs text-white/60">{hardware.gpuName} | {hardware.vramEstimate}GB VRAM | Mode {processingMode}</p>
+              <p className="text-xs text-foreground/60">{hardware.gpuName} | {hardware.vramEstimate}GB VRAM | Mode {processingMode}</p>
             </div>
           </div>
         </div>
@@ -418,17 +418,17 @@ export default function DashboardPage() {
           {/* Cameras avec cercle IA */}
           <div className="relative grid gap-6 md:grid-cols-2">
             {/* Camera reelle */}
-            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d0d] shadow-[0_8px_40px_rgba(0,0,0,0.4)]">
-              <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.03] px-4 py-2.5 backdrop-blur-md">
+            <div className="overflow-hidden rounded-2xl border border-hairline bg-card shadow-[0_8px_40px_rgba(0,0,0,0.4)]">
+              <div className="flex items-center gap-2 border-b border-hairline bg-muted px-4 py-2.5 backdrop-blur-md">
                 <Camera className="h-4 w-4 text-blue-400" />
-                <span className="text-sm font-medium text-white">Caméra réelle</span>
+                <span className="text-sm font-medium text-foreground">Caméra réelle</span>
                 {isConnected && (
                   <span className="ml-auto flex items-center gap-1.5 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-400">
                     <span className="h-1.5 w-1.5 rounded-full bg-blue-400" /> EN DIRECT
                   </span>
                 )}
               </div>
-              <div className="relative aspect-video bg-[#0a0a0a]">
+              <div className="relative aspect-video bg-background">
                 <video
                   ref={localVideoRef}
                   autoPlay
@@ -438,7 +438,7 @@ export default function DashboardPage() {
                   style={{ transform: 'scaleX(-1)' }}
                 />
                 {!isConnected && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-text-faint">
                     <Camera className="mb-2 h-12 w-12 opacity-50" />
                     <p className="text-sm">Caméra inactive</p>
                   </div>
@@ -449,22 +449,22 @@ export default function DashboardPage() {
                     <button
                       onClick={() => setMicOn(v => !v)}
                       aria-label={micOn ? 'Couper le micro' : 'Activer le micro'}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white/80 backdrop-blur-md transition-colors hover:bg-black/70"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-hairline bg-black/50 text-foreground/80 backdrop-blur-md transition-colors hover:bg-black/70"
                     >
                       {micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4 text-red-400" />}
                     </button>
                     <button
                       onClick={() => setCamOn(v => !v)}
                       aria-label={camOn ? 'Couper la caméra' : 'Activer la caméra'}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white/80 backdrop-blur-md transition-colors hover:bg-black/70"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-hairline bg-black/50 text-foreground/80 backdrop-blur-md transition-colors hover:bg-black/70"
                     >
                       {camOn ? <VideoIcon className="h-4 w-4" /> : <VideoOff className="h-4 w-4 text-red-400" />}
                     </button>
-                    <div className="flex h-9 items-end gap-0.5 rounded-lg border border-white/10 bg-black/50 px-2 py-2 backdrop-blur-md">
+                    <div className="flex h-9 items-end gap-0.5 rounded-lg border border-hairline bg-black/50 px-2 py-2 backdrop-blur-md">
                       {[0, 1, 2, 3, 4, 5].map(i => (
                         <span
                           key={i}
-                          className="cc-wave-bar w-0.5 rounded-full bg-[#00ff88]"
+                          className="cc-wave-bar w-0.5 rounded-full bg-primary"
                           style={{ height: '100%', animationDelay: `${i * 0.12}s` }}
                         />
                       ))}
@@ -475,29 +475,29 @@ export default function DashboardPage() {
             </div>
 
             {/* Camera ChapCam */}
-            <div className="overflow-hidden rounded-2xl border border-[#00ff88]/30 bg-[#0d0d0d] shadow-[0_8px_40px_rgba(0,255,136,0.12)]">
-              <div className="flex items-center gap-2 border-b border-[#00ff88]/20 bg-white/[0.03] px-4 py-2.5 backdrop-blur-md">
-                <Zap className="h-4 w-4 text-[#00ff88]" />
-                <span className="text-sm font-medium text-white">Caméra ChapCam</span>
+            <div className="overflow-hidden rounded-2xl border border-primary/30 bg-card shadow-[0_8px_40px_rgba(0,255,136,0.12)]">
+              <div className="flex items-center gap-2 border-b border-primary/20 bg-muted px-4 py-2.5 backdrop-blur-md">
+                <Zap className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium text-foreground">Caméra ChapCam</span>
                 <div className="ml-auto flex items-center gap-2 text-[11px]">
                   {isConnected && (
                     <>
-                      <span className="font-semibold text-[#00ff88]">{stats.fps} FPS</span>
-                      <span className="text-white/30">|</span>
-                      <span className="text-white/60">{stats.resolution}</span>
+                      <span className="font-semibold text-primary">{stats.fps} FPS</span>
+                      <span className="text-foreground/30">|</span>
+                      <span className="text-foreground/60">{stats.resolution}</span>
                     </>
                   )}
                   <button
                     onClick={toggleCamFullscreen}
                     aria-label={isCamFullscreen ? 'Réduire la caméra' : 'Agrandir la caméra'}
                     title={isCamFullscreen ? 'Réduire' : 'Agrandir en plein écran'}
-                    className="flex h-7 w-7 items-center justify-center rounded-md border border-[#00ff88]/30 bg-[#00ff88]/10 text-[#00ff88] transition-colors hover:bg-[#00ff88]/20"
+                    className="flex h-7 w-7 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary transition-colors hover:bg-primary/20"
                   >
                     {isCamFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
                   </button>
                 </div>
               </div>
-              <div ref={chapCamRef} className="cc-cam-stage relative aspect-video bg-[#0a0a0a]">
+              <div ref={chapCamRef} className="cc-cam-stage relative aspect-video bg-background">
                 <video
                   ref={remoteVideoRef}
                   autoPlay
@@ -506,7 +506,7 @@ export default function DashboardPage() {
                   className="h-full w-full object-cover"
                 />
 
-                <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-md bg-black/60 px-3 py-1 text-xs text-white backdrop-blur-md">
+                <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-md bg-black/60 px-3 py-1 text-xs text-foreground backdrop-blur-md">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
                   ChapCam • {processingMode === 'local' ? 'Local' : 'Cloud'}
                 </div>
@@ -515,13 +515,13 @@ export default function DashboardPage() {
                   onClick={toggleCamFullscreen}
                   aria-label={isCamFullscreen ? 'Réduire la caméra' : 'Agrandir la caméra'}
                   title={isCamFullscreen ? 'Réduire' : 'Agrandir en plein écran'}
-                  className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white/80 backdrop-blur-md transition-colors hover:bg-black/70"
+                  className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-hairline bg-black/50 text-foreground/80 backdrop-blur-md transition-colors hover:bg-black/70"
                 >
                   {isCamFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </button>
 
                 {!isConnected && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a] text-gray-500">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background text-text-faint">
                     <Zap className="mb-2 h-12 w-12 opacity-50" />
                     <p className="text-sm">{isConnecting ? 'Connexion en cours...' : 'Swap inactif'}</p>
                   </div>
@@ -529,22 +529,22 @@ export default function DashboardPage() {
 
                 {isConnecting && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 )}
 
                 {/* Controles camera */}
                 <div className="absolute inset-x-3 bottom-3 z-20 flex items-center justify-between">
-                  <div className="flex h-9 items-end gap-0.5 rounded-lg border border-white/10 bg-black/50 px-2 py-2 backdrop-blur-md">
+                  <div className="flex h-9 items-end gap-0.5 rounded-lg border border-hairline bg-black/50 px-2 py-2 backdrop-blur-md">
                     {[0, 1, 2, 3, 4, 5].map(i => (
                       <span
                         key={i}
-                        className="cc-wave-bar w-0.5 rounded-full bg-[#00ff88]"
+                        className="cc-wave-bar w-0.5 rounded-full bg-primary"
                         style={{ height: '100%', animationDelay: `${i * 0.1}s` }}
                       />
                     ))}
                   </div>
-                  <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-xs text-white/70 backdrop-blur-md">
+                  <div className="flex items-center gap-2 rounded-lg border border-hairline bg-black/50 px-3 py-2 text-xs text-foreground/70 backdrop-blur-md">
                     <Clock className="h-3.5 w-3.5" />
                     {formatDuration(duration)}
                   </div>
@@ -555,12 +555,12 @@ export default function DashboardPage() {
             {/* Cercle IA anime au centre */}
             <div className="pointer-events-none absolute left-1/2 top-1/2 z-30 hidden -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 md:flex">
               <div className="relative">
-                <div className="absolute inset-0 rounded-full bg-[#00ff88]/30 blur-xl cc-pulse" />
-                <div className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#00ff88] bg-[#0a0a0a] shadow-[0_0_30px_rgba(0,255,136,0.5)]">
-                  <Zap className="h-6 w-6 text-[#00ff88]" />
+                <div className="absolute inset-0 rounded-full bg-primary/30 blur-xl cc-pulse" />
+                <div className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-primary bg-background shadow-[0_0_30px_rgba(0,255,136,0.5)]">
+                  <Zap className="h-6 w-6 text-primary" />
                 </div>
               </div>
-              <span className="rounded-md bg-black/60 px-2 py-1 text-center text-[10px] leading-tight text-white/70 backdrop-blur-md">
+              <span className="rounded-md bg-black/60 px-2 py-1 text-center text-[10px] leading-tight text-foreground/70 backdrop-blur-md">
                 Transformation
                 <br />
                 en temps réel
@@ -569,8 +569,8 @@ export default function DashboardPage() {
           </div>
 
           {/* Outils rapides ChapCam */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/50">
+          <div className="rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-foreground/50">
               Outils rapides ChapCam
             </p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -578,7 +578,7 @@ export default function DashboardPage() {
                 <Link
                   key={tool.href}
                   href={tool.href}
-                  className="group flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20"
+                  className="group flex items-center gap-2.5 rounded-xl border border-hairline bg-black/30 px-3 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-hairline-strong"
                 >
                   <span
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
@@ -586,8 +586,8 @@ export default function DashboardPage() {
                   >
                     <tool.icon className="h-4 w-4" style={{ color: tool.color }} />
                   </span>
-                  <span className="flex-1 truncate text-xs font-medium text-white">{tool.label}</span>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-white/30 transition-transform group-hover:translate-x-0.5 group-hover:text-white/60" />
+                  <span className="flex-1 truncate text-xs font-medium text-foreground">{tool.label}</span>
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-foreground/30 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground/60" />
                 </Link>
               ))}
             </div>
@@ -596,30 +596,30 @@ export default function DashboardPage() {
           {/* Avatars */}
           <div className="grid gap-4 md:grid-cols-[260px_1fr]">
             {/* Avatar selectionne */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
-              <p className="mb-3 text-sm font-semibold text-white">Avatar sélectionné</p>
+            <div className="rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
+              <p className="mb-3 text-sm font-semibold text-foreground">Avatar sélectionné</p>
               {selectedAvatar ? (
                 <div className="flex items-center gap-3">
                   <img
                     src={selectedAvatar.url || '/placeholder.svg'}
                     alt={selectedAvatar.name}
-                    className="h-14 w-14 rounded-xl border border-[#00ff88]/40 object-cover"
+                    className="h-14 w-14 rounded-xl border border-primary/40 object-cover"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-white">{selectedAvatar.name}</p>
-                    <p className="text-xs text-white/40">Actif</p>
+                    <p className="truncate text-sm font-medium text-foreground">{selectedAvatar.name}</p>
+                    <p className="text-xs text-foreground/40">Actif</p>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-white/40">Aucun avatar sélectionné</p>
+                <p className="text-sm text-foreground/40">Aucun avatar sélectionné</p>
               )}
             </div>
 
             {/* Mes avatars */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+            <div className="rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-semibold text-white">Mes avatars</p>
-                <Link href="/dashboard/avatars" className="flex items-center gap-1 text-xs text-[#00ff88] hover:underline">
+                <p className="text-sm font-semibold text-foreground">Mes avatars</p>
+                <Link href="/dashboard/avatars" className="flex items-center gap-1 text-xs text-primary hover:underline">
                   <Plus className="h-3.5 w-3.5" />
                   Ajouter
                 </Link>
@@ -629,11 +629,11 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-3 py-2">
                   <Link
                     href="/dashboard/avatars"
-                    className="flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-white/20 text-white/50 transition-colors hover:border-[#00ff88]/40 hover:text-[#00ff88]"
+                    className="flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-hairline-strong text-foreground/50 transition-colors hover:border-primary/40 hover:text-primary"
                   >
                     <Plus className="h-5 w-5" />
                   </Link>
-                  <p className="text-sm text-white/40">Créez votre premier avatar</p>
+                  <p className="text-sm text-foreground/40">Créez votre premier avatar</p>
                 </div>
               ) : (
                 <div className="flex gap-3 overflow-x-auto pb-1">
@@ -643,24 +643,24 @@ export default function DashboardPage() {
                       onClick={() => handleSelectAvatar(avatar)}
                       className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 transition-all ${
                         selectedAvatar?.id === avatar.id
-                          ? 'border-[#00ff88] shadow-[0_0_20px_rgba(0,255,136,0.3)]'
-                          : 'border-white/10 hover:border-white/30'
+                          ? 'border-primary shadow-[0_0_20px_rgba(0,255,136,0.3)]'
+                          : 'border-hairline hover:border-white/30'
                       }`}
                     >
                       <img src={avatar.url || '/placeholder.svg'} alt={avatar.name} className="h-full w-full object-cover" />
                       {selectedAvatar?.id === avatar.id && (
-                        <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#00ff88]">
+                        <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
                           <Check className="h-3 w-3 text-black" />
                         </span>
                       )}
                       <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1">
-                        <span className="block truncate text-[10px] font-medium text-white">{avatar.name}</span>
+                        <span className="block truncate text-[10px] font-medium text-foreground">{avatar.name}</span>
                       </span>
                     </button>
                   ))}
                   <Link
                     href="/dashboard/avatars"
-                    className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-white/20 text-white/50 transition-colors hover:border-[#00ff88]/40 hover:text-[#00ff88]"
+                    className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-hairline-strong text-foreground/50 transition-colors hover:border-primary/40 hover:text-primary"
                   >
                     <Plus className="h-5 w-5" />
                     <span className="text-[10px]">Ajouter</span>
@@ -680,8 +680,8 @@ export default function DashboardPage() {
                 : isConnecting
                 ? 'cursor-wait bg-yellow-500 text-black'
                 : canStart
-                ? 'bg-gradient-to-r from-[#00ff88] via-[#1ec8d8] to-[#8b5cf6] text-white shadow-[0_0_40px_rgba(0,255,136,0.35)] hover:shadow-[0_0_60px_rgba(139,92,246,0.45)]'
-                : 'cursor-not-allowed bg-gray-700 text-gray-400'
+                ? 'bg-gradient-to-r from-primary via-[#1ec8d8] to-[#8b5cf6] text-foreground shadow-[0_0_40px_rgba(0,255,136,0.35)] hover:shadow-[0_0_60px_rgba(139,92,246,0.45)]'
+                : 'cursor-not-allowed bg-gray-700 text-muted-foreground'
             }`}
           >
             <span className="flex flex-col items-center justify-center gap-0.5">
@@ -711,15 +711,15 @@ export default function DashboardPage() {
         </div>
 
         {/* Panneau de reglages */}
-        <aside className="h-fit space-y-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl lg:sticky lg:top-6">
+        <aside className="h-fit space-y-6 rounded-2xl border border-hairline bg-muted p-5 backdrop-blur-xl lg:sticky lg:top-6">
           <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-[#00ff88]" />
-            <h2 className="text-base font-bold text-white">Réglages du swap</h2>
+            <Settings className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-bold text-foreground">Réglages du swap</h2>
           </div>
 
           {/* Qualite de rendu */}
           <div>
-            <p className="mb-2 text-xs font-medium text-white/60">Qualité de rendu</p>
+            <p className="mb-2 text-xs font-medium text-foreground/60">Qualité de rendu</p>
             <div className="grid grid-cols-3 gap-1 rounded-lg bg-black/40 p-1">
               {([
                 { id: 'standard', label: 'Standard' },
@@ -730,7 +730,7 @@ export default function DashboardPage() {
                   key={opt.id}
                   onClick={() => setRenderQuality(opt.id)}
                   className={`rounded-md py-1.5 text-xs font-medium transition-colors ${
-                    renderQuality === opt.id ? 'bg-[#00ff88] text-black' : 'text-white/60 hover:text-white'
+                    renderQuality === opt.id ? 'bg-primary text-black' : 'text-foreground/60 hover:text-foreground'
                   }`}
                 >
                   {opt.label}
@@ -747,8 +747,8 @@ export default function DashboardPage() {
           ]).map(s => (
             <div key={s.label}>
               <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-xs font-medium text-white/60">{s.label}</span>
-                <span className="text-xs font-semibold text-[#00ff88]">{s.value}%</span>
+                <span className="text-xs font-medium text-foreground/60">{s.label}</span>
+                <span className="text-xs font-semibold text-primary">{s.value}%</span>
               </div>
               <input
                 type="range"
@@ -756,14 +756,14 @@ export default function DashboardPage() {
                 max={100}
                 value={s.value}
                 onChange={e => s.set(Number(e.target.value))}
-                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-[#00ff88]"
+                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary"
               />
             </div>
           ))}
 
           {/* Orientation du visage */}
           <div>
-            <p className="mb-2 text-xs font-medium text-white/60">Orientation du visage</p>
+            <p className="mb-2 text-xs font-medium text-foreground/60">Orientation du visage</p>
             <div className="grid grid-cols-3 gap-2">
               {([
                 { id: 'left', label: 'Gauche' },
@@ -775,8 +775,8 @@ export default function DashboardPage() {
                   onClick={() => setFaceOrientation(opt.id)}
                   className={`flex flex-col items-center gap-1 rounded-lg border py-2.5 text-[10px] transition-colors ${
                     faceOrientation === opt.id
-                      ? 'border-[#00ff88]/50 bg-[#00ff88]/10 text-[#00ff88]'
-                      : 'border-white/10 bg-black/30 text-white/50 hover:border-white/20'
+                      ? 'border-primary/50 bg-primary/10 text-primary'
+                      : 'border-hairline bg-black/30 text-foreground/50 hover:border-hairline-strong'
                   }`}
                 >
                   <Camera className="h-4 w-4" />
@@ -788,14 +788,14 @@ export default function DashboardPage() {
 
           {/* Correction des couleurs */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-white/60">Correction des couleurs</span>
+            <span className="text-xs font-medium text-foreground/60">Correction des couleurs</span>
             <button
               onClick={() => setColorCorrection(v => !v)}
               role="switch"
               aria-checked={colorCorrection}
               aria-label="Correction des couleurs"
               className={`relative h-6 w-11 rounded-full transition-colors ${
-                colorCorrection ? 'bg-[#00ff88]' : 'bg-white/15'
+                colorCorrection ? 'bg-primary' : 'bg-white/15'
               }`}
             >
               <span
@@ -808,7 +808,7 @@ export default function DashboardPage() {
 
           {/* Mode de traitement */}
           <div>
-            <p className="mb-2 text-xs font-medium text-white/60">Mode de traitement</p>
+            <p className="mb-2 text-xs font-medium text-foreground/60">Mode de traitement</p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => handleModeChange('cloud')}
@@ -816,7 +816,7 @@ export default function DashboardPage() {
                 className={`flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
                   processingMode === 'cloud'
                     ? 'border-blue-500/50 bg-blue-500/10 text-blue-400'
-                    : 'border-white/10 bg-black/30 text-white/50 hover:border-white/20'
+                    : 'border-hairline bg-black/30 text-foreground/50 hover:border-hairline-strong'
                 }`}
               >
                 <Cloud className="h-4 w-4" />
@@ -827,7 +827,7 @@ export default function DashboardPage() {
                 className={`flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium transition-colors ${
                   processingMode === 'local'
                     ? 'border-green-500/50 bg-green-500/10 text-green-400'
-                    : 'border-white/10 bg-black/30 text-white/50 hover:border-white/20'
+                    : 'border-hairline bg-black/30 text-foreground/50 hover:border-hairline-strong'
                 }`}
               >
                 <Monitor className="h-4 w-4" />
@@ -842,14 +842,14 @@ export default function DashboardPage() {
           </div>
 
           {/* Session info */}
-          <div className="space-y-2 rounded-xl border border-white/10 bg-black/30 p-3 text-xs">
+          <div className="space-y-2 rounded-xl border border-hairline bg-black/30 p-3 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-white/50">Durée session</span>
-              <span className="font-medium text-white">{formatDuration(duration)}</span>
+              <span className="text-foreground/50">Durée session</span>
+              <span className="font-medium text-foreground">{formatDuration(duration)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-white/50">Points utilisés</span>
-              <span className="font-medium text-white">{pointsUsed} pts</span>
+              <span className="text-foreground/50">Points utilisés</span>
+              <span className="font-medium text-foreground">{pointsUsed} pts</span>
             </div>
           </div>
         </aside>

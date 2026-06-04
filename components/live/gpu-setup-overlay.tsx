@@ -59,7 +59,7 @@ export function GpuSetupOverlay({ status, queuePosition, queueTotal, saturated, 
       aria-label="Preparation du moteur Live"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
     >
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-[#00ff88]/20 bg-[#0c0f0d] p-7 text-center shadow-[0_0_60px_rgba(0,255,136,0.15)]">
+      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-primary/20 bg-card p-7 text-center shadow-[0_0_60px_rgba(0,255,136,0.15)]">
         {/* Halo discret en fond */}
         <div
           aria-hidden
@@ -70,41 +70,41 @@ export function GpuSetupOverlay({ status, queuePosition, queueTotal, saturated, 
         <button
           onClick={onClose}
           aria-label="Fermer et annuler"
-          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-gray-400 transition-colors hover:bg-white/10 hover:text-white"
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>
 
         {/* Icone */}
-        <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-[#00ff88]/30 bg-[#00ff88]/10">
+        <div className="relative mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10">
           {isQueued ? (
-            <Users className="h-7 w-7 text-[#00ff88]" />
+            <Users className="h-7 w-7 text-primary" />
           ) : (
-            <Cpu className="h-7 w-7 text-[#00ff88]" />
+            <Cpu className="h-7 w-7 text-primary" />
           )}
         </div>
 
         {/* Position de file en gros */}
         {isQueued && queuePosition > 0 && (
-          <div className="mb-2 text-4xl font-extrabold text-[#00ff88]">#{queuePosition}</div>
+          <div className="mb-2 text-4xl font-extrabold text-primary">#{queuePosition}</div>
         )}
 
-        <h2 className="text-balance text-lg font-bold text-white">{title}</h2>
-        <p className="mx-auto mt-2 max-w-xs text-pretty text-sm leading-relaxed text-gray-400">
+        <h2 className="text-balance text-lg font-bold text-foreground">{title}</h2>
+        <p className="mx-auto mt-2 max-w-xs text-pretty text-sm leading-relaxed text-muted-foreground">
           {subtitle}
         </p>
 
         {isQueued && queueTotal > 0 && (
-          <p className="mt-2 text-xs text-gray-500">{queueTotal} personne(s) en attente</p>
+          <p className="mt-2 text-xs text-text-faint">{queueTotal} personne(s) en attente</p>
         )}
 
         {/* Barre de progression indeterminee */}
-        <div className="mt-6 h-1.5 w-full overflow-hidden rounded-full bg-white/5">
-          <div className="h-full w-1/3 animate-[gpu-slide_1.4s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent via-[#00ff88] to-transparent" />
+        <div className="mt-6 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div className="h-full w-1/3 animate-[gpu-slide_1.4s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent via-primary to-transparent" />
         </div>
 
         {/* Etat + chrono */}
-        <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-500">
+        <div className="mt-4 flex items-center justify-center gap-2 text-xs text-text-faint">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
           <span>
             {status === 'connecting'
@@ -120,7 +120,7 @@ export function GpuSetupOverlay({ status, queuePosition, queueTotal, saturated, 
         {/* Bouton fermer en bas (comme LiveSync) */}
         <button
           onClick={onClose}
-          className="mt-6 w-full rounded-xl bg-white/5 py-3 text-sm font-semibold text-gray-300 transition-colors hover:bg-white/10 hover:text-white"
+          className="mt-6 w-full rounded-xl bg-muted py-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           Annuler
         </button>

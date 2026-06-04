@@ -86,16 +86,16 @@ export default function MesDemandesPage() {
       <div className="mb-6 flex items-center gap-3">
         <Link
           href="/dashboard"
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#333] bg-[#1a1a1a] text-gray-400 transition-colors hover:text-white"
+          className="flex h-9 w-9 items-center justify-center rounded-lg border border-hairline bg-secondary text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold text-white">
-            <ClipboardList className="h-6 w-6 text-[#00ff88]" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-foreground">
+            <ClipboardList className="h-6 w-6 text-primary" />
             Mes demandes d&apos;installation
           </h1>
-          <p className="text-sm text-gray-400">Suivez l&apos;etat de vos demandes et reglez les frais</p>
+          <p className="text-sm text-muted-foreground">Suivez l&apos;etat de vos demandes et reglez les frais</p>
         </div>
       </div>
 
@@ -106,13 +106,13 @@ export default function MesDemandesPage() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-gray-500">
+        <div className="flex items-center justify-center py-20 text-text-faint">
           <Loader2 className="h-6 w-6 animate-spin" />
         </div>
       ) : requests.length === 0 ? (
-        <div className="rounded-2xl border border-[#222] bg-[#111] py-16 text-center">
-          <ClipboardList className="mx-auto mb-3 h-10 w-10 text-gray-600" />
-          <p className="text-gray-400">Vous n&apos;avez aucune demande d&apos;installation.</p>
+        <div className="rounded-2xl border border-hairline bg-card py-16 text-center">
+          <ClipboardList className="mx-auto mb-3 h-10 w-10 text-text-faint" />
+          <p className="text-muted-foreground">Vous n&apos;avez aucune demande d&apos;installation.</p>
           <Link
             href="/dashboard"
             className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8]"
@@ -125,12 +125,12 @@ export default function MesDemandesPage() {
           {requests.map((r) => (
             <div
               key={r.id}
-              className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#111] p-5 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-3 rounded-2xl border border-hairline bg-card p-5 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   {r.paid ? (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-[#00ff88]/30 bg-[#00ff88]/15 px-2.5 py-0.5 text-xs font-bold text-[#00ff88]">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/15 px-2.5 py-0.5 text-xs font-bold text-primary">
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       Paye · {INSTALL_FEE.toLocaleString()} F
                     </span>
@@ -140,18 +140,18 @@ export default function MesDemandesPage() {
                       En attente de paiement
                     </span>
                   )}
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-medium text-gray-400">
+                  <span className="rounded-full border border-hairline bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
                     {r.status}
                   </span>
                 </div>
-                <p className="mt-2 flex items-center gap-1.5 text-sm text-gray-300">
-                  <MapPin className="h-4 w-4 text-gray-500" />
+                <p className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <MapPin className="h-4 w-4 text-text-faint" />
                   {r.location || 'Lieu non precise'}
                 </p>
                 {r.apps && r.apps.length > 0 && (
-                  <p className="mt-1 text-xs text-gray-500">{r.apps.join(' · ')}</p>
+                  <p className="mt-1 text-xs text-text-faint">{r.apps.join(' · ')}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-600">Demande le {fmtDate(r.created_at)}</p>
+                <p className="mt-1 text-xs text-text-faint">Demande le {fmtDate(r.created_at)}</p>
               </div>
 
               {!r.paid && (

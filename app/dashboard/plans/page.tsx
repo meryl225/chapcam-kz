@@ -55,21 +55,21 @@ function PlansContent() {
   }, [searchParams])
 
   return (
-    <div className="min-h-screen bg-[#050505] px-6 py-12">
+    <div className="min-h-screen bg-background px-6 py-12">
       <div className="mx-auto max-w-7xl">
         {/* Banniere offre */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
-          <div className="relative overflow-hidden rounded-2xl border border-[#00ff88]/50 bg-gradient-to-r from-[#00ff88]/20 via-[#00ff88]/10 to-[#00ff88]/20 p-6">
+          <div className="relative overflow-hidden rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 p-6">
             <div className="relative z-10 text-center">
               <div className="mb-2 flex items-center justify-center gap-2">
-                <Sparkles className="h-5 w-5 text-[#00ff88]" />
-                <span className="text-lg font-bold text-[#00ff88]">PAIEMENT EN LIGNE SECURISE</span>
-                <Sparkles className="h-5 w-5 text-[#00ff88]" />
+                <Sparkles className="h-5 w-5 text-primary" />
+                <span className="text-lg font-bold text-primary">PAIEMENT EN LIGNE SECURISE</span>
+                <Sparkles className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="mb-2 text-xl font-black text-white md:text-2xl">
-                Payez par <span className="text-[#00ff88]">Carte bancaire, Wave, Orange, MTN, Moov ou Djamo</span> via PayDunya
+              <h3 className="mb-2 text-xl font-black text-foreground md:text-2xl">
+                Payez par <span className="text-primary">Carte bancaire, Wave, Orange, MTN, Moov ou Djamo</span> via PayDunya
               </h3>
-              <p className="text-sm text-gray-300">
+              <p className="text-sm text-muted-foreground">
                 Activation automatique de votre compte des que le paiement est confirme.
               </p>
             </div>
@@ -77,11 +77,11 @@ function PlansContent() {
         </motion.div>
 
         <div className="mb-16 text-center">
-          <h1 className="mb-4 text-4xl font-bold text-white md:text-5xl text-balance">
+          <h1 className="mb-4 text-4xl font-bold text-foreground md:text-5xl text-balance">
             Changez d&apos;apparence en live
           </h1>
           <p className="text-3xl font-medium text-emerald-400">avec ChapCam</p>
-          <p className="mt-6 text-lg text-gray-400">
+          <p className="mt-6 text-lg text-muted-foreground">
             2 points = 1 seconde de transformation du visage et corps entier
           </p>
         </div>
@@ -108,9 +108,9 @@ function PlansContent() {
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className={`relative flex flex-col rounded-3xl border bg-[#111] p-8 transition-all hover:border-[#00ff88] ${
+                className={`relative flex flex-col rounded-3xl border bg-card p-8 transition-all hover:border-primary ${
                   plan.popular
-                    ? 'scale-[1.03] border-[#00ff88] shadow-2xl shadow-[#00ff88]/20'
+                    ? 'scale-[1.03] border-primary shadow-2xl shadow-primary/20'
                     : 'border-gray-800'
                 }`}
               >
@@ -119,29 +119,29 @@ function PlansContent() {
                 </div>
 
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-[#00ff88] px-6 py-1 text-sm font-bold text-black">
+                  <div className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-primary px-6 py-1 text-sm font-bold text-black">
                     <Crown className="h-4 w-4" />
                     MEILLEUR CHOIX
                   </div>
                 )}
 
                 <div className="text-sm font-medium text-emerald-400">{plan.duration}</div>
-                <h3 className="mt-2 text-3xl font-bold text-white">{plan.name}</h3>
+                <h3 className="mt-2 text-3xl font-bold text-foreground">{plan.name}</h3>
 
                 <div className="mb-2 mt-8">
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="text-xl text-gray-500 line-through">
+                    <span className="text-xl text-text-faint line-through">
                       {plan.oldPrice.toLocaleString()}
                     </span>
                     <span className="text-sm font-semibold text-red-400">-{plan.discount}%</span>
                   </div>
-                  <span className="text-5xl font-bold text-[#00ff88]">
+                  <span className="text-5xl font-bold text-primary">
                     {plan.price.toLocaleString()}
                   </span>
-                  <span className="text-2xl text-gray-400"> FCFA</span>
+                  <span className="text-2xl text-muted-foreground"> FCFA</span>
                 </div>
 
-                <ul className="mt-8 flex-1 space-y-4 text-gray-300">
+                <ul className="mt-8 flex-1 space-y-4 text-muted-foreground">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-center gap-3">
                       <Check className="h-5 w-5 flex-shrink-0 text-emerald-400" />
@@ -159,7 +159,7 @@ function PlansContent() {
                   disabled={!!pendingId}
                   className={`mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all disabled:opacity-60 ${
                     plan.popular
-                      ? 'bg-[#00ff88] text-black hover:bg-[#00dd77]'
+                      ? 'bg-primary text-black hover:bg-primary/90'
                       : 'bg-white text-black hover:bg-gray-200'
                   }`}
                 >
@@ -197,13 +197,13 @@ function PlansContent() {
                   <Video className="h-3.5 w-3.5" />
                   Face Swap Temps Reel
                 </div>
-                <h3 className="text-2xl font-black text-white md:text-3xl">{LIVE_OFFER.name}</h3>
-                <p className="mt-2 max-w-xl text-sm text-gray-400">
+                <h3 className="text-2xl font-black text-foreground md:text-3xl">{LIVE_OFFER.name}</h3>
+                <p className="mt-2 max-w-xl text-sm text-muted-foreground">
                   {LIVE_OFFER.description} Cette offre est <span className="font-semibold text-red-400">independante</span> des
                   formules a points : elle ouvre une fenetre d&apos;acces dediee au moteur GPU temps reel.
                 </p>
 
-                <ul className="mt-4 grid gap-2 text-sm text-gray-300 sm:grid-cols-2">
+                <ul className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
                   <li className="flex items-center gap-2">
                     <Check className="h-4 w-4 flex-shrink-0 text-red-400" />
                     {LIVE_OFFER.windowMinutes} minutes de swap en direct
@@ -217,7 +217,7 @@ function PlansContent() {
                     Utilisable en appel video (OBS)
                   </li>
                   <li className="flex items-center gap-2">
-                    <Gift className="h-4 w-4 flex-shrink-0 text-[#00ff88]" />
+                    <Gift className="h-4 w-4 flex-shrink-0 text-primary" />
                     Essai gratuit de {Math.round(LIVE_TRIAL_SECONDS / 60)} min offert
                   </li>
                 </ul>
@@ -228,12 +228,12 @@ function PlansContent() {
                   <span className="text-4xl font-black text-red-400">
                     {LIVE_OFFER.price.toLocaleString()}
                   </span>
-                  <span className="text-xl text-gray-400"> FCFA</span>
-                  <p className="text-xs text-gray-500">pour {LIVE_OFFER.windowMinutes} min d&apos;acces</p>
+                  <span className="text-xl text-muted-foreground"> FCFA</span>
+                  <p className="text-xs text-text-faint">pour {LIVE_OFFER.windowMinutes} min d&apos;acces</p>
                 </div>
                 <Link
                   href="/live"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-[#00ff88]/50 bg-[#00ff88]/10 py-3 font-semibold text-[#00ff88] transition-colors hover:bg-[#00ff88]/20"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/50 bg-primary/10 py-3 font-semibold text-primary transition-colors hover:bg-primary/20"
                 >
                   <Gift className="h-4 w-4" />
                   Essayer gratuitement
@@ -263,16 +263,16 @@ function PlansContent() {
           transition={{ delay: 0.5 }}
           className="mt-12 text-center"
         >
-          <div className="inline-flex flex-col items-center gap-3 rounded-2xl border border-[#00ff88]/30 bg-[#00ff88]/10 px-6 py-4 sm:flex-row">
-            <Clock className="h-5 w-5 flex-shrink-0 text-[#00ff88]" />
-            <p className="font-semibold text-[#00ff88]">
+          <div className="inline-flex flex-col items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 px-6 py-4 sm:flex-row">
+            <Clock className="h-5 w-5 flex-shrink-0 text-primary" />
+            <p className="font-semibold text-primary">
               Activation automatique et immediate apres confirmation du paiement.
             </p>
           </div>
           <div className="mt-6">
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-5 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white"
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-card px-5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
             >
               Retour au tableau de bord
             </Link>
@@ -287,8 +287,8 @@ export default function PlansPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#050505]">
-          <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       }
     >

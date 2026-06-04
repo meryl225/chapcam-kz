@@ -110,10 +110,10 @@ export function InstallationRequestModal({ open, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-lg rounded-2xl border border-[#2563eb]/30 bg-[#0d1117] p-6 shadow-[0_0_40px_rgba(37,99,235,0.25)]">
+      <div className="relative w-full max-w-lg rounded-2xl border border-[#2563eb]/30 bg-card p-6 shadow-[0_0_40px_rgba(37,99,235,0.25)]">
         <button
           onClick={handleClose}
-          className="absolute right-4 top-4 text-gray-400 transition-colors hover:text-white"
+          className="absolute right-4 top-4 text-muted-foreground transition-colors hover:text-foreground"
           aria-label="Fermer"
         >
           <X className="h-5 w-5" />
@@ -124,8 +124,8 @@ export function InstallationRequestModal({ open, onClose }: Props) {
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#2563eb]/20">
               <Check className="h-7 w-7 text-[#3b82f6]" />
             </div>
-            <h3 className="text-lg font-bold text-white">Demande envoyee</h3>
-            <p className="mt-2 text-sm text-gray-400">
+            <h3 className="text-lg font-bold text-foreground">Demande envoyee</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
               Pour finaliser, validez votre demande en reglant les frais
               d&apos;installation. Notre equipe vous contactera ensuite au numero
               indique pour planifier l&apos;intervention.
@@ -133,10 +133,10 @@ export function InstallationRequestModal({ open, onClose }: Props) {
 
             <div className="mt-4 w-full rounded-lg border border-[#2563eb]/30 bg-[#2563eb]/10 px-4 py-3 text-left">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-300">Frais d&apos;installation</span>
-                <span className="text-lg font-bold text-white">8 500 F</span>
+                <span className="text-sm text-muted-foreground">Frais d&apos;installation</span>
+                <span className="text-lg font-bold text-foreground">8 500 F</span>
               </div>
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Paiement securise via PayDunya. Compte credite automatiquement.
               </p>
             </div>
@@ -167,7 +167,7 @@ export function InstallationRequestModal({ open, onClose }: Props) {
 
             <button
               onClick={handleClose}
-              className="mt-2 text-sm text-gray-400 transition-colors hover:text-white"
+              className="mt-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
               Plus tard
             </button>
@@ -179,8 +179,8 @@ export function InstallationRequestModal({ open, onClose }: Props) {
                 <Download className="h-5 w-5 text-[#3b82f6]" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-white">Demande d&apos;installation</h3>
-                <p className="text-sm text-gray-400">
+                <h3 className="text-lg font-bold text-foreground">Demande d&apos;installation</h3>
+                <p className="text-sm text-muted-foreground">
                   Installez ChapCam avec vos apps d&apos;appel video
                 </p>
               </div>
@@ -193,7 +193,7 @@ export function InstallationRequestModal({ open, onClose }: Props) {
             </div>
 
             {/* Apps */}
-            <label className="mb-2 block text-sm font-medium text-white">
+            <label className="mb-2 block text-sm font-medium text-foreground">
               Applications a installer avec ChapCam
             </label>
             <div className="mb-4 flex flex-wrap gap-2">
@@ -207,7 +207,7 @@ export function InstallationRequestModal({ open, onClose }: Props) {
                     className={`rounded-full border px-3 py-1.5 text-sm transition-colors ${
                       active
                         ? 'border-[#2563eb] bg-[#2563eb]/20 text-[#93c5fd]'
-                        : 'border-[#333] bg-white/5 text-gray-300 hover:border-[#555]'
+                        : 'border-hairline bg-muted text-muted-foreground hover:border-hairline-strong'
                     }`}
                   >
                     {active && <Check className="mr-1 inline h-3.5 w-3.5" />}
@@ -218,36 +218,36 @@ export function InstallationRequestModal({ open, onClose }: Props) {
             </div>
 
             {/* Lieu */}
-            <label className="mb-2 block text-sm font-medium text-white">
+            <label className="mb-2 block text-sm font-medium text-foreground">
               Lieu d&apos;installation
             </label>
-            <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#333] bg-white/5 px-3">
-              <MapPin className="h-4 w-4 shrink-0 text-gray-400" />
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-hairline bg-muted px-3">
+              <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" />
               <input
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="Ville, quartier, adresse..."
-                className="w-full bg-transparent py-2.5 text-white placeholder-gray-500 outline-none"
+                className="w-full bg-transparent py-2.5 text-foreground placeholder-gray-500 outline-none"
               />
             </div>
 
             {/* Numero */}
-            <label className="mb-2 block text-sm font-medium text-white">
+            <label className="mb-2 block text-sm font-medium text-foreground">
               Numero joignable
             </label>
-            <div className="mb-4 flex items-center gap-2 rounded-lg border border-[#333] bg-white/5 px-3">
-              <Phone className="h-4 w-4 shrink-0 text-gray-400" />
+            <div className="mb-4 flex items-center gap-2 rounded-lg border border-hairline bg-muted px-3">
+              <Phone className="h-4 w-4 shrink-0 text-muted-foreground" />
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+225 ..."
                 inputMode="tel"
-                className="w-full bg-transparent py-2.5 text-white placeholder-gray-500 outline-none"
+                className="w-full bg-transparent py-2.5 text-foreground placeholder-gray-500 outline-none"
               />
             </div>
 
             {/* Note */}
-            <label className="mb-2 block text-sm font-medium text-white">
+            <label className="mb-2 block text-sm font-medium text-foreground">
               Note (optionnel)
             </label>
             <textarea
@@ -255,7 +255,7 @@ export function InstallationRequestModal({ open, onClose }: Props) {
               onChange={(e) => setNote(e.target.value)}
               rows={2}
               placeholder="Precisions sur votre appareil, vos disponibilites..."
-              className="mb-4 w-full resize-none rounded-lg border border-[#333] bg-white/5 px-3 py-2.5 text-white placeholder-gray-500 outline-none"
+              className="mb-4 w-full resize-none rounded-lg border border-hairline bg-muted px-3 py-2.5 text-foreground placeholder-gray-500 outline-none"
             />
 
             {error && (

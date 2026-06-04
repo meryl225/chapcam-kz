@@ -244,7 +244,7 @@ export default function AvatarsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -254,12 +254,12 @@ export default function AvatarsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-white">MES AVATARS</h1>
-          <p className="text-gray-400 mt-1">Uploade la photo de la personne en qui tu veux te transformer en temps reel</p>
+          <h1 className="text-2xl font-bold text-foreground">MES AVATARS</h1>
+          <p className="text-muted-foreground mt-1">Uploade la photo de la personne en qui tu veux te transformer en temps reel</p>
         </div>
         <Button 
           onClick={() => setIsModalOpen(true)}
-          className="bg-[#00ff88] text-black hover:bg-[#00dd77] font-semibold"
+          className="bg-primary text-black hover:bg-primary/90 font-semibold"
         >
           <Plus className="mr-2 h-4 w-4" /> AJOUTER UNE PHOTO
         </Button>
@@ -267,12 +267,12 @@ export default function AvatarsPage() {
 
       {/* Avatars Grid */}
       {avatars.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 border border-dashed border-white/20 rounded-2xl bg-[#111]">
-          <Sparkles className="h-16 w-16 text-[#00ff88]/30 mb-4" />
-          <p className="text-gray-400 mb-4">Aucun avatar pour le moment</p>
+        <div className="flex flex-col items-center justify-center py-20 border border-dashed border-hairline-strong rounded-2xl bg-card">
+          <Sparkles className="h-16 w-16 text-primary/30 mb-4" />
+          <p className="text-muted-foreground mb-4">Aucun avatar pour le moment</p>
           <Button 
             onClick={() => setIsModalOpen(true)}
-            className="bg-[#00ff88] text-black hover:bg-[#00dd77]"
+            className="bg-primary text-black hover:bg-primary/90"
           >
             <Plus className="mr-2 h-4 w-4" /> Creer mon premier avatar
           </Button>
@@ -284,8 +284,8 @@ export default function AvatarsPage() {
               key={avatar.id}
               className={`relative group rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
                 avatar.is_active
-                  ? 'border-[#00ff88] shadow-[0_0_20px_rgba(0,255,136,0.3)]'
-                  : 'border-white/10 hover:border-white/30'
+                  ? 'border-primary shadow-[0_0_20px_rgba(0,255,136,0.3)]'
+                  : 'border-hairline hover:border-white/30'
               }`}
               onClick={() => handleSetActive(avatar)}
             >
@@ -299,14 +299,14 @@ export default function AvatarsPage() {
               
               {/* Active badge */}
               {avatar.is_active && (
-                <div className="absolute top-3 right-3 bg-[#00ff88] text-black text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
+                <div className="absolute top-3 right-3 bg-primary text-black text-xs font-bold px-2 py-1 rounded-full flex items-center gap-1">
                   <Check className="h-3 w-3" /> ACTIF
                 </div>
               )}
 
               {/* Name overlay */}
               <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-4">
-                <p className="text-white font-semibold truncate">{avatar.name}</p>
+                <p className="text-foreground font-semibold truncate">{avatar.name}</p>
               </div>
 
               {/* Delete button */}
@@ -326,7 +326,7 @@ export default function AvatarsPage() {
 
       {/* Upload Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="bg-[#111] border-white/10 text-white max-w-lg">
+        <DialogContent className="bg-card border-hairline text-foreground max-w-lg">
           <DialogHeader>
             <DialogTitle>Ajouter un avatar</DialogTitle>
           </DialogHeader>
@@ -334,12 +334,12 @@ export default function AvatarsPage() {
           <div className="space-y-4">
             {/* Name input */}
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">Nom de l'avatar</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-2">Nom de l'avatar</label>
               <Input
                 value={avatarName}
                 onChange={(e) => setAvatarName(e.target.value)}
                 placeholder="Ex: John, Emma, etc."
-                className="bg-[#1a1a1a] border-white/10 text-white"
+                className="bg-secondary border-hairline text-foreground"
                 maxLength={30}
               />
             </div>
@@ -350,7 +350,7 @@ export default function AvatarsPage() {
               onDragOver={(e) => e.preventDefault()}
               onClick={() => fileInputRef.current?.click()}
               className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
-                previewUrl ? 'border-[#00ff88]' : 'border-white/20 hover:border-white/40'
+                previewUrl ? 'border-primary' : 'border-hairline-strong hover:border-white/40'
               }`}
             >
               {previewUrl ? (
@@ -369,9 +369,9 @@ export default function AvatarsPage() {
                 </div>
               ) : (
                 <>
-                  <Upload className="h-12 w-12 text-gray-500 mx-auto mb-3" />
-                  <p className="text-gray-400">Glisse une photo ici ou clique pour selectionner</p>
-                  <p className="text-gray-500 text-sm mt-2">JPG, PNG ou WebP - Max 15 Mo</p>
+                  <Upload className="h-12 w-12 text-text-faint mx-auto mb-3" />
+                  <p className="text-muted-foreground">Glisse une photo ici ou clique pour selectionner</p>
+                  <p className="text-text-faint text-sm mt-2">JPG, PNG ou WebP - Max 15 Mo</p>
                 </>
               )}
               <input
@@ -384,9 +384,9 @@ export default function AvatarsPage() {
             </div>
 
             {/* Tips */}
-            <div className="bg-[#00ff88]/10 border border-[#00ff88]/20 rounded-lg p-3">
-              <p className="text-[#00ff88] text-sm font-medium mb-1">Conseils pour un bon resultat:</p>
-              <ul className="text-gray-400 text-xs space-y-1">
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+              <p className="text-primary text-sm font-medium mb-1">Conseils pour un bon resultat:</p>
+              <ul className="text-muted-foreground text-xs space-y-1">
                 <li>- Photo de face, bien eclairee</li>
                 <li>- Visage bien visible et centre</li>
                 <li>- Fond neutre de preference</li>
@@ -403,14 +403,14 @@ export default function AvatarsPage() {
                   setPreviewUrl(null)
                   setAvatarName("")
                 }}
-                className="flex-1 border-white/20 text-white hover:bg-white/10"
+                className="flex-1 border-hairline-strong text-foreground hover:bg-muted"
               >
                 Annuler
               </Button>
               <Button
                 onClick={handleSaveAvatar}
                 disabled={!selectedFile || !avatarName.trim() || uploading}
-                className="flex-1 bg-[#00ff88] text-black hover:bg-[#00dd77] disabled:opacity-50"
+                className="flex-1 bg-primary text-black hover:bg-primary/90 disabled:opacity-50"
               >
                 {uploading ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enregistrement...</>
@@ -425,16 +425,16 @@ export default function AvatarsPage() {
 
       {/* Delete Confirmation Modal */}
       <Dialog open={!!deletingId} onOpenChange={() => setDeletingId(null)}>
-        <DialogContent className="bg-[#111] border-white/10 text-white max-w-sm">
+        <DialogContent className="bg-card border-hairline text-foreground max-w-sm">
           <DialogHeader>
             <DialogTitle>Supprimer cet avatar ?</DialogTitle>
           </DialogHeader>
-          <p className="text-gray-400">Cette action est irreversible.</p>
+          <p className="text-muted-foreground">Cette action est irreversible.</p>
           <div className="flex gap-3 mt-4">
             <Button
               variant="outline"
               onClick={() => setDeletingId(null)}
-              className="flex-1 border-white/20 text-white hover:bg-white/10"
+              className="flex-1 border-hairline-strong text-foreground hover:bg-muted"
             >
               Annuler
             </Button>

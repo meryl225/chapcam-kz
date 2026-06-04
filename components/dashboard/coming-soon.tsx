@@ -22,13 +22,13 @@ export function ComingSoon({
     <div className="mx-auto max-w-3xl px-4 py-8 md:px-8 md:py-12">
       <Link
         href="/dashboard"
-        className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-gray-400 transition-colors hover:text-white"
+        className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
         Retour au dashboard
       </Link>
 
-      <div className="rounded-2xl border border-white/10 bg-[#111] p-8 text-center md:p-12">
+      <div className="rounded-2xl border border-hairline bg-card p-8 text-center md:p-12">
         <div
           className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl"
           style={{ backgroundColor: glow }}
@@ -43,8 +43,8 @@ export function ComingSoon({
           Bientôt disponible
         </span>
 
-        <h1 className="mb-3 text-2xl font-bold text-white md:text-3xl text-balance">{title}</h1>
-        <p className="mx-auto mb-8 max-w-xl text-sm leading-relaxed text-gray-400 text-pretty">
+        <h1 className="mb-3 text-2xl font-bold text-foreground md:text-3xl text-balance">{title}</h1>
+        <p className="mx-auto mb-8 max-w-xl text-sm leading-relaxed text-muted-foreground text-pretty">
           {description}
         </p>
 
@@ -52,7 +52,7 @@ export function ComingSoon({
           {features.map((f) => (
             <li
               key={f}
-              className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-gray-200"
+              className="flex items-center gap-3 rounded-xl border border-hairline bg-muted px-4 py-3 text-sm text-foreground"
             >
               <span
                 className="flex h-2 w-2 shrink-0 rounded-full"
@@ -65,7 +65,7 @@ export function ComingSoon({
 
         <Link
           href="/dashboard"
-          className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-white/10"
+          className="inline-flex items-center justify-center rounded-xl border border-hairline bg-muted px-6 py-3 text-sm font-bold text-foreground transition-colors hover:bg-muted"
         >
           Explorer les autres outils
         </Link>
