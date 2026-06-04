@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
 import { HeaderActions } from '@/components/dashboard/hub/header-actions'
-import { UserCircle, Cloud, Sparkles, Gauge, Clock, Crown, Check } from 'lucide-react'
+import { UserCircle, Cloud, Sparkles, Gauge, Clock, Crown, Check, Zap, Timer, Users, Hourglass } from 'lucide-react'
 
 const POINTS_PER_SECOND = 2
 
@@ -28,7 +28,15 @@ export default async function DashboardHubPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const [{ data: subscription }, { data: activeAvatar }] = await Promise.all([
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
+
+  const [
+    { data: subscription },
+    { data: activeAvatar },
+    { count: avatarCount },
+    { data: todaySessions },
+  ] = await Promise.all([
     supabase
       .from('subscriptions')
       .select('plan, points, max_points, is_active')
@@ -40,7 +48,23 @@ export default async function DashboardHubPage() {
       .eq('user_id', user?.id ?? '')
       .eq('is_active', true)
       .maybeSingle(),
+    supabase
+      .from('user_avatars')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user?.id ?? ''),
+    supabase
+      .from('swap_sessions')
+      .select('duration_seconds')
+      .eq('user_id', user?.id ?? '')
+      .gte('started_at', startOfToday.toISOString()),
   ])
+
+  const swapsToday = todaySessions?.length ?? 0
+  const secondsToday = (todaySessions ?? []).reduce(
+    (acc, s) => acc + (s.duration_seconds ?? 0),
+    0,
+  )
+  const minutesToday = Math.floor(secondsToday / 60)
 
   const points = subscription?.points ?? 0
   const plan = subscription?.plan ?? 'free'
@@ -104,6 +128,33 @@ export default async function DashboardHubPage() {
           <p className="mt-1 text-sm text-gray-400">Choisissez l’outil que vous souhaitez utiliser.</p>
         </div>
         <ToolsGrid />
+      </section>
+
+      {/* Utilisation rapide */}
+      <section aria-label="Utilisation rapide" className="mt-8">
+        <h2 className="mb-4 text-xl font-bold text-white">Utilisation rapide</h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { icon: Zap, label: 'Swaps aujourd’hui', value: String(swapsToday), color: '#00ff88' },
+            { icon: Timer, label: 'Minutes restantes', value: fmtMinutes(points), color: '#f97316' },
+            { icon: Users, label: 'Avatars créés', value: String(avatarCount ?? 0), color: '#8b5cf6' },
+            { icon: Hourglass, label: 'Temps aujourd’hui', value: `${minutesToday} min`, color: '#22d3ee' },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="rounded-2xl border border-white/10 bg-[#111] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00ff88]/30"
+            >
+              <div
+                className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg"
+                style={{ backgroundColor: `${s.color}22` }}
+              >
+                <s.icon className="h-5 w-5" style={{ color: s.color }} />
+              </div>
+              <p className="text-2xl font-bold text-white">{s.value}</p>
+              <p className="mt-0.5 text-xs text-gray-500">{s.label}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* Premium banner */}
