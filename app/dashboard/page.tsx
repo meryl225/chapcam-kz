@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
+import { HeaderActions } from '@/components/dashboard/hub/header-actions'
 import { UserCircle, Cloud, Sparkles, Gauge, Clock, Crown, Check } from 'lucide-react'
 
 const POINTS_PER_SECOND = 2
@@ -61,12 +62,15 @@ export default async function DashboardHubPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
       {/* Header */}
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold text-white md:text-3xl text-balance">
-          {`Bienvenue ${displayName} `}
-          <span aria-hidden>👋</span>
-        </h1>
-        <p className="mt-1 text-sm text-gray-400">Voici un aperçu de tous les outils ChapCam.</p>
+      <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white md:text-3xl text-balance">
+            {`Bienvenue ${displayName} `}
+            <span aria-hidden>👋</span>
+          </h1>
+          <p className="mt-1 text-sm text-gray-400">Voici un aperçu de tous les outils ChapCam.</p>
+        </div>
+        <HeaderActions />
       </header>
 
       {/* Info bar */}
