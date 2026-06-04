@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
@@ -38,6 +38,16 @@ export default function DashboardPage() {
   const [showModeSettings, setShowModeSettings] = useState(false)
   const [stats, setStats] = useState({ fps: 0, latency: 0, resolution: '720p' })
   const [showInstallModal, setShowInstallModal] = useState(false)
+
+  // Reglages visuels (modernisation UI uniquement - n'affecte pas la logique du swap)
+  const [renderQuality, setRenderQuality] = useState<'standard' | 'hd' | 'ultra'>('ultra')
+  const [stability, setStability] = useState(80)
+  const [smoothing, setSmoothing] = useState(70)
+  const [noiseReduction, setNoiseReduction] = useState(60)
+  const [faceOrientation, setFaceOrientation] = useState<'left' | 'center' | 'right'>('center')
+  const [colorCorrection, setColorCorrection] = useState(true)
+  const [micOn, setMicOn] = useState(true)
+  const [camOn, setCamOn] = useState(true)
 
   const {
     isConnected,
@@ -253,71 +263,95 @@ export default function DashboardPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND
+
+  const quickTools = [
+    { href: '/dashboard/voice-changer', label: 'Voice Changer V1', icon: Mic, color: '#06b6d4' },
+    { href: '/dashboard/voice-translator', label: 'Voice Traducteur', icon: Languages, color: '#3b82f6' },
+    { href: '/dashboard/photo-video', label: 'Photos → Vidéo', icon: ImageIcon, color: '#f97316' },
+    { href: '/dashboard/video-translation', label: 'Traduction Vidéo', icon: Film, color: '#8b5cf6' },
+  ]
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2 md:text-3xl">
             <Zap className="w-6 h-6 text-[#00ff88]" />
-            LIVE SWAP
+            Live Swap
           </h1>
-          <p className="text-emerald-400 text-sm font-medium">
-            Change d&apos;apparence en live avec ChapCam
+          <p className="mt-1 text-sm text-gray-400">
+            Transformez votre apparence en temps réel avec l&apos;IA.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
+          {/* Guide d'utilisation */}
+          <Link
+            href="/dashboard/mes-demandes"
+            className="hidden items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:border-white/20 sm:flex"
+          >
+            <BookOpen className="h-4 w-4" />
+            Mes demandes
+          </Link>
+
           {/* Recharger (orange) */}
           <Link
             href="/dashboard/plans"
-            className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 font-semibold text-white shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-colors hover:bg-orange-600"
+            className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-colors hover:bg-orange-600"
           >
             <CreditCard className="h-4 w-4" />
             Recharger
           </Link>
 
-          {/* Mes demandes */}
-          <Link
-            href="/dashboard/mes-demandes"
-            className="flex items-center gap-2 rounded-lg border border-[#333] bg-[#1a1a1a] px-4 py-2 font-semibold text-white transition-colors hover:border-[#555]"
-          >
-            <ClipboardList className="h-4 w-4" />
-            <span className="hidden sm:inline">Mes demandes</span>
-          </Link>
-
           {/* Demande d'installation (bleu) */}
           <button
             onClick={() => setShowInstallModal(true)}
-            className="flex items-center gap-2 rounded-lg bg-[#2563eb] px-4 py-2 font-semibold text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-colors hover:bg-[#1d4ed8]"
+            className="flex items-center gap-2 rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-colors hover:bg-[#1d4ed8]"
           >
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Demande d&apos;installation</span>
             <span className="sm:hidden">Installation</span>
           </button>
 
-          {/* Mode Indicator */}
-          <div className={`px-3 py-2 rounded-lg flex items-center gap-2 ${
-            processingMode === 'local' 
-              ? 'bg-green-500/10 border border-green-500/30' 
-              : 'bg-blue-500/10 border border-blue-500/30'
-          }`}>
-            {processingMode === 'local' ? (
-              <Monitor className="w-4 h-4 text-green-400" />
-            ) : (
-              <Cloud className="w-4 h-4 text-blue-400" />
-            )}
-            <span className={`text-xs font-medium ${
-              processingMode === 'local' ? 'text-green-400' : 'text-blue-400'
-            }`}>
-              {processingMode === 'local' ? 'LOCAL' : 'CLOUD'}
-            </span>
-          </div>
-
-          <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2 flex items-center gap-2">
+          {/* Credits restants */}
+          <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 backdrop-blur-md">
             <Coins className="w-4 h-4 text-yellow-500" />
             <span className="text-white font-bold">{userPoints.toLocaleString()}</span>
             <span className="text-gray-400 text-sm">points</span>
           </div>
+        </div>
+      </div>
+
+      {/* Status bar */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-white/10 bg-white/[0.03] px-5 py-3 backdrop-blur-xl">
+        <div className="flex items-center gap-2">
+          {isConnected ? <Wifi className="h-4 w-4 text-[#00ff88]" /> : <WifiOff className="h-4 w-4 text-gray-500" />}
+          <span className={`text-sm font-medium ${isConnected ? 'text-[#00ff88]' : 'text-gray-400'}`}>
+            {isConnected ? 'Connexion excellente' : 'Connexion prête'}
+          </span>
+        </div>
+        <div className="hidden h-4 w-px bg-white/10 sm:block" />
+        <div className="flex items-center gap-2 text-sm">
+          {processingMode === 'local' ? <Monitor className="h-4 w-4 text-green-400" /> : <Cloud className="h-4 w-4 text-blue-400" />}
+          <span className="text-gray-400">Mode :</span>
+          <span className="font-medium text-white">{processingMode === 'local' ? 'Local' : 'Cloud'}</span>
+        </div>
+        <div className="hidden h-4 w-px bg-white/10 sm:block" />
+        <div className="flex items-center gap-2 text-sm">
+          <span className="rounded bg-[#00ff88]/15 px-1.5 py-0.5 text-[10px] font-bold text-[#00ff88]">
+            {renderQuality === 'ultra' ? '4K' : renderQuality === 'hd' ? 'HD' : 'SD'}
+          </span>
+          <span className="text-gray-400">Qualité :</span>
+          <span className="font-medium text-white">
+            {renderQuality === 'ultra' ? 'Ultra HD' : renderQuality === 'hd' ? 'HD' : 'Standard'}
+          </span>
+        </div>
+        <div className="hidden h-4 w-px bg-white/10 sm:block" />
+        <div className="flex items-center gap-2 text-sm">
+          <Zap className="h-4 w-4 text-[#00ff88]" />
+          <span className="text-gray-400">Latence :</span>
+          <span className="font-medium text-white">{stats.latency || 120} ms</span>
         </div>
       </div>
 
@@ -347,60 +381,6 @@ export default function DashboardPage() {
               <p className="text-xs text-white/60">{hardware.gpuName} | {hardware.vramEstimate}GB VRAM | Mode {processingMode}</p>
             </div>
           </div>
-          <div className="relative">
-            <button 
-              onClick={() => setShowModeSettings(!showModeSettings)}
-              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-            >
-              <Settings className="w-5 h-5 text-white/60" />
-            </button>
-            
-            {showModeSettings && (
-              <div className="absolute top-full right-0 mt-2 w-64 p-4 rounded-xl bg-[#111] border border-[#333] z-50">
-                <h4 className="text-sm font-medium text-white mb-3">Mode de traitement</h4>
-                
-                {/* PC Gamer: Afficher uniquement le mode local force */}
-                {hardware?.isGamingPC ? (
-                  <div className="space-y-3">
-                    <div className="p-3 rounded-lg bg-green-500/20 border border-green-500/50">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Monitor className="w-4 h-4 text-green-400" />
-                        <p className="text-sm font-medium text-green-400">Mode Local Active</p>
-                      </div>
-                      <p className="text-xs text-white/60">
-                        PC Gaming detecte. Le traitement s&apos;effectue directement sur votre GPU pour des performances optimales.
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-white/5">
-                      <p className="text-xs text-white/70 font-medium">{hardware.gpuName}</p>
-                      <p className="text-xs text-white/40">{hardware.vramEstimate}GB VRAM</p>
-                    </div>
-                  </div>
-                ) : (
-                  /* PC classique: Afficher Auto et Cloud uniquement */
-                  <div className="space-y-2">
-                    {[
-                      { id: 'auto', label: 'Automatique', desc: 'Choisit le meilleur mode' },
-                      { id: 'cloud', label: 'Cloud', desc: 'Serveurs haute performance' }
-                    ].map(option => (
-                      <button
-                        key={option.id}
-                        onClick={() => handleModeChange(option.id as 'auto' | 'local' | 'cloud')}
-                        className={`w-full p-3 rounded-lg text-left transition-all ${
-                          preferences.mode === option.id 
-                            ? 'bg-[#00ff88]/20 border border-[#00ff88]/50' 
-                            : 'bg-white/5 border border-transparent hover:bg-white/10'
-                        }`}
-                      >
-                        <p className="text-sm font-medium text-white">{option.label}</p>
-                        <p className="text-xs text-white/50">{option.desc}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
       )}
 
@@ -411,198 +391,429 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Video Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-          <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#222]">
-            <Camera className="w-4 h-4 text-blue-500" />
-            <span className="text-white font-medium">CAMERA REELLE</span>
-            {isConnected && <span className="ml-auto text-blue-500 text-xs">● LIVE</span>}
-          </div>
-          <div className="aspect-video bg-[#0a0a0a] relative">
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-              style={{ transform: 'scaleX(-1)' }}
-            />
-            {!isConnected && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
-                <Camera className="w-12 h-12 mb-2 opacity-50" />
-                <p>Camera inactive</p>
+      {/* Main layout : contenu + panneau de reglages */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        {/* Colonne principale */}
+        <div className="space-y-6">
+          {/* Cameras avec cercle IA */}
+          <div className="relative grid gap-6 md:grid-cols-2">
+            {/* Camera reelle */}
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d0d] shadow-[0_8px_40px_rgba(0,0,0,0.4)]">
+              <div className="flex items-center gap-2 border-b border-white/10 bg-white/[0.03] px-4 py-2.5 backdrop-blur-md">
+                <Camera className="h-4 w-4 text-blue-400" />
+                <span className="text-sm font-medium text-white">Caméra réelle</span>
+                {isConnected && (
+                  <span className="ml-auto flex items-center gap-1.5 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" /> EN DIRECT
+                  </span>
+                )}
               </div>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-[#111] border border-[#00ff88]/30 rounded-xl overflow-hidden">
-          <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#00ff88]/30">
-            <Zap className="w-4 h-4 text-[#00ff88]" />
-            <span className="text-white font-medium">CAMERA CHAPCAM</span>
-            {isConnected && (
-              <div className="ml-auto flex items-center gap-2 text-xs">
-                <span className="text-[#00ff88]">{stats.fps} FPS</span>
-                <span className="text-white/40">|</span>
-                <span className="text-white/60">{stats.resolution}</span>
-              </div>
-            )}
-          </div>
-          
-          <div className="relative aspect-video bg-[#0a0a0a]">
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
-            
-            <div className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-md text-white text-xs px-3 py-1 rounded-md flex items-center gap-1.5 z-20">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              ChapCam • {processingMode === 'local' ? 'Local' : 'Cloud'}
-            </div>
-
-            {!isConnected && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 bg-[#0a0a0a]">
-                <Zap className="w-12 h-12 mb-2 opacity-50" />
-                <p>{isConnecting ? 'Connexion en cours...' : 'Swap inactif'}</p>
-              </div>
-            )}
-            
-            {isConnecting && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <Loader2 className="w-8 h-8 text-[#00ff88] animate-spin" />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Status Bar */}
-      <div className="bg-[#111] border border-[#222] rounded-lg p-4 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            {isConnected ? <Wifi className="w-4 h-4 text-[#00ff88]" /> : <WifiOff className="w-4 h-4 text-gray-500" />}
-            <span className={`text-sm ${isConnected ? 'text-[#00ff88]' : 'text-gray-400'}`}>
-              {isConnected ? 'En direct' : 'Deconnecte'}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-gray-400" />
-            <span className="text-white">{formatDuration(duration)}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Coins className="w-4 h-4 text-yellow-500" />
-            <span className="text-white">{pointsUsed} pts utilises</span>
-          </div>
-          {/* Network Quality */}
-          <div className={`flex items-center gap-2 px-2 py-1 rounded ${
-            networkQuality === 'good' ? 'bg-green-500/10' :
-            networkQuality === 'medium' ? 'bg-yellow-500/10' : 'bg-red-500/10'
-          }`}>
-            <div className={`w-2 h-2 rounded-full ${
-              networkQuality === 'good' ? 'bg-green-500' :
-              networkQuality === 'medium' ? 'bg-yellow-500' : 'bg-red-500'
-            }`} />
-            <span className={`text-xs ${
-              networkQuality === 'good' ? 'text-green-400' :
-              networkQuality === 'medium' ? 'text-yellow-400' : 'text-red-400'
-            }`}>
-              {networkQuality === 'good' ? 'Connexion stable' :
-               networkQuality === 'medium' ? 'Connexion moyenne' : 'Connexion faible'}
-            </span>
-          </div>
-        </div>
-        <div className="text-gray-400 text-sm">
-          Avatar : <span className="text-white">{selectedAvatar?.name || 'Aucun'}</span>
-        </div>
-      </div>
-
-      {/* Recharger (orange, bas a droite) */}
-      <div className="flex justify-end">
-        <Link
-          href="/dashboard/plans"
-          className="flex items-center gap-2 rounded-lg bg-orange-500 px-5 py-2.5 font-semibold text-white shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-colors hover:bg-orange-600"
-        >
-          <CreditCard className="h-4 w-4" />
-          Recharger mes points
-        </Link>
-      </div>
-
-      {/* Bouton Swap */}
-      <button
-        onClick={isConnected ? handleStopSwap : handleStartSwap}
-        disabled={!selectedAvatar && !isConnected}
-        className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
-          isConnected
-            ? 'bg-red-500 hover:bg-red-600 text-white'
-            : isConnecting
-            ? 'bg-yellow-500 text-black cursor-wait'
-            : selectedAvatar && userPoints >= POINTS_PER_SECOND
-            ? 'bg-[#00ff88] hover:bg-[#00dd77] text-black'
-            : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-        }`}
-      >
-        {isConnecting ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            CONNEXION EN COURS...
-          </>
-        ) : isConnected ? (
-          <>
-            <Square className="w-5 h-5" />
-            ARRETER LE SWAP
-          </>
-        ) : (
-          <>
-            <Zap className="w-5 h-5" />
-            DEMARRER LE SWAP {processingMode === 'local' ? '(LOCAL)' : '(CLOUD)'}
-          </>
-        )}
-      </button>
-
-      {/* Mes Avatars */}
-      <div className="bg-[#111] border border-[#222] rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-bold">MES AVATARS</h2>
-          <a href="/dashboard/avatars" className="flex items-center gap-1 text-[#00ff88] hover:underline text-sm">
-            <Plus className="w-4 h-4" />
-            Ajouter
-          </a>
-        </div>
-
-        {avatars.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-gray-400 mb-4">Aucun avatar trouve</p>
-            <a href="/dashboard/avatars" className="inline-flex items-center gap-2 bg-[#00ff88] text-black px-4 py-2 rounded-lg font-medium">
-              Creer mon premier avatar
-            </a>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {avatars.map((avatar) => (
-              <button
-                key={avatar.id}
-                onClick={() => handleSelectAvatar(avatar)}
-                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
-                  selectedAvatar?.id === avatar.id ? 'border-[#00ff88] shadow-[0_0_20px_rgba(0,255,136,0.3)]' : 'border-[#333] hover:border-[#555]'
-                }`}
-              >
-                <img src={avatar.url} alt={avatar.name} className="w-full h-full object-cover" />
-                {selectedAvatar?.id === avatar.id && (
-                  <div className="absolute top-2 right-2 w-6 h-6 bg-[#00ff88] rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4 text-black" />
+              <div className="relative aspect-video bg-[#0a0a0a]">
+                <video
+                  ref={localVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="h-full w-full object-cover"
+                  style={{ transform: 'scaleX(-1)' }}
+                />
+                {!isConnected && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
+                    <Camera className="mb-2 h-12 w-12 opacity-50" />
+                    <p className="text-sm">Caméra inactive</p>
                   </div>
                 )}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                  <p className="text-white text-xs font-medium truncate">{avatar.name}</p>
+                {/* Controles camera */}
+                <div className="absolute inset-x-3 bottom-3 z-20 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setMicOn(v => !v)}
+                      aria-label={micOn ? 'Couper le micro' : 'Activer le micro'}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white/80 backdrop-blur-md transition-colors hover:bg-black/70"
+                    >
+                      {micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4 text-red-400" />}
+                    </button>
+                    <button
+                      onClick={() => setCamOn(v => !v)}
+                      aria-label={camOn ? 'Couper la caméra' : 'Activer la caméra'}
+                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-black/50 text-white/80 backdrop-blur-md transition-colors hover:bg-black/70"
+                    >
+                      {camOn ? <VideoIcon className="h-4 w-4" /> : <VideoOff className="h-4 w-4 text-red-400" />}
+                    </button>
+                    <div className="flex h-9 items-end gap-0.5 rounded-lg border border-white/10 bg-black/50 px-2 py-2 backdrop-blur-md">
+                      {[0, 1, 2, 3, 4, 5].map(i => (
+                        <span
+                          key={i}
+                          className="cc-wave-bar w-0.5 rounded-full bg-[#00ff88]"
+                          style={{ height: '100%', animationDelay: `${i * 0.12}s` }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </button>
-            ))}
+              </div>
+            </div>
+
+            {/* Camera ChapCam */}
+            <div className="overflow-hidden rounded-2xl border border-[#00ff88]/30 bg-[#0d0d0d] shadow-[0_8px_40px_rgba(0,255,136,0.12)]">
+              <div className="flex items-center gap-2 border-b border-[#00ff88]/20 bg-white/[0.03] px-4 py-2.5 backdrop-blur-md">
+                <Zap className="h-4 w-4 text-[#00ff88]" />
+                <span className="text-sm font-medium text-white">Caméra ChapCam</span>
+                {isConnected && (
+                  <div className="ml-auto flex items-center gap-2 text-[11px]">
+                    <span className="font-semibold text-[#00ff88]">{stats.fps} FPS</span>
+                    <span className="text-white/30">|</span>
+                    <span className="text-white/60">{stats.resolution}</span>
+                  </div>
+                )}
+              </div>
+              <div className="relative aspect-video bg-[#0a0a0a]">
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="h-full w-full object-cover"
+                />
+
+                <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-md bg-black/60 px-3 py-1 text-xs text-white backdrop-blur-md">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
+                  ChapCam • {processingMode === 'local' ? 'Local' : 'Cloud'}
+                </div>
+
+                {!isConnected && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0a] text-gray-500">
+                    <Zap className="mb-2 h-12 w-12 opacity-50" />
+                    <p className="text-sm">{isConnecting ? 'Connexion en cours...' : 'Swap inactif'}</p>
+                  </div>
+                )}
+
+                {isConnecting && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+                  </div>
+                )}
+
+                {/* Controles camera */}
+                <div className="absolute inset-x-3 bottom-3 z-20 flex items-center justify-between">
+                  <div className="flex h-9 items-end gap-0.5 rounded-lg border border-white/10 bg-black/50 px-2 py-2 backdrop-blur-md">
+                    {[0, 1, 2, 3, 4, 5].map(i => (
+                      <span
+                        key={i}
+                        className="cc-wave-bar w-0.5 rounded-full bg-[#00ff88]"
+                        style={{ height: '100%', animationDelay: `${i * 0.1}s` }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/50 px-3 py-2 text-xs text-white/70 backdrop-blur-md">
+                    <Clock className="h-3.5 w-3.5" />
+                    {formatDuration(duration)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cercle IA anime au centre */}
+            <div className="pointer-events-none absolute left-1/2 top-1/2 z-30 hidden -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 md:flex">
+              <div className="relative">
+                <div className="absolute inset-0 rounded-full bg-[#00ff88]/30 blur-xl cc-pulse" />
+                <div className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-[#00ff88] bg-[#0a0a0a] shadow-[0_0_30px_rgba(0,255,136,0.5)]">
+                  <Zap className="h-6 w-6 text-[#00ff88]" />
+                </div>
+              </div>
+              <span className="rounded-md bg-black/60 px-2 py-1 text-center text-[10px] leading-tight text-white/70 backdrop-blur-md">
+                Transformation
+                <br />
+                en temps réel
+              </span>
+            </div>
           </div>
-        )}
+
+          {/* Outils rapides ChapCam */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/50">
+              Outils rapides ChapCam
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {quickTools.map(tool => (
+                <Link
+                  key={tool.href}
+                  href={tool.href}
+                  className="group flex items-center gap-2.5 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-white/20"
+                >
+                  <span
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                    style={{ backgroundColor: `${tool.color}22` }}
+                  >
+                    <tool.icon className="h-4 w-4" style={{ color: tool.color }} />
+                  </span>
+                  <span className="flex-1 truncate text-xs font-medium text-white">{tool.label}</span>
+                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-white/30 transition-transform group-hover:translate-x-0.5 group-hover:text-white/60" />
+                </Link>
+              ))}
+            </div>
+          </div>
+
+          {/* Avatars */}
+          <div className="grid gap-4 md:grid-cols-[260px_1fr]">
+            {/* Avatar selectionne */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+              <p className="mb-3 text-sm font-semibold text-white">Avatar sélectionné</p>
+              {selectedAvatar ? (
+                <div className="flex items-center gap-3">
+                  <img
+                    src={selectedAvatar.url || '/placeholder.svg'}
+                    alt={selectedAvatar.name}
+                    className="h-14 w-14 rounded-xl border border-[#00ff88]/40 object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-white">{selectedAvatar.name}</p>
+                    <p className="text-xs text-white/40">Actif</p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-white/40">Aucun avatar sélectionné</p>
+              )}
+            </div>
+
+            {/* Mes avatars */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur-xl">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-semibold text-white">Mes avatars</p>
+                <Link href="/dashboard/avatars" className="flex items-center gap-1 text-xs text-[#00ff88] hover:underline">
+                  <Plus className="h-3.5 w-3.5" />
+                  Ajouter
+                </Link>
+              </div>
+
+              {avatars.length === 0 ? (
+                <div className="flex items-center gap-3 py-2">
+                  <Link
+                    href="/dashboard/avatars"
+                    className="flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-white/20 text-white/50 transition-colors hover:border-[#00ff88]/40 hover:text-[#00ff88]"
+                  >
+                    <Plus className="h-5 w-5" />
+                  </Link>
+                  <p className="text-sm text-white/40">Créez votre premier avatar</p>
+                </div>
+              ) : (
+                <div className="flex gap-3 overflow-x-auto pb-1">
+                  {avatars.map(avatar => (
+                    <button
+                      key={avatar.id}
+                      onClick={() => handleSelectAvatar(avatar)}
+                      className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 transition-all ${
+                        selectedAvatar?.id === avatar.id
+                          ? 'border-[#00ff88] shadow-[0_0_20px_rgba(0,255,136,0.3)]'
+                          : 'border-white/10 hover:border-white/30'
+                      }`}
+                    >
+                      <img src={avatar.url || '/placeholder.svg'} alt={avatar.name} className="h-full w-full object-cover" />
+                      {selectedAvatar?.id === avatar.id && (
+                        <span className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-[#00ff88]">
+                          <Check className="h-3 w-3 text-black" />
+                        </span>
+                      )}
+                      <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-1">
+                        <span className="block truncate text-[10px] font-medium text-white">{avatar.name}</span>
+                      </span>
+                    </button>
+                  ))}
+                  <Link
+                    href="/dashboard/avatars"
+                    className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-white/20 text-white/50 transition-colors hover:border-[#00ff88]/40 hover:text-[#00ff88]"
+                  >
+                    <Plus className="h-5 w-5" />
+                    <span className="text-[10px]">Ajouter</span>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Bouton Demarrer (degrade vert -> violet) */}
+          <button
+            onClick={isConnected ? handleStopSwap : handleStartSwap}
+            disabled={!canStart && !isConnected}
+            className={`group relative w-full overflow-hidden rounded-2xl py-5 text-lg font-bold transition-all ${
+              isConnected
+                ? 'bg-red-500 text-white hover:bg-red-600'
+                : isConnecting
+                ? 'cursor-wait bg-yellow-500 text-black'
+                : canStart
+                ? 'bg-gradient-to-r from-[#00ff88] via-[#1ec8d8] to-[#8b5cf6] text-white shadow-[0_0_40px_rgba(0,255,136,0.35)] hover:shadow-[0_0_60px_rgba(139,92,246,0.45)]'
+                : 'cursor-not-allowed bg-gray-700 text-gray-400'
+            }`}
+          >
+            <span className="flex flex-col items-center justify-center gap-0.5">
+              {isConnecting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Connexion en cours...
+                </span>
+              ) : isConnected ? (
+                <span className="flex items-center gap-2">
+                  <Square className="h-5 w-5" />
+                  Arrêter le Live Swap
+                </span>
+              ) : (
+                <>
+                  <span className="flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    Démarrer le Live Swap
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    La transformation commencera en temps réel
+                  </span>
+                </>
+              )}
+            </span>
+          </button>
+        </div>
+
+        {/* Panneau de reglages */}
+        <aside className="h-fit space-y-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-xl lg:sticky lg:top-6">
+          <div className="flex items-center gap-2">
+            <Settings className="h-5 w-5 text-[#00ff88]" />
+            <h2 className="text-base font-bold text-white">Réglages du swap</h2>
+          </div>
+
+          {/* Qualite de rendu */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-white/60">Qualité de rendu</p>
+            <div className="grid grid-cols-3 gap-1 rounded-lg bg-black/40 p-1">
+              {([
+                { id: 'standard', label: 'Standard' },
+                { id: 'hd', label: 'HD' },
+                { id: 'ultra', label: 'Ultra HD' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => setRenderQuality(opt.id)}
+                  className={`rounded-md py-1.5 text-xs font-medium transition-colors ${
+                    renderQuality === opt.id ? 'bg-[#00ff88] text-black' : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Sliders */}
+          {([
+            { label: 'Stabilité', value: stability, set: setStability },
+            { label: 'Lissage', value: smoothing, set: setSmoothing },
+            { label: 'Réduction du bruit', value: noiseReduction, set: setNoiseReduction },
+          ]).map(s => (
+            <div key={s.label}>
+              <div className="mb-1.5 flex items-center justify-between">
+                <span className="text-xs font-medium text-white/60">{s.label}</span>
+                <span className="text-xs font-semibold text-[#00ff88]">{s.value}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={s.value}
+                onChange={e => s.set(Number(e.target.value))}
+                className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-[#00ff88]"
+              />
+            </div>
+          ))}
+
+          {/* Orientation du visage */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-white/60">Orientation du visage</p>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { id: 'left', label: 'Gauche' },
+                { id: 'center', label: 'Centre' },
+                { id: 'right', label: 'Droite' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => setFaceOrientation(opt.id)}
+                  className={`flex flex-col items-center gap-1 rounded-lg border py-2.5 text-[10px] transition-colors ${
+                    faceOrientation === opt.id
+                      ? 'border-[#00ff88]/50 bg-[#00ff88]/10 text-[#00ff88]'
+                      : 'border-white/10 bg-black/30 text-white/50 hover:border-white/20'
+                  }`}
+                >
+                  <Camera className="h-4 w-4" />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Correction des couleurs */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-white/60">Correction des couleurs</span>
+            <button
+              onClick={() => setColorCorrection(v => !v)}
+              role="switch"
+              aria-checked={colorCorrection}
+              aria-label="Correction des couleurs"
+              className={`relative h-6 w-11 rounded-full transition-colors ${
+                colorCorrection ? 'bg-[#00ff88]' : 'bg-white/15'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                  colorCorrection ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Mode de traitement */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-white/60">Mode de traitement</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => handleModeChange('cloud')}
+                disabled={hardware?.isGamingPC}
+                className={`flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                  processingMode === 'cloud'
+                    ? 'border-blue-500/50 bg-blue-500/10 text-blue-400'
+                    : 'border-white/10 bg-black/30 text-white/50 hover:border-white/20'
+                }`}
+              >
+                <Cloud className="h-4 w-4" />
+                Cloud
+              </button>
+              <button
+                onClick={() => handleModeChange('local')}
+                className={`flex items-center justify-center gap-1.5 rounded-lg border py-2 text-xs font-medium transition-colors ${
+                  processingMode === 'local'
+                    ? 'border-green-500/50 bg-green-500/10 text-green-400'
+                    : 'border-white/10 bg-black/30 text-white/50 hover:border-white/20'
+                }`}
+              >
+                <Monitor className="h-4 w-4" />
+                Local
+              </button>
+            </div>
+            {hardware?.isGamingPC && (
+              <p className="mt-2 text-[10px] text-green-400/70">
+                PC Gaming détecté — mode local forcé pour des performances optimales.
+              </p>
+            )}
+          </div>
+
+          {/* Session info */}
+          <div className="space-y-2 rounded-xl border border-white/10 bg-black/30 p-3 text-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-white/50">Durée session</span>
+              <span className="font-medium text-white">{formatDuration(duration)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-white/50">Points utilisés</span>
+              <span className="font-medium text-white">{pointsUsed} pts</span>
+            </div>
+          </div>
+        </aside>
       </div>
 
       <InstallationRequestModal
