@@ -1,0 +1,5 @@
+# Fichiers specifiques a l'app de bureau (Electron) - inutiles au deploiement web
+electron/
+resources/akvirtualcamera/
+electron-builder.yml
+dist/
