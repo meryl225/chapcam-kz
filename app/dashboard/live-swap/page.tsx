@@ -500,6 +500,7 @@ export default function DashboardPage() {
               <div ref={chapCamRef} className="cc-cam-stage relative aspect-video bg-background">
                 <video
                   ref={remoteVideoRef}
+                  data-chapcam-output="true"
                   autoPlay
                   playsInline
                   muted

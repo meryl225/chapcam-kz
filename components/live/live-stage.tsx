@@ -54,7 +54,7 @@ export const LiveStage = forwardRef<HTMLDivElement, Props>(function LiveStage(
 
         {/* Sortie swappee */}
         <div className="relative aspect-video bg-background">
-          <canvas ref={outputCanvasRef} className="h-full w-full -scale-x-100 object-cover" />
+          <canvas ref={outputCanvasRef} data-chapcam-output="true" className="h-full w-full -scale-x-100 object-cover" />
           {!isLive && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-text-faint">
               {isQueued && saturated ? (
