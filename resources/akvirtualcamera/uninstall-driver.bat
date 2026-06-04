@@ -1,27 +1,27 @@
 @echo off
 REM ============================================================
 REM Desinstallation du pilote camera virtuelle "ChapCam Camera"
-REM Appele par le hook NSIS customUnInstall (en administrateur).
+REM akvirtualcamera v9.x. Appele par le hook NSIS customUnInstall.
 REM ============================================================
 setlocal
 set DRV=%~1
 if "%DRV%"=="" set DRV=%~dp0
+set BIN=%DRV%\x64
 
 echo [ChapCam] Suppression du peripherique "ChapCam Camera"...
 
 REM 1) Supprimer le peripherique
-if exist "%DRV%\x64\AkVCamManager.exe" (
-  "%DRV%\x64\AkVCamManager.exe" remove-device ChapCamCamera
-  "%DRV%\x64\AkVCamManager.exe" update
-  "%DRV%\x64\AkVCamManager.exe" uninstall
+if exist "%BIN%\AkVCamManager.exe" (
+  "%BIN%\AkVCamManager.exe" remove-device ChapCamCamera
+  "%BIN%\AkVCamManager.exe" update
 )
 
-REM 2) Desenregistrer les filtres DirectShow
-if exist "%DRV%\x64\AkVirtualCamera.plugin\x64\AkVCamSink.dll" (
-  regsvr32 /s /u "%DRV%\x64\AkVirtualCamera.plugin\x64\AkVCamSink.dll"
+REM 2) Desenregistrer les filtres DirectShow + Media Foundation
+if exist "%BIN%\AkVirtualCamera.dll" (
+  regsvr32 /s /u "%BIN%\AkVirtualCamera.dll"
 )
-if exist "%DRV%\x86\AkVirtualCamera.plugin\x86\AkVCamSink.dll" (
-  regsvr32 /s /u "%DRV%\x86\AkVirtualCamera.plugin\x86\AkVCamSink.dll"
+if exist "%BIN%\AkVirtualCameraMF.dll" (
+  regsvr32 /s /u "%BIN%\AkVirtualCameraMF.dll"
 )
 
 echo [ChapCam] Pilote ChapCam Camera supprime.

@@ -154,9 +154,10 @@ class VirtualCamera {
     await this.ensureWindowsDevice(manager)
 
     // Lancer le flux : AkVCamManager lit des frames RGB24 brutes sur stdin.
+    // Syntaxe v9 : stream <deviceId> <format> <largeur> <hauteur> <fps>
     this.proc = spawn(
       manager,
-      ['stream', '--fps', String(this.fps), DEVICE_ID, 'RGB24', String(this.width), String(this.height)],
+      ['stream', DEVICE_ID, 'RGB24', String(this.width), String(this.height), String(this.fps)],
       { stdio: ['pipe', 'pipe', 'pipe'] },
     )
 
@@ -186,19 +187,17 @@ class VirtualCamera {
         })
 
       ;(async () => {
-        // Le device existe-t-il deja ?
+        // Le device existe-t-il deja ? (`devices` liste les IDs, un par ligne)
         const { stdout } = await run(['devices'])
         const exists = stdout.split(/\r?\n/).some((l) => l.trim() === DEVICE_ID)
 
         if (!exists) {
-          await run(['add-device', '--id', DEVICE_ID, DEVICE_DESCRIPTION])
-        } else {
-          // Garantir le bon nom affiche
-          await run(['set-description', DEVICE_ID, DEVICE_DESCRIPTION])
+          // Syntaxe v9 : add-device -i <id> "<nom affiche>"
+          await run(['add-device', '-i', DEVICE_ID, DEVICE_DESCRIPTION])
+          // (Re)declarer le format de sortie souhaite (uniquement a la creation)
+          await run(['add-format', DEVICE_ID, 'RGB24', String(this.width), String(this.height), String(this.fps)])
         }
-        // (Re)declarer le format de sortie souhaite
-        await run(['add-format', DEVICE_ID, 'RGB24', String(this.width), String(this.height), String(this.fps)])
-        // Appliquer
+        // Appliquer la configuration
         await run(['update'])
         resolve()
       })()
