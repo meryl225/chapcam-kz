@@ -1,13 +1,13 @@
 import Link from 'next/link'
+import { Zap, Video, Mic, Languages, ImageIcon, Film, ArrowRight } from 'lucide-react'
 import {
-  Zap,
-  Video,
-  Mic,
-  Languages,
-  ImageIcon,
-  Film,
-  ArrowRight,
-} from 'lucide-react'
+  LiveSwapPreview,
+  LiveProPreview,
+  VoiceChangerPreview,
+  VoiceTranslatorPreview,
+  PhotoVideoPreview,
+  VideoTranslationPreview,
+} from '@/components/dashboard/hub/tool-previews'
 
 interface Tool {
   href: string
@@ -15,9 +15,10 @@ interface Tool {
   title: string
   description: string
   badge?: 'NEW' | 'PRO' | 'ACTIF'
-  accent: string // tailwind color base e.g. "#00ff88"
-  glow: string // rgba glow
+  accent: string
+  glow: string
   buttonClass: string
+  Preview: React.ComponentType
 }
 
 const tools: Tool[] = [
@@ -30,6 +31,7 @@ const tools: Tool[] = [
     accent: '#00ff88',
     glow: 'rgba(0,255,136,0.18)',
     buttonClass: 'bg-[#00ff88] text-black hover:bg-[#00dd77]',
+    Preview: LiveSwapPreview,
   },
   {
     href: '/live',
@@ -40,6 +42,7 @@ const tools: Tool[] = [
     accent: '#8b5cf6',
     glow: 'rgba(139,92,246,0.18)',
     buttonClass: 'bg-violet-600 text-white hover:bg-violet-700',
+    Preview: LiveProPreview,
   },
   {
     href: '/dashboard/voice-changer',
@@ -50,6 +53,7 @@ const tools: Tool[] = [
     accent: '#22d3ee',
     glow: 'rgba(34,211,238,0.18)',
     buttonClass: 'bg-cyan-500 text-black hover:bg-cyan-400',
+    Preview: VoiceChangerPreview,
   },
   {
     href: '/dashboard/voice-translator',
@@ -60,6 +64,7 @@ const tools: Tool[] = [
     accent: '#2563eb',
     glow: 'rgba(37,99,235,0.18)',
     buttonClass: 'bg-[#2563eb] text-white hover:bg-[#1d4ed8]',
+    Preview: VoiceTranslatorPreview,
   },
   {
     href: '/dashboard/photo-video',
@@ -70,6 +75,7 @@ const tools: Tool[] = [
     accent: '#f97316',
     glow: 'rgba(249,115,22,0.18)',
     buttonClass: 'bg-orange-500 text-white hover:bg-orange-600',
+    Preview: PhotoVideoPreview,
   },
   {
     href: '/dashboard/video-translation',
@@ -80,6 +86,7 @@ const tools: Tool[] = [
     accent: '#2563eb',
     glow: 'rgba(37,99,235,0.18)',
     buttonClass: 'bg-[#2563eb] text-white hover:bg-[#1d4ed8]',
+    Preview: VideoTranslationPreview,
   },
 ]
 
@@ -100,14 +107,15 @@ export function ToolsGrid() {
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {tools.map((tool) => (
-        <div
+        <Link
           key={tool.href}
-          className="group relative flex flex-col rounded-2xl border border-white/10 bg-[#111] p-5 transition-all duration-200 hover:border-white/20 hover:bg-[#141414]"
+          href={tool.href}
+          className="group relative flex flex-col rounded-2xl border border-white/10 bg-[#111] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#00ff88]/40 hover:bg-[#141414] hover:shadow-[0_12px_40px_-12px_rgba(0,255,136,0.35)]"
         >
           {/* Header: icon tile + badge */}
           <div className="mb-4 flex items-start justify-between">
             <div
-              className="flex h-12 w-12 items-center justify-center rounded-xl"
+              className="flex h-12 w-12 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
               style={{ backgroundColor: tool.glow }}
             >
               <tool.icon className="h-6 w-6" style={{ color: tool.accent }} />
@@ -117,19 +125,23 @@ export function ToolsGrid() {
 
           {/* Title + description */}
           <h3 className="mb-1.5 text-lg font-bold text-white text-balance">{tool.title}</h3>
-          <p className="mb-5 flex-1 text-sm leading-relaxed text-gray-400 text-pretty">
+          <p className="mb-4 text-sm leading-relaxed text-gray-400 text-pretty">
             {tool.description}
           </p>
 
+          {/* Aperçu visuel */}
+          <div className="mb-5 flex-1">
+            <tool.Preview />
+          </div>
+
           {/* CTA */}
-          <Link
-            href={tool.href}
+          <span
             className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition-colors ${tool.buttonClass}`}
           >
             Ouvrir
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
+            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+          </span>
+        </Link>
       ))}
     </div>
   )

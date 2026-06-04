@@ -230,3 +230,44 @@ html {
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #00b8e6, #7c3aed);
 }
+
+/* ===== Dashboard tool card previews ===== */
+
+/* Onde audio (Voice Changer) */
+@keyframes cc-wave {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+.cc-wave-bar {
+  transform-origin: center;
+  animation: cc-wave 1s ease-in-out infinite;
+}
+
+/* Flux lumineux IA (Live Swap, Photo->Video) */
+@keyframes cc-flow {
+  0% { background-position: 0% 50%; opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { background-position: 200% 50%; opacity: 0.5; }
+}
+.cc-flow {
+  background-size: 200% 100%;
+  animation: cc-flow 2s linear infinite;
+}
+
+/* Pulsation douce (icones centrales) */
+@keyframes cc-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+.cc-pulse { animation: cc-pulse 2s ease-in-out infinite; }
+
+/* Badge LIVE clignotant (Live Pro) */
+@keyframes cc-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.cc-blink { animation: cc-blink 1.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-wave-bar, .cc-flow, .cc-pulse, .cc-blink { animation: none; }
+}
