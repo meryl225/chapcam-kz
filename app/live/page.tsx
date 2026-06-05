@@ -9,7 +9,6 @@ import {
   Square,
   Loader2,
   Zap,
-  AlertTriangle,
   Info,
   Camera,
   Users,
@@ -285,21 +284,6 @@ export default function LivePage() {
             </p>
           </div>
         </div>
-
-        {/* Moteur temporairement indisponible */}
-        {(notConfigured || access?.gpuConfigured === false) && (
-          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-4">
-            <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-400" />
-            <div className="text-sm text-yellow-200/90">
-              <p className="font-semibold text-yellow-400">Service Live momentanement indisponible</p>
-              <p className="mt-1 text-muted-foreground">
-                Notre moteur est en cours de redemarrage a cause d&apos;une forte affluence. Ton
-                acces et ton temps ne sont pas debites. Reessaie dans quelques minutes en
-                appuyant a nouveau sur le bouton.
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* Scene split-screen (logique/refs inchangees) */}
         <div className="relative">
