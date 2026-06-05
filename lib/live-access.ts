@@ -160,6 +160,19 @@ const split = (v?: string) =>
     .map((s) => s.trim())
     .filter(Boolean)
 
+// Normalise une URL de worker en URL WebSocket.
+// Les variables d'env sont souvent saisies en https:// (ex: copie du tunnel
+// Cloudflare) : le navigateur ne peut PAS ouvrir une WebSocket sur https://.
+// On force donc http->ws et https->wss. Idempotent si deja en ws/wss.
+function normalizeWsUrl(u: string): string {
+  const s = u.trim().replace(/\/+$/, '') // retire les / finaux
+  if (/^wss?:\/\//i.test(s)) return s
+  if (/^https:\/\//i.test(s)) return s.replace(/^https:\/\//i, 'wss://')
+  if (/^http:\/\//i.test(s)) return s.replace(/^http:\/\//i, 'ws://')
+  // Pas de schema : on suppose du TLS (wss).
+  return `wss://${s}`
+}
+
 // Lit la liste des specs worker depuis l'env (singulier + pluriel).
 // pool="trial" lit les variables PersonaLive ; vide -> repli sur "default".
 function gpuWorkerSpecs(pool: GpuPool = 'default'): WorkerSpec[] {
@@ -179,7 +192,7 @@ function gpuWorkerSpecs(pool: GpuPool = 'default'): WorkerSpec[] {
     const trialSpecs: WorkerSpec[] = []
     for (const u of urls) {
       if (/proxy\.runpod\.net/i.test(u)) continue
-      trialSpecs.push({ fixedUrl: u })
+      trialSpecs.push({ fixedUrl: normalizeWsUrl(u) })
     }
     for (const p of pods) trialSpecs.push({ podId: p })
     return trialSpecs
@@ -199,7 +212,7 @@ function gpuWorkerSpecs(pool: GpuPool = 'default'): WorkerSpec[] {
   // on les ignore, l'auto-decouverte via pod id prend le relais.
   for (const u of urls) {
     if (/proxy\.runpod\.net/i.test(u)) continue
-    specs.push({ fixedUrl: u })
+    specs.push({ fixedUrl: normalizeWsUrl(u) })
   }
   for (const p of pods) specs.push({ podId: p })
   return specs
