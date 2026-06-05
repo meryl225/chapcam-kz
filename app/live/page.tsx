@@ -31,6 +31,7 @@ import { LiveStage } from '@/components/live/live-stage'
 import { GpuSetupOverlay } from '@/components/live/gpu-setup-overlay'
 import { LiveAccessBanner } from '@/components/live/live-access-banner'
 import { EngineComparison } from '@/components/live/engine-comparison'
+import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
 import { LIVE_OFFERS } from '@/lib/live-offers'
 
 const MAX_PERSONA = 4
@@ -150,14 +151,14 @@ export default function LivePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#050505]">
-        <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Halo premium en fond */}
       <div
         aria-hidden
@@ -173,7 +174,7 @@ export default function LivePage() {
         <div className="mb-6 flex items-center justify-between">
           <Link
             href="/dashboard"
-            className="inline-flex items-center gap-2 text-sm text-gray-400 transition-colors hover:text-white"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-4 w-4" /> Tableau de bord
           </Link>
@@ -186,59 +187,59 @@ export default function LivePage() {
         <div className="mb-6">
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-bold text-balance md:text-4xl">Live Pro</h1>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#00ff88]/30 bg-[#00ff88]/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#00ff88]">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-primary">
               Changement de visage uniquement
             </span>
           </div>
-          <p className="mt-2 text-sm text-gray-400">
+          <p className="mt-2 text-sm text-muted-foreground">
             Changez votre visage en temps réel avec une qualité maximale.
           </p>
         </div>
 
         {/* Barre de statut */}
-        <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-3.5 backdrop-blur-sm">
+        <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl border border-hairline bg-muted px-5 py-3.5 backdrop-blur-sm">
           <span className="flex items-center gap-2 text-sm">
-            <Wifi className="h-4 w-4 text-[#00ff88]" />
-            <span className="text-gray-300">Connexion</span>
-            <span className="font-semibold text-[#00ff88]">excellente</span>
+            <Wifi className="h-4 w-4 text-primary" />
+            <span className="text-muted-foreground">Connexion</span>
+            <span className="font-semibold text-primary">excellente</span>
           </span>
-          <span className="hidden h-4 w-px bg-white/10 sm:block" />
+          <span className="hidden h-4 w-px bg-muted sm:block" />
           <span className="flex items-center gap-2 text-sm">
             <Cloud className="h-4 w-4 text-cyan-400" />
-            <span className="text-gray-300">Mode</span>
-            <span className="font-semibold text-white">Cloud</span>
+            <span className="text-muted-foreground">Mode</span>
+            <span className="font-semibold text-foreground">Cloud</span>
           </span>
-          <span className="hidden h-4 w-px bg-white/10 sm:block" />
+          <span className="hidden h-4 w-px bg-muted sm:block" />
           <span className="flex items-center gap-2 text-sm">
             <Sparkles className="h-4 w-4 text-violet-300" />
-            <span className="text-gray-300">Qualité</span>
-            <span className="font-semibold text-white">Ultra HD</span>
+            <span className="text-muted-foreground">Qualité</span>
+            <span className="font-semibold text-foreground">Ultra HD</span>
           </span>
-          <span className="hidden h-4 w-px bg-white/10 sm:block" />
+          <span className="hidden h-4 w-px bg-muted sm:block" />
           <span className="flex items-center gap-2 text-sm">
-            <Activity className={`h-4 w-4 ${isLive ? 'text-[#00ff88]' : 'text-gray-400'}`} />
-            <span className="text-gray-300">Latence</span>
-            <span className="font-semibold text-white">{latencyMs > 0 ? `${latencyMs} ms` : '45 ms'}</span>
+            <Activity className={`h-4 w-4 ${isLive ? 'text-primary' : 'text-muted-foreground'}`} />
+            <span className="text-muted-foreground">Latence</span>
+            <span className="font-semibold text-foreground">{latencyMs > 0 ? `${latencyMs} ms` : '45 ms'}</span>
           </span>
         </div>
 
         {/* Carte d'information principale */}
-        <div className="mb-6 flex items-center justify-between gap-4 overflow-hidden rounded-2xl border border-[#00ff88]/15 bg-gradient-to-br from-[#00ff88]/[0.06] to-violet-500/[0.06] p-5">
-          <p className="max-w-2xl text-sm text-gray-200">
-            <span className="font-semibold text-white">Live Pro</span> utilise l&apos;IA pour remplacer
-            uniquement votre <span className="text-[#00ff88]">visage</span> en temps réel, avec une
+        <div className="mb-6 flex items-center justify-between gap-4 overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.06] to-violet-500/[0.06] p-5">
+          <p className="max-w-2xl text-sm text-foreground">
+            <span className="font-semibold text-foreground">Live Pro</span> utilise l&apos;IA pour remplacer
+            uniquement votre <span className="text-primary">visage</span> en temps réel, avec une
             qualité maximale et une latence minimale.
           </p>
-          <span className="relative hidden h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl border border-[#00ff88]/30 bg-[#00ff88]/10 sm:flex">
-            <span className="absolute inset-0 rounded-2xl bg-[#00ff88]/20 blur-md" />
-            <ScanFace className="relative h-7 w-7 text-[#00ff88]" />
+          <span className="relative hidden h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl border border-primary/30 bg-primary/10 sm:flex">
+            <span className="absolute inset-0 rounded-2xl bg-primary/20 blur-md" />
+            <ScanFace className="relative h-7 w-7 text-primary" />
           </span>
         </div>
 
         {/* Bouton abonnement (haut) - logique inchangee */}
         <Link
           href="/dashboard"
-          className="mb-6 flex w-full items-center justify-between gap-3 rounded-2xl bg-[#00ff88] px-5 py-4 text-black shadow-[0_0_30px_rgba(0,255,136,0.35)] transition-colors hover:bg-[#00dd77]"
+          className="mb-6 flex w-full items-center justify-between gap-3 rounded-2xl bg-primary px-5 py-4 text-black shadow-[0_0_30px_rgba(0,255,136,0.35)] transition-colors hover:bg-primary/90"
         >
           <span className="flex items-center gap-3">
             <Crown className="h-6 w-6 flex-shrink-0" />
@@ -268,16 +269,16 @@ export default function LivePage() {
         )}
 
         {/* Info file d'attente */}
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-white/5">
-            <Users className="h-4 w-4 text-gray-300" />
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-hairline bg-muted p-4">
+          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-muted">
+            <Users className="h-4 w-4 text-muted-foreground" />
           </span>
-          <div className="text-sm text-gray-300">
-            <p className="font-semibold text-white">Beaucoup de monde essaie en ce moment</p>
-            <p className="mt-1 text-gray-400">
+          <div className="text-sm text-muted-foreground">
+            <p className="font-semibold text-foreground">Beaucoup de monde essaie en ce moment</p>
+            <p className="mt-1 text-muted-foreground">
               L&apos;essai est gratuit, donc plusieurs personnes l&apos;utilisent en meme temps. Tu peux
               parfois attendre un peu avant que ca demarre. Avec un{' '}
-              <Link href="/dashboard" className="text-[#00ff88] underline-offset-2 hover:underline">
+              <Link href="/dashboard" className="text-primary underline-offset-2 hover:underline">
                 abonnement
               </Link>
               , tu passes en priorite, sans bug et avec une transformation de la tete aux pieds.
@@ -291,7 +292,7 @@ export default function LivePage() {
             <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-yellow-400" />
             <div className="text-sm text-yellow-200/90">
               <p className="font-semibold text-yellow-400">Service Live momentanement indisponible</p>
-              <p className="mt-1 text-gray-300">
+              <p className="mt-1 text-muted-foreground">
                 Notre moteur est en cours de redemarrage a cause d&apos;une forte affluence. Ton
                 acces et ton temps ne sont pas debites. Reessaie dans quelques minutes en
                 appuyant a nouveau sur le bouton.
@@ -307,12 +308,12 @@ export default function LivePage() {
             aria-hidden
             className="pointer-events-none absolute left-1/2 top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 flex-col items-center md:flex"
           >
-            <span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-[#00ff88]/40 bg-[#0a0a0a]">
-              <span className="absolute inset-0 rounded-full bg-[#00ff88]/20 blur-md cc-pulse" />
+            <span className="relative flex h-14 w-14 items-center justify-center rounded-full border border-primary/40 bg-background">
+              <span className="absolute inset-0 rounded-full bg-primary/20 blur-md cc-pulse" />
               <span className="absolute inset-0 rounded-full border border-violet-400/30" />
-              <Zap className="relative h-6 w-6 text-[#00ff88]" />
+              <Zap className="relative h-6 w-6 text-primary" />
             </span>
-            <span className="mt-2 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold text-gray-300 backdrop-blur-sm">
+            <span className="mt-2 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-semibold text-muted-foreground backdrop-blur-sm">
               IA en temps réel
             </span>
           </div>
@@ -327,6 +328,9 @@ export default function LivePage() {
             videoRef={videoRef}
             outputCanvasRef={outputCanvasRef}
           />
+
+          {/* Indicateur d'etat de la camera virtuelle ChapCam (app de bureau uniquement) */}
+          <VirtualCameraIndicator className="mt-3" />
         </div>
 
         {/* 4 cartes d'etat */}
@@ -339,13 +343,13 @@ export default function LivePage() {
           ].map((s) => (
             <div
               key={s.label}
-              className="rounded-2xl border border-white/10 bg-[#0d0d0d] p-4 transition-colors hover:border-white/20"
+              className="rounded-2xl border border-hairline bg-card p-4 transition-colors hover:border-hairline-strong"
             >
               <div className="flex items-center gap-2">
                 <s.icon className="h-4 w-4" style={{ color: s.color }} />
-                <span className="text-xs text-gray-500">{s.label}</span>
+                <span className="text-xs text-text-faint">{s.label}</span>
               </div>
-              <p className="mt-1.5 text-base font-bold text-white">{s.value}</p>
+              <p className="mt-1.5 text-base font-bold text-foreground">{s.value}</p>
             </div>
           ))}
         </div>
@@ -363,7 +367,7 @@ export default function LivePage() {
             <button
               onClick={handleStart}
               disabled={!canStart || isBusy}
-              className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-5 text-base font-bold text-white shadow-[0_0_40px_rgba(0,255,136,0.25)] transition-all hover:shadow-[0_0_55px_rgba(0,255,136,0.4)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-5 text-base font-bold text-foreground shadow-[0_0_40px_rgba(0,255,136,0.25)] transition-all hover:shadow-[0_0_55px_rgba(0,255,136,0.4)] disabled:cursor-not-allowed disabled:opacity-50"
               style={{
                 background:
                   'linear-gradient(90deg, #00ff88 0%, #06b6d4 50%, #8b5cf6 100%)',
@@ -405,23 +409,23 @@ export default function LivePage() {
           )}
 
           {selected.length === 0 && (
-            <p className="text-center text-xs text-gray-500">
+            <p className="text-center text-xs text-text-faint">
               Selectionne au moins une photo persona pour demarrer.
             </p>
           )}
         </div>
 
         {/* Avatar actif (visage cible) */}
-        <div className="mt-8 rounded-2xl border border-white/10 bg-[#0d0d0d] p-5">
+        <div className="mt-8 rounded-2xl border border-hairline bg-card p-5">
           <div className="mb-4 flex items-center gap-2">
-            <ScanFace className="h-4 w-4 text-[#00ff88]" />
-            <h2 className="text-sm font-bold uppercase tracking-wide text-white">
-              Avatar actif <span className="text-gray-500">(visage cible)</span>
+            <ScanFace className="h-4 w-4 text-primary" />
+            <h2 className="text-sm font-bold uppercase tracking-wide text-foreground">
+              Avatar actif <span className="text-text-faint">(visage cible)</span>
             </h2>
           </div>
 
           {targetAvatar && (
-            <div className="mb-5 flex items-center gap-4 rounded-xl border border-[#00ff88]/20 bg-[#00ff88]/[0.04] p-3">
+            <div className="mb-5 flex items-center gap-4 rounded-xl border border-primary/20 bg-primary/[0.04] p-3">
               <img
                 src={targetAvatar.url || '/placeholder.svg'}
                 alt={`Visage cible ${targetAvatar.name}`}
@@ -429,12 +433,12 @@ export default function LivePage() {
                 crossOrigin="anonymous"
               />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold text-white">{targetAvatar.name}</p>
-                <p className="text-xs text-gray-400">{selected.length} photo(s) de référence</p>
+                <p className="truncate font-semibold text-foreground">{targetAvatar.name}</p>
+                <p className="text-xs text-muted-foreground">{selected.length} photo(s) de référence</p>
               </div>
               <Link
                 href="/dashboard/avatars"
-                className="flex-shrink-0 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-gray-200 transition-colors hover:bg-white/5"
+                className="flex-shrink-0 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted"
               >
                 Modifier l&apos;avatar
               </Link>
@@ -458,37 +462,37 @@ export default function LivePage() {
             { icon: Activity, label: 'Latence', value: latencyMs > 0 ? `${latencyMs} ms` : '45 ms' },
             { icon: ShieldCheck, label: 'Statut', value: 'Optimal' },
           ].map((p) => (
-            <div key={p.label} className="rounded-2xl border border-white/10 bg-[#0d0d0d] p-4">
-              <p.icon className="mb-2 h-4 w-4 text-[#00ff88]" />
-              <p className="text-xl font-bold text-white">{p.value}</p>
-              <p className="mt-0.5 text-xs text-gray-500">{p.label}</p>
+            <div key={p.label} className="rounded-2xl border border-hairline bg-card p-4">
+              <p.icon className="mb-2 h-4 w-4 text-primary" />
+              <p className="text-xl font-bold text-foreground">{p.value}</p>
+              <p className="mt-0.5 text-xs text-text-faint">{p.label}</p>
             </div>
           ))}
         </div>
 
         {/* Astuce camera virtuelle */}
-        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-white/10 bg-[#0d0d0d] p-4">
-          <Camera className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#00ff88]" />
-          <div className="text-sm text-gray-400">
-            <p className="font-semibold text-white">Utiliser comme camera virtuelle</p>
+        <div className="mt-6 flex items-start gap-3 rounded-2xl border border-hairline bg-card p-4">
+          <Camera className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
+          <div className="text-sm text-muted-foreground">
+            <p className="font-semibold text-foreground">Utiliser comme camera virtuelle</p>
             <p className="mt-1">
               Pour t&apos;en servir dans Zoom, Meet ou WhatsApp : installe OBS, ajoute la fenetre
               ChapCam comme source, puis active{' '}
-              <span className="text-gray-300">&laquo; Virtual Camera &raquo;</span>. Selectionne ensuite
+              <span className="text-muted-foreground">&laquo; Virtual Camera &raquo;</span>. Selectionne ensuite
               &laquo; OBS Virtual Camera &raquo; dans ton application d&apos;appel.
             </p>
           </div>
         </div>
 
         {/* Carte premium bas de page */}
-        <div className="mt-6 flex flex-col items-start justify-between gap-4 overflow-hidden rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.12] to-[#00ff88]/[0.06] p-6 sm:flex-row sm:items-center">
+        <div className="mt-6 flex flex-col items-start justify-between gap-4 overflow-hidden rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.12] to-primary/[0.06] p-6 sm:flex-row sm:items-center">
           <div className="flex items-start gap-4">
             <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-violet-500/20">
               <Crown className="h-6 w-6 text-violet-300" />
             </span>
             <div>
-              <h3 className="text-lg font-bold text-white">Passez à Live Pro</h3>
-              <p className="mt-1 max-w-md text-sm text-gray-300">
+              <h3 className="text-lg font-bold text-foreground">Passez à Live Pro</h3>
+              <p className="mt-1 max-w-md text-sm text-muted-foreground">
                 Débloquez le GPU dédié, l&apos;accès prioritaire et la meilleure qualité.
               </p>
             </div>
@@ -505,7 +509,7 @@ export default function LivePage() {
         {/* Comparatif moteur */}
         <EngineComparison />
 
-        <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-gray-600">
+        <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-text-faint">
           <Info className="h-3.5 w-3.5" />
           La latence depend de ta connexion et de la charge du GPU.
         </p>

@@ -23,7 +23,7 @@ export function HeaderActions() {
         {/* Mes demandes */}
         <Link
           href="/dashboard/mes-demandes"
-          className="flex items-center gap-2 rounded-lg border border-white/10 bg-[#1a1a1a] px-4 py-2 text-sm font-semibold text-white transition-colors hover:border-white/25"
+          className="flex items-center gap-2 rounded-lg border border-hairline bg-secondary px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:border-white/25"
         >
           <ClipboardList className="h-4 w-4" />
           Mes demandes

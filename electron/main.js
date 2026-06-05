@@ -2,6 +2,10 @@ const { app, BrowserWindow, ipcMain, systemPreferences, Menu, Tray, nativeImage,
 const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
+const { getVirtualCamera, setupVirtualCameraIPC } = require('./virtual-camera')
+
+// Resolution/cadence de sortie de la camera virtuelle
+const VCAM = { width: 1280, height: 720, fps: 30 }
 
 // Set app user model ID for Windows (must be called early)
 if (process.platform === 'win32') {
@@ -488,12 +492,35 @@ function createMenu() {
   Menu.setApplicationMenu(menu)
 }
 
-// Toggle virtual camera
-function toggleVirtualCamera(enabled) {
-  if (mainWindow) {
-    mainWindow.webContents.send('virtual-camera-toggle', enabled)
+// Toggle virtual camera : (de)marre le pilote ET la capture du renderer.
+async function toggleVirtualCamera(enabled) {
+  const vc = getVirtualCamera()
+  try {
+    if (enabled) {
+      const status = await vc.start(VCAM)
+      // Demarrer la capture du canvas transforme cote page web
+      if (mainWindow) mainWindow.webContents.send('vcam:start', VCAM)
+      pushVcamState(status)
+    } else {
+      if (mainWindow) mainWindow.webContents.send('vcam:stop')
+      const status = vc.stop()
+      pushVcamState(status)
+    }
+  } catch (e) {
+    log(`Virtual camera error: ${e.message}`)
+    pushVcamState(vc.getStatus())
+    if (mainWindow) {
+      mainWindow.webContents.send('virtual-camera-toggle', false)
+    }
   }
+  // Compat : notifier aussi l'ancien canal d'evenement
+  if (mainWindow) mainWindow.webContents.send('virtual-camera-toggle', enabled)
   log(`Virtual camera: ${enabled ? 'enabled' : 'disabled'}`)
+}
+
+// Pousse l'etat de la camera virtuelle vers l'UI web
+function pushVcamState(state) {
+  if (mainWindow) mainWindow.webContents.send('virtual-camera-state', state)
 }
 
 // Open preferences
@@ -554,7 +581,10 @@ function startNextServer() {
 // App lifecycle
 app.whenReady().then(() => {
   log('App ready')
-  
+
+  // Enregistrer les handlers IPC de la camera virtuelle
+  setupVirtualCameraIPC()
+
   // Show splash screen first
   createSplashScreen()
   
@@ -586,7 +616,12 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   app.isQuitting = true
-  
+
+  // Couper proprement la camera virtuelle
+  try {
+    getVirtualCamera().stop()
+  } catch (_) {}
+
   if (nextServer) {
     nextServer.kill()
   }

@@ -67,15 +67,15 @@ function PaymentSuccessContent() {
   }, [token, check])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#050505] px-6 py-12">
-      <div className="w-full max-w-md rounded-3xl border border-gray-800 bg-[#111] p-8 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
+      <div className="w-full max-w-md rounded-3xl border border-gray-800 bg-card p-8 text-center">
         {status === 'checking' && (
           <>
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#00ff88]/15">
-              <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/15">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-            <h1 className="mb-2 text-2xl font-bold text-white">Verification du paiement...</h1>
-            <p className="text-sm leading-relaxed text-gray-400">
+            <h1 className="mb-2 text-2xl font-bold text-foreground">Verification du paiement...</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Nous confirmons votre transaction aupres de PayDunya. Patientez quelques secondes.
             </p>
           </>
@@ -83,15 +83,15 @@ function PaymentSuccessContent() {
 
         {status === 'completed' && (
           <>
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#00ff88]/15">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-primary/15">
               {kind === 'live' ? (
-                <Video className="h-8 w-8 text-[#00ff88]" />
+                <Video className="h-8 w-8 text-primary" />
               ) : (
-                <CheckCircle className="h-8 w-8 text-[#00ff88]" />
+                <CheckCircle className="h-8 w-8 text-primary" />
               )}
             </div>
-            <h1 className="mb-2 text-2xl font-bold text-white">Paiement confirme</h1>
-            <p className="text-sm leading-relaxed text-gray-400">
+            <h1 className="mb-2 text-2xl font-bold text-foreground">Paiement confirme</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
               {kind === 'live'
                 ? 'Votre acces Live Pro a ete credite. Lancez votre session quand vous voulez.'
                 : 'Vos points ont ete credites sur votre compte. Vous pouvez commencer a creer.'}
@@ -100,7 +100,7 @@ function PaymentSuccessContent() {
               {kind === 'live' ? (
                 <Link
                   href="/live"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#00ff88] py-3 font-semibold text-black transition-colors hover:bg-[#00dd77]"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-black transition-colors hover:bg-primary/90"
                 >
                   <Video className="h-4 w-4" />
                   Demarrer le Live Pro
@@ -108,7 +108,7 @@ function PaymentSuccessContent() {
               ) : (
                 <Link
                   href="/dashboard"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#00ff88] py-3 font-semibold text-black transition-colors hover:bg-[#00dd77]"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-black transition-colors hover:bg-primary/90"
                 >
                   <Sparkles className="h-4 w-4" />
                   Aller au tableau de bord
@@ -123,8 +123,8 @@ function PaymentSuccessContent() {
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-500/15">
               <Clock className="h-8 w-8 text-yellow-400" />
             </div>
-            <h1 className="mb-2 text-2xl font-bold text-white">Paiement en cours de traitement</h1>
-            <p className="text-sm leading-relaxed text-gray-400">
+            <h1 className="mb-2 text-2xl font-bold text-foreground">Paiement en cours de traitement</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Votre paiement n&apos;est pas encore confirme. Si vous avez bien paye, votre compte
               sera credite automatiquement sous peu.
             </p>
@@ -134,13 +134,13 @@ function PaymentSuccessContent() {
                   setStatus('checking')
                   void check()
                 }}
-                className="w-full rounded-2xl bg-[#00ff88] py-3 font-semibold text-black transition-colors hover:bg-[#00dd77]"
+                className="w-full rounded-2xl bg-primary py-3 font-semibold text-black transition-colors hover:bg-primary/90"
               >
                 Verifier a nouveau
               </button>
               <Link
                 href="/dashboard"
-                className="w-full rounded-2xl border border-gray-700 py-3 font-semibold text-gray-300 transition-colors hover:border-gray-500 hover:text-white"
+                className="w-full rounded-2xl border border-gray-700 py-3 font-semibold text-muted-foreground transition-colors hover:border-gray-500 hover:text-foreground"
               >
                 Retour au tableau de bord
               </Link>
@@ -153,13 +153,13 @@ function PaymentSuccessContent() {
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15">
               <XCircle className="h-8 w-8 text-red-400" />
             </div>
-            <h1 className="mb-2 text-2xl font-bold text-white">Paiement annule</h1>
-            <p className="text-sm leading-relaxed text-gray-400">
+            <h1 className="mb-2 text-2xl font-bold text-foreground">Paiement annule</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
               La transaction a ete annulee. Aucun montant n&apos;a ete debite.
             </p>
             <Link
               href="/dashboard/plans"
-              className="mt-6 flex w-full items-center justify-center rounded-2xl bg-[#00ff88] py-3 font-semibold text-black transition-colors hover:bg-[#00dd77]"
+              className="mt-6 flex w-full items-center justify-center rounded-2xl bg-primary py-3 font-semibold text-black transition-colors hover:bg-primary/90"
             >
               Revenir aux formules
             </Link>
@@ -171,13 +171,13 @@ function PaymentSuccessContent() {
             <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15">
               <XCircle className="h-8 w-8 text-red-400" />
             </div>
-            <h1 className="mb-2 text-2xl font-bold text-white">Lien invalide</h1>
-            <p className="text-sm leading-relaxed text-gray-400">
+            <h1 className="mb-2 text-2xl font-bold text-foreground">Lien invalide</h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
               Impossible de verifier ce paiement. Si vous avez ete debite, contactez le support.
             </p>
             <Link
               href="/dashboard/plans"
-              className="mt-6 flex w-full items-center justify-center rounded-2xl bg-[#00ff88] py-3 font-semibold text-black transition-colors hover:bg-[#00dd77]"
+              className="mt-6 flex w-full items-center justify-center rounded-2xl bg-primary py-3 font-semibold text-black transition-colors hover:bg-primary/90"
             >
               Revenir aux formules
             </Link>
@@ -192,8 +192,8 @@ export default function PaymentSuccessPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#050505]">
-          <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       }
     >

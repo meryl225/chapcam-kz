@@ -1,0 +1,49 @@
+PILOTE CAMERA VIRTUELLE "ChapCam Camera"
+========================================
+
+Ce dossier doit contenir les binaires du pilote akvirtualcamera AVANT de
+construire l'installeur Windows (npm run electron:build:win).
+
+Pourquoi : un site web ne peut pas creer une camera systeme. Il faut un pilote
+natif (DirectShow + Media Foundation) installe sur le PC. akvirtualcamera est
+ce pilote open-source ; ChapCam ne fait que lui envoyer les images transformees.
+
+STRUCTURE ATTENDUE
+------------------
+resources/akvirtualcamera/
+  install-driver.bat        (fourni)
+  uninstall-driver.bat      (fourni)
+  x64/
+    AkVCamManager.exe
+    AkVCamAssistant.exe
+    AkVirtualCamera.plugin/x64/AkVCamSink.dll
+  x86/
+    AkVCamManager.exe
+    AkVirtualCamera.plugin/x86/AkVCamSink.dll
+
+OU OBTENIR LES BINAIRES
+-----------------------
+1. Telecharger akvirtualcamera (Windows) depuis le projet officiel :
+   https://github.com/webcamoid/akvirtualcamera/releases
+2. Extraire l'archive et copier les dossiers x64/ (et x86/) ici.
+
+LICENCE (IMPORTANT)
+-------------------
+akvirtualcamera est sous licence GPLv3. ChapCam l'utilise comme processus
+SEPARE (on lui envoie des frames via sa CLI), ce qui constitue une simple
+agregation. Pour rester conforme :
+  - distribuer le code source d'akvirtualcamera (ou un lien + offre ecrite),
+  - ne pas lier statiquement le pilote au code proprietaire de ChapCam.
+
+ALTERNATIVE LICENCE PERMISSIVE
+------------------------------
+Si la GPLv3 pose probleme, "softcam" (licence Unlicense) est une option, mais
+DirectShow uniquement : il couvre Zoom/Discord/OBS/Chrome-Meet, PAS le nouveau
+Teams (Media Foundation). akvirtualcamera reste recommande car il couvre TOUT.
+
+VERIFICATION DES SOUS-COMMANDES
+-------------------------------
+Les .bat utilisent : add-device / set-description / add-format / update /
+install / uninstall / stream. Verifie-les avec :
+    AkVCamManager.exe --help
+et ajuste si ta version d'akvirtualcamera differe.

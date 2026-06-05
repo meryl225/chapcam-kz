@@ -30,7 +30,7 @@ const tools: Tool[] = [
     badge: 'ACTIF',
     accent: '#00ff88',
     glow: 'rgba(0,255,136,0.18)',
-    buttonClass: 'bg-[#00ff88] text-black hover:bg-[#00dd77]',
+    buttonClass: 'bg-primary text-black hover:bg-primary/90',
     Preview: LiveSwapPreview,
   },
   {
@@ -92,9 +92,9 @@ const tools: Tool[] = [
 
 function Badge({ kind }: { kind: NonNullable<Tool['badge']> }) {
   const styles: Record<string, string> = {
-    NEW: 'bg-[#00ff88]/15 text-[#00ff88]',
+    NEW: 'bg-primary/15 text-primary',
     PRO: 'bg-violet-500/20 text-violet-300',
-    ACTIF: 'bg-[#00ff88]/15 text-[#00ff88]',
+    ACTIF: 'bg-primary/15 text-primary',
   }
   return (
     <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase ${styles[kind]}`}>
@@ -110,7 +110,7 @@ export function ToolsGrid() {
         <Link
           key={tool.href}
           href={tool.href}
-          className="group relative flex flex-col rounded-2xl border border-white/10 bg-[#111] p-5 transition-all duration-300 hover:-translate-y-1 hover:border-[#00ff88]/40 hover:bg-[#141414] hover:shadow-[0_12px_40px_-12px_rgba(0,255,136,0.35)]"
+          className="group relative flex flex-col rounded-2xl border border-hairline bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:bg-card hover:shadow-[0_12px_40px_-12px_rgba(0,255,136,0.35)]"
         >
           {/* Header: icon tile + badge */}
           <div className="mb-4 flex items-start justify-between">
@@ -124,8 +124,8 @@ export function ToolsGrid() {
           </div>
 
           {/* Title + description */}
-          <h3 className="mb-1.5 text-lg font-bold text-white text-balance">{tool.title}</h3>
-          <p className="mb-4 text-sm leading-relaxed text-gray-400 text-pretty">
+          <h3 className="mb-1.5 text-lg font-bold text-foreground text-balance">{tool.title}</h3>
+          <p className="mb-4 text-sm leading-relaxed text-muted-foreground text-pretty">
             {tool.description}
           </p>
 

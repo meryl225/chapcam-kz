@@ -38,10 +38,14 @@ export async function POST(_req: NextRequest) {
       )
     }
 
+    // Aiguillage moteur : l'essai gratuit (trial) utilise le pool PersonaLive,
+    // les fenetres payantes (paid/ready) gardent le pool par defaut (InsightFace).
+    const pool = state.mode === 'trial' ? 'trial' : 'default'
+
     // IMPORTANT : on verifie que le moteur GPU repond AVANT de consommer une
     // fenetre payee ou de demarrer le decompte d'essai. Sinon un abonne Live Pro
     // perdrait sa fenetre de 15 min alors que le pod est eteint (erreur 502).
-    if (!isGpuConfigured()) {
+    if (!isGpuConfigured(pool)) {
       return NextResponse.json({
         configured: false,
         mode: state.mode,
@@ -52,7 +56,7 @@ export async function POST(_req: NextRequest) {
       })
     }
 
-    const gpu = await getGpuConnectionAsync(user.id)
+    const gpu = await getGpuConnectionAsync(user.id, pool)
 
     if (!gpu) {
       return NextResponse.json({

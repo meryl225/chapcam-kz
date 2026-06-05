@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { createClient } from '@/lib/supabase/client'
+import { ThemeToggleCompact } from '@/components/theme-toggle'
 import { useState, useEffect } from 'react'
 
 const PLAN_LABELS: Record<string, string> = {
@@ -92,10 +93,10 @@ function SidebarContent({
       {/* Logo */}
       <div className="p-6">
         <h1 className="text-2xl font-bold">
-          <span className="text-white">Chap</span>
-          <span className="text-[#00ff88]">Cam</span>
+          <span className="text-foreground">Chap</span>
+          <span className="text-primary">Cam</span>
         </h1>
-        <p className="mt-1 text-xs uppercase tracking-wider text-gray-500">
+        <p className="mt-1 text-xs uppercase tracking-wider text-text-faint">
           SWAP EN TEMPS REEL
         </p>
       </div>
@@ -110,14 +111,14 @@ function SidebarContent({
               href={item.href}
               className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 ${
                 isActivePath
-                  ? 'border-l-2 border-[#00ff88] bg-[#00ff88]/10 text-[#00ff88]'
-                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                  ? 'border-l-2 border-primary bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               <item.icon className="h-[18px] w-[18px] shrink-0" />
               <span className="flex-1 truncate">{item.label}</span>
               {item.badge === 'NEW' && (
-                <span className="rounded-full bg-[#00ff88]/15 px-2 py-0.5 text-[10px] font-bold text-[#00ff88]">
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
                   NEW
                 </span>
               )}
@@ -135,7 +136,7 @@ function SidebarContent({
           href="https://t.me/chapcam_support"
           target="_blank"
           rel="noopener noreferrer"
-          className="mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight text-gray-400 transition-all duration-200 hover:bg-white/5 hover:text-white"
+          className="mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground"
         >
           <HelpCircle className="h-[18px] w-[18px] shrink-0" />
           <span className="flex-1 truncate">AIDE & SUPPORT</span>
@@ -145,7 +146,7 @@ function SidebarContent({
         {isAdmin && (
           <Link
             href="/admin/stats"
-            className="mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight text-[#00ff88] transition-all duration-200 hover:bg-white/5 border-l-2 border-[#00ff88]"
+            className="mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight text-primary transition-all duration-200 hover:bg-muted border-l-2 border-primary"
           >
             <Shield className="h-[18px] w-[18px] shrink-0" />
             ADMIN STATS
@@ -154,35 +155,40 @@ function SidebarContent({
       </nav>
 
       {/* User Info */}
-      <div className="border-t border-white/10 p-4">
-        <p className="mb-3 truncate text-xs text-gray-400">{email}</p>
+      <div className="border-t border-hairline p-4">
+        <p className="mb-3 truncate text-xs text-muted-foreground">{email}</p>
 
         <div className="mb-3 flex items-center gap-2">
-          <span className={`rounded-full px-2 py-0.5 text-xs font-bold text-white ${PLAN_COLORS[plan] || 'bg-gray-500'}`}>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-bold text-foreground ${PLAN_COLORS[plan] || 'bg-gray-500'}`}>
             {PLAN_LABELS[plan] || plan}
           </span>
           {isExpired && <span className="text-xs text-red-400">Expire</span>}
         </div>
 
-        <div className="mb-3 rounded-lg bg-white/5 p-3">
+        <div className="mb-3 rounded-lg bg-muted p-3">
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Battery className="h-4 w-4 text-[#00ff88]" />
-              <span className="text-xs font-medium text-gray-300">Points restants</span>
+              <Battery className="h-4 w-4 text-primary" />
+              <span className="text-xs font-medium text-foreground">Points restants</span>
             </div>
-            <span className="text-sm font-bold text-white">
+            <span className="text-sm font-bold text-foreground">
               {pointsRemaining.toLocaleString()}/{pointsTotal.toLocaleString()}
             </span>
           </div>
-          <Progress value={pointsPercentage} className="h-2 bg-white/10" />
-          <p className="mt-2 text-xs text-gray-500">
+          <Progress value={pointsPercentage} className="h-2 bg-secondary" />
+          <p className="mt-2 text-xs text-text-faint">
             = {Math.floor(pointsRemaining / 2 / 60)} min de swap
           </p>
         </div>
 
-        <div className="mb-3 flex items-center justify-between text-xs text-gray-400">
+        <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
           <span>Avatars utilises</span>
           <span>{avatarCount}/∞</span>
+        </div>
+
+        {/* Bascule clair / sombre */}
+        <div className="mb-3">
+          <ThemeToggleCompact />
         </div>
 
         {showUpgradeBanner && (
@@ -201,7 +207,7 @@ function SidebarContent({
 
         <button
           onClick={onLogout}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-white/5 hover:text-red-400"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-red-400"
         >
           <LogOut className="h-4 w-4" />
           Deconnexion
@@ -242,7 +248,7 @@ export function DashboardSidebar({
 
   return (
     <>
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] border-r border-white/10 bg-[#0a0a0a] md:block">
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] border-r border-hairline bg-sidebar md:block">
         <SidebarContent
           email={email}
           plan={plan}
@@ -255,23 +261,23 @@ export function DashboardSidebar({
         />
       </aside>
 
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-white/10 bg-[#0a0a0a] px-4 md:hidden">
+      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-hairline bg-sidebar px-4 md:hidden">
         <h1 className="text-xl font-bold">
-          <span className="text-white">Chap</span>
-          <span className="text-[#00ff88]">Cam</span>
+          <span className="text-foreground">Chap</span>
+          <span className="text-primary">Cam</span>
         </h1>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 rounded-full bg-white/10 px-3 py-1">
-            <Battery className="h-4 w-4 text-[#00ff88]" />
-            <span className="text-xs font-bold text-white">{pointsRemaining}</span>
+          <div className="flex items-center gap-1 rounded-full bg-muted px-3 py-1">
+            <Battery className="h-4 w-4 text-primary" />
+            <span className="text-xs font-bold text-foreground">{pointsRemaining}</span>
           </div>
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <button className="p-2 text-white">
+              <button className="p-2 text-foreground">
                 <Menu className="h-6 w-6" />
               </button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[280px] border-white/10 bg-[#0a0a0a] p-0">
+            <SheetContent side="left" className="w-[280px] border-hairline bg-sidebar p-0">
               <SheetTitle className="sr-only">Menu de navigation</SheetTitle>
               <SidebarContent
                 email={email}
@@ -309,7 +315,7 @@ export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0
 
   return (
     <div className="fixed left-0 right-0 top-14 z-40 flex items-center justify-between bg-orange-500 px-4 py-2 md:left-[240px] md:top-0">
-      <p className="text-sm font-medium text-white">
+      <p className="text-sm font-medium text-foreground">
         {pointsRemaining <= 0 
           ? 'Tu as epuise tes points — Recharge pour continuer le swap'
           : 'Tu es sur le plan gratuit — Active un abonnement pour demarrer le swap'

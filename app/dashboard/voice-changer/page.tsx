@@ -78,10 +78,10 @@ function Slider({
 }) {
   return (
     <div className="flex items-center gap-4">
-      <div className="flex w-44 shrink-0 items-center gap-2 text-sm text-gray-300">
-        <Icon className="h-4 w-4 text-gray-500" />
+      <div className="flex w-44 shrink-0 items-center gap-2 text-sm text-muted-foreground">
+        <Icon className="h-4 w-4 text-text-faint" />
         <span>{label}</span>
-        <HelpCircle className="h-3.5 w-3.5 text-gray-600" />
+        <HelpCircle className="h-3.5 w-3.5 text-text-faint" />
       </div>
       <input
         type="range"
@@ -94,7 +94,7 @@ function Slider({
           background: `linear-gradient(to right, #00ff88 ${value}%, rgba(255,255,255,0.1) ${value}%)`,
         }}
       />
-      <span className="w-12 shrink-0 text-right text-sm font-semibold text-white">{value}%</span>
+      <span className="w-12 shrink-0 text-right text-sm font-semibold text-foreground">{value}%</span>
     </div>
   )
 }
@@ -118,24 +118,24 @@ export default function VoiceChangerPage() {
       <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white md:text-3xl">Voice Changer v1</h1>
-            <span className="flex items-center gap-1.5 rounded-full bg-[#00ff88]/15 px-2.5 py-1 text-[11px] font-bold text-[#00ff88]">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#00ff88]" />
+            <h1 className="text-2xl font-bold text-foreground md:text-3xl">Voice Changer v1</h1>
+            <span className="flex items-center gap-1.5 rounded-full bg-primary/15 px-2.5 py-1 text-[11px] font-bold text-primary">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
               LIVE
             </span>
           </div>
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="mt-1 text-sm text-muted-foreground">
             Changez votre voix en temps réel pendant vos appels et diffusions via OBS.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-gray-200 transition-colors hover:bg-white/10">
+          <button className="flex items-center gap-2 rounded-xl border border-hairline bg-muted px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
             <HelpCircle className="h-4 w-4" />
             Guide d&apos;utilisation
           </button>
           <button
             aria-label="Paramètres"
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-gray-300 transition-colors hover:bg-white/10"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-hairline bg-muted text-muted-foreground transition-colors hover:bg-muted"
           >
             <Settings className="h-4 w-4" />
           </button>
@@ -143,13 +143,13 @@ export default function VoiceChangerPage() {
       </header>
 
       {/* Status bar */}
-      <div className="mb-5 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/5 sm:grid-cols-3">
+      <div className="mb-5 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-hairline bg-muted sm:grid-cols-3">
         {[
           { icon: Mic, label: 'Micro détecté', value: 'HyperX QuadCast', color: '#00ff88' },
           { icon: Volume2, label: 'Sortie audio', value: 'ChapCam Virtual Audio', color: '#38bdf8' },
           { icon: Radio, label: 'OBS', value: 'Connecté', color: '#00ff88', dot: true },
         ].map((s) => (
-          <div key={s.label} className="flex items-center gap-3 bg-[#0d0d0d] px-5 py-4">
+          <div key={s.label} className="flex items-center gap-3 bg-card px-5 py-4">
             <div
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg"
               style={{ backgroundColor: `${s.color}1f` }}
@@ -157,9 +157,9 @@ export default function VoiceChangerPage() {
               <s.icon className="h-5 w-5" style={{ color: s.color }} />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-gray-500">{s.label}</p>
-              <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-white">
-                {s.dot && <span className="h-1.5 w-1.5 rounded-full bg-[#00ff88]" />}
+              <p className="text-xs text-text-faint">{s.label}</p>
+              <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-foreground">
+                {s.dot && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
                 {s.value}
               </p>
             </div>
@@ -168,14 +168,14 @@ export default function VoiceChangerPage() {
       </div>
 
       {/* Central live zone */}
-      <div className="mb-5 rounded-2xl border border-white/10 bg-gradient-to-b from-[#111] to-[#0a0a0a] p-8">
-        <p className="mb-6 text-center text-lg font-semibold text-white">Votre voix en temps réel</p>
+      <div className="mb-5 rounded-2xl border border-hairline bg-gradient-to-b from-[#111] to-[#0a0a0a] p-8">
+        <p className="mb-6 text-center text-lg font-semibold text-foreground">Votre voix en temps réel</p>
         <div className="flex items-center justify-center gap-4">
           <WaveBars color="#00ff88" side="left" />
           <div className="relative shrink-0">
             <div
               className={`flex h-28 w-28 items-center justify-center rounded-full border-2 transition-all duration-500 ${
-                isActive ? 'border-[#a855f7]' : 'border-[#00ff88]'
+                isActive ? 'border-[#a855f7]' : 'border-primary'
               }`}
               style={{
                 boxShadow: isActive
@@ -194,16 +194,16 @@ export default function VoiceChangerPage() {
           <WaveBars color="#a855f7" side="right" />
         </div>
         <div className="mt-6 flex justify-center">
-          <span className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-gray-300">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-[#00ff88]" />
+          <span className="flex items-center gap-2 rounded-full border border-hairline bg-muted px-4 py-1.5 text-sm text-muted-foreground">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
             {isActive ? 'Transformation active...' : 'En écoute...'}
           </span>
         </div>
       </div>
 
       {/* Choose a voice */}
-      <section className="mb-5 rounded-2xl border border-white/10 bg-[#0d0d0d] p-6">
-        <h2 className="mb-4 text-lg font-semibold text-white">Choisir une voix</h2>
+      <section className="mb-5 rounded-2xl border border-hairline bg-card p-6">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Choisir une voix</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {VOICES.map((v) => {
             const isSel = v.id === selectedVoice
@@ -213,13 +213,13 @@ export default function VoiceChangerPage() {
                 onClick={() => setSelectedVoice(v.id)}
                 className={`group relative flex flex-col items-center gap-3 rounded-xl border p-4 transition-all duration-200 ${
                   isSel
-                    ? 'border-[#00ff88] bg-[#00ff88]/10'
-                    : 'border-white/10 bg-white/[0.02] hover:border-white/25 hover:bg-white/5'
+                    ? 'border-primary bg-primary/10'
+                    : 'border-hairline bg-muted hover:border-white/25 hover:bg-muted'
                 }`}
                 style={isSel ? { boxShadow: '0 0 20px rgba(0,255,136,0.15)' } : undefined}
               >
                 {isSel && (
-                  <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-[#00ff88]">
+                  <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary">
                     <Check className="h-3 w-3 text-black" />
                   </span>
                 )}
@@ -233,8 +233,8 @@ export default function VoiceChangerPage() {
                   <v.icon className="h-6 w-6" style={{ color: v.color }} />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-semibold text-white">{v.label}</p>
-                  <p className="mt-0.5 text-[11px] text-gray-500">{v.sub}</p>
+                  <p className="text-sm font-semibold text-foreground">{v.label}</p>
+                  <p className="mt-0.5 text-[11px] text-text-faint">{v.sub}</p>
                 </div>
               </button>
             )
@@ -243,8 +243,8 @@ export default function VoiceChangerPage() {
       </section>
 
       {/* Quick settings */}
-      <section className="mb-5 rounded-2xl border border-white/10 bg-[#0d0d0d] p-6">
-        <h2 className="mb-5 text-lg font-semibold text-white">Réglages rapides</h2>
+      <section className="mb-5 rounded-2xl border border-hairline bg-card p-6">
+        <h2 className="mb-5 text-lg font-semibold text-foreground">Réglages rapides</h2>
         <div className="flex flex-col gap-5">
           <Slider icon={Mic} label="Intensité" value={intensity} onChange={setIntensity} />
           <Slider icon={Sparkles} label="Clarté" value={clarity} onChange={setClarity} />
@@ -258,11 +258,11 @@ export default function VoiceChangerPage() {
         className="mb-5 flex w-full flex-col items-center justify-center rounded-2xl bg-gradient-to-r from-[#7c3aed] via-[#8b5cf6] to-[#a855f7] py-5 text-center transition-all duration-300 hover:brightness-110"
         style={{ boxShadow: '0 8px 30px rgba(124,58,237,0.4)' }}
       >
-        <span className="flex items-center gap-2 text-lg font-bold text-white">
+        <span className="flex items-center gap-2 text-lg font-bold text-foreground">
           {isActive ? <Power className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
           {isActive ? 'Désactiver Voice Changer' : 'Activer Voice Changer'}
         </span>
-        <span className="mt-0.5 text-sm text-white/70">
+        <span className="mt-0.5 text-sm text-foreground/70">
           {isActive
             ? `Voix "${active.label}" appliquée en temps réel`
             : 'Le changement de voix sera appliqué en temps réel'}
@@ -270,32 +270,32 @@ export default function VoiceChangerPage() {
       </button>
 
       {/* Advanced settings */}
-      <section className="rounded-2xl border border-white/10 bg-[#0d0d0d]">
+      <section className="rounded-2xl border border-hairline bg-card">
         <button
           onClick={() => setAdvancedOpen((o) => !o)}
           className="flex w-full items-center justify-between px-6 py-4 text-left"
           aria-expanded={advancedOpen}
         >
-          <span className="flex items-center gap-2 text-sm font-semibold text-white">
-            <Settings className="h-4 w-4 text-gray-400" />
+          <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            <Settings className="h-4 w-4 text-muted-foreground" />
             Paramètres avancés
           </span>
           <ChevronDown
-            className={`h-5 w-5 text-gray-400 transition-transform duration-200 ${advancedOpen ? 'rotate-180' : ''}`}
+            className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${advancedOpen ? 'rotate-180' : ''}`}
           />
         </button>
         {advancedOpen && (
-          <div className="flex flex-col gap-5 border-t border-white/10 px-6 py-5">
+          <div className="flex flex-col gap-5 border-t border-hairline px-6 py-5">
             <Slider icon={Waves} label="Hauteur (pitch)" value={pitch} onChange={setPitch} />
             <Slider icon={Sparkles} label="Réverbération" value={reverb} onChange={setReverb} />
             <label className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-sm text-gray-300">
-                <Gauge className="h-4 w-4 text-gray-500" />
+              <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Gauge className="h-4 w-4 text-text-faint" />
                 Auto-Tune
               </span>
               <button
                 onClick={() => setAutoTune((a) => !a)}
-                className={`relative h-6 w-11 rounded-full transition-colors ${autoTune ? 'bg-[#00ff88]' : 'bg-white/15'}`}
+                className={`relative h-6 w-11 rounded-full transition-colors ${autoTune ? 'bg-primary' : 'bg-white/15'}`}
                 aria-pressed={autoTune}
               >
                 <span
@@ -308,9 +308,9 @@ export default function VoiceChangerPage() {
       </section>
 
       {/* Helper note */}
-      <p className="mt-5 text-center text-xs text-gray-600">
+      <p className="mt-5 text-center text-xs text-text-faint">
         Besoin d&apos;aide pour configurer OBS ?{' '}
-        <Link href="/dashboard" className="text-[#00ff88] hover:underline">
+        <Link href="/dashboard" className="text-primary hover:underline">
           Consulter le guide
         </Link>
       </p>
