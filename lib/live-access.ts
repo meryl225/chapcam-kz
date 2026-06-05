@@ -135,6 +135,13 @@ interface WorkerSpec {
   podId?: string
 }
 
+// Pool de workers :
+//   "default" -> moteur classique (InsightFace) : fenetres payantes live15
+//   "trial"   -> moteur PersonaLive : essai gratuit 2 min
+// Le pool "trial" lit ses propres variables ; s'il n'en a aucune, il retombe
+// sur le pool "default" (degradation propre, retro-compatible).
+export type GpuPool = 'default' | 'trial'
+
 interface ResolvedWorker {
   wsUrl: string
   healthUrl: string
@@ -147,13 +154,36 @@ interface WorkerHealth {
   free: number
 }
 
+const split = (v?: string) =>
+  (v || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+
 // Lit la liste des specs worker depuis l'env (singulier + pluriel).
-function gpuWorkerSpecs(): WorkerSpec[] {
-  const split = (v?: string) =>
-    (v || '')
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean)
+// pool="trial" lit les variables PersonaLive ; vide -> repli sur "default".
+function gpuWorkerSpecs(pool: GpuPool = 'default'): WorkerSpec[] {
+  if (pool === 'trial') {
+    const urls = [
+      ...split(process.env.LIVE_GPU_TRIAL_WS_URL),
+      ...split(process.env.LIVE_GPU_TRIAL_WS_URLS),
+    ]
+    const pods = [
+      ...split(process.env.RUNPOD_TRIAL_POD_ID),
+      ...split(process.env.RUNPOD_TRIAL_POD_IDS),
+    ]
+    if (urls.length === 0 && pods.length === 0) {
+      // Aucun worker PersonaLive defini : l'essai retombe sur le pool par defaut.
+      return gpuWorkerSpecs('default')
+    }
+    const trialSpecs: WorkerSpec[] = []
+    for (const u of urls) {
+      if (/proxy\.runpod\.net/i.test(u)) continue
+      trialSpecs.push({ fixedUrl: u })
+    }
+    for (const p of pods) trialSpecs.push({ podId: p })
+    return trialSpecs
+  }
 
   const urls = [
     ...split(process.env.LIVE_GPU_WS_URL),
@@ -175,9 +205,9 @@ function gpuWorkerSpecs(): WorkerSpec[] {
   return specs
 }
 
-export function isGpuConfigured(): boolean {
+export function isGpuConfigured(pool: GpuPool = 'default'): boolean {
   // Configure si on a le secret ET au moins un worker (URL fixe ou pod RunPod).
-  return !!process.env.LIVE_GPU_SHARED_SECRET && gpuWorkerSpecs().length > 0
+  return !!process.env.LIVE_GPU_SHARED_SECRET && gpuWorkerSpecs(pool).length > 0
 }
 
 // Convertit une URL wss://host/path en URL https://host/health (pour le health-check).
@@ -283,8 +313,8 @@ export async function resolveGpuWsUrl(): Promise<string | null> {
 // 2) interroge /health de chaque worker joignable
 // 3) renvoie le moins charge (active + waiting) ; egalite -> hash stable userId
 // 4) si aucun /health ne repond -> repartition par hash de l'userId
-export async function selectGpuWsUrl(userId: string): Promise<string | null> {
-  const specs = gpuWorkerSpecs()
+export async function selectGpuWsUrl(userId: string, pool: GpuPool = 'default'): Promise<string | null> {
+  const specs = gpuWorkerSpecs(pool)
   if (specs.length === 0) return null
 
   const resolved = (await Promise.all(specs.map(resolveWorker))).filter(
@@ -397,10 +427,11 @@ export function getGpuConnection(userId: string): { wsUrl: string; token: string
 // Version async : resout l'URL (fixe ou auto-decouverte RunPod) puis signe le token.
 export async function getGpuConnectionAsync(
   userId: string,
+  pool: GpuPool = 'default',
 ): Promise<{ wsUrl: string; token: string } | null> {
-  if (!isGpuConfigured()) return null
+  if (!isGpuConfigured(pool)) return null
   // Repartit l'utilisateur sur le worker GPU le moins charge (multi-RTX 5090).
-  const wsUrl = await selectGpuWsUrl(userId)
+  const wsUrl = await selectGpuWsUrl(userId, pool)
   if (!wsUrl) return null
   return { wsUrl, token: signGpuToken(userId) }
 }
