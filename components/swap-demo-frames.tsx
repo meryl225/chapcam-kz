@@ -5,10 +5,10 @@ import { useState, useEffect, useCallback } from "react"
 import { Maximize2, X } from "lucide-react"
 
 const frames = [
-  { src: "/demo/swap/frame-1.png", label: "Visage reel" },
-  { src: "/demo/swap/frame-2.png", label: "Analyse du visage" },
-  { src: "/demo/swap/frame-3.png", label: "Transformation" },
-  { src: "/demo/swap/frame-4.png", label: "Albert Einstein" },
+  { src: "/showcase/pa1.jpg", label: "Live Streaming" },
+  { src: "/showcase/pa2.jpg", label: "Online Chat" },
+  { src: "/showcase/pa3.jpg", label: "Post-Production" },
+  { src: "/showcase/pa4.jpg", label: "Online Games" },
 ]
 
 export function SwapDemoFrames() {
@@ -42,7 +42,7 @@ export function SwapDemoFrames() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Agrandir la demonstration de face swap"
+        aria-label="Agrandir la galerie ChapCam en action"
         className="group relative block w-full overflow-hidden rounded-3xl border border-[#00ff88]/30 bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#00ff88]"
       >
         <div className="relative aspect-video w-full">
@@ -50,7 +50,7 @@ export function SwapDemoFrames() {
             <motion.img
               key={current.src}
               src={current.src}
-              alt={`Etape de transformation : ${current.label}`}
+              alt={`ChapCam en action : ${current.label}`}
               initial={{ opacity: 0, scale: 1.04 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
@@ -78,7 +78,7 @@ export function SwapDemoFrames() {
               transition={{ duration: 1, repeat: Infinity }}
               className="h-2 w-2 rounded-full bg-[#00ff88]"
             />
-            <span className="text-xs font-bold tracking-wide text-white">DEMO LIVE</span>
+            <span className="text-xs font-bold tracking-wide text-white">EN ACTION</span>
           </div>
 
           {/* Indice "cliquer pour agrandir" */}
@@ -154,7 +154,7 @@ export function SwapDemoFrames() {
                   <motion.img
                     key={`big-${current.src}`}
                     src={current.src}
-                    alt={`Etape de transformation : ${current.label}`}
+                    alt={`ChapCam en action : ${current.label}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -178,7 +178,7 @@ export function SwapDemoFrames() {
                     e.stopPropagation()
                     setIndex(i)
                   }}
-                  aria-label={`Voir l'etape ${f.label}`}
+                  aria-label={`Voir ${f.label}`}
                   className={`h-12 w-12 overflow-hidden rounded-lg border-2 transition-all ${
                     i === index ? "border-[#00ff88]" : "border-white/20 opacity-60 hover:opacity-100"
                   }`}

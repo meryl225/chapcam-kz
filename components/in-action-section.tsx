@@ -82,7 +82,7 @@ export function InActionSection() {
               className="absolute inset-0 rounded-3xl"
             />
 
-            {/* Rectangle anime des 4 frames (femme noire -> Albert Einstein), cliquable pour agrandir */}
+            {/* Rectangle anime des 4 images ChapCam en action, cliquable pour agrandir */}
             <SwapDemoFrames />
 
             {/* Instruction text */}
@@ -93,7 +93,7 @@ export function InActionSection() {
               transition={{ delay: 1 }}
               className="text-center text-gray-500 text-sm mt-4"
             >
-              Clique sur la demo pour l&apos;agrandir - transformation instantanee en temps reel
+              Clique sur la galerie pour l&apos;agrandir - ChapCam en action
             </motion.p>
           </div>
         </motion.div>
