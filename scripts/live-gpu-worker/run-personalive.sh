@@ -55,12 +55,8 @@ sys.exit(0 if torch.cuda.is_available() else 2)
 PY
 
 PL_PID=""
-WORKER_PID=""
-TUNNEL_PID=""
 cleanup() {
   echo "[run-pl] Arret..."
-  [ -n "$TUNNEL_PID" ] && kill "$TUNNEL_PID" 2>/dev/null || true
-  [ -n "$WORKER_PID" ] && kill "$WORKER_PID" 2>/dev/null || true
   [ -n "$PL_PID" ] && kill "$PL_PID" 2>/dev/null || true
 }
 trap cleanup EXIT INT TERM
@@ -105,78 +101,6 @@ do
 done
 echo "[run-pl] PersonaLive est pret (${waited}s)."
 
-# --- 2. Worker ChapCam (pont) en arriere-plan --------------------------------
+# --- 2. Worker ChapCam (pont) ------------------------------------------------
 echo "[run-pl] Demarrage du worker ChapCam (port $CHAPCAM_PORT, moteur=personalive)..."
-python server.py > /tmp/chapcam-worker.log 2>&1 &
-WORKER_PID=$!
-
-# Attendre que le worker ecoute vraiment sur le port
-for _ in $(seq 1 30); do
-  if curl -sS -m 2 "http://localhost:$CHAPCAM_PORT/" >/dev/null 2>&1; then
-    echo "[run-pl] Worker ChapCam pret."
-    break
-  fi
-  sleep 1
-done
-
-# --- 3. Tunnel Cloudflare + auto-decouverte (URL STABLE cote Vercel) ---------
-# Le navigateur ne peut pas ouvrir un WebSocket via le proxy HTTP de RunPod
-# (502). On expose donc le worker via un tunnel Cloudflare (wss://...).
-# L'URL du tunnel change a chaque relance MAIS on l'ecrit dans un fichier que
-# server.py sert sur /tunnel-url. Cote Vercel, il suffit de configurer le
-# pod-id stable (RUNPOD_TRIAL_POD_ID) : l'app recupere l'URL courante toute
-# seule via https://<podId>-<port>.proxy.runpod.net/tunnel-url.
-# => Plus jamais besoin de coller une URL ni de redeployer.
-TUNNEL_URL_FILE="${CHAPCAM_TUNNEL_URL_FILE:-/tmp/chapcam-tunnel-url.txt}"
-rm -f "$TUNNEL_URL_FILE"
-
-if ! command -v cloudflared >/dev/null 2>&1; then
-  echo "[run-pl] Installation de cloudflared..."
-  ARCH=$(uname -m)
-  case "$ARCH" in
-    x86_64|amd64) CF_ARCH=amd64 ;;
-    aarch64|arm64) CF_ARCH=arm64 ;;
-    *) CF_ARCH=amd64 ;;
-  esac
-  curl -fsSL -o /usr/local/bin/cloudflared \
-    "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}"
-  chmod +x /usr/local/bin/cloudflared
-fi
-
-start_tunnel() {
-  : > /tmp/chapcam-tunnel.log
-  cloudflared tunnel --no-autoupdate --url "http://localhost:$CHAPCAM_PORT" \
-    > /tmp/chapcam-tunnel.log 2>&1 &
-  TUNNEL_PID=$!
-  local url=""
-  for _ in $(seq 1 30); do
-    url=$(grep -oE "https://[a-zA-Z0-9.-]+\.trycloudflare\.com" /tmp/chapcam-tunnel.log | head -1 || true)
-    [ -n "$url" ] && break
-    sleep 1
-  done
-  if [ -n "$url" ]; then
-    echo "wss://${url#https://}" > "$TUNNEL_URL_FILE"
-    echo "[run-pl] Tunnel actif : wss://${url#https://}"
-    echo "[run-pl] (auto-decouverte : configure RUNPOD_TRIAL_POD_ID sur Vercel, rien a coller)"
-  else
-    echo "[run-pl] ATTENTION : URL du tunnel introuvable (voir /tmp/chapcam-tunnel.log)" >&2
-  fi
-}
-
-echo "[run-pl] Ouverture du tunnel Cloudflare..."
-start_tunnel
-
-# --- 4. Surveillance : relance le tunnel s'il tombe (nouvelle URL ecrite) ----
-echo "[run-pl] Systeme Live pret. Laisse cette fenetre/session ouverte."
-while kill -0 "$WORKER_PID" 2>/dev/null; do
-  sleep 5
-  if [ -n "$PL_PID" ] && ! kill -0 "$PL_PID" 2>/dev/null; then
-    echo "[run-pl] ERREUR : PersonaLive s'est arrete." >&2
-    break
-  fi
-  if [ -n "$TUNNEL_PID" ] && ! kill -0 "$TUNNEL_PID" 2>/dev/null; then
-    echo "[run-pl] Tunnel tombe -> relance + nouvelle URL."
-    rm -f "$TUNNEL_URL_FILE"
-    start_tunnel
-  fi
-done
+exec python server.py

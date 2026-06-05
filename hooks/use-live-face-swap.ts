@@ -2,6 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+// ============================================================
+// Hook de Face Swap temps reel (2e outil ChapCam, moteur GPU persistant).
+//
+// Protocole WebSocket avec le worker GPU :
+//   1. A l'ouverture, on envoie un message JSON :
+//        { "type": "config", "references": ["url1", ...] }
+//      Le worker telecharge les photos persona et prepare le visage source.
+//   2. Le worker repond { "type": "ready" } quand il est pret.
+//   3. Pour chaque image : on envoie une frame binaire (JPEG).
+//      Le worker renvoie une frame binaire (JPEG) deja "swappee".
+//   4. En cas de souci : { "type": "error", "message": "..." }
+//
+// Strategie de latence : au plus `MAX_IN_FLIGHT` frames en vol a la fois
+// (back-pressure) pour eviter l'accumulation de buffer et garder la latence basse.
+// ============================================================
+
 export type LiveStatus =
   | 'idle'
   | 'connecting'
@@ -14,7 +30,7 @@ export type LiveStatus =
 export type LiveMode = 'paid' | 'ready' | 'trial' | 'none'
 
 interface StartOptions {
-  references: string[]
+  references: string[] // URLs des photos persona (1 a 4)
 }
 
 interface UseLiveFaceSwapReturn {
@@ -23,8 +39,8 @@ interface UseLiveFaceSwapReturn {
   secondsRemaining: number
   fps: number
   latencyMs: number
-  gpuMs: number
-  networkMs: number
+  gpuMs: number // temps de traitement GPU (rapporte par le worker)
+  networkMs: number // latence reseau estimee (total - GPU)
   queuePosition: number
   queueTotal: number
   saturated: boolean
@@ -36,17 +52,25 @@ interface UseLiveFaceSwapReturn {
   stop: () => void
 }
 
-const MIN_IN_FLIGHT = 2
-const MAX_IN_FLIGHT_CAP = 10
-const LAT_GROW_MS = 220
-const LAT_SHRINK_MS = 420
-const CAPTURE_WIDTH = 480
+// Reglages basse latence. Le limiteur de cadence est une FENETRE d'envoi
+// adaptative (nombre de frames "en vol") qui se regle toute seule facon AIMD
+// (comme un controle de congestion reseau) :
+//   - si la latence reste basse -> on AGRANDIT la fenetre (on nourrit le GPU,
+//     les FPS montent) ;
+//   - si la latence derape    -> on REDUIT la fenetre (on protege la latence).
+// C'est ce qui debloque le cas "GPU rapide mais tunnel a fort RTT" ou une
+// fenetre fixe a 2 bridait les FPS a 2*1000/RTT (~16 fps sur 120ms de RTT).
+const MIN_IN_FLIGHT = 2 // plancher (latence mini garantie)
+const MAX_IN_FLIGHT_CAP = 10 // plafond de securite (anti-accumulation)
+const LAT_GROW_MS = 220 // sous ce seuil de latence : on agrandit la fenetre
+const LAT_SHRINK_MS = 420 // au-dessus : on reduit la fenetre
+const CAPTURE_WIDTH = 480 // largeur d'envoi (downscale pour la vitesse)
 const JPEG_QUALITY = 0.6
-const TARGET_INTERVAL_MS = 12
-const PERF_LOG = true
-const MAX_RECONNECT = 4
-const RECONNECT_DELAY_MS = 2000
-const BUSY_RETRY_DELAY_MS = 4000
+const TARGET_INTERVAL_MS = 12 // garde-fou anti-flood (~83 fps max, ne bride plus)
+const PERF_LOG = true // logs de performance detailles en console
+const MAX_RECONNECT = 4 // tentatives de reconnexion auto si le moteur tombe en session
+const RECONNECT_DELAY_MS = 2000 // delai entre deux tentatives de reconnexion
+const BUSY_RETRY_DELAY_MS = 4000 // file pleine : delai avant de retenter automatiquement un creneau
 
 export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const [status, setStatus] = useState<LiveStatus>('idle')
@@ -58,7 +82,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const [networkMs, setNetworkMs] = useState(0)
   const [queuePosition, setQueuePosition] = useState(0)
   const [queueTotal, setQueueTotal] = useState(0)
-  const [saturated, setSaturated] = useState(false)
+  const [saturated, setSaturated] = useState(false) // tous les GPU pleins : on retente en boucle
   const [error, setError] = useState<string | null>(null)
   const [notConfigured, setNotConfigured] = useState(false)
 
@@ -73,30 +97,33 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const inFlightRef = useRef<number>(0)
-  const maxInFlightRef = useRef<number>(MIN_IN_FLIGHT)
-  const sendTimesRef = useRef<number[]>([])
+  const maxInFlightRef = useRef<number>(MIN_IN_FLIGHT) // fenetre d'envoi adaptative (AIMD)
+  const sendTimesRef = useRef<number[]>([]) // FIFO des timestamps d'envoi
   const lastSendRef = useRef<number>(0)
-  const recvTimesRef = useRef<number[]>([])
+  const recvTimesRef = useRef<number[]>([]) // timestamps de reception (pour le fps)
   const readyRef = useRef<boolean>(false)
   const stoppingRef = useRef<boolean>(false)
 
+  // --- Reconnexion automatique (quand le pod GPU redemarre en pleine session) ---
   const lastReferencesRef = useRef<string[]>([])
   const reconnectAttemptsRef = useRef<number>(0)
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const secondsRemainingRef = useRef<number>(0)
   const startRef = useRef<((opts: StartOptions) => Promise<void>) | null>(null)
 
-  const lastGpuMsRef = useRef<number>(0)
-  const latEmaRef = useRef<number>(0)
-  const lastAdaptRef = useRef<number>(0)
+  // --- Instrumentation perf cote client ---
+  const lastGpuMsRef = useRef<number>(0) // dernier serverMs rapporte par le worker
+  const latEmaRef = useRef<number>(0) // latence totale lissee (pour l'AIMD)
+  const lastAdaptRef = useRef<number>(0) // dernier ajustement de fenetre
   const perfRef = useRef({
     frames: 0,
-    encodeMs: 0,
-    drawMs: 0,
-    latency: 0,
+    encodeMs: 0, // temps de toBlob (encodage JPEG navigateur)
+    drawMs: 0, // temps de drawImage capture
+    latency: 0, // somme des latences totales
     lastLog: 0,
   })
 
+  // Garder une ref a jour du temps restant (pour decider d'une reconnexion hors render)
   useEffect(() => {
     secondsRemainingRef.current = secondsRemaining
   }, [secondsRemaining])
@@ -128,6 +155,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     readyRef.current = false
   }, [])
 
+  // Tenir startRef a jour pour permettre la reconnexion auto depuis ws.onclose
   useEffect(() => {
     startRef.current = start
   })
@@ -135,11 +163,13 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
   const stop = useCallback(() => {
     if (stoppingRef.current) return
     stoppingRef.current = true
+    // Annuler toute reconnexion auto en attente
     if (reconnectTimerRef.current) {
       clearTimeout(reconnectTimerRef.current)
       reconnectTimerRef.current = null
     }
     reconnectAttemptsRef.current = 0
+    // Battement final pour figer le compteur cote serveur
     fetch('/api/live/heartbeat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -155,6 +185,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     stoppingRef.current = false
   }, [cleanup])
 
+  // Boucle de capture/envoi des frames
   const captureLoop = useCallback(() => {
     const video = videoRef.current
     const ws = wsRef.current
@@ -189,6 +220,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
                     sendTimesRef.current.push(performance.now())
                     inFlightRef.current += 1
                     wsRef.current.send(buf)
+                    // perf : accumuler draw + encode cote client
                     perfRef.current.drawMs += drawMs
                     perfRef.current.encodeMs += encodeMs
                   }
@@ -220,23 +252,29 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       /* frame illisible : on ignore */
     }
 
+    // Latence : on associe la frame recue au plus ancien envoi (FIFO)
     const sentAt = sendTimesRef.current.shift()
     let lat = 0
     if (sentAt != null) {
       lat = performance.now() - sentAt
       latEmaRef.current = latEmaRef.current ? latEmaRef.current * 0.7 + lat * 0.3 : lat
       setLatencyMs(Math.round(latEmaRef.current))
+      // Reseau estime = latence totale - temps GPU rapporte par le worker
       const net = Math.max(0, lat - lastGpuMsRef.current)
       setNetworkMs((prev) => Math.round(prev ? prev * 0.7 + net * 0.3 : net))
     }
     inFlightRef.current = Math.max(0, inFlightRef.current - 1)
 
+    // --- AIMD : on regle la fenetre d'envoi selon la latence lissee ---
+    // Objectif : maximiser les FPS (nourrir le GPU malgre le RTT du tunnel)
+    // sans laisser la latence s'envoler. Ajuste au plus toutes les 500 ms.
     const tAdapt = performance.now()
     if (tAdapt - lastAdaptRef.current >= 500 && latEmaRef.current > 0) {
       const l = latEmaRef.current
       if (l < LAT_GROW_MS && maxInFlightRef.current < MAX_IN_FLIGHT_CAP) {
-        maxInFlightRef.current += 1
+        maxInFlightRef.current += 1 // additive increase : on nourrit le GPU
       } else if (l > LAT_SHRINK_MS && maxInFlightRef.current > MIN_IN_FLIGHT) {
+        // multiplicative decrease : on degonfle vite pour proteger la latence
         maxInFlightRef.current = Math.max(
           MIN_IN_FLIGHT,
           Math.floor(maxInFlightRef.current * 0.7),
@@ -245,11 +283,13 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       lastAdaptRef.current = tAdapt
     }
 
+    // FPS : nombre de frames recues sur la derniere seconde
     const tnow = performance.now()
     recvTimesRef.current.push(tnow)
     recvTimesRef.current = recvTimesRef.current.filter((t) => tnow - t <= 1000)
     setFps(recvTimesRef.current.length)
 
+    // --- Log perf periodique (toutes les ~2 s) ---
     if (PERF_LOG) {
       const p = perfRef.current
       p.frames += 1
@@ -278,10 +318,10 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       setNotConfigured(false)
       setSaturated(false)
       stoppingRef.current = false
-      lastReferencesRef.current = references
+      lastReferencesRef.current = references // memorise pour une eventuelle reconnexion
       setStatus('connecting')
 
-      // 1. Demarrer la session cote serveur
+      // 1. Demarrer la session cote serveur (credits + connexion GPU)
       let session: any
       try {
         const res = await fetch('/api/live/session', { method: 'POST' })
@@ -337,20 +377,9 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
         captureCanvasRef.current = document.createElement('canvas')
       }
 
-      // 3. Connexion WebSocket au worker ChapCam (server.py).
-      //    IMPORTANT : le navigateur parle le protocole ChapCam au worker, PAS
-      //    le protocole brut de PersonaLive. C'est le worker (server.py +
-      //    bridge_personalive.py) qui telecharge la photo de reference et la
-      //    transmet a PersonaLive. Le client ne fait donc AUCUN upload direct
-      //    (cela provoquait une erreur CORS et etait inutile).
-      //    Le worker authentifie via ?token= et attend ensuite un message
-      //    {type:'config', references:[...]} (cf. server.py handle()).
-      const baseUrl = gpu.wsUrl.replace(/\/+$/, '')
-      const sep = baseUrl.includes('?') ? '&' : '?'
-      const url = `${baseUrl}${sep}token=${encodeURIComponent(gpu.token)}&mode=${encodeURIComponent(session.mode ?? 'trial')}`
-
-      console.log('[live] Connexion WS vers:', url)
-
+      // 3. Connexion WebSocket au worker GPU (on passe le mode pour la priorite de file d'attente)
+      const sep = gpu.wsUrl.includes('?') ? '&' : '?'
+      const url = `${gpu.wsUrl}${sep}token=${encodeURIComponent(gpu.token)}&mode=${encodeURIComponent(session.mode ?? 'trial')}`
       let ws: WebSocket
       try {
         ws = new WebSocket(url)
@@ -364,22 +393,8 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       wsRef.current = ws
 
       ws.onopen = () => {
-        console.log('[live] WS ouvert, envoi config...')
         setStatus('preparing')
-        // Le worker (server.py) attend OBLIGATOIREMENT ce message en premier :
-        // il y lit les photos de reference, les telecharge cote serveur et,
-        // en mode PersonaLive, les transmet au moteur. C'est le serveur qui
-        // gere la reference -> aucun upload HTTP direct cote navigateur.
         ws.send(JSON.stringify({ type: 'config', references }))
-        // Marquer comme pret immediatement car PersonaLive
-        // n'envoie pas forcement de message "ready"
-        setTimeout(() => {
-          if (!readyRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
-            console.log('[live] PersonaLive: passage en mode running auto')
-            readyRef.current = true
-            setStatus('running')
-          }
-        }, 2000)
       }
 
       ws.onmessage = (ev) => {
@@ -396,16 +411,18 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
               setQueueTotal(0)
               setSaturated(false)
               readyRef.current = true
-              reconnectAttemptsRef.current = 0
+              reconnectAttemptsRef.current = 0 // reconnexion reussie : on remet le compteur a zero
               setStatus('running')
             } else if (msg.type === 'error') {
+              // File pleine sur tous les GPU : on n'echoue PAS, on garde l'utilisateur
+              // en attente et on retente automatiquement un creneau (comme LiveSync).
               if (msg.code === 'busy') {
                 setStatus('queued')
                 setSaturated(true)
                 setQueuePosition(0)
                 setQueueTotal(0)
                 setError(null)
-                cleanup()
+                cleanup() // ferme proprement (onclose neutralise) avant de reprogrammer
                 if (!stoppingRef.current && lastReferencesRef.current.length > 0) {
                   reconnectTimerRef.current = setTimeout(() => {
                     startRef.current?.({ references: lastReferencesRef.current })
@@ -417,17 +434,10 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
               setStatus('error')
               cleanup()
             } else if (msg.type === 'stats') {
+              // Metriques perf rapportees par le worker GPU
               if (typeof msg.serverMs === 'number') {
                 lastGpuMsRef.current = msg.serverMs
                 setGpuMs(Math.round(msg.serverMs))
-              }
-            } else {
-              // PersonaLive peut envoyer d'autres messages JSON :
-              // on les logue et on considere le worker pret
-              console.log('[live] Message PersonaLive:', msg)
-              if (!readyRef.current) {
-                readyRef.current = true
-                setStatus('running')
               }
             }
           } catch {
@@ -436,24 +446,21 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
           return
         }
         // Frame binaire swappee
-        if (!readyRef.current) {
-          readyRef.current = true
-          setStatus('running')
-        }
         drawResult(ev.data as Blob)
       }
 
-      ws.onerror = (e) => {
-        console.error('[live] WS erreur:', e)
+      ws.onerror = () => {
         if (!stoppingRef.current) {
           setError('Connexion au moteur Live perdue.')
           setStatus('error')
         }
       }
 
-      ws.onclose = (e) => {
-        console.log('[live] WS ferme, code:', e.code, 'raison:', e.reason)
+      ws.onclose = () => {
         if (stoppingRef.current) return
+        // Reconnexion auto : si du temps reste et qu'on n'a pas epuise les tentatives,
+        // on relance la session (le pod a peut-etre juste redemarre). En mode 'paid'
+        // deja en cours, cela ne reconsomme pas la fenetre (elle tourne deja).
         if (
           secondsRemainingRef.current > 0 &&
           reconnectAttemptsRef.current < MAX_RECONNECT &&
@@ -467,14 +474,15 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
           }, RECONNECT_DELAY_MS)
           return
         }
+        // Plus de temps ou trop de tentatives : on arrete proprement
         cleanup()
         setStatus((s) => (s === 'error' ? s : 'stopped'))
       }
 
-      // 5. Lancer la boucle de capture
+      // 4. Lancer la boucle de capture
       rafRef.current = requestAnimationFrame(captureLoop)
 
-      // 6. Battements serveur toutes les 5 s
+      // 5. Battements serveur (decompte du temps) toutes les 5 s
       heartbeatRef.current = setInterval(async () => {
         try {
           const res = await fetch('/api/live/heartbeat', {
@@ -491,11 +499,11 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
             stop()
           }
         } catch {
-          /* reseau instable */
+          /* reseau instable : on retentera au prochain beat */
         }
       }, 5000)
 
-      // 7. Decompte local fluide
+      // 6. Decompte local fluide (affichage)
       countdownRef.current = setInterval(() => {
         setSecondsRemaining((s) => (s > 0 ? s - 1 : 0))
       }, 1000)
@@ -503,6 +511,7 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
     [captureLoop, drawResult, cleanup, stop, status],
   )
 
+  // Nettoyage au demontage
   useEffect(() => {
     return () => {
       stoppingRef.current = true
