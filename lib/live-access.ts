@@ -190,10 +190,8 @@ function gpuWorkerSpecs(pool: GpuPool = 'default'): WorkerSpec[] {
       return gpuWorkerSpecs('default')
     }
     const trialSpecs: WorkerSpec[] = []
-    for (const u of urls) {
-      if (/proxy\.runpod\.net/i.test(u)) continue
-      trialSpecs.push({ fixedUrl: normalizeWsUrl(u) })
-    }
+    // FIX : suppression du filtre proxy.runpod.net pour le pool trial
+    for (const u of urls) trialSpecs.push({ fixedUrl: normalizeWsUrl(u) })
     for (const p of pods) trialSpecs.push({ podId: p })
     return trialSpecs
   }
@@ -248,8 +246,6 @@ function specKey(spec: WorkerSpec): string {
 }
 
 // Resout une spec en URL WebSocket concrete (+ URL de health), avec cache court.
-// Pour un pod RunPod : interroge https://<pod>-8765.proxy.runpod.net/tunnel-url
-// (GET qui PASSE le proxy) pour recuperer l'URL Cloudflare courante.
 async function resolveWorker(spec: WorkerSpec): Promise<ResolvedWorker | null> {
   const key = specKey(spec)
   const cached = _resolveCache.get(key)
@@ -269,7 +265,6 @@ async function resolveWorker(spec: WorkerSpec): Promise<ResolvedWorker | null> {
       if (res.ok) {
         const data = (await res.json()) as { wss_url?: string }
         const url = (data?.wss_url || '').trim()
-        // Le health-check passe par le proxy RunPod (GET simple, fiable).
         value = url ? { wsUrl: url, healthUrl: `${base}/health` } : null
       } else {
         console.error('[live-access] tunnel-url HTTP', res.status, spec.podId)
@@ -279,12 +274,13 @@ async function resolveWorker(spec: WorkerSpec): Promise<ResolvedWorker | null> {
     }
   }
 
-  // On ne cache un echec que brievement (la moitie du TTL) pour re-essayer vite.
   _resolveCache.set(key, { at: value ? Date.now() : Date.now() - RESOLVE_TTL_MS / 2, value })
   return value
 }
 
-// Interroge la charge d'un worker. null si injoignable OU pas pret (HTTP 503).
+// Interroge la charge d'un worker.
+// FIX : accepte aussi 404 (PersonaLive n'a pas de /health standard) -> worker
+// considere disponible avec charge nulle plutot que rejete.
 async function fetchWorkerHealth(healthUrl: string): Promise<WorkerHealth | null> {
   const cached = _healthCache.get(healthUrl)
   if (cached && Date.now() - cached.at < HEALTH_TTL_MS) return cached.value
@@ -295,8 +291,15 @@ async function fetchWorkerHealth(healthUrl: string): Promise<WorkerHealth | null
     const timer = setTimeout(() => ctrl.abort(), 4000)
     const res = await fetch(healthUrl, { cache: 'no-store', signal: ctrl.signal })
     clearTimeout(timer)
-    // 503 = worker en cours de chargement -> traite comme indisponible.
-    if (res.ok) value = (await res.json()) as WorkerHealth
+    if (res.ok) {
+      // Worker avec /health standard (InsightFace, bridge custom...)
+      value = (await res.json()) as WorkerHealth
+    } else if (res.status === 404) {
+      // PersonaLive n'expose pas /health -> on le considere disponible
+      // avec charge nulle (pas de load-balancing fin, mais connexion possible).
+      value = { active: 0, waiting: 0, max: 1, free: 1 }
+    }
+    // 503 = worker en cours de chargement -> reste null (indisponible)
   } catch {
     value = null
   }
@@ -322,10 +325,6 @@ export async function resolveGpuWsUrl(): Promise<string | null> {
 }
 
 // Selectionne le worker le moins charge pour un utilisateur donne.
-// 1) resout toutes les specs (URLs fixes + pods RunPod) en parallele
-// 2) interroge /health de chaque worker joignable
-// 3) renvoie le moins charge (active + waiting) ; egalite -> hash stable userId
-// 4) si aucun /health ne repond -> repartition par hash de l'userId
 export async function selectGpuWsUrl(userId: string, pool: GpuPool = 'default'): Promise<string | null> {
   const specs = gpuWorkerSpecs(pool)
   if (specs.length === 0) return null
@@ -357,10 +356,10 @@ export async function selectGpuWsUrl(userId: string, pool: GpuPool = 'default'):
 // Statut des workers GPU (pour le dashboard admin).
 // ------------------------------------------------------------
 export interface GpuWorkerStatus {
-  id: string // pod id ou URL (identifiant lisible)
+  id: string
   kind: 'pod' | 'url'
-  online: boolean // tunnel resolu (worker joignable)
-  ready: boolean // /health a repondu 200 (modele charge)
+  online: boolean
+  ready: boolean
   active: number
   waiting: number
   max: number
@@ -374,7 +373,6 @@ export interface GpuClusterStatus {
   totals: { active: number; waiting: number; max: number; free: number; online: number; total: number }
 }
 
-// Renvoie l'etat detaille de chaque worker + les totaux agreges.
 export async function getGpuWorkersStatus(): Promise<GpuClusterStatus> {
   const specs = gpuWorkerSpecs()
   const workers: GpuWorkerStatus[] = await Promise.all(
@@ -387,7 +385,6 @@ export async function getGpuWorkersStatus(): Promise<GpuClusterStatus> {
       }
       const health = await fetchWorkerHealth(resolved.healthUrl)
       if (!health) {
-        // Tunnel up mais /health KO (modele en chargement ou worker fige).
         return { id, kind, online: true, ready: false, active: 0, waiting: 0, max: 0, free: 0 }
       }
       return {
@@ -443,7 +440,6 @@ export async function getGpuConnectionAsync(
   pool: GpuPool = 'default',
 ): Promise<{ wsUrl: string; token: string } | null> {
   if (!isGpuConfigured(pool)) return null
-  // Repartit l'utilisateur sur le worker GPU le moins charge (multi-RTX 5090).
   const wsUrl = await selectGpuWsUrl(userId, pool)
   if (!wsUrl) return null
   return { wsUrl, token: signGpuToken(userId) }
