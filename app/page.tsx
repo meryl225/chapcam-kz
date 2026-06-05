@@ -11,6 +11,7 @@ import { TutorialSection } from "@/components/tutorial-section"
 import { FounderSection } from "@/components/founder-section"
 import { AnimatedBackground } from "@/components/animated-background"
 import { TelegramSupport } from "@/components/telegram-support"
+import { SiteFooter } from "@/components/site-footer"
 
 export default function Home() {
   return (
@@ -35,6 +36,7 @@ export default function Home() {
         <FAQSection />
         <TutorialSection />
         <FounderSection />
+        <SiteFooter />
       </div>
 
       {/* Telegram Support Button */}
