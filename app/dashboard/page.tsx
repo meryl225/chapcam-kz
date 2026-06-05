@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
 import { HeaderActions } from '@/components/dashboard/hub/header-actions'
+import { ConsentCard } from '@/components/dashboard/consent-card'
 import { UserCircle, Cloud, Sparkles, Gauge, Clock, Crown, Check, Zap, Timer, Users, Hourglass } from 'lucide-react'
 
 const POINTS_PER_SECOND = 2
@@ -74,6 +75,7 @@ export default async function DashboardHubPage() {
     user?.email?.split('@')[0] ||
     'Bienvenue'
   const avatarName = activeAvatar?.name ?? 'Aucun avatar'
+  const consentAccepted = (user?.user_metadata?.consent_accepted as boolean | undefined) ?? false
 
   const infoCards = [
     { icon: UserCircle, label: 'Avatar actif', value: avatarName, sub: 'Naturel', color: '#00ff88' },
@@ -96,6 +98,9 @@ export default async function DashboardHubPage() {
         </div>
         <HeaderActions />
       </header>
+
+      {/* Confirmation d'utilisation responsable */}
+      <ConsentCard initiallyAccepted={consentAccepted} />
 
       {/* Info bar */}
       <section
