@@ -37,6 +37,14 @@ PORT = int(os.getenv("CHAPCAM_PORT", os.getenv("PORT", "8765")))
 MAX_REFERENCES = 4
 JPEG_QUALITY = int(os.getenv("CHAPCAM_JPEG_QUALITY", "70"))
 
+# Moteur Live actif :
+#   "insightface" (defaut) -> face swap classique (engine.py, abonnes/payant)
+#   "personalive"          -> animation de portrait PersonaLive (essai gratuit 2 min)
+# En mode personalive, server.py ne charge PAS InsightFace : il relaie les frames
+# vers le serveur PersonaLive local via bridge_personalive.py.
+ENGINE = os.getenv("CHAPCAM_ENGINE", "insightface").strip().lower()
+USE_PERSONALIVE = ENGINE == "personalive"
+
 engine = SwapEngine()
 queue = GpuQueue()
 
@@ -209,6 +217,14 @@ async def handle(ws):
             })
             return
 
+        # --- Moteur PersonaLive (essai gratuit) : on delegue toute la session
+        # au pont, qui relaie les frames vers le serveur PersonaLive local. ---
+        if USE_PERSONALIVE:
+            from bridge_personalive import run_personalive_session
+
+            await run_personalive_session(ws, references, _send_json)
+            return
+
         # 4) Preparer le visage source a partir de la premiere reference exploitable
         source_face = None
         for url in references:
@@ -319,10 +335,19 @@ async def handle(ws):
 
 async def main():
     global MODEL_READY
-    print("[server] Chargement du moteur de face swap...")
-    await asyncio.to_thread(engine.load)
-    MODEL_READY = True
-    print(f"[server] Worker GPU pret. Sessions GPU simultanees max : {queue.max_concurrent}")
+    if USE_PERSONALIVE:
+        from bridge_personalive import PERSONALIVE_URL, wait_until_ready
+
+        print(f"[server] Moteur PersonaLive. Attente du serveur PersonaLive sur {PERSONALIVE_URL} ...")
+        ready = await wait_until_ready()
+        if not ready:
+            print("[server] ATTENTION : PersonaLive n'a pas repondu a temps. Le worker demarre quand meme.")
+        MODEL_READY = True
+    else:
+        print("[server] Chargement du moteur de face swap (InsightFace)...")
+        await asyncio.to_thread(engine.load)
+        MODEL_READY = True
+    print(f"[server] Worker GPU pret (moteur={ENGINE}). Sessions GPU simultanees max : {queue.max_concurrent}")
     print(f"[server] Ecoute WebSocket sur ws://{HOST}:{PORT}")
     async with websockets.serve(
         handle,
