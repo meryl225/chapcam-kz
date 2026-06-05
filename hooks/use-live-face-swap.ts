@@ -281,41 +281,11 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       lastReferencesRef.current = references
       setStatus('connecting')
 
-      // 1. Demarrer la session cote serveur
-      let session: any
-      try {
-        const res = await fetch('/api/live/session', { method: 'POST' })
-        session = await res.json()
-        if (!res.ok) {
-          setError(session?.error || 'Impossible de demarrer la session.')
-          setStatus('error')
-          return
-        }
-      } catch {
-        setError('Erreur de connexion au serveur.')
-        setStatus('error')
-        return
-      }
-
-      setMode(session.mode)
-      setSecondsRemaining(session.secondsRemaining ?? 0)
-
-      if (session.configured === false) {
-        setNotConfigured(true)
-        setStatus('error')
-        setError(session.message || 'Moteur Live non configure.')
-        return
-      }
-
-      const gpu = session.gpu as { wsUrl: string; token: string } | undefined
-      if (!gpu?.wsUrl || !gpu?.token) {
-        setNotConfigured(true)
-        setStatus('error')
-        setError('Connexion GPU indisponible.')
-        return
-      }
-
-      // 2. Acceder a la webcam
+      // 1. Acceder a la webcam EN PREMIER.
+      //    On ouvre la camera immediatement pour que l'utilisateur se voie tout
+      //    de suite, independamment de l'etat du moteur GPU. Si le GPU echoue
+      //    ensuite, la camera reste affichee et on montre l'erreur reelle au
+      //    lieu d'un ecran noir muet.
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
@@ -335,6 +305,46 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
 
       if (!captureCanvasRef.current) {
         captureCanvasRef.current = document.createElement('canvas')
+      }
+
+      // 2. Demarrer la session cote serveur (verifie l'acces + le moteur GPU).
+      //    La camera est deja ouverte : en cas d'echec ici, on coupe le flux
+      //    proprement mais l'utilisateur a au moins vu que sa camera marchait.
+      let session: any
+      try {
+        const res = await fetch('/api/live/session', { method: 'POST' })
+        session = await res.json()
+        if (!res.ok) {
+          setError(session?.error || 'Impossible de demarrer la session.')
+          setStatus('error')
+          cleanup()
+          return
+        }
+      } catch {
+        setError('Erreur de connexion au serveur.')
+        setStatus('error')
+        cleanup()
+        return
+      }
+
+      setMode(session.mode)
+      setSecondsRemaining(session.secondsRemaining ?? 0)
+
+      if (session.configured === false) {
+        setNotConfigured(true)
+        setStatus('error')
+        setError(session.message || 'Moteur Live non configure (worker/tunnel GPU injoignable).')
+        cleanup()
+        return
+      }
+
+      const gpu = session.gpu as { wsUrl: string; token: string } | undefined
+      if (!gpu?.wsUrl || !gpu?.token) {
+        setNotConfigured(true)
+        setStatus('error')
+        setError('Connexion GPU indisponible (le tunnel ne renvoie pas d\'URL).')
+        cleanup()
+        return
       }
 
       // 3. Connexion WebSocket au worker ChapCam (server.py).
