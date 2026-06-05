@@ -338,7 +338,17 @@ export default function LivePage() {
           ))}
         </div>
 
-        {/* Erreur */}
+        {/* Erreur moteur non configure / injoignable (etait masquee avant) */}
+        {notConfigured && (
+          <div className="mt-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-300">
+            <p className="font-semibold">Moteur Live indisponible</p>
+            <p className="mt-1 text-yellow-300/90">
+              {error || 'Le moteur GPU ne repond pas. Verifie que le worker et le tunnel tournent sur le pod.'}
+            </p>
+          </div>
+        )}
+
+        {/* Erreur generique (camera refusee, connexion perdue, etc.) */}
         {error && !notConfigured && (
           <div className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
             {error}

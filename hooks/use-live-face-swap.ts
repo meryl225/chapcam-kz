@@ -281,41 +281,11 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       lastReferencesRef.current = references
       setStatus('connecting')
 
-      // 1. Demarrer la session cote serveur
-      let session: any
-      try {
-        const res = await fetch('/api/live/session', { method: 'POST' })
-        session = await res.json()
-        if (!res.ok) {
-          setError(session?.error || 'Impossible de demarrer la session.')
-          setStatus('error')
-          return
-        }
-      } catch {
-        setError('Erreur de connexion au serveur.')
-        setStatus('error')
-        return
-      }
-
-      setMode(session.mode)
-      setSecondsRemaining(session.secondsRemaining ?? 0)
-
-      if (session.configured === false) {
-        setNotConfigured(true)
-        setStatus('error')
-        setError(session.message || 'Moteur Live non configure.')
-        return
-      }
-
-      const gpu = session.gpu as { wsUrl: string; token: string } | undefined
-      if (!gpu?.wsUrl || !gpu?.token) {
-        setNotConfigured(true)
-        setStatus('error')
-        setError('Connexion GPU indisponible.')
-        return
-      }
-
-      // 2. Acceder a la webcam
+      // 1. Acceder a la webcam EN PREMIER.
+      //    On ouvre la camera immediatement pour que l'utilisateur se voie tout
+      //    de suite, independamment de l'etat du moteur GPU. Si le GPU echoue
+      //    ensuite, la camera reste affichee et on montre l'erreur reelle au
+      //    lieu d'un ecran noir muet.
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
@@ -337,38 +307,57 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
         captureCanvasRef.current = document.createElement('canvas')
       }
 
-      // 3. Upload de l'image de reference vers PersonaLive avant la connexion WS
-      //    PersonaLive attend un POST multipart sur /api/upload_reference_image
-      if (references.length > 0) {
-        try {
-          const baseHttp = gpu.wsUrl
-            .replace(/^wss:\/\//i, 'https://')
-            .replace(/^ws:\/\//i, 'http://')
-            .replace(/\/+$/, '')
-
-          // Telecharger la premiere image de reference et l'envoyer a PersonaLive
-          const imgRes = await fetch(references[0])
-          const imgBlob = await imgRes.blob()
-          const formData = new FormData()
-          formData.append('file', imgBlob, 'reference.jpg')
-
-          await fetch(`${baseHttp}/api/upload_reference_image`, {
-            method: 'POST',
-            body: formData,
-          })
-          console.log('[live] Image de reference uploadee vers PersonaLive')
-        } catch (e) {
-          console.warn('[live] Upload reference image echoue (non bloquant):', e)
-          // Non bloquant : on continue quand meme
+      // 2. Demarrer la session cote serveur (verifie l'acces + le moteur GPU).
+      //    La camera est deja ouverte : en cas d'echec ici, on coupe le flux
+      //    proprement mais l'utilisateur a au moins vu que sa camera marchait.
+      let session: any
+      try {
+        const res = await fetch('/api/live/session', { method: 'POST' })
+        session = await res.json()
+        if (!res.ok) {
+          setError(session?.error || 'Impossible de demarrer la session.')
+          setStatus('error')
+          cleanup()
+          return
         }
+      } catch {
+        setError('Erreur de connexion au serveur.')
+        setStatus('error')
+        cleanup()
+        return
       }
 
-      // 4. Connexion WebSocket au worker GPU
-      // PersonaLive expose /api/ws/{user_id} comme endpoint WebSocket natif
-      const userId = Math.random().toString(36).slice(2)
+      setMode(session.mode)
+      setSecondsRemaining(session.secondsRemaining ?? 0)
+
+      if (session.configured === false) {
+        setNotConfigured(true)
+        setStatus('error')
+        setError(session.message || 'Moteur Live non configure (worker/tunnel GPU injoignable).')
+        cleanup()
+        return
+      }
+
+      const gpu = session.gpu as { wsUrl: string; token: string } | undefined
+      if (!gpu?.wsUrl || !gpu?.token) {
+        setNotConfigured(true)
+        setStatus('error')
+        setError('Connexion GPU indisponible (le tunnel ne renvoie pas d\'URL).')
+        cleanup()
+        return
+      }
+
+      // 3. Connexion WebSocket au worker ChapCam (server.py).
+      //    IMPORTANT : le navigateur parle le protocole ChapCam au worker, PAS
+      //    le protocole brut de PersonaLive. C'est le worker (server.py +
+      //    bridge_personalive.py) qui telecharge la photo de reference et la
+      //    transmet a PersonaLive. Le client ne fait donc AUCUN upload direct
+      //    (cela provoquait une erreur CORS et etait inutile).
+      //    Le worker authentifie via ?token= et attend ensuite un message
+      //    {type:'config', references:[...]} (cf. server.py handle()).
       const baseUrl = gpu.wsUrl.replace(/\/+$/, '')
       const sep = baseUrl.includes('?') ? '&' : '?'
-      const url = `${baseUrl}/api/ws/${userId}${sep}token=${encodeURIComponent(gpu.token)}&mode=${encodeURIComponent(session.mode ?? 'trial')}`
+      const url = `${baseUrl}${sep}token=${encodeURIComponent(gpu.token)}&mode=${encodeURIComponent(session.mode ?? 'trial')}`
 
       console.log('[live] Connexion WS vers:', url)
 
@@ -387,8 +376,10 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       ws.onopen = () => {
         console.log('[live] WS ouvert, envoi config...')
         setStatus('preparing')
-        // PersonaLive demarre le traitement des qu'une reference est uploadee
-        // On envoie quand meme le message config pour compatibilite avec d'autres moteurs
+        // Le worker (server.py) attend OBLIGATOIREMENT ce message en premier :
+        // il y lit les photos de reference, les telecharge cote serveur et,
+        // en mode PersonaLive, les transmet au moteur. C'est le serveur qui
+        // gere la reference -> aucun upload HTTP direct cote navigateur.
         ws.send(JSON.stringify({ type: 'config', references }))
         // Marquer comme pret immediatement car PersonaLive
         // n'envoie pas forcement de message "ready"
