@@ -173,50 +173,32 @@ function normalizeWsUrl(u: string): string {
   return `wss://${s}`
 }
 
-// Lit la liste des specs worker depuis l'env (singulier + pluriel).
-// pool="trial" lit les variables PersonaLive ; vide -> repli sur "default".
-function gpuWorkerSpecs(pool: GpuPool = 'default'): WorkerSpec[] {
-  if (pool === 'trial') {
-    const urls = [
-      ...split(process.env.LIVE_GPU_TRIAL_WS_URL),
-      ...split(process.env.LIVE_GPU_TRIAL_WS_URLS),
-    ]
-    const pods = [
-      ...split(process.env.RUNPOD_TRIAL_POD_ID),
-      ...split(process.env.RUNPOD_TRIAL_POD_IDS),
-    ]
-    if (urls.length === 0 && pods.length === 0) {
-      // Aucun worker PersonaLive defini : l'essai retombe sur le pool par defaut.
-      return gpuWorkerSpecs('default')
-    }
-    const trialSpecs: WorkerSpec[] = []
-    for (const u of urls) {
-      // Les URLs *.proxy.runpod.net sont desormais acceptees : le proxy RunPod
-      // gere l'upgrade WebSocket (wss) -> URL stable, pas besoin de tunnel.
-      trialSpecs.push({ fixedUrl: normalizeWsUrl(u) })
-    }
-    for (const p of pods) trialSpecs.push({ podId: p })
-    return trialSpecs
-  }
-
-  const urls = [
-    ...split(process.env.LIVE_GPU_WS_URL),
-    ...split(process.env.LIVE_GPU_WS_URLS),
-  ]
-  const pods = [
-    ...split(process.env.RUNPOD_POD_ID),
-    ...split(process.env.RUNPOD_POD_IDS),
-  ]
+// Lit les specs worker d'UN pool depuis l'env (singulier + pluriel), sans repli.
+// Les URLs *.proxy.runpod.net sont acceptees : le proxy RunPod gere l'upgrade
+// WebSocket (wss) -> URL stable, pas besoin de tunnel.
+function rawWorkerSpecs(pool: GpuPool): WorkerSpec[] {
+  const urls =
+    pool === 'trial'
+      ? [...split(process.env.LIVE_GPU_TRIAL_WS_URL), ...split(process.env.LIVE_GPU_TRIAL_WS_URLS)]
+      : [...split(process.env.LIVE_GPU_WS_URL), ...split(process.env.LIVE_GPU_WS_URLS)]
+  const pods =
+    pool === 'trial'
+      ? [...split(process.env.RUNPOD_TRIAL_POD_ID), ...split(process.env.RUNPOD_TRIAL_POD_IDS)]
+      : [...split(process.env.RUNPOD_POD_ID), ...split(process.env.RUNPOD_POD_IDS)]
 
   const specs: WorkerSpec[] = []
-  // Les URLs *.proxy.runpod.net sont desormais acceptees : le proxy RunPod gere
-  // l'upgrade WebSocket (wss). C'est une URL stable (ne change pas au reboot du
-  // tunnel), donc on l'utilise directement plutot que l'auto-decouverte par pod.
-  for (const u of urls) {
-    specs.push({ fixedUrl: normalizeWsUrl(u) })
-  }
+  for (const u of urls) specs.push({ fixedUrl: normalizeWsUrl(u) })
   for (const p of pods) specs.push({ podId: p })
   return specs
+}
+
+// Lit la liste des specs worker pour un pool, avec repli SYMETRIQUE :
+// si le pool demande n'a aucun worker defini, on reutilise ceux de l'autre pool.
+// Ainsi un seul pod (ex: RUNPOD_TRIAL_POD_ID) sert a la fois l'essai et le payant.
+function gpuWorkerSpecs(pool: GpuPool = 'default'): WorkerSpec[] {
+  const own = rawWorkerSpecs(pool)
+  if (own.length > 0) return own
+  return rawWorkerSpecs(pool === 'trial' ? 'default' : 'trial')
 }
 
 export function isGpuConfigured(pool: GpuPool = 'default'): boolean {
