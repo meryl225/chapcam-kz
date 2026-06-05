@@ -337,38 +337,17 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
         captureCanvasRef.current = document.createElement('canvas')
       }
 
-      // 3. Upload de l'image de reference vers PersonaLive avant la connexion WS
-      //    PersonaLive attend un POST multipart sur /api/upload_reference_image
-      if (references.length > 0) {
-        try {
-          const baseHttp = gpu.wsUrl
-            .replace(/^wss:\/\//i, 'https://')
-            .replace(/^ws:\/\//i, 'http://')
-            .replace(/\/+$/, '')
-
-          // Telecharger la premiere image de reference et l'envoyer a PersonaLive
-          const imgRes = await fetch(references[0])
-          const imgBlob = await imgRes.blob()
-          const formData = new FormData()
-          formData.append('file', imgBlob, 'reference.jpg')
-
-          await fetch(`${baseHttp}/api/upload_reference_image`, {
-            method: 'POST',
-            body: formData,
-          })
-          console.log('[live] Image de reference uploadee vers PersonaLive')
-        } catch (e) {
-          console.warn('[live] Upload reference image echoue (non bloquant):', e)
-          // Non bloquant : on continue quand meme
-        }
-      }
-
-      // 4. Connexion WebSocket au worker GPU
-      // PersonaLive expose /api/ws/{user_id} comme endpoint WebSocket natif
-      const userId = Math.random().toString(36).slice(2)
+      // 3. Connexion WebSocket au worker ChapCam (server.py).
+      //    IMPORTANT : le navigateur parle le protocole ChapCam au worker, PAS
+      //    le protocole brut de PersonaLive. C'est le worker (server.py +
+      //    bridge_personalive.py) qui telecharge la photo de reference et la
+      //    transmet a PersonaLive. Le client ne fait donc AUCUN upload direct
+      //    (cela provoquait une erreur CORS et etait inutile).
+      //    Le worker authentifie via ?token= et attend ensuite un message
+      //    {type:'config', references:[...]} (cf. server.py handle()).
       const baseUrl = gpu.wsUrl.replace(/\/+$/, '')
       const sep = baseUrl.includes('?') ? '&' : '?'
-      const url = `${baseUrl}/api/ws/${userId}${sep}token=${encodeURIComponent(gpu.token)}&mode=${encodeURIComponent(session.mode ?? 'trial')}`
+      const url = `${baseUrl}${sep}token=${encodeURIComponent(gpu.token)}&mode=${encodeURIComponent(session.mode ?? 'trial')}`
 
       console.log('[live] Connexion WS vers:', url)
 
