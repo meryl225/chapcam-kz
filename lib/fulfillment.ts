@@ -200,6 +200,11 @@ export async function creditPurchase(
     return { ok: true, kind: 'pc', userLinked: !!userId, message: 'Licence ChapCam PC emise.' }
   }
 
+  // A ce stade (produit non-PC), le garde-fou plus haut garantit userId non-null.
+  if (!userId) {
+    return { ok: false, kind: null, userLinked: false, message: `Aucun compte ChapCam ne correspond a ${input.email}.` }
+  }
+
   if (installOffer) {
     // Frais d'installation regles : on marque la (les) demande(s) d'installation
     // en attente de ce client comme "payees" pour que l'equipe puisse planifier.
