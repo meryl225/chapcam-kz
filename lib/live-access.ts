@@ -191,7 +191,8 @@ function gpuWorkerSpecs(pool: GpuPool = 'default'): WorkerSpec[] {
     }
     const trialSpecs: WorkerSpec[] = []
     for (const u of urls) {
-      if (/proxy\.runpod\.net/i.test(u)) continue
+      // Les URLs *.proxy.runpod.net sont desormais acceptees : le proxy RunPod
+      // gere l'upgrade WebSocket (wss) -> URL stable, pas besoin de tunnel.
       trialSpecs.push({ fixedUrl: normalizeWsUrl(u) })
     }
     for (const p of pods) trialSpecs.push({ podId: p })
@@ -208,10 +209,10 @@ function gpuWorkerSpecs(pool: GpuPool = 'default'): WorkerSpec[] {
   ]
 
   const specs: WorkerSpec[] = []
-  // Les URLs *.proxy.runpod.net sont inutilisables pour le WS (502 sur upgrade) :
-  // on les ignore, l'auto-decouverte via pod id prend le relais.
+  // Les URLs *.proxy.runpod.net sont desormais acceptees : le proxy RunPod gere
+  // l'upgrade WebSocket (wss). C'est une URL stable (ne change pas au reboot du
+  // tunnel), donc on l'utilise directement plutot que l'auto-decouverte par pod.
   for (const u of urls) {
-    if (/proxy\.runpod\.net/i.test(u)) continue
     specs.push({ fixedUrl: normalizeWsUrl(u) })
   }
   for (const p of pods) specs.push({ podId: p })
