@@ -366,8 +366,10 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       ws.onopen = () => {
         console.log('[live] WS ouvert, envoi config...')
         setStatus('preparing')
-        // PersonaLive demarre le traitement des qu'une reference est uploadee
-        // On envoie quand meme le message config pour compatibilite avec d'autres moteurs
+        // Le worker (server.py) attend OBLIGATOIREMENT ce message en premier :
+        // il y lit les photos de reference, les telecharge cote serveur et,
+        // en mode PersonaLive, les transmet au moteur. C'est le serveur qui
+        // gere la reference -> aucun upload HTTP direct cote navigateur.
         ws.send(JSON.stringify({ type: 'config', references }))
         // Marquer comme pret immediatement car PersonaLive
         // n'envoie pas forcement de message "ready"
