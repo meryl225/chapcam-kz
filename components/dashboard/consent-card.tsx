@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ShieldCheck, Check } from 'lucide-react'
+import { ShieldCheck, Check, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const STATEMENTS = [
@@ -12,11 +12,44 @@ const STATEMENTS = [
 
 export function ConsentCard({ initiallyAccepted }: { initiallyAccepted: boolean }) {
   const [accepted, setAccepted] = useState(initiallyAccepted)
-  const [checks, setChecks] = useState<boolean[]>([false, false, false])
+  const [reviewing, setReviewing] = useState(false)
+  const [checks, setChecks] = useState<boolean[]>([
+    initiallyAccepted,
+    initiallyAccepted,
+    initiallyAccepted,
+  ])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  if (accepted) return null
+  // Etat confirme : on affiche un resume compact + un bouton pour rouvrir.
+  if (accepted && !reviewing) {
+    return (
+      <section
+        aria-label="Engagements confirmes"
+        className="mb-8 flex flex-col gap-3 rounded-2xl border border-hairline bg-card p-4 sm:flex-row sm:items-center sm:justify-between md:px-6"
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+            <ShieldCheck className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-foreground">Engagements d’utilisation confirmés</p>
+            <p className="text-xs text-muted-foreground">
+              Vous avez accepté les conditions d’utilisation responsable de ChapCam.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setReviewing(true)}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-hairline bg-background/40 px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          <Pencil className="h-4 w-4" aria-hidden />
+          Revoir mes engagements
+        </button>
+      </section>
+    )
+  }
 
   const allChecked = checks.every(Boolean)
 
@@ -38,6 +71,7 @@ export function ConsentCard({ initiallyAccepted }: { initiallyAccepted: boolean 
       })
       if (updateError) throw updateError
       setAccepted(true)
+      setReviewing(false)
     } catch {
       setError('Impossible d’enregistrer votre confirmation. Réessayez.')
     } finally {
@@ -93,14 +127,26 @@ export function ConsentCard({ initiallyAccepted }: { initiallyAccepted: boolean 
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={handleConfirm}
-        disabled={!allChecked || saving}
-        className="mt-5 inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 font-bold text-black transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {saving ? 'Enregistrement…' : 'Je confirme'}
-      </button>
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={handleConfirm}
+          disabled={!allChecked || saving}
+          className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 font-bold text-black transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          {saving ? 'Enregistrement…' : 'Je confirme'}
+        </button>
+        {accepted && (
+          <button
+            type="button"
+            onClick={() => setReviewing(false)}
+            disabled={saving}
+            className="inline-flex items-center justify-center rounded-xl border border-hairline px-6 py-3 font-semibold text-foreground transition-colors hover:border-primary/40 disabled:opacity-40"
+          >
+            Annuler
+          </button>
+        )}
+      </div>
     </section>
   )
 }
