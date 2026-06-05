@@ -3,7 +3,8 @@
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Play, ArrowRight, ArrowLeftRight } from "lucide-react"
+import { Play, ArrowRight } from "lucide-react"
+import { SwapDemoFrames } from "@/components/swap-demo-frames"
 
 export function InActionSection() {
   // Platform logos as SVG components
@@ -81,63 +82,8 @@ export function InActionSection() {
               className="absolute inset-0 rounded-3xl"
             />
 
-            {/* Swap demo container (avant / apres) */}
-            <div className="relative aspect-video rounded-3xl overflow-hidden border border-[#00ff88]/30 bg-black">
-              <div className="grid h-full w-full grid-cols-2">
-                {/* Camera reelle - toi */}
-                <div className="relative h-full w-full overflow-hidden border-r border-black/40">
-                  <img
-                    src="/demo/me.png"
-                    alt="Visage reel avant transformation ChapCam"
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute top-3 left-3 flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5 backdrop-blur-sm">
-                    <span className="text-xs font-semibold tracking-wide text-white">CAMERA REELLE</span>
-                  </div>
-                </div>
-
-                {/* Camera ChapCam - Einstein */}
-                <div className="relative h-full w-full overflow-hidden">
-                  <img
-                    src="/demo/einstein.png"
-                    alt="Visage transforme en Albert Einstein avec ChapCam"
-                    className="h-full w-full object-cover"
-                  />
-                  <div className="absolute top-3 right-3 flex items-center gap-2 rounded-full border border-[#00ff88]/50 bg-[#00ff88]/20 px-3 py-1.5 backdrop-blur-sm">
-                    <span className="text-xs font-bold tracking-wide text-[#00ff88]">CAMERA CHAPCAM</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Separateur central avec icone de swap */}
-              <div className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2">
-                <div className="h-full w-[2px] bg-gradient-to-b from-transparent via-[#00ff88]/70 to-transparent" />
-              </div>
-              <motion.div
-                animate={{ scale: [1, 1.1, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
-              >
-                <div className="flex h-14 w-14 items-center justify-center rounded-full border border-[#00ff88]/60 bg-black/70 backdrop-blur-sm">
-                  <ArrowLeftRight className="h-6 w-6 text-[#00ff88]" />
-                </div>
-              </motion.div>
-
-              {/* Live badge */}
-              <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full bg-black/55 px-3 py-1.5 backdrop-blur-sm">
-                <motion.div
-                  animate={{ opacity: [1, 0.5, 1] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                  className="w-2 h-2 rounded-full bg-[#00ff88]"
-                />
-                <span className="text-white text-sm font-medium">DEMO LIVE</span>
-              </div>
-
-              {/* Face swap label */}
-              <div className="absolute bottom-3 right-3 rounded-full border border-[#00ff88]/50 bg-[#00ff88]/20 px-3 py-1.5 backdrop-blur-sm">
-                <span className="text-[#00ff88] text-sm font-bold">Face Swap en Direct</span>
-              </div>
-            </div>
+            {/* Rectangle anime des 4 images ChapCam en action, cliquable pour agrandir */}
+            <SwapDemoFrames />
 
             {/* Instruction text */}
             <motion.p
@@ -147,7 +93,7 @@ export function InActionSection() {
               transition={{ delay: 1 }}
               className="text-center text-gray-500 text-sm mt-4"
             >
-              Transformation instantanee de ton visage en temps reel
+              Clique sur la galerie pour l&apos;agrandir - ChapCam en action
             </motion.p>
           </div>
         </motion.div>
