@@ -40,6 +40,20 @@ export CHAPCAM_MAX_CONCURRENT="${CHAPCAM_MAX_CONCURRENT:-1}"
 [ -d "$PERSONALIVE_DIR" ] || { echo "[run-pl] ERREUR: PERSONALIVE_DIR introuvable: $PERSONALIVE_DIR" >&2; exit 1; }
 [ -f "$PERSONALIVE_DIR/inference_online.py" ] || { echo "[run-pl] ERREUR: inference_online.py absent de $PERSONALIVE_DIR" >&2; exit 1; }
 
+# --- 0. Preflight bloquant : torch + CUDA + cuDNN 8 --------------------------
+# Evite de demarrer un worker condamne (ex: libcudnn.so.8 manquant). Si ce test
+# echoue, relance d'abord :  bash install-personalive.sh
+echo "[run-pl] Verification torch / CUDA / cuDNN..."
+"${PERSONALIVE_PYTHON}" - <<'PY' || { echo "[run-pl] ERREUR: environnement torch/CUDA invalide. Lance: bash install-personalive.sh" >&2; exit 1; }
+import sys, ctypes, torch
+print("[run-pl] torch", torch.__version__, "| cuda", torch.cuda.is_available(), "| cudnn", torch.backends.cudnn.version())
+try:
+    ctypes.CDLL("libcudnn.so.8")
+except OSError as e:
+    print("[run-pl] libcudnn.so.8 introuvable:", e); sys.exit(2)
+sys.exit(0 if torch.cuda.is_available() else 2)
+PY
+
 PL_PID=""
 cleanup() {
   echo "[run-pl] Arret..."
@@ -54,9 +68,39 @@ echo "[run-pl] Demarrage de PersonaLive ($PERSONALIVE_ACCEL) dans $PERSONALIVE_D
   exec "$PERSONALIVE_PYTHON" inference_online.py --acceleration "$PERSONALIVE_ACCEL"
 ) &
 PL_PID=$!
-echo "[run-pl] PersonaLive PID=$PL_PID. Le worker attendra qu'il soit pret."
+echo "[run-pl] PersonaLive PID=$PL_PID. Attente du chargement des modeles..."
+
+# --- 1b. Test bloquant : PersonaLive doit REELLEMENT repondre avant le worker
+# On attend que le serveur 7860 reponde (modeles charges). Si PersonaLive meurt
+# entre-temps, on s'arrete au lieu de lancer un worker inutile.
+PL_TIMEOUT="${PERSONALIVE_BOOT_TIMEOUT:-600}"   # secondes (chargement diffusion = long)
+waited=0
+until "${PERSONALIVE_PYTHON}" - "$PERSONALIVE_URL" <<'PY'
+import sys, urllib.request
+url = sys.argv[1].rstrip("/")
+for path in ("/", "/api/queue", "/config"):
+    try:
+        with urllib.request.urlopen(url + path, timeout=5) as r:
+            if r.status < 500:
+                sys.exit(0)
+    except Exception:
+        pass
+sys.exit(1)
+PY
+do
+  if ! kill -0 "$PL_PID" 2>/dev/null; then
+    echo "[run-pl] ERREUR: PersonaLive s'est arrete pendant le chargement (voir logs ci-dessus)." >&2
+    exit 1
+  fi
+  if [ "$waited" -ge "$PL_TIMEOUT" ]; then
+    echo "[run-pl] ERREUR: PersonaLive n'a pas repondu apres ${PL_TIMEOUT}s sur $PERSONALIVE_URL." >&2
+    exit 1
+  fi
+  sleep 5; waited=$((waited+5))
+  echo "[run-pl] ... en attente de PersonaLive (${waited}s)"
+done
+echo "[run-pl] PersonaLive est pret (${waited}s)."
 
 # --- 2. Worker ChapCam (pont) ------------------------------------------------
-# server.py interroge PERSONALIVE_URL/api/queue jusqu'a ce que le modele soit charge.
 echo "[run-pl] Demarrage du worker ChapCam (port $CHAPCAM_PORT, moteur=personalive)..."
 exec python server.py
