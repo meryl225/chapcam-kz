@@ -133,10 +133,15 @@ export async function middleware(request: NextRequest) {
   // serveur (UA non-navigateur, souvent vide ou de type PHP/Guzzle) et SANS
   // cookie. Ils ne doivent jamais etre bloques par l'anti-scraping ni le
   // rate-limit, sinon le credit automatique ne se declenche pas.
+  // On y ajoute /api/desktop : ces routes sont appelees par le logiciel
+  // ChapCam PC (client non-navigateur, UA Python/vide, sans cookie) pour
+  // activer / verifier une licence. Elles ne doivent jamais etre bloquees
+  // par l'anti-scraping ni le rate-limit navigateur.
   const isServerWebhook =
     pathname.includes('/webhook') ||
     pathname === '/api/payment/callback' ||
-    pathname.startsWith('/api/cron')
+    pathname.startsWith('/api/cron') ||
+    pathname.startsWith('/api/desktop')
 
   // 1. Block suspicious patterns (anti-scraping)
   for (const pattern of BLOCKED_PATTERNS) {

@@ -12,11 +12,14 @@ import { ADMIN_EMAIL } from '@/lib/admin-auth'
 import { getPlan, type PlanConfig } from '@/lib/plans'
 import { getLiveOffer, type LiveOffer } from '@/lib/live-offers'
 import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
+import { getPcOffer, type PcOffer, getDesktopDownloadUrl } from '@/lib/pc-offer'
+import { createPcLicense } from '@/lib/pc-license'
 import { grantLiveWindow } from '@/lib/live-access'
 import {
   sendSubscriptionApprovedEmail,
   sendLiveAccessApprovedEmail,
   sendInstallationPaidEmail,
+  sendPcLicenseEmail,
 } from '@/lib/email'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -143,7 +146,7 @@ export interface PurchaseInput {
 
 export interface PurchaseResult {
   ok: boolean
-  kind: 'plan' | 'live' | 'installation' | null
+  kind: 'plan' | 'live' | 'installation' | 'pc' | null
   userLinked: boolean
   message: string
 }
@@ -158,15 +161,18 @@ export async function creditPurchase(
   const plan: PlanConfig | undefined = getPlan(input.productId)
   const liveOffer: LiveOffer | undefined = getLiveOffer(input.productId)
   const installOffer: InstallOffer | undefined = getInstallOffer(input.productId)
+  const pcOffer: PcOffer | undefined = getPcOffer(input.productId)
 
-  if (!plan && !liveOffer && !installOffer) {
+  if (!plan && !liveOffer && !installOffer && !pcOffer) {
     return { ok: false, kind: null, userLinked: false, message: `Produit inconnu : ${input.productId}` }
   }
 
   let userId = input.userId || null
   if (!userId) userId = await resolveUserIdByEmail(admin, input.email)
 
-  if (!userId) {
+  // La licence PC n'exige PAS un compte ChapCam pre-existant : on peut emettre
+  // une licence et l'envoyer par email meme si l'achat vient d'un visiteur.
+  if (!userId && !pcOffer) {
     return {
       ok: false,
       kind: installOffer ? 'installation' : liveOffer ? 'live' : 'plan',
@@ -176,6 +182,23 @@ export async function creditPurchase(
   }
 
   const now = new Date()
+
+  if (pcOffer) {
+    // Achat unique : on genere une cle de licence et on l'envoie par email
+    // avec le lien de telechargement.
+    const created = await createPcLicense(admin, { userId, email: input.email })
+    if (!created) {
+      return { ok: false, kind: 'pc', userLinked: !!userId, message: 'Generation de la licence PC impossible.' }
+    }
+    sendPcLicenseEmail(
+      input.email,
+      input.fullName,
+      created.key,
+      getDesktopDownloadUrl(),
+      pcOffer.price,
+    ).catch((e) => console.error('[fulfillment] Email licence PC echoue:', e))
+    return { ok: true, kind: 'pc', userLinked: !!userId, message: 'Licence ChapCam PC emise.' }
+  }
 
   if (installOffer) {
     // Frais d'installation regles : on marque la (les) demande(s) d'installation
