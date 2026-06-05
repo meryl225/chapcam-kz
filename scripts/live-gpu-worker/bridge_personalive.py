@@ -174,13 +174,39 @@ async def run_personalive_session(client_ws, references: list[str], send_json) -
 
         stop = asyncio.Event()
 
+        # --- Regulation temps reel -------------------------------------------
+        # Probleme observe : en relayant 1 frame entrante -> 1 frame PersonaLive
+        # sans aucun controle, le moindre ralentissement fait s'accumuler les
+        # frames (backpressure) -> latence qui grimpe -> gel, alors que le GPU
+        # reste sous-utilise (il attend des frames cadencees).
+        #
+        # Solution :
+        #   1) On ne conserve QUE la frame la plus recente (slot unique). Toute
+        #      frame plus ancienne non encore envoyee est ECRASEE -> drop
+        #      intelligent, aucune file qui gonfle.
+        #   2) On limite le nombre de frames "en vol" vers PersonaLive
+        #      (MAX_IN_FLIGHT). On n'envoie une nouvelle frame que lorsque le
+        #      GPU a de la place -> on le garde alimente sans creer de retard.
+        #   3) Garde-fou : PersonaLive (diffusion) ne renvoie pas forcement 1
+        #      sortie par entree. Si aucun retour n'arrive en FEED_TIMEOUT, on
+        #      debloque l'envoi pour ne jamais figer le flux.
+        MAX_IN_FLIGHT = max(1, int(os.getenv("PERSONALIVE_MAX_IN_FLIGHT", "2")))
+        FEED_TIMEOUT = float(os.getenv("PERSONALIVE_FEED_TIMEOUT", "1.0"))
+
+        cond = asyncio.Condition()
+        state = {"latest": None, "in_flight": 0}
+
         async def uplink() -> None:
-            """Navigateur -> PersonaLive (frames webcam JPEG)."""
+            """Navigateur -> slot 'derniere frame' (drop des frames perimees)."""
             try:
                 async for message in client_ws:
                     if isinstance(message, (bytes, bytearray)):
                         if message:
-                            await pl_ws.send(bytes(message))
+                            async with cond:
+                                # Ecrase la frame precedente non envoyee : on ne
+                                # garde jamais que la plus fraiche.
+                                state["latest"] = bytes(message)
+                                cond.notify_all()
                     else:
                         # Message de controle texte (ex: {"type":"stop"}).
                         try:
@@ -193,6 +219,44 @@ async def run_personalive_session(client_ws, references: list[str], send_json) -
                 pass
             finally:
                 stop.set()
+                async with cond:
+                    cond.notify_all()
+
+        async def feeder() -> None:
+            """Slot -> PersonaLive, cadence par MAX_IN_FLIGHT (anti-accumulation)."""
+            try:
+                while not stop.is_set():
+                    async with cond:
+                        # Attend : une frame dispo ET de la place cote GPU.
+                        try:
+                            await asyncio.wait_for(
+                                cond.wait_for(
+                                    lambda: stop.is_set()
+                                    or (
+                                        state["latest"] is not None
+                                        and state["in_flight"] < MAX_IN_FLIGHT
+                                    )
+                                ),
+                                timeout=FEED_TIMEOUT,
+                            )
+                        except asyncio.TimeoutError:
+                            # Garde-fou : on a attendu un retour qui n'est pas
+                            # venu -> on libere une place pour ne pas figer.
+                            if state["in_flight"] > 0:
+                                state["in_flight"] -= 1
+                            continue
+                        if stop.is_set():
+                            return
+                        if state["latest"] is None or state["in_flight"] >= MAX_IN_FLIGHT:
+                            continue
+                        frame = state["latest"]
+                        state["latest"] = None  # consommee -> les suivantes ecraseront
+                        state["in_flight"] += 1
+                    await pl_ws.send(frame)
+            except Exception:  # noqa: BLE001
+                pass
+            finally:
+                stop.set()
 
         async def downlink() -> None:
             """PersonaLive -> Navigateur (frames generees JPEG)."""
@@ -200,21 +264,30 @@ async def run_personalive_session(client_ws, references: list[str], send_json) -
                 async for frame in pl_ws:
                     if isinstance(frame, (bytes, bytearray)):
                         if frame:
+                            # Une sortie est arrivee -> on libere une place.
+                            async with cond:
+                                if state["in_flight"] > 0:
+                                    state["in_flight"] -= 1
+                                cond.notify_all()
                             await client_ws.send(bytes(frame))
-                    # Les messages texte de PersonaLive (status...) sont ignores.
+                    # Les messages texte de PersonaLive (status...) sont ignores :
+                    # la cadence est deja geree par MAX_IN_FLIGHT cote feeder.
             except Exception:  # noqa: BLE001  (PersonaLive ferme la WS)
                 pass
             finally:
                 stop.set()
+                async with cond:
+                    cond.notify_all()
 
         up = asyncio.create_task(uplink())
+        feed = asyncio.create_task(feeder())
         down = asyncio.create_task(downlink())
         try:
             await stop.wait()
         finally:
-            for task in (up, down):
+            for task in (up, feed, down):
                 task.cancel()
-            await asyncio.gather(up, down, return_exceptions=True)
+            await asyncio.gather(up, feed, down, return_exceptions=True)
             try:
                 await pl_ws.close()
             except Exception:  # noqa: BLE001
