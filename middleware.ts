@@ -94,7 +94,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https: http:",
     "media-src 'self' blob: https:",
-    "connect-src 'self' https://*.supabase.co https://*.decart.ai https://*.fal.ai https://*.livekit.io wss://*.livekit.cloud https://api.paydunya.com https://*.vercel.app wss:",
+    "connect-src 'self' https://*.supabase.co https://*.decart.ai https://*.fal.ai https://*.livekit.io wss://*.livekit.cloud https://api.paydunya.com https://*.vercel.app https://*.proxy.runpod.net wss://*.proxy.runpod.net https://*.trycloudflare.com wss://*.trycloudflare.com wss:",
     "frame-src 'self' https://vercel.live",
     "worker-src 'self' blob:",
   ].join('; '))
