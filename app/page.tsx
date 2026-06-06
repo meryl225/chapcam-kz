@@ -1,9 +1,17 @@
 import { Header } from "@/components/header"
 import { HeroSection } from "@/components/hero-section"
+import { InActionSection } from "@/components/in-action-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
+import { RoadmapSection } from "@/components/roadmap-section"
+import { EngineDifferenceSection } from "@/components/engine-difference-section"
 import { PricingSection } from "@/components/pricing-section"
+import { AvailableCountriesSection } from "@/components/available-countries-section"
 import { FAQSection } from "@/components/faq-section"
+import { TutorialSection } from "@/components/tutorial-section"
+import { FounderSection } from "@/components/founder-section"
 import { AnimatedBackground } from "@/components/animated-background"
+import { TelegramSupport } from "@/components/telegram-support"
+import { SiteFooter } from "@/components/site-footer"
 
 export default function Home() {
   return (
@@ -19,10 +27,20 @@ export default function Home() {
       <div className="relative z-10">
         <Header />
         <HeroSection />
+        <InActionSection />
+        <RoadmapSection />
         <HowItWorksSection />
+        <EngineDifferenceSection />
+        <AvailableCountriesSection />
         <PricingSection />
         <FAQSection />
+        <TutorialSection />
+        <FounderSection />
+        <SiteFooter />
       </div>
+
+      {/* Telegram Support Button */}
+      <TelegramSupport />
     </main>
   )
 }

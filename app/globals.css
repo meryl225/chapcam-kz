@@ -3,41 +3,54 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ===== THEME CLAIR (par defaut au niveau :root, mais l'app demarre en .dark) ===== */
 :root {
-  --background: #0a0e1a;
-  --foreground: #ffffff;
-  --card: #111827;
-  --card-foreground: #ffffff;
-  --popover: #111827;
-  --popover-foreground: #ffffff;
-  --primary: #e91e8c;
+  --background: #f4f6f8;
+  --foreground: #0a0e1a;
+  --card: #ffffff;
+  --card-foreground: #0a0e1a;
+  --popover: #ffffff;
+  --popover-foreground: #0a0e1a;
+  --primary: #00b25f;
   --primary-foreground: #ffffff;
-  --secondary: #1e293b;
-  --secondary-foreground: #ffffff;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --accent: #00d4ff;
-  --accent-foreground: #0a0e1a;
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: #1e3a5f;
-  --input: #1e293b;
-  --ring: #00d4ff;
+  --secondary: #eceff3;
+  --secondary-foreground: #0a0e1a;
+  --muted: #eceff3;
+  --muted-foreground: #5b6472;
+  --accent: #00b25f;
+  --accent-foreground: #ffffff;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e2e5ea;
+  --input: #e2e5ea;
+  --ring: #00b25f;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --sidebar: #0a0e1a;
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #e91e8c;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0a0e1a;
+  --sidebar-primary: #00b25f;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1e293b;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #1e3a5f;
-  --sidebar-ring: #00d4ff;
-  
+  --sidebar-accent: #eceff3;
+  --sidebar-accent-foreground: #0a0e1a;
+  --sidebar-border: #e2e5ea;
+  --sidebar-ring: #00b25f;
+
+  /* tokens de surface ChapCam (utilises a la place des couleurs en dur) */
+  --surface: #f4f6f8;        /* fond app */
+  --surface-2: #ffffff;      /* cartes */
+  --surface-3: #f0f2f5;      /* cartes secondaires / hover */
+  --hairline: #e2e5ea;       /* bordures fines */
+  --hairline-strong: #d4d8df;
+  --text-strong: #0a0e1a;
+  --text-muted: #5b6472;
+  --text-faint: #8a909c;
+  --cc-green: #00b25f;        /* accent vert lisible sur clair */
+  --cc-green-soft: rgba(0, 178, 95, 0.12);
+
   --cyan: #00d4ff;
   --magenta: #e91e8c;
   --purple: #8b5cf6;
@@ -45,39 +58,51 @@
   --navy-light: #111827;
 }
 
+/* ===== THEME SOMBRE (identite ChapCam) ===== */
 .dark {
-  --background: #0a0e1a;
+  --background: #0a0a0a;
   --foreground: #ffffff;
-  --card: #111827;
+  --card: #111111;
   --card-foreground: #ffffff;
-  --popover: #111827;
+  --popover: #111111;
   --popover-foreground: #ffffff;
-  --primary: #e91e8c;
-  --primary-foreground: #ffffff;
-  --secondary: #1e293b;
+  --primary: #00ff88;
+  --primary-foreground: #0a0a0a;
+  --secondary: #1a1a1a;
   --secondary-foreground: #ffffff;
-  --muted: #1e293b;
-  --muted-foreground: #94a3b8;
-  --accent: #00d4ff;
-  --accent-foreground: #0a0e1a;
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: #1e3a5f;
-  --input: #1e293b;
-  --ring: #00d4ff;
+  --muted: #1a1a1a;
+  --muted-foreground: #9aa3b2;
+  --accent: #00ff88;
+  --accent-foreground: #0a0a0a;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #242424;
+  --input: #1a1a1a;
+  --ring: #00ff88;
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: #0a0e1a;
+  --sidebar: #0d0d0d;
   --sidebar-foreground: #ffffff;
-  --sidebar-primary: #e91e8c;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1e293b;
+  --sidebar-primary: #00ff88;
+  --sidebar-primary-foreground: #0a0a0a;
+  --sidebar-accent: #1a1a1a;
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #1e3a5f;
-  --sidebar-ring: #00d4ff;
+  --sidebar-border: #242424;
+  --sidebar-ring: #00ff88;
+
+  --surface: #0a0a0a;
+  --surface-2: #111111;
+  --surface-3: #161616;
+  --hairline: #242424;
+  --hairline-strong: #333333;
+  --text-strong: #ffffff;
+  --text-muted: #9aa3b2;
+  --text-faint: #6b7280;
+  --cc-green: #00ff88;
+  --cc-green-soft: rgba(0, 255, 136, 0.12);
 }
 
 @theme inline {
@@ -119,6 +144,17 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* tokens de surface ChapCam */
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+  --color-text-strong: var(--text-strong);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-cc-green: var(--cc-green);
 }
 
 @layer base {
@@ -190,9 +226,9 @@
 
 /* Glassmorphism */
 .glass {
-  background: rgba(13, 21, 37, 0.8);
+  background: color-mix(in srgb, var(--surface-2) 80%, transparent);
   backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--hairline);
 }
 
 /* Holographic effect */
@@ -219,7 +255,7 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0e1a;
+  background: var(--surface);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -229,4 +265,80 @@ html {
 
 ::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #00b8e6, #7c3aed);
+}
+
+/* ===== Dashboard tool card previews ===== */
+
+/* Onde audio (Voice Changer) */
+@keyframes cc-wave {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+.cc-wave-bar {
+  transform-origin: center;
+  animation: cc-wave 1s ease-in-out infinite;
+}
+
+/* Flux lumineux IA (Live Swap, Photo->Video) */
+@keyframes cc-flow {
+  0% { background-position: 0% 50%; opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { background-position: 200% 50%; opacity: 0.5; }
+}
+.cc-flow {
+  background-size: 200% 100%;
+  animation: cc-flow 2s linear infinite;
+}
+
+/* Pulsation douce (icones centrales) */
+@keyframes cc-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+.cc-pulse { animation: cc-pulse 2s ease-in-out infinite; }
+
+/* Badge LIVE clignotant (Live Pro) */
+@keyframes cc-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.cc-blink { animation: cc-blink 1.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cc-wave-bar, .cc-flow, .cc-pulse, .cc-blink { animation: none; }
+}
+
+/* Camera ChapCam en plein ecran (cadrage / OBS) */
+.cc-cam-stage:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+  background: #000;
+}
+.cc-cam-stage:fullscreen video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Range slider thumb (Voice Changer reglages) */
+.cc-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 9999px;
+  background: #ffffff;
+  cursor: pointer;
+  border: 2px solid #00ff88;
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+}
+.cc-range::-moz-range-thumb {
+  height: 16px;
+  width: 16px;
+  border-radius: 9999px;
+  background: #ffffff;
+  cursor: pointer;
+  border: 2px solid #00ff88;
+  box-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
 }

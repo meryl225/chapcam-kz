@@ -1,0 +1,13 @@
+# ChapCam Live - dependances de l'app LOCALE (local_app.py)
+# Webcam -> face swap -> camera virtuelle, sur le GPU de l'utilisateur.
+
+numpy==1.26.4
+opencv-python==4.10.0.84
+insightface==0.7.3
+onnx==1.16.2
+pyvirtualcam==0.12.0
+
+# Provider ONNX Runtime (GPU recommande pour le vrai ~30 ms) :
+onnxruntime-gpu==1.18.1
+# CPU (fallback lent) :
+# onnxruntime==1.18.1

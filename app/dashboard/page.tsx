@@ -1,381 +1,196 @@
-'use client'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
+import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
+import { HeaderActions } from '@/components/dashboard/hub/header-actions'
+import { ConsentCard } from '@/components/dashboard/consent-card'
+import { UserCircle, Cloud, Sparkles, Gauge, Clock, Crown, Check, Zap, Timer, Users, Hourglass } from 'lucide-react'
 
-import { useState, useEffect, useCallback } from 'react'
-import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff } from 'lucide-react'
-import { useLucy21 } from '@/hooks/use-lucy-21'
-
-const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
-
-// Cost: 2 points per second of swap
 const POINTS_PER_SECOND = 2
 
-interface Avatar {
-  id: string
-  name: string
-  url: string
-  is_active: boolean
+const PLAN_LABELS: Record<string, string> = {
+  free: 'Gratuit',
+  '1day': 'Plan 1 jour',
+  '30days': 'Plan 30 jours',
+  '90days': 'Plan 90 jours',
+  '365days': 'Plan 365 jours',
 }
 
-export default function DashboardPage() {
-  const [avatars, setAvatars] = useState<Avatar[]>([])
-  const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
-  const [userPoints, setUserPoints] = useState(0)
-  const [userId, setUserId] = useState<string | null>(null)
-  const [duration, setDuration] = useState(0)
-  const [pointsUsed, setPointsUsed] = useState(0)
-  const [stats, setStats] = useState<{ fps?: number; bitrate?: number; rtt?: number } | null>(null)
+function fmtMinutes(points: number) {
+  const totalSeconds = Math.floor(points / POINTS_PER_SECOND)
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${m}:${s.toString().padStart(2, '0')} min`
+}
+
+export default async function DashboardHubPage() {
+  const supabase = await createClient()
 
   const {
-    isConnected,
-    isConnecting,
-    connectionState,
-    error,
-    localVideoRef,
-    remoteVideoRef,
-    connect,
-    disconnect,
-    updateAvatar,
-  } = useLucy21({
-    onError: (err) => console.error('[Dashboard] Lucy error:', err),
-    onConnectionChange: (state) => console.log('[Dashboard] Connection state:', state),
-    onStats: (s) => setStats({ fps: s?.framesPerSecond, bitrate: s?.bitrate, rtt: s?.roundTripTime }),
-  })
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  const startOfToday = new Date()
+  startOfToday.setHours(0, 0, 0, 0)
 
-  // Load user data and avatars
-  useEffect(() => {
-    const loadData = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+  const [
+    { data: subscription },
+    { data: activeAvatar },
+    { count: avatarCount },
+    { data: todaySessions },
+  ] = await Promise.all([
+    supabase
+      .from('subscriptions')
+      .select('plan, points, max_points, is_active')
+      .eq('user_id', user?.id ?? '')
+      .maybeSingle(),
+    supabase
+      .from('user_avatars')
+      .select('name')
+      .eq('user_id', user?.id ?? '')
+      .eq('is_active', true)
+      .maybeSingle(),
+    supabase
+      .from('user_avatars')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user?.id ?? ''),
+    supabase
+      .from('swap_sessions')
+      .select('duration_seconds')
+      .eq('user_id', user?.id ?? '')
+      .gte('started_at', startOfToday.toISOString()),
+  ])
 
-      setUserId(user.id)
+  const swapsToday = todaySessions?.length ?? 0
+  const secondsToday = (todaySessions ?? []).reduce(
+    (acc, s) => acc + (s.duration_seconds ?? 0),
+    0,
+  )
+  const minutesToday = Math.floor(secondsToday / 60)
 
-      // Get user points from subscriptions table
-      const { data: subscription } = await supabase
-        .from('subscriptions')
-        .select('points_remaining')
-        .eq('user_id', user.id)
-        .single()
+  const points = subscription?.points ?? 0
+  const plan = subscription?.plan ?? 'free'
+  const isPro = plan !== 'free' && (subscription?.is_active ?? false)
+  const displayName =
+    (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] ||
+    user?.email?.split('@')[0] ||
+    'Bienvenue'
+  const avatarName = activeAvatar?.name ?? 'Aucun avatar'
+  const consentAccepted = (user?.user_metadata?.consent_accepted as boolean | undefined) ?? false
 
-      if (subscription) setUserPoints(subscription.points_remaining || 0)
-
-      // Get avatars
-      const { data: avatarsData } = await supabase
-        .from('user_avatars')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (avatarsData && avatarsData.length > 0) {
-        setAvatars(avatarsData)
-        const activeAvatar = avatarsData.find(a => a.is_active)
-        if (activeAvatar) setSelectedAvatar(activeAvatar)
-      }
-    }
-
-    loadData()
-  }, [])
-
-  // Track duration and points when connected
-  useEffect(() => {
-    if (!isConnected) return
-
-    const interval = setInterval(() => {
-      setDuration(prev => prev + 1)
-      setPointsUsed(prev => prev + POINTS_PER_SECOND)
-      setUserPoints(prev => {
-        const newPoints = Math.max(0, prev - POINTS_PER_SECOND)
-        if (newPoints === 0) {
-          disconnect()
-        }
-        return newPoints
-      })
-    }, 1000)
-
-    return () => clearInterval(interval)
-  }, [isConnected, disconnect])
-
-  // Save points when disconnecting
-  useEffect(() => {
-    if (!isConnected && userId && pointsUsed > 0) {
-      supabase
-        .from('subscriptions')
-        .update({ points_remaining: userPoints })
-        .eq('user_id', userId)
-    }
-  }, [isConnected, userId, pointsUsed, userPoints])
-
-  const handleStartSwap = async () => {
-    if (!selectedAvatar) return
-    if (userPoints < POINTS_PER_SECOND) return
-
-    setDuration(0)
-    setPointsUsed(0)
-    
-    await connect(selectedAvatar.url)
-  }
-
-  const handleStopSwap = () => {
-    disconnect()
-  }
-
-  const handleSelectAvatar = async (avatar: Avatar) => {
-    setSelectedAvatar(avatar)
-
-    // Update active status in DB
-    if (userId) {
-      await supabase
-        .from('user_avatars')
-        .update({ is_active: false })
-        .eq('user_id', userId)
-
-      await supabase
-        .from('user_avatars')
-        .update({ is_active: true })
-        .eq('id', avatar.id)
-
-      setAvatars(prev => prev.map(a => ({
-        ...a,
-        is_active: a.id === avatar.id
-      })))
-    }
-
-    // Update avatar if already connected
-    if (isConnected) {
-      try {
-        await updateAvatar(avatar.url)
-      } catch (err) {
-        console.error('Failed to update avatar:', err)
-      }
-    }
-  }
-
-  const formatDuration = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins}:${secs.toString().padStart(2, '0')}`
-  }
+  const infoCards = [
+    { icon: UserCircle, label: 'Avatar actif', value: avatarName, sub: 'Naturel', color: '#00ff88' },
+    { icon: Cloud, label: 'Mode', value: 'Cloud', sub: 'Connecté', color: '#22d3ee' },
+    { icon: Sparkles, label: 'Qualité', value: 'Ultra HD', sub: '4K', color: '#8b5cf6' },
+    { icon: Gauge, label: 'Latence', value: '120 ms', sub: 'Faible', color: '#2563eb' },
+    { icon: Clock, label: 'Crédits restants', value: fmtMinutes(points), sub: PLAN_LABELS[plan] || plan, color: '#f97316' },
+  ]
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-            <Zap className="w-6 h-6 text-[#00ff88]" />
-            LIVE SWAP
+          <h1 className="text-2xl font-bold text-foreground md:text-3xl text-balance">
+            {`Bienvenue ${displayName} `}
+            <span aria-hidden>👋</span>
           </h1>
-          <p className="text-gray-400 text-sm">
-            WebRTC realtime avec Lucy 2.1 - Full body transformation (720p, 25fps)
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">Voici un aperçu de tous les outils ChapCam.</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="bg-[#1a1a1a] border border-[#333] rounded-lg px-4 py-2 flex items-center gap-2">
-            <Coins className="w-4 h-4 text-yellow-500" />
-            <span className="text-white font-bold">{userPoints.toLocaleString()}</span>
-            <span className="text-gray-400 text-sm">points</span>
-          </div>
-        </div>
-      </div>
+        <HeaderActions />
+      </header>
 
-      {/* Error Banner */}
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-          <span className="text-red-400">{error}</span>
-        </div>
-      )}
+      {/* Confirmation d'utilisation responsable */}
+      <ConsentCard initiallyAccepted={consentAccepted} />
 
-      {/* Video Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left - Camera Feed */}
-        <div className="bg-[#111] border border-[#222] rounded-xl overflow-hidden">
-          <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#222]">
-            <Camera className="w-4 h-4 text-blue-500" />
-            <span className="text-white font-medium">CAMERA REELLE</span>
-            {isConnected && (
-              <span className="ml-auto flex items-center gap-1">
-                <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-                <span className="text-blue-500 text-xs">LIVE</span>
-              </span>
-            )}
-          </div>
-          <div className="aspect-video bg-[#0a0a0a] relative flex items-center justify-center">
-            <video
-              ref={localVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-              style={{ transform: 'scaleX(-1)' }}
-            />
-            {!isConnected && !isConnecting && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 bg-[#0a0a0a]">
-                <Camera className="w-12 h-12 mb-2 opacity-50" />
-                <p>Camera inactive</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Right - Transformed Output */}
-        <div className="bg-[#111] border border-[#00ff88]/30 rounded-xl overflow-hidden shadow-[0_0_30px_rgba(0,255,136,0.1)]">
-          <div className="bg-[#0a0a0a] px-4 py-2 flex items-center gap-2 border-b border-[#00ff88]/30">
-            <Zap className="w-4 h-4 text-[#00ff88]" />
-            <span className="text-white font-medium">LUCY 2.1 OUTPUT</span>
-            {stats?.fps && (
-              <span className="ml-2 text-xs text-gray-400">{Math.round(stats.fps)} FPS</span>
-            )}
-            {stats?.rtt && (
-              <span className="text-xs text-gray-400">| {Math.round(stats.rtt)}ms</span>
-            )}
-            {isConnected && (
-              <span className="ml-auto flex items-center gap-1">
-                <Wifi className="w-3 h-3 text-[#00ff88]" />
-                <span className="text-[#00ff88] text-xs">WEBRTC</span>
-              </span>
-            )}
-          </div>
-          <div className="aspect-video bg-[#0a0a0a] relative flex items-center justify-center border-2 border-[#00ff88]/20">
-            <video
-              ref={remoteVideoRef}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
-            {!isConnected && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 bg-[#0a0a0a]">
-                <Zap className="w-12 h-12 mb-2 opacity-50" />
-                <p>{isConnecting ? 'Connexion WebRTC...' : 'Swap inactif'}</p>
-              </div>
-            )}
-            {isConnecting && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <Loader2 className="w-8 h-8 text-[#00ff88] animate-spin" />
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Status Bar */}
-      <div className="bg-[#111] border border-[#222] rounded-lg p-4 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2">
-            {isConnected ? (
-              <Wifi className="w-4 h-4 text-[#00ff88]" />
-            ) : (
-              <WifiOff className="w-4 h-4 text-gray-500" />
-            )}
-            <span className={`text-sm ${isConnected ? 'text-[#00ff88]' : 'text-gray-400'}`}>
-              {connectionState === 'generating' ? 'Transforming' : connectionState}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-gray-400" />
-            <span className="text-white">{formatDuration(duration)}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Coins className="w-4 h-4 text-yellow-500" />
-            <span className="text-white">{pointsUsed} pts utilises</span>
-          </div>
-        </div>
-        <div className="text-gray-400 text-sm">
-          Avatar actif: <span className="text-white">{selectedAvatar?.name || 'Aucun'}</span>
-        </div>
-      </div>
-
-      {/* Action Button */}
-      <button
-        onClick={isConnected ? handleStopSwap : handleStartSwap}
-        disabled={(!selectedAvatar || userPoints < POINTS_PER_SECOND) && !isConnected}
-        className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
-          isConnected
-            ? 'bg-red-500 hover:bg-red-600 text-white'
-            : isConnecting
-              ? 'bg-yellow-500 text-black cursor-wait'
-              : selectedAvatar && userPoints >= POINTS_PER_SECOND
-                ? 'bg-[#00ff88] hover:bg-[#00dd77] text-black'
-                : 'bg-gray-700 text-gray-400 cursor-not-allowed'
-        }`}
+      {/* Info bar */}
+      <section
+        aria-label="Aperçu du compte"
+        className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
       >
-        {isConnecting ? (
-          <>
-            <Loader2 className="w-5 h-5 animate-spin" />
-            CONNEXION WEBRTC...
-          </>
-        ) : isConnected ? (
-          <>
-            <Square className="w-5 h-5" />
-            ARRETER LE SWAP
-          </>
-        ) : (
-          <>
-            <Zap className="w-5 h-5" />
-            {selectedAvatar ? 'DEMARRER LUCY 2.1' : 'SELECTIONNE UN AVATAR'}
-          </>
-        )}
-      </button>
-
-      {/* Avatars Grid */}
-      <div className="bg-[#111] border border-[#222] rounded-xl p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-white font-bold">MES AVATARS</h2>
-          <a
-            href="/dashboard/avatars"
-            className="flex items-center gap-1 text-[#00ff88] hover:underline text-sm"
+        {infoCards.map((c) => (
+          <div
+            key={c.label}
+            className="flex items-center gap-3 rounded-2xl border border-hairline bg-card p-4"
           >
-            <Plus className="w-4 h-4" />
-            Ajouter
-          </a>
-        </div>
-
-        {avatars.length === 0 ? (
-          <div className="text-center py-12">
-            <Zap className="w-12 h-12 mx-auto mb-3 text-gray-600" />
-            <p className="text-gray-400 mb-4">Aucun avatar</p>
-            <a
-              href="/dashboard/avatars"
-              className="inline-flex items-center gap-2 bg-[#00ff88] hover:bg-[#00dd77] text-black px-4 py-2 rounded-lg font-medium"
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
+              style={{ backgroundColor: `${c.color}22` }}
             >
-              <Plus className="w-4 h-4" />
-              Creer mon premier avatar
-            </a>
+              <c.icon className="h-5 w-5" style={{ color: c.color }} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-text-faint">{c.label}</p>
+              <p className="truncate text-sm font-bold text-foreground">{c.value}</p>
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {avatars.map((avatar) => (
-              <button
-                key={avatar.id}
-                onClick={() => handleSelectAvatar(avatar)}
-                className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all ${
-                  selectedAvatar?.id === avatar.id
-                    ? 'border-[#00ff88] shadow-[0_0_20px_rgba(0,255,136,0.3)]'
-                    : 'border-[#333] hover:border-[#555]'
-                }`}
+        ))}
+      </section>
+
+      {/* Tools */}
+      <section aria-label="Outils ChapCam">
+        <div className="mb-5">
+          <h2 className="text-xl font-bold text-foreground">Tous les outils ChapCam</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Choisissez l’outil que vous souhaitez utiliser.</p>
+        </div>
+        <ToolsGrid />
+      </section>
+
+      {/* Utilisation rapide */}
+      <section aria-label="Utilisation rapide" className="mt-8">
+        <h2 className="mb-4 text-xl font-bold text-foreground">Utilisation rapide</h2>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { icon: Zap, label: 'Swaps aujourd’hui', value: String(swapsToday), color: '#00ff88' },
+            { icon: Timer, label: 'Minutes restantes', value: fmtMinutes(points), color: '#f97316' },
+            { icon: Users, label: 'Avatars créés', value: String(avatarCount ?? 0), color: '#8b5cf6' },
+            { icon: Hourglass, label: 'Temps aujourd’hui', value: `${minutesToday} min`, color: '#22d3ee' },
+          ].map((s) => (
+            <div
+              key={s.label}
+              className="rounded-2xl border border-hairline bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30"
+            >
+              <div
+                className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg"
+                style={{ backgroundColor: `${s.color}22` }}
               >
-                <img
-                  src={avatar.url}
-                  alt={avatar.name}
-                  className="w-full h-full object-cover"
-                />
-                {selectedAvatar?.id === avatar.id && (
-                  <div className="absolute top-2 right-2 w-6 h-6 bg-[#00ff88] rounded-full flex items-center justify-center">
-                    <Check className="w-4 h-4 text-black" />
-                  </div>
-                )}
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                  <p className="text-white text-xs font-medium truncate">{avatar.name}</p>
-                </div>
-              </button>
-            ))}
+                <s.icon className="h-5 w-5" style={{ color: s.color }} />
+              </div>
+              <p className="text-2xl font-bold text-foreground">{s.value}</p>
+              <p className="mt-0.5 text-xs text-text-faint">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Premium banner */}
+      {!isPro && (
+        <section className="mt-8 overflow-hidden rounded-2xl border border-hairline bg-gradient-to-r from-primary/15 via-[#0f1a14] to-violet-600/20 p-6 md:p-8">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <Crown className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-bold text-foreground md:text-xl text-balance">
+                  Passez en Pro et débloquez tout le potentiel de ChapCam
+                </h3>
+              </div>
+              <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+                {['Plus de crédits', 'Qualité 4K', 'Avatars premium', 'Support prioritaire'].map((b) => (
+                  <li key={b} className="flex items-center gap-1.5">
+                    <Check className="h-4 w-4 text-primary" />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <Link
+              href="/dashboard/plans"
+              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-primary px-6 py-3 font-bold text-black transition-colors hover:bg-primary/90"
+            >
+              Voir les offres
+            </Link>
           </div>
-        )}
-      </div>
+        </section>
+      )}
     </div>
   )
 }

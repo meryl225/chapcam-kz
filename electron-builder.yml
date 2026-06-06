@@ -1,0 +1,54 @@
+# Configuration electron-builder pour ChapCam Desktop
+# Empaquete l'app + le pilote de camera virtuelle "ChapCam Camera".
+appId: com.chapcam.desktop
+productName: ChapCam
+copyright: Copyright (c) ChapCam
+
+directories:
+  output: dist
+  buildResources: electron/build
+
+# Fichiers de l'app embarques dans l'asar
+files:
+  - electron/**/*
+  - .next/**/*
+  - public/**/*
+  - package.json
+
+# Le pilote akvirtualcamera est copie HORS de l'asar (binaires natifs a executer).
+# Depose les binaires dans resources/akvirtualcamera/{x64,x86}/ avant le build
+# (voir electron/build/README-driver.md).
+extraResources:
+  - from: resources/akvirtualcamera
+    to: akvirtualcamera
+    filter:
+      - "**/*"
+
+# L'icone est auto-detectee depuis buildResources (electron/build/icon.png),
+# electron-builder genere .ico/.icns automatiquement.
+win:
+  target:
+    - nsis
+  # Installer le pilote = privileges administrateur obligatoires
+  requestedExecutionLevel: requireAdministrator
+  artifactName: ChapCam-Setup-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: true # pilote systeme -> installation pour toute la machine
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ChapCam
+  # Hooks personnalises : (de)sinstallation du pilote camera
+  include: electron/build/installer.nsh
+
+mac:
+  target:
+    - dmg
+  category: public.app-category.video
+
+linux:
+  target:
+    - AppImage
+  category: Video

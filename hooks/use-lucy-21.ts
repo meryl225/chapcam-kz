@@ -3,220 +3,281 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createDecartClient, models } from '@decartai/sdk'
 
-// Fixed camera constraints for Lucy 2.1 - hardcoded to avoid undefined values
-const CAMERA_WIDTH = 1280
-const CAMERA_HEIGHT = 720
-const CAMERA_FPS = 25
+// 2 points = 1 seconde de swap
+const POINTS_PER_SECOND = 2
+// Intervalle d'envoi de la deduction au serveur (en secondes).
+// Plus court = arret plus precis a l'epuisement, moins de points "perdus".
+const DEDUCTION_INTERVAL = 5
 
-export interface UseLucy21Options {
-  onError?: (error: Error) => void
-  onConnectionChange?: (state: string) => void
-  onStats?: (stats: any) => void
-}
-
-export interface UseLucy21Return {
-  // State
-  isConnected: boolean
-  isConnecting: boolean
-  connectionState: string
-  error: string | null
-  
-  // Refs
-  localVideoRef: React.RefObject<HTMLVideoElement>
-  remoteVideoRef: React.RefObject<HTMLVideoElement>
-  
-  // Actions
-  connect: (avatarImageUrl: string) => Promise<void>
-  disconnect: () => void
-  updateAvatar: (avatarImageUrl: string) => Promise<void>
-}
-
-const MODEL = models.realtime('lucy-2.1')
-
-export function useLucy21(options: UseLucy21Options = {}): UseLucy21Return {
-  const { onError, onConnectionChange, onStats } = options
-  
+export function useLucy21() {
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
   const [connectionState, setConnectionState] = useState('disconnected')
   const [error, setError] = useState<string | null>(null)
-  
+  const [pointsUsed, setPointsUsed] = useState(0)
+  const [sessionDuration, setSessionDuration] = useState(0)
+
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const realtimeClientRef = useRef<any>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const currentAvatarRef = useRef<string | null>(null)
+  const sessionStartRef = useRef<number | null>(null)
+  const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Cleanup on unmount
+  // Deduire les points toutes les secondes pendant le swap
+  const startPointsDeduction = useCallback(() => {
+    if (pointsIntervalRef.current) {
+      clearInterval(pointsIntervalRef.current)
+    }
+    
+    sessionStartRef.current = Date.now()
+    setPointsUsed(0)
+    setSessionDuration(0)
+    
+    // Deduire 2 points par seconde (affichage local chaque seconde)
+    pointsIntervalRef.current = setInterval(async () => {
+      const elapsed = Math.floor((Date.now() - (sessionStartRef.current || Date.now())) / 1000)
+      const points = elapsed * POINTS_PER_SECOND
+      setSessionDuration(elapsed)
+      setPointsUsed(points)
+
+      // Envoyer la deduction au serveur a chaque palier (toutes les 5s)
+      if (elapsed > 0 && elapsed % DEDUCTION_INTERVAL === 0) {
+        try {
+          const res = await fetch('/api/points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pointsToDeduct: DEDUCTION_INTERVAL * POINTS_PER_SECOND,
+              sessionDuration: DEDUCTION_INTERVAL,
+            }),
+          })
+          const data = await res.json().catch(() => null)
+
+          // Plus de points OU solde epuise par cette deduction -> couper le swap.
+          // Si la reponse est illisible/undefined, on coupe aussi par securite.
+          if (!data?.success || data?.depleted) {
+            disconnect()
+          }
+        } catch (err) {
+          console.error('[Lucy 2.1] Points deduction error:', err)
+        }
+      }
+    }, 1000)
+  }, [])
+
+  const stopPointsDeduction = useCallback(async () => {
+    if (pointsIntervalRef.current) {
+      clearInterval(pointsIntervalRef.current)
+      pointsIntervalRef.current = null
+    }
+    
+    // Deduire les secondes restantes non encore facturees (< 1 palier)
+    if (sessionStartRef.current) {
+      const totalSeconds = Math.floor((Date.now() - sessionStartRef.current) / 1000)
+      const remainingSeconds = totalSeconds % DEDUCTION_INTERVAL // Secondes non encore deduites
+      
+      if (remainingSeconds > 0) {
+        try {
+          await fetch('/api/points', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              pointsToDeduct: remainingSeconds * POINTS_PER_SECOND,
+              sessionDuration: remainingSeconds 
+            })
+          })
+        } catch (err) {
+          console.error('[Lucy 2.1] Final points deduction error:', err)
+        }
+      }
+    }
+    
+    sessionStartRef.current = null
+  }, [])
+
   useEffect(() => {
     return () => {
       disconnect()
+      stopPointsDeduction()
     }
   }, [])
 
   const disconnect = useCallback(() => {
+    // Arreter la deduction de points
+    stopPointsDeduction()
+
+    // 1. Fermer la session Decart (arrete la facturation cote serveur)
     if (realtimeClientRef.current) {
       try {
         realtimeClientRef.current.disconnect()
       } catch (e) {
-        // Ignore disconnect errors
+        console.error('[Lucy 2.1] Erreur disconnect Decart:', e)
       }
       realtimeClientRef.current = null
     }
-    
+
+    // 2. Couper la camera locale (tous les tracks du flux capture)
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
+      streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
-    
+
+    // 3. Couper egalement les tracks attaches aux elements video
+    //    (flux local ET flux transforme renvoye par Decart) pour eteindre
+    //    le voyant camera et liberer la ressource dans tous les cas.
+    const localStream = localVideoRef.current?.srcObject as MediaStream | null
+    if (localStream) {
+      localStream.getTracks().forEach((track) => track.stop())
+    }
+    const remoteStream = remoteVideoRef.current?.srcObject as MediaStream | null
+    if (remoteStream) {
+      remoteStream.getTracks().forEach((track) => track.stop())
+    }
+
+    // 4. Detacher et mettre en pause les elements video
     if (localVideoRef.current) {
+      localVideoRef.current.pause()
       localVideoRef.current.srcObject = null
     }
     if (remoteVideoRef.current) {
+      remoteVideoRef.current.pause()
       remoteVideoRef.current.srcObject = null
     }
-    
+
     setIsConnected(false)
     setIsConnecting(false)
     setConnectionState('disconnected')
     setError(null)
-    currentAvatarRef.current = null
-  }, [])
+  }, [stopPointsDeduction])
 
   const connect = useCallback(async (avatarImageUrl: string) => {
-    // Cleanup previous connection
     disconnect()
-    
     setIsConnecting(true)
     setError(null)
     setConnectionState('connecting')
-    onConnectionChange?.('connecting')
 
     try {
-      // 1. Get client token from our secure backend
-      const tokenResponse = await fetch('/api/decart-session', { method: 'POST' })
-      if (!tokenResponse.ok) {
-        const errorData = await tokenResponse.json()
-        throw new Error(errorData.error || 'Failed to get Decart token')
-      }
-      const { apiKey } = await tokenResponse.json()
+      // Verifier les points disponibles avant de commencer.
+      // Il suffit d'avoir au moins 1 palier de points (5s) pour demarrer ;
+      // le client pourra ensuite swaper jusqu'a epuisement total du solde.
+      const pointsRes = await fetch('/api/points')
+      const pointsData = await pointsRes.json().catch(() => null)
 
-      // 2. Get user's camera stream with fixed settings
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          width: { ideal: CAMERA_WIDTH },
-          height: { ideal: CAMERA_HEIGHT },
-          frameRate: { ideal: CAMERA_FPS },
-          facingMode: 'user',
-        },
-      })
+      const minToStart = POINTS_PER_SECOND * DEDUCTION_INTERVAL // 10 points = 5s
+      if (!pointsData?.success || (pointsData?.points ?? 0) < minToStart) {
+        throw new Error('Points insuffisants. Recharge ton compte pour utiliser le swap.')
+      }
+
+      const tokenRes = await fetch('/api/decart-token')
+      const tokenData = await tokenRes.json().catch(() => null)
+      const clientToken = tokenData?.token
+      if (!tokenRes.ok || !clientToken) {
+        throw new Error('Service de transformation indisponible pour le moment. Reessaie dans un instant.')
+      }
+
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 1280, height: 720, frameRate: 30 }
+        })
+      } catch (camError: any) {
+        if (camError.name === 'NotAllowedError') {
+          throw new Error('Acces camera refuse. Autorise ChapCam a acceder a ta camera dans les parametres du navigateur.')
+        } else if (camError.name === 'NotFoundError') {
+          throw new Error('Aucune camera detectee. Connecte une webcam et reessaie.')
+        } else if (camError.name === 'NotReadableError') {
+          throw new Error('Camera deja utilisee par une autre application. Ferme les autres apps utilisant la camera.')
+        } else {
+          throw new Error('Impossible de demarrer la camera: ' + camError.message)
+        }
+      }
+      
       streamRef.current = stream
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream
 
-      // Display local video
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream
-      }
+      const avatarRes = await fetch(avatarImageUrl)
+      const avatarBlob = await avatarRes.blob()
 
-      // 3. Fetch the avatar image as blob
-      const avatarResponse = await fetch(avatarImageUrl)
-      const avatarBlob = await avatarResponse.blob()
+      const client = createDecartClient({ apiKey: clientToken })
 
-      // 4. Create Decart client with the temporary token
-      const client = createDecartClient({
-        apiKey: apiKey,
-      })
-
-      // 5. Connect to Lucy 2.1 with WebRTC
       const realtimeClient = await client.realtime.connect(stream, {
-        model: MODEL,
-        mirror: 'auto', // Auto-mirror for front camera
+        model: models.realtime('lucy-2.1'),
+        mirror: 'auto',
+        resolution: '720p',
+
         onRemoteStream: (transformedStream: MediaStream) => {
-          // Display the transformed video
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = transformedStream
           }
         },
-        initialState: {
-          prompt: {
-            text: 'Substitute the character in the video with the person in the reference image. Maintain natural expressions and movements.',
-            enhance: true,
-          },
-          image: avatarBlob,
-        },
       })
 
       realtimeClientRef.current = realtimeClient
-      currentAvatarRef.current = avatarImageUrl
 
-      // 6. Setup event listeners
+      await realtimeClient.set({
+        image: avatarBlob,
+        prompt: "Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.",
+        enhance: true,
+      })
+
       realtimeClient.on('connectionChange', (state: string) => {
         setConnectionState(state)
-        onConnectionChange?.(state)
-        
         if (state === 'connected' || state === 'generating') {
           setIsConnected(true)
           setIsConnecting(false)
-        } else if (state === 'disconnected') {
-          setIsConnected(false)
-          setIsConnecting(false)
-        } else if (state === 'reconnecting') {
-          setIsConnecting(true)
+          // Demarrer la deduction de points quand connecte
+          startPointsDeduction()
         }
-      })
-
-      realtimeClient.on('error', (err: any) => {
-        console.error('[Lucy 2.1] Error:', err)
-        setError(err.message || 'Connection error')
-        onError?.(err)
-      })
-
-      realtimeClient.on('stats', (stats: any) => {
-        onStats?.(stats)
       })
 
       setIsConnected(true)
       setIsConnecting(false)
-      setConnectionState('connected')
 
     } catch (err: any) {
-      console.error('[Lucy 2.1] Connection failed:', err)
-      setError(err.message || 'Failed to connect')
-      setIsConnecting(false)
-      setConnectionState('disconnected')
-      onError?.(err)
-      
-      // Cleanup on error
+      console.error('[Lucy 2.1]', err)
+      // Nettoyage complet : couper la camera et fermer toute session Decart
+      // ouverte avant l'echec, pour ne pas laisser la camera allumee ni
+      // facturer Decart inutilement.
+      if (realtimeClientRef.current) {
+        try {
+          realtimeClientRef.current.disconnect()
+        } catch {}
+        realtimeClientRef.current = null
+      }
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop())
+        streamRef.current.getTracks().forEach((track) => track.stop())
         streamRef.current = null
       }
+      const localStream = localVideoRef.current?.srcObject as MediaStream | null
+      if (localStream) localStream.getTracks().forEach((track) => track.stop())
+      if (localVideoRef.current) {
+        localVideoRef.current.pause()
+        localVideoRef.current.srcObject = null
+      }
+      stopPointsDeduction()
+      setIsConnected(false)
+      setConnectionState('error')
+      setError(err.message || 'Erreur de connexion')
+      setIsConnecting(false)
     }
-  }, [disconnect, onConnectionChange, onError, onStats])
+  }, [disconnect, startPointsDeduction, stopPointsDeduction])
 
+  // Changer d'avatar a chaud, sans couper la session Decart en cours.
   const updateAvatar = useCallback(async (avatarImageUrl: string) => {
-    if (!realtimeClientRef.current || !isConnected) {
-      throw new Error('Not connected to Lucy 2.1')
-    }
-
+    if (!realtimeClientRef.current) return
     try {
-      // Fetch new avatar image
-      const avatarResponse = await fetch(avatarImageUrl)
-      const avatarBlob = await avatarResponse.blob()
-
-      // Update the character atomically
+      const avatarRes = await fetch(avatarImageUrl)
+      const avatarBlob = await avatarRes.blob()
       await realtimeClientRef.current.set({
-        prompt: 'Substitute the character in the video with the person in the reference image. Maintain natural expressions and movements.',
         image: avatarBlob,
+        prompt: "Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.",
         enhance: true,
       })
-
-      currentAvatarRef.current = avatarImageUrl
-    } catch (err: any) {
-      console.error('[Lucy 2.1] Failed to update avatar:', err)
-      throw err
+    } catch (err) {
+      console.error('[Lucy 2.1] Erreur changement avatar:', err)
     }
-  }, [isConnected])
+  }, [])
 
   return {
     isConnected,
@@ -228,5 +289,7 @@ export function useLucy21(options: UseLucy21Options = {}): UseLucy21Return {
     connect,
     disconnect,
     updateAvatar,
+    pointsUsed,
+    sessionDuration,
   }
 }

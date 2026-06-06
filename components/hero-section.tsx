@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowRight, Zap, Shield, Monitor, MessageCircle } from "lucide-react"
+import Image from "next/image"
+import { ArrowRight, Zap, Shield, Monitor, MessageCircle, Gift } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FeatureList } from "@/components/feature-list"
 import { PhoneMockup } from "@/components/phone-mockup"
@@ -10,6 +11,43 @@ import { motion } from "framer-motion"
 export function HeroSection() {
   return (
     <section className="relative min-h-screen pt-28 pb-12 px-6 overflow-hidden">
+      {/* Drapeaux flottants - pays disponibles */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.3 }}
+        className="absolute left-4 top-24 z-20 md:left-6 lg:left-10"
+      >
+        <motion.div
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md"
+        >
+            {[
+              { src: "/images/flag-cote-divoire.png", alt: "Cote d'Ivoire" },
+              { src: "/images/flag-benin.png", alt: "Benin" },
+              { src: "/images/flag-togo.png", alt: "Togo" },
+              { src: "/images/flag-cameroun.png", alt: "Cameroun" },
+            ].map((flag, i) => (
+              <motion.div
+                key={flag.alt}
+                animate={{ y: [0, -4, 0] }}
+                transition={{ duration: 3, repeat: Infinity, delay: i * 0.2, ease: "easeInOut" }}
+                whileHover={{ scale: 1.15 }}
+                className="overflow-hidden rounded-md shadow-lg ring-1 ring-white/20"
+              >
+                <Image
+                  src={flag.src || "/placeholder.svg"}
+                  alt={`Drapeau ${flag.alt}`}
+                  width={48}
+                  height={32}
+                  className="h-8 w-12 object-cover"
+                />
+              </motion.div>
+            ))}
+        </motion.div>
+      </motion.div>
+
       <div className="max-w-7xl mx-auto grid lg:grid-cols-[1fr_1.2fr_1fr] gap-8 items-center min-h-[calc(100vh-8rem)]">
         {/* Left - Features */}
         <motion.div 
@@ -104,6 +142,30 @@ export function HeroSection() {
               </Button>
             </motion.div>
           </Link>
+
+          {/* Free Trial CTA - mis en avant */}
+          <Link href="/live" className="group relative w-fit">
+            <motion.div
+              className="absolute -inset-1 rounded-full bg-[#00ff88] opacity-60 blur-lg"
+              animate={{ opacity: [0.4, 0.75, 0.4] }}
+              transition={{ duration: 1.8, repeat: Infinity }}
+            />
+            <motion.div
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.97 }}
+              className="relative flex w-fit items-center gap-3 rounded-full bg-[#00ff88] px-8 py-4 font-bold text-black shadow-[0_0_30px_rgba(0,255,136,0.5)]"
+            >
+              <Gift className="h-6 w-6" />
+              <span className="text-lg">Essai gratuit 2 min</span>
+              <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+            </motion.div>
+          </Link>
+
+          {/* Precision : l'essai est juste un apercu */}
+          <p className="-mt-2 max-w-md text-sm text-gray-500">
+            L&apos;essai change juste ton visage, pour gouter. Le vrai logiciel{" "}
+            <span className="text-gray-300">te change de la tete aux pieds, sans bug et en bien plus beau</span>.
+          </p>
 
           {/* WhatsApp Contact Button */}
           <a href="https://wa.me/2250555560189" target="_blank" rel="noopener noreferrer">

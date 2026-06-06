@@ -1,286 +1,298 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Check, Zap, Crown, Star, Loader2, Clock, Battery } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { useToast } from "@/hooks/use-toast"
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Zap, Gift, Video } from 'lucide-react'
+import { motion } from 'framer-motion'
+import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { PLANS, getPlan } from '@/lib/plans'
+import { LIVE_OFFERS, LIVE_TRIAL_SECONDS, getLiveOffer } from '@/lib/live-offers'
 
-const plans = [
-  {
-    id: "1day",
-    duration: "1 JOUR",
-    price: "10.000",
-    currency: "FCFA",
-    points: 600,
-    swapMinutes: 5,
-    features: [
-      "600 points inclus",
-      "5 minutes de swap",
-      "Face swap en temps reel",
-      "Qualite HD 1080p"
-    ],
-    validity: "Valable 24 heures",
-    color: "#00d4ff",
-    bgGradient: "from-cyan-500/20 to-blue-600/5",
-    popular: false,
-    icon: Zap
-  },
-  {
-    id: "30days",
-    duration: "30 JOURS",
-    price: "50.000",
-    currency: "FCFA",
-    points: 3000,
-    swapMinutes: 25,
-    features: [
-      "3 000 points inclus",
-      "25 minutes de swap",
-      "Face swap en temps reel",
-      "Qualite HD 1080p",
-      "Support prioritaire"
-    ],
-    validity: "Valable 1 mois",
-    color: "#a855f7",
-    bgGradient: "from-purple-500/20 to-purple-600/5",
-    popular: false,
-    icon: Star
-  },
-  {
-    id: "90days",
-    duration: "90 JOURS",
-    price: "100.000",
-    currency: "FCFA",
-    points: 7500,
-    swapMinutes: 62,
-    features: [
-      "7 500 points inclus",
-      "62 minutes de swap",
-      "Face swap en temps reel",
-      "Qualite 4K Ultra HD",
-      "Support prioritaire",
-      "Mises a jour exclusives"
-    ],
-    validity: "Valable 3 mois",
-    color: "#22c55e",
-    bgGradient: "from-green-500/20 to-green-600/5",
-    popular: false,
-    icon: Star
-  },
-  {
-    id: "365days",
-    duration: "365 JOURS",
-    price: "150.000",
-    currency: "FCFA",
-    points: 15000,
-    swapMinutes: 125,
-    features: [
-      "15 000 points inclus",
-      "125 minutes de swap",
-      "Face swap en temps reel",
-      "Qualite 4K Ultra HD",
-      "Support VIP 24/7",
-      "Mises a jour exclusives",
-      "Acces beta nouvelles fonctionnalites"
-    ],
-    validity: "Valable 1 an",
-    color: "#f97316",
-    bgGradient: "from-orange-500/20 to-yellow-500/5",
-    popular: true,
-    icon: Crown
-  }
-]
+const LIVE_OFFER = LIVE_OFFERS[0]
 
-export default function PlansPage() {
-  const { toast } = useToast()
-  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+function PlansContent() {
+  const searchParams = useSearchParams()
+  // id du produit en cours de redirection vers PayDunya (pour le loader par bouton)
+  const [pendingId, setPendingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  // evite de relancer le checkout auto plusieurs fois (ex: arrivee depuis l'accueil)
+  const autoStarted = useRef(false)
 
-  const handleChoosePlan = async (planId: string) => {
-    setLoadingPlan(planId)
+  const startCheckout = async (productId: string) => {
+    setError(null)
+    setPendingId(productId)
     try {
-      const response = await fetch("/api/stripe/create-checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planId }),
+      const res = await fetch('/api/payment/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId }),
       })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Erreur lors de la creation du paiement")
+      const data = await res.json()
+      if (res.ok && data.success && data.invoice_url) {
+        // Redirection vers la page de paiement securisee PayDunya.
+        window.location.href = data.invoice_url
+        return
       }
-
-      window.location.href = data.url
-    } catch (error) {
-      console.error("Checkout error:", error)
-      toast({
-        title: "Erreur",
-        description: "Impossible de lancer le paiement. Reessaie.",
-        variant: "destructive",
-      })
-      setLoadingPlan(null)
+      setError(data.error || 'Impossible de demarrer le paiement. Reessayez.')
+    } catch {
+      setError('Erreur de connexion. Reessayez.')
+    } finally {
+      setPendingId(null)
     }
   }
 
+  // Si l'utilisateur arrive depuis la page d'accueil avec ?plan=ID, on lance
+  // automatiquement le paiement PayDunya pour ce produit (formule ou Live Pro).
+  useEffect(() => {
+    if (autoStarted.current) return
+    const requested = searchParams.get('plan')
+    if (!requested) return
+    if (getPlan(requested) || getLiveOffer(requested)) {
+      autoStarted.current = true
+      startCheckout(requested)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
   return (
-    <div className="min-h-full p-4 md:p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-10 text-center">
-        <h1 className="text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-          RECHARGER MES POINTS
-        </h1>
-        <p className="mt-2 text-gray-400">
-          Paiement <span className="font-semibold text-green-400">100% securise</span> · Acces instantane
-        </p>
-        <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#00ff88]/10 px-4 py-2 text-sm text-[#00ff88]">
-          <Battery className="h-4 w-4" />
-          <span>2 points = 1 seconde de swap</span>
+    <div className="min-h-screen bg-background px-6 py-12">
+      <div className="mx-auto max-w-7xl">
+        {/* Banniere offre */}
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
+          <div className="relative overflow-hidden rounded-2xl border border-primary/50 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 p-6">
+            <div className="relative z-10 text-center">
+              <div className="mb-2 flex items-center justify-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <span className="text-lg font-bold text-primary">PAIEMENT EN LIGNE SECURISE</span>
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="mb-2 text-xl font-black text-foreground md:text-2xl">
+                Payez par <span className="text-primary">Carte bancaire, Wave, Orange, MTN, Moov ou Djamo</span> via PayDunya
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Activation automatique de votre compte des que le paiement est confirme.
+              </p>
+            </div>
+          </div>
+        </motion.div>
+
+        <div className="mb-16 text-center">
+          <h1 className="mb-4 text-4xl font-bold text-foreground md:text-5xl text-balance">
+            Changez d&apos;apparence en live
+          </h1>
+          <p className="text-3xl font-medium text-emerald-400">avec ChapCam</p>
+          <p className="mt-6 text-lg text-muted-foreground">
+            2 points = 1 seconde de transformation du visage et corps entier
+          </p>
         </div>
-      </div>
 
-      {/* Plans Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-4">
-        {plans.map((plan, index) => {
-          const Icon = plan.icon
-          const isLoading = loadingPlan === plan.id
+        <div className="mx-auto mb-8 max-w-2xl rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center">
+          <p className="text-sm font-semibold text-emerald-300">
+            Paiement 100% securise et instantane. Apres avoir paye, patientez quelques secondes sur
+            la page PayDunya : votre compte est credite automatiquement des la confirmation.
+          </p>
+        </div>
 
-          return (
-            <motion.div
-              key={plan.id}
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className={`relative overflow-hidden rounded-3xl border bg-gradient-to-b ${plan.bgGradient} backdrop-blur-xl ${
-                plan.popular
-                  ? "border-[#f97316] shadow-xl shadow-[#f97316]/30"
-                  : "border-white/10"
-              }`}
-            >
-              {/* Popular badge */}
-              {plan.popular && (
-                <div className="absolute left-0 right-0 top-0 bg-gradient-to-r from-[#f97316] to-[#fbbf24] py-2 text-center">
-                  <span className="flex items-center justify-center gap-2 text-xs font-black uppercase tracking-wider text-black">
+        {error && (
+          <div className="mx-auto mb-8 max-w-xl rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+          {PLANS.map((plan, index) => {
+            const loading = pendingId === plan.id
+            return (
+              <motion.div
+                key={plan.id}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className={`relative flex flex-col rounded-3xl border bg-card p-8 transition-all hover:border-primary ${
+                  plan.popular
+                    ? 'scale-[1.03] border-primary shadow-2xl shadow-primary/20'
+                    : 'border-gray-800'
+                }`}
+              >
+                <div className="absolute -right-3 -top-3 rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
+                  -{plan.discount}%
+                </div>
+
+                {plan.popular && (
+                  <div className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-primary px-6 py-1 text-sm font-bold text-black">
                     <Crown className="h-4 w-4" />
                     MEILLEUR CHOIX
-                  </span>
-                </div>
-              )}
-
-              <div className={`p-6 ${plan.popular ? "pt-14" : ""}`}>
-                {/* Icon + Duration */}
-                <div className="mb-4 flex items-center gap-2">
-                  <div
-                    className="flex h-10 w-10 items-center justify-center rounded-xl"
-                    style={{ backgroundColor: `${plan.color}20` }}
-                  >
-                    <Icon className="h-5 w-5" style={{ color: plan.color }} />
                   </div>
-                  <span
-                    className="text-sm font-bold uppercase tracking-wider"
-                    style={{ color: plan.color }}
-                  >
-                    {plan.duration}
-                  </span>
-                </div>
+                )}
 
-                {/* Points Highlight */}
-                <div className="mb-4 rounded-xl bg-white/5 p-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Battery className="h-5 w-5" style={{ color: plan.color }} />
-                      <span className="text-lg font-bold text-white">{plan.points.toLocaleString()} points</span>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2 text-sm text-gray-400">
-                    <Clock className="h-4 w-4" />
-                    <span>= {plan.swapMinutes} min de swap</span>
-                  </div>
-                </div>
+                <div className="text-sm font-medium text-emerald-400">{plan.duration}</div>
+                <h3 className="mt-2 text-3xl font-bold text-foreground">{plan.name}</h3>
 
-                {/* Price */}
-                <div className="mb-6">
-                  <div className="flex items-baseline gap-1">
-                    <span
-                      className="text-4xl font-black tracking-tight"
-                      style={{ color: plan.color }}
-                    >
-                      {plan.price}
+                <div className="mb-2 mt-8">
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="text-xl text-text-faint line-through">
+                      {plan.oldPrice.toLocaleString()}
                     </span>
-                    <span className="text-sm font-medium text-gray-400">
-                      {plan.currency}
-                    </span>
+                    <span className="text-sm font-semibold text-red-400">-{plan.discount}%</span>
                   </div>
-                  <p className="mt-1 text-sm text-gray-500">{plan.validity}</p>
+                  <span className="text-5xl font-bold text-primary">
+                    {plan.price.toLocaleString()}
+                  </span>
+                  <span className="text-2xl text-muted-foreground"> FCFA</span>
                 </div>
 
-                {/* Features */}
-                <div className="mb-8 space-y-3">
+                <ul className="mt-8 flex-1 space-y-4 text-muted-foreground">
                   {plan.features.map((feature, i) => (
-                    <div key={i} className="flex items-start gap-3">
-                      <div
-                        className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full"
-                        style={{ backgroundColor: `${plan.color}30` }}
-                      >
-                        <Check className="h-3 w-3" style={{ color: plan.color }} />
-                      </div>
-                      <span className="text-sm leading-relaxed text-gray-300">
-                        {feature}
-                      </span>
-                    </div>
+                    <li key={i} className="flex items-center gap-3">
+                      <Check className="h-5 w-5 flex-shrink-0 text-emerald-400" />
+                      {feature}
+                    </li>
                   ))}
-                </div>
+                  <li className="flex items-center gap-3">
+                    <Check className="h-5 w-5 flex-shrink-0 text-emerald-400" />
+                    {plan.points.toLocaleString()} points ({plan.minutes})
+                  </li>
+                </ul>
 
-                {/* CTA Button */}
-                <Button
-                  onClick={() => handleChoosePlan(plan.id)}
-                  disabled={!!loadingPlan}
-                  className={`w-full rounded-full py-6 text-base font-bold transition-all duration-300 hover:scale-105 ${
+                <button
+                  onClick={() => startCheckout(plan.id)}
+                  disabled={!!pendingId}
+                  className={`mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all disabled:opacity-60 ${
                     plan.popular
-                      ? "bg-gradient-to-r from-[#f97316] to-[#fbbf24] text-black hover:shadow-lg hover:shadow-[#f97316]/50"
-                      : ""
+                      ? 'bg-primary text-black hover:bg-primary/90'
+                      : 'bg-white text-black hover:bg-gray-200'
                   }`}
-                  style={
-                    !plan.popular
-                      ? {
-                          backgroundColor: `${plan.color}20`,
-                          color: plan.color,
-                          border: `1px solid ${plan.color}50`,
-                        }
-                      : {}
-                  }
                 >
-                  {isLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : null}
-                  {isLoading ? "Chargement..." : "Choisir ce plan"}
-                </Button>
-              </div>
-            </motion.div>
-          )
-        })}
-      </div>
+                  {loading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      Recharger
+                      <CreditCard className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
+              </motion.div>
+            )
+          })}
+        </div>
 
-      {/* Trust badges */}
-      <div className="mt-12 flex flex-wrap items-center justify-center gap-8 text-sm text-gray-500">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500/20">
-            <Check className="h-4 w-4 text-green-400" />
+        {/* ===================== OFFRE LIVE PRO (separee, encadree en rouge) ===================== */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="mt-12"
+        >
+          <div className="relative overflow-hidden rounded-3xl border-2 border-red-500 bg-gradient-to-br from-red-500/10 via-[#111] to-[#111] p-6 shadow-[0_0_40px_-10px_rgba(239,68,68,0.5)] md:p-8">
+            {/* Badge distinctif */}
+            <div className="absolute -right-3 -top-3 flex items-center gap-1 rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
+              <Zap className="h-3.5 w-3.5" />
+              OFFRE SPECIALE
+            </div>
+
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex-1">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-red-400">
+                  <Video className="h-3.5 w-3.5" />
+                  Face Swap Temps Reel
+                </div>
+                <h3 className="text-2xl font-black text-foreground md:text-3xl">{LIVE_OFFER.name}</h3>
+                <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+                  {LIVE_OFFER.description} Cette offre est <span className="font-semibold text-red-400">independante</span> des
+                  formules a points : elle ouvre une fenetre d&apos;acces dediee au moteur GPU temps reel.
+                </p>
+
+                <ul className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 flex-shrink-0 text-red-400" />
+                    {LIVE_OFFER.windowMinutes} minutes de swap en direct
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 flex-shrink-0 text-red-400" />
+                    Basse latence, jusqu&apos;a 4 personas
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 flex-shrink-0 text-red-400" />
+                    Utilisable en appel video (OBS)
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Gift className="h-4 w-4 flex-shrink-0 text-primary" />
+                    Essai gratuit de {Math.round(LIVE_TRIAL_SECONDS / 60)} min offert
+                  </li>
+                </ul>
+              </div>
+
+              <div className="flex flex-col items-stretch gap-3 lg:w-64">
+                <div className="text-center lg:text-right">
+                  <span className="text-4xl font-black text-red-400">
+                    {LIVE_OFFER.price.toLocaleString()}
+                  </span>
+                  <span className="text-xl text-muted-foreground"> FCFA</span>
+                  <p className="text-xs text-text-faint">pour {LIVE_OFFER.windowMinutes} min d&apos;acces</p>
+                </div>
+                <Link
+                  href="/live"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/50 bg-primary/10 py-3 font-semibold text-primary transition-colors hover:bg-primary/20"
+                >
+                  <Gift className="h-4 w-4" />
+                  Essayer gratuitement
+                </Link>
+                <button
+                  onClick={() => startCheckout(LIVE_OFFER.id)}
+                  disabled={!!pendingId}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500 py-3 font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+                >
+                  {pendingId === LIVE_OFFER.id ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <>
+                      Acheter {LIVE_OFFER.windowMinutes} min
+                      <CreditCard className="h-4 w-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
-          <span>Paiement securise SSL</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500/20">
-            <Zap className="h-4 w-4 text-blue-400" />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-12 text-center"
+        >
+          <div className="inline-flex flex-col items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 px-6 py-4 sm:flex-row">
+            <Clock className="h-5 w-5 flex-shrink-0 text-primary" />
+            <p className="font-semibold text-primary">
+              Activation automatique et immediate apres confirmation du paiement.
+            </p>
           </div>
-          <span>Activation instantanee</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-500/20">
-            <Crown className="h-4 w-4 text-purple-400" />
+          <div className="mt-6">
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-card px-5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+            >
+              Retour au tableau de bord
+            </Link>
           </div>
-          <span>Satisfait ou rembourse</span>
-        </div>
+        </motion.div>
       </div>
     </div>
+  )
+}
+
+export default function PlansPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
+      <PlansContent />
+    </Suspense>
   )
 }

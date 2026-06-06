@@ -1,0 +1,88 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { isAdminRequest } from '@/lib/admin-auth'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+// Liste toutes les licences ChapCam PC (reservee a l'admin).
+export async function GET() {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: 'Acces refuse.' }, { status: 403 })
+  }
+
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin
+      .from('pc_licenses')
+      .select('id, email, license_key, hardware_id, status, activated_at, created_at')
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('[admin/licenses] Lecture echouee:', error.message)
+      return NextResponse.json({ error: 'Erreur serveur (table pc_licenses absente ?).' }, { status: 500 })
+    }
+
+    const licenses = (data || []).map((l) => ({
+      id: l.id,
+      email: l.email,
+      licenseKey: l.license_key,
+      activated: !!l.hardware_id,
+      status: l.status,
+      activatedAt: l.activated_at,
+      createdAt: l.created_at,
+    }))
+
+    return NextResponse.json({
+      licenses,
+      stats: {
+        total: licenses.length,
+        active: licenses.filter((l) => l.status === 'active').length,
+        revoked: licenses.filter((l) => l.status === 'revoked').length,
+        activated: licenses.filter((l) => l.activated).length,
+      },
+    })
+  } catch (err: any) {
+    console.error('[admin/licenses] Exception:', err?.message || err)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
+  }
+}
+
+// Revoque, reactive ou reinitialise (change de PC) une licence.
+// Corps : { id: string, action: 'revoke' | 'reactivate' | 'reset' }
+export async function POST(request: NextRequest) {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: 'Acces refuse.' }, { status: 403 })
+  }
+
+  try {
+    const body = await request.json().catch(() => ({}))
+    const id = String(body.id || '')
+    const action = String(body.action || '')
+
+    if (!id || !['revoke', 'reactivate', 'reset'].includes(action)) {
+      return NextResponse.json({ error: 'Parametres invalides.' }, { status: 400 })
+    }
+
+    const admin = createAdminClient()
+
+    // 'reset' : detache le PC actuel pour permettre une reactivation ailleurs.
+    const patch =
+      action === 'revoke'
+        ? { status: 'revoked' }
+        : action === 'reactivate'
+          ? { status: 'active' }
+          : { hardware_id: null, activated_at: null, status: 'active' }
+
+    const { error } = await admin.from('pc_licenses').update(patch).eq('id', id)
+    if (error) {
+      console.error('[admin/licenses] Maj echouee:', error.message)
+      return NextResponse.json({ error: 'Mise a jour impossible.' }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    console.error('[admin/licenses] Exception POST:', err?.message || err)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
+  }
+}

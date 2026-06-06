@@ -6,36 +6,28 @@ import { ChevronDown, HelpCircle } from "lucide-react"
 
 const faqs = [
   {
-    question: "Comment fonctionne ChapCam ?",
-    answer: "ChapCam utilise une technologie IA exclusive pour remplacer votre visage en temps reel par un avatar de votre choix. Il vous suffit de selectionner un avatar, d'activer votre webcam et de lancer le swap. Le resultat est instantane et fonctionne avec toutes vos applications video."
+    question: "Qu'est-ce que ChapCam ?",
+    answer: "ChapCam est une application de transformation faciale en temps reel qui vous permet de changer votre apparence pendant vos appels video. Rendez-vous sur chapcam.com pour decouvrir toutes nos fonctionnalites."
   },
   {
     question: "Est-ce que ca fonctionne avec WhatsApp, Zoom, Teams ?",
-    answer: "Oui ! ChapCam cree une camera virtuelle qui peut etre utilisee avec toutes les applications de visioconference : WhatsApp, Telegram, Zoom, Microsoft Teams, Google Meet, Discord, Skype, TikTok Live, et bien d'autres."
+    answer: "Oui ! ChapCam fonctionne avec toutes les applications de visioconference : WhatsApp, Telegram, Zoom, Microsoft Teams, Google Meet, Discord, Skype, TikTok Live, et bien d'autres. Plus d'infos sur chapcam.com."
   },
   {
-    question: "Quelle est la qualite du swap en temps reel ?",
-    answer: "Notre technologie offre un swap ultra-realiste avec une latence minimale. La qualite depend de votre connexion internet et de la luminosite de votre environnement, mais nos utilisateurs obtiennent generalement des resultats impressionnants."
-  },
-  {
-    question: "Combien d'avatars puis-je creer ?",
-    answer: "Le nombre d'avatars depend de votre plan : Starter (3 avatars), Pro (10 avatars), Business (25 avatars), Enterprise (avatars illimites). Vous pouvez upgrader a tout moment pour debloquer plus de fonctionnalites."
-  },
-  {
-    question: "Mes donnees sont-elles securisees ?",
-    answer: "Absolument. Vos photos d'avatars sont stockees de maniere securisee et chiffree. Nous ne partageons jamais vos donnees avec des tiers. Le traitement du swap se fait en temps reel sans stockage des flux video."
+    question: "Quels sont les tarifs disponibles ?",
+    answer: "ChapCam propose 4 formules adaptees a vos besoins : Starter (10 000 FCFA pour 1 jour), Standard (25 000 FCFA pour 30 jours), Premium (50 000 FCFA pour 90 jours) et Ultimate (85 000 FCFA pour 365 jours). Consultez tous les details sur chapcam.com."
   },
   {
     question: "Comment fonctionnent les points ?",
-    answer: "Les points ChapCam permettent d'utiliser le swap en temps reel. Chaque plan inclut un nombre de points mensuel. Vous pouvez acheter des points supplementaires a tout moment via la page Recharge si vous en avez besoin."
+    answer: "2 points = 1 seconde de transformation. Le plan Starter offre 500 points (4 min 10 sec), Standard offre 1 250 points (10 min 25 sec), Premium offre 2 500 points (20 min 50 sec) et Ultimate offre 4 250 points (35 min 25 sec)."
   },
   {
-    question: "Quel plan choisir ?",
-    answer: "Le plan Starter est ideal pour debuter (3 avatars, 1000 pts). Le plan Pro convient aux utilisateurs reguliers (10 avatars, 5000 pts). Business et Enterprise sont concus pour les professionnels et equipes avec des besoins avances."
+    question: "Mes donnees sont-elles securisees ?",
+    answer: "Absolument. Chez ChapCam, la securite de vos donnees est notre priorite. Vos informations sont protegees et nous ne les partageons jamais avec des tiers."
   },
   {
     question: "Comment contacter le support ?",
-    answer: "Vous pouvez nous contacter via WhatsApp au +225 05 55 56 01 89 pour une assistance rapide, ou par email. Notre equipe repond generalement sous 24 heures."
+    answer: "Vous pouvez nous contacter via WhatsApp au +225 05 55 56 01 89 pour une assistance rapide. Notre equipe ChapCam repond generalement sous 24 heures. Visitez chapcam.com pour plus d'options de contact."
   }
 ]
 

@@ -1,0 +1,16 @@
+# ChapCam Live - dependances du WORKER en mode PersonaLive (bridge_personalive.py).
+#
+# /!\ NE PAS installer requirements.txt (moteur InsightFace) sur le pod PersonaLive :
+#     il installe nvidia-cudnn-cu12==9.* et casse cuDNN 8 dont torch 2.1.0 a besoin
+#     (=> ImportError: libcudnn.so.8). Utiliser : bash install-personalive.sh
+#
+# A installer DANS l'environnement qui lance server.py (le pont ChapCam).
+# PersonaLive lui-meme s'installe a part, avec SON propre requirements
+# (requirements_base.txt du repo GVCLab/PersonaLive), idealement dans un conda
+# env dedie "personalive". Ce fichier ne contient QUE ce dont notre worker a
+# besoin pour relayer les frames.
+
+websockets==12.0          # serveur WS cote navigateur + client WS vers PersonaLive
+aiohttp==3.10.5           # upload de la reference + health-check PersonaLive
+numpy==1.26.4             # importe par engine.py (au chargement du module)
+opencv-python-headless==4.10.0.84  # idem (engine.py importe cv2 au niveau module)

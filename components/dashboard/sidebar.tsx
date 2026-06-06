@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, CreditCard, Battery } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, Video, CreditCard, Home, Mic, Languages, ImageIcon, Film, HelpCircle, Monitor } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -11,7 +11,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { createClient } from '@/lib/supabase/client'
-import { useState } from 'react'
+import { ThemeToggleCompact } from '@/components/theme-toggle'
+import { useState, useEffect } from 'react'
 
 const PLAN_LABELS: Record<string, string> = {
   free: 'Gratuit',
@@ -41,14 +42,21 @@ interface NavItem {
   href: string
   icon: React.ElementType
   label: string
+  badge?: 'NEW' | 'PRO'
 }
 
 const navItems: NavItem[] = [
-  { href: '/dashboard', icon: Zap, label: 'LIVE SWAP' },
+  { href: '/dashboard', icon: Home, label: 'DASHBOARD' },
+  { href: '/dashboard/live-swap', icon: Zap, label: 'LIVE SWAP' },
+  { href: '/live', icon: Video, label: 'LIVE PRO', badge: 'PRO' },
+  { href: '/dashboard/voice-changer', icon: Mic, label: 'VOICE CHANGER V1', badge: 'NEW' },
+  { href: '/dashboard/voice-translator', icon: Languages, label: 'VOICE TRADUCTEUR', badge: 'NEW' },
+  { href: '/dashboard/photo-video', icon: ImageIcon, label: 'PHOTOS EN VIDEO', badge: 'NEW' },
+  { href: '/dashboard/video-translation', icon: Film, label: 'TRADUCTION VIDEO', badge: 'NEW' },
   { href: '/dashboard/avatars', icon: Users, label: 'MES AVATARS' },
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES' },
+  { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGER' },
   { href: '/dashboard/settings', icon: Settings, label: 'PARAMETRES' },
-  { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGE' },
 ]
 
 interface SidebarContentProps {
@@ -77,93 +85,131 @@ function SidebarContent({
   const showUpgradeBanner = plan === 'free' || isExpired || !isActive || pointsRemaining <= 0
   const pointsPercentage = pointsTotal > 0 ? (pointsRemaining / pointsTotal) * 100 : 0
 
+  // Lien secret Admin Stats (visible uniquement par toi)
+  const isAdmin = email === 'fanny.guck@gmail.com'
+
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
       <div className="p-6">
         <h1 className="text-2xl font-bold">
-          <span className="text-white">Chap</span>
-          <span className="text-[#00ff88]">Cam</span>
+          <span className="text-foreground">Chap</span>
+          <span className="text-primary">Cam</span>
         </h1>
-        <p className="mt-1 text-xs uppercase tracking-wider text-gray-500">
+        <p className="mt-1 text-xs uppercase tracking-wider text-text-faint">
           SWAP EN TEMPS REEL
         </p>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-3">
+      <nav className="flex-1 overflow-y-auto px-3 py-1">
         {navItems.map((item) => {
           const isActivePath = pathname === item.href
           return (
+            <div key={item.href}>
+              {/* Bouton vedette ChapCam PC, place juste au-dessus de LIVE SWAP */}
+              {item.href === '/dashboard/live-swap' && (
+                <Link
+                  href="/dashboard/chapcam-pc"
+                  className={`group relative mb-2 flex items-center gap-3 overflow-hidden rounded-lg px-3 py-3 text-[13px] font-bold uppercase tracking-tight shadow-lg shadow-primary/30 transition-all duration-200 ${
+                    pathname === '/dashboard/chapcam-pc'
+                      ? 'bg-primary text-black ring-2 ring-primary/50'
+                      : 'bg-primary text-black hover:brightness-110'
+                  }`}
+                >
+                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                  <Monitor className="h-[18px] w-[18px] shrink-0" />
+                  <span className="flex-1 truncate leading-tight">ChapCam PC</span>
+                  <span className="rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-extrabold tracking-wide">
+                    A VIE
+                  </span>
+                </Link>
+              )}
             <Link
-              key={item.href}
               href={item.href}
-              className={`mb-1 flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-bold uppercase transition-all duration-200 ${
+              className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 ${
                 isActivePath
-                  ? 'border-l-2 border-[#00ff88] bg-white/5 text-[#00ff88]'
-                  : 'text-gray-400 hover:bg-white/5'
+                  ? 'border-l-2 border-primary bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
-              <item.icon className="h-5 w-5" />
-              {item.label}
+              <item.icon className="h-[18px] w-[18px] shrink-0" />
+              <span className="flex-1 truncate">{item.label}</span>
+              {item.badge === 'NEW' && (
+                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
+                  NEW
+                </span>
+              )}
+              {item.badge === 'PRO' && (
+                <span className="rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold text-violet-300">
+                  PRO
+                </span>
+              )}
             </Link>
+            </div>
           )
         })}
+
+        {/* Aide & Support */}
+        <a
+          href="https://t.me/chapcam_support"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground"
+        >
+          <HelpCircle className="h-[18px] w-[18px] shrink-0" />
+          <span className="flex-1 truncate">AIDE & SUPPORT</span>
+        </a>
+
+        {/* Lien Secret Admin Stats */}
+        {isAdmin && (
+          <Link
+            href="/admin/stats"
+            className="mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight text-primary transition-all duration-200 hover:bg-muted border-l-2 border-primary"
+          >
+            <Shield className="h-[18px] w-[18px] shrink-0" />
+            ADMIN STATS
+          </Link>
+        )}
       </nav>
 
       {/* User Info */}
-      <div className="border-t border-white/10 p-4">
-        {/* Email */}
-        <p className="mb-3 truncate text-xs text-gray-400">{email}</p>
+      <div className="border-t border-hairline p-4">
+        <p className="mb-3 truncate text-xs text-muted-foreground">{email}</p>
 
-        {/* Plan Badge */}
         <div className="mb-3 flex items-center gap-2">
-          <span
-            className={`rounded-full px-2 py-0.5 text-xs font-bold text-white ${PLAN_COLORS[plan] || 'bg-gray-500'}`}
-          >
+          <span className={`rounded-full px-2 py-0.5 text-xs font-bold text-foreground ${PLAN_COLORS[plan] || 'bg-gray-500'}`}>
             {PLAN_LABELS[plan] || plan}
           </span>
-          {isExpired && (
-            <span className="text-xs text-red-400">Expire</span>
-          )}
+          {isExpired && <span className="text-xs text-red-400">Expire</span>}
         </div>
 
-        {/* Points Display */}
-        <div className="mb-3 rounded-lg bg-white/5 p-3">
+        <div className="mb-3 rounded-lg bg-muted p-3">
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Battery className="h-4 w-4 text-[#00ff88]" />
-              <span className="text-xs font-medium text-gray-300">Points restants</span>
+              <Battery className="h-4 w-4 text-primary" />
+              <span className="text-xs font-medium text-foreground">Points restants</span>
             </div>
-            <span className="text-sm font-bold text-white">
+            <span className="text-sm font-bold text-foreground">
               {pointsRemaining.toLocaleString()}/{pointsTotal.toLocaleString()}
             </span>
           </div>
-          <Progress
-            value={pointsPercentage}
-            className="h-2 bg-white/10"
-          />
-          <p className="mt-2 text-xs text-gray-500">
+          <Progress value={pointsPercentage} className="h-2 bg-secondary" />
+          <p className="mt-2 text-xs text-text-faint">
             = {Math.floor(pointsRemaining / 2 / 60)} min de swap
           </p>
         </div>
 
-        {/* Recharge Button */}
-        <Link
-          href="/dashboard/plans"
-          className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg bg-orange-500 py-2.5 text-xs font-bold uppercase text-white transition-colors hover:bg-orange-600"
-        >
-          <Zap className="h-4 w-4" />
-          + RECHARGER
-        </Link>
-
-        {/* Avatar Count */}
-        <div className="mb-3 flex items-center justify-between text-xs text-gray-400">
+        <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
           <span>Avatars utilises</span>
           <span>{avatarCount}/∞</span>
         </div>
 
-        {/* Upgrade Banner */}
+        {/* Bascule clair / sombre */}
+        <div className="mb-3">
+          <ThemeToggleCompact />
+        </div>
+
         {showUpgradeBanner && (
           <div className="mb-3 rounded-lg bg-orange-500/20 p-3">
             <p className="mb-2 text-xs text-orange-300">
@@ -178,10 +224,9 @@ function SidebarContent({
           </div>
         )}
 
-        {/* Logout Button */}
         <button
           onClick={onLogout}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-400 transition-colors hover:bg-white/5 hover:text-red-400"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-red-400"
         >
           <LogOut className="h-4 w-4" />
           Deconnexion
@@ -191,6 +236,7 @@ function SidebarContent({
   )
 }
 
+// Le reste du fichier reste identique (DashboardSidebar + PlanGuardBanner)
 interface DashboardSidebarProps {
   email: string | undefined
   plan: string
@@ -221,8 +267,7 @@ export function DashboardSidebar({
 
   return (
     <>
-      {/* Desktop Sidebar */}
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] border-r border-white/10 bg-[#0a0a0a] md:block">
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] border-r border-hairline bg-sidebar md:block">
         <SidebarContent
           email={email}
           plan={plan}
@@ -235,27 +280,23 @@ export function DashboardSidebar({
         />
       </aside>
 
-      {/* Mobile Topbar */}
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-white/10 bg-[#0a0a0a] px-4 md:hidden">
+      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-hairline bg-sidebar px-4 md:hidden">
         <h1 className="text-xl font-bold">
-          <span className="text-white">Chap</span>
-          <span className="text-[#00ff88]">Cam</span>
+          <span className="text-foreground">Chap</span>
+          <span className="text-primary">Cam</span>
         </h1>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 rounded-full bg-white/10 px-3 py-1">
-            <Battery className="h-4 w-4 text-[#00ff88]" />
-            <span className="text-xs font-bold text-white">{pointsRemaining}</span>
+          <div className="flex items-center gap-1 rounded-full bg-muted px-3 py-1">
+            <Battery className="h-4 w-4 text-primary" />
+            <span className="text-xs font-bold text-foreground">{pointsRemaining}</span>
           </div>
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
-              <button className="p-2 text-white">
+              <button className="p-2 text-foreground">
                 <Menu className="h-6 w-6" />
               </button>
             </SheetTrigger>
-            <SheetContent
-              side="left"
-              className="w-[280px] border-white/10 bg-[#0a0a0a] p-0"
-            >
+            <SheetContent side="left" className="w-[280px] border-hairline bg-sidebar p-0">
               <SheetTitle className="sr-only">Menu de navigation</SheetTitle>
               <SidebarContent
                 email={email}
@@ -293,7 +334,7 @@ export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0
 
   return (
     <div className="fixed left-0 right-0 top-14 z-40 flex items-center justify-between bg-orange-500 px-4 py-2 md:left-[240px] md:top-0">
-      <p className="text-sm font-medium text-white">
+      <p className="text-sm font-medium text-foreground">
         {pointsRemaining <= 0 
           ? 'Tu as epuise tes points — Recharge pour continuer le swap'
           : 'Tu es sur le plan gratuit — Active un abonnement pour demarrer le swap'

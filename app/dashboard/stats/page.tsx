@@ -23,6 +23,7 @@ interface Session {
   avatar_name: string
   started_at: string
   ended_at: string | null
+  duration_seconds: number | null
   frames_processed: number | null
 }
 
@@ -32,8 +33,8 @@ interface ChartData {
   minutes: number
 }
 
-function formatDuration(ms: number): string {
-  const s = Math.floor(ms / 1000)
+function formatDuration(totalSeconds: number): string {
+  const s = Math.floor(totalSeconds)
   const m = Math.floor(s / 60)
   return m > 0 ? m + 'm ' + (s % 60) + 's' : s + 's'
 }
@@ -67,9 +68,9 @@ function getSupabase() {
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) {
   if (active && payload && payload.length) {
     return (
-      <div className="rounded-lg border border-white/10 bg-[#111] px-3 py-2 shadow-lg">
-        <p className="text-xs text-gray-400">{label}</p>
-        <p className="text-sm font-bold text-white">{payload[0].value}</p>
+      <div className="rounded-lg border border-hairline bg-card px-3 py-2 shadow-lg">
+        <p className="text-xs text-muted-foreground">{label}</p>
+        <p className="text-sm font-bold text-foreground">{payload[0].value}</p>
       </div>
     )
   }
@@ -105,7 +106,6 @@ export default function StatsPage() {
         .from('swap_sessions')
         .select('*')
         .eq('user_id', user.id)
-        .not('ended_at', 'is', null)
         .order('started_at', { ascending: false })
 
       const sessionsList = sessionsData || []
@@ -114,12 +114,7 @@ export default function StatsPage() {
       // Compute stats
       setTotalSessions(sessionsList.length)
 
-      const minutes = sessionsList.reduce((acc, s) => {
-        if (s.ended_at && s.started_at) {
-          return acc + (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000
-        }
-        return acc
-      }, 0)
+      const minutes = sessionsList.reduce((acc, s) => acc + (s.duration_seconds || 0) / 60, 0)
       setTotalMinutes(minutes)
 
       const frames = sessionsList.reduce((acc, s) => acc + (s.frames_processed || 0), 0)
@@ -148,12 +143,7 @@ export default function StatsPage() {
           return sessionDate === dateStr
         })
 
-        const dayMinutes = daySessions.reduce((acc, s) => {
-          if (s.ended_at && s.started_at) {
-            return acc + (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000
-          }
-          return acc
-        }, 0)
+        const dayMinutes = daySessions.reduce((acc, s) => acc + (s.duration_seconds || 0) / 60, 0)
 
         last14Days.push({
           date: formatDateShort(date.toISOString()),
@@ -174,17 +164,17 @@ export default function StatsPage() {
     return (
       <div className="p-6">
         <div className="mb-8">
-          <div className="h-10 w-64 animate-pulse rounded-lg bg-white/5" />
-          <div className="mt-2 h-5 w-96 animate-pulse rounded-lg bg-white/5" />
+          <div className="h-10 w-64 animate-pulse rounded-lg bg-muted" />
+          <div className="mt-2 h-5 w-96 animate-pulse rounded-lg bg-muted" />
         </div>
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-32 animate-pulse rounded-2xl bg-white/5" />
+            <div key={i} className="h-32 animate-pulse rounded-2xl bg-muted" />
           ))}
         </div>
         <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
           {[...Array(2)].map((_, i) => (
-            <div key={i} className="h-48 animate-pulse rounded-2xl bg-white/5" />
+            <div key={i} className="h-48 animate-pulse rounded-2xl bg-muted" />
           ))}
         </div>
       </div>
@@ -196,11 +186,11 @@ export default function StatsPage() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center p-6 text-center">
         <BarChart2 className="h-16 w-16 text-gray-700" />
-        <h2 className="mt-4 text-xl font-bold text-white">Aucune session pour l&apos;instant</h2>
-        <p className="mt-2 text-gray-500">Demarre ton premier body swap pour voir tes stats ici</p>
+        <h2 className="mt-4 text-xl font-bold text-foreground">Aucune session pour l&apos;instant</h2>
+        <p className="mt-2 text-text-faint">Demarre ton premier body swap pour voir tes stats ici</p>
         <Button
           onClick={() => router.push('/dashboard')}
-          className="mt-4 rounded-xl bg-[#00ff88] px-6 py-3 font-bold text-black hover:bg-[#00cc6a]"
+          className="mt-4 rounded-xl bg-primary px-6 py-3 font-bold text-black hover:bg-primary/90"
         >
           DEMARRER LE SWAP
         </Button>
@@ -212,46 +202,46 @@ export default function StatsPage() {
     <div className="p-6">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-black uppercase tracking-widest text-white">STATISTIQUES</h1>
-        <p className="mt-2 text-gray-400">Ton historique de body swap ChapCam</p>
+        <h1 className="text-3xl font-black uppercase tracking-widest text-foreground">STATISTIQUES</h1>
+        <p className="mt-2 text-muted-foreground">Ton historique de body swap ChapCam</p>
       </div>
 
       {/* Stats Cards */}
       <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
         {/* Sessions */}
-        <div className="rounded-2xl border border-white/10 bg-[#111111] p-6">
-          <Zap className="h-6 w-6 text-[#00ff88]" />
-          <p className="mt-3 text-4xl font-black text-white">{totalSessions}</p>
-          <p className="mt-1 text-xs uppercase tracking-widest text-gray-500">SESSIONS TOTALES</p>
+        <div className="rounded-2xl border border-hairline bg-card p-6">
+          <Zap className="h-6 w-6 text-primary" />
+          <p className="mt-3 text-4xl font-black text-foreground">{totalSessions}</p>
+          <p className="mt-1 text-xs uppercase tracking-widest text-text-faint">SESSIONS TOTALES</p>
         </div>
 
         {/* Minutes */}
-        <div className="rounded-2xl border border-white/10 bg-[#111111] p-6">
+        <div className="rounded-2xl border border-hairline bg-card p-6">
           <Clock className="h-6 w-6 text-[#7c3aed]" />
-          <p className="mt-3 text-4xl font-black text-white">{totalMinutes.toFixed(0)}</p>
-          <p className="mt-1 text-xs uppercase tracking-widest text-gray-500">MINUTES SWAPPEES</p>
+          <p className="mt-3 text-4xl font-black text-foreground">{totalMinutes.toFixed(0)}</p>
+          <p className="mt-1 text-xs uppercase tracking-widest text-text-faint">MINUTES SWAPPEES</p>
         </div>
 
         {/* Frames */}
-        <div className="rounded-2xl border border-white/10 bg-[#111111] p-6">
+        <div className="rounded-2xl border border-hairline bg-card p-6">
           <Monitor className="h-6 w-6 text-[#3b82f6]" />
-          <p className="mt-3 text-4xl font-black text-white">{totalFrames.toLocaleString()}</p>
-          <p className="mt-1 text-xs uppercase tracking-widest text-gray-500">FRAMES TRAITEES</p>
+          <p className="mt-3 text-4xl font-black text-foreground">{totalFrames.toLocaleString()}</p>
+          <p className="mt-1 text-xs uppercase tracking-widest text-text-faint">FRAMES TRAITEES</p>
         </div>
 
         {/* Favorite Avatar */}
-        <div className="rounded-2xl border border-white/10 bg-[#111111] p-6">
+        <div className="rounded-2xl border border-hairline bg-card p-6">
           <User className="h-6 w-6 text-[#f59e0b]" />
-          <p className="mt-3 truncate text-4xl font-black text-white">{favoriteAvatar || '—'}</p>
-          <p className="mt-1 text-xs uppercase tracking-widest text-gray-500">AVATAR FAVORI</p>
+          <p className="mt-3 truncate text-4xl font-black text-foreground">{favoriteAvatar || '—'}</p>
+          <p className="mt-1 text-xs uppercase tracking-widest text-text-faint">AVATAR FAVORI</p>
         </div>
       </div>
 
       {/* Charts */}
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Sessions per day */}
-        <div className="rounded-2xl border border-white/10 bg-[#111111] p-4">
-          <p className="mb-4 text-xs uppercase tracking-widest text-gray-400">SESSIONS PAR JOUR</p>
+        <div className="rounded-2xl border border-hairline bg-card p-4">
+          <p className="mb-4 text-xs uppercase tracking-widest text-muted-foreground">SESSIONS PAR JOUR</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={chartData}>
               <XAxis 
@@ -273,8 +263,8 @@ export default function StatsPage() {
         </div>
 
         {/* Minutes per day */}
-        <div className="rounded-2xl border border-white/10 bg-[#111111] p-4">
-          <p className="mb-4 text-xs uppercase tracking-widest text-gray-400">MINUTES PAR JOUR</p>
+        <div className="rounded-2xl border border-hairline bg-card p-4">
+          <p className="mb-4 text-xs uppercase tracking-widest text-muted-foreground">MINUTES PAR JOUR</p>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={chartData}>
               <XAxis 
@@ -304,31 +294,29 @@ export default function StatsPage() {
       </div>
 
       {/* Session History Table */}
-      <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[#111111]">
-        <div className="border-b border-white/10 p-4">
-          <p className="text-xs uppercase tracking-widest text-gray-400">HISTORIQUE DES SESSIONS</p>
+      <div className="mt-6 overflow-hidden rounded-2xl border border-hairline bg-card">
+        <div className="border-b border-hairline p-4">
+          <p className="text-xs uppercase tracking-widest text-muted-foreground">HISTORIQUE DES SESSIONS</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/10">
-                <th className="p-4 text-left text-xs uppercase tracking-widest text-gray-500">AVATAR</th>
-                <th className="p-4 text-left text-xs uppercase tracking-widest text-gray-500">DUREE</th>
-                <th className="p-4 text-left text-xs uppercase tracking-widest text-gray-500">FRAMES</th>
-                <th className="p-4 text-left text-xs uppercase tracking-widest text-gray-500">DATE</th>
+              <tr className="border-b border-hairline">
+                <th className="p-4 text-left text-xs uppercase tracking-widest text-text-faint">AVATAR</th>
+                <th className="p-4 text-left text-xs uppercase tracking-widest text-text-faint">DUREE</th>
+                <th className="p-4 text-left text-xs uppercase tracking-widest text-text-faint">FRAMES</th>
+                <th className="p-4 text-left text-xs uppercase tracking-widest text-text-faint">DATE</th>
               </tr>
             </thead>
             <tbody>
               {sessions.slice(0, 10).map((session) => {
-                const duration = session.ended_at && session.started_at
-                  ? new Date(session.ended_at).getTime() - new Date(session.started_at).getTime()
-                  : 0
+                const duration = session.duration_seconds || 0
                 return (
-                  <tr key={session.id} className="border-b border-white/5 transition-colors hover:bg-white/5">
-                    <td className="p-4 font-medium text-white">{session.avatar_name || 'Sans nom'}</td>
-                    <td className="p-4 text-gray-400">{formatDuration(duration)}</td>
-                    <td className="p-4 text-gray-400">{(session.frames_processed || 0).toLocaleString()}</td>
-                    <td className="p-4 text-gray-500">{formatRelative(session.started_at)}</td>
+                  <tr key={session.id} className="border-b border-hairline transition-colors hover:bg-muted">
+                    <td className="p-4 font-medium text-foreground">{session.avatar_name || 'Sans nom'}</td>
+                    <td className="p-4 text-muted-foreground">{formatDuration(duration)}</td>
+                    <td className="p-4 text-muted-foreground">{(session.frames_processed || 0).toLocaleString()}</td>
+                    <td className="p-4 text-text-faint">{formatRelative(session.started_at)}</td>
                   </tr>
                 )
               })}

@@ -1,0 +1,97 @@
+{
+  "appId": "com.chapcam.desktop",
+  "productName": "ChapCam",
+  "copyright": "Copyright © 2024 ChapCam",
+  "directories": {
+    "output": "dist-electron",
+    "buildResources": "build"
+  },
+  "files": [
+    "electron/**/*",
+    "public/**/*",
+    "package.json",
+    "!**/*.map"
+  ],
+  "extraMetadata": {
+    "main": "electron/main.js"
+  },
+  "asar": true,
+  "mac": {
+    "category": "public.app-category.video",
+    "icon": "public/icons/icon.jpg",
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["x64", "arm64"]
+      }
+    ],
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
+    "entitlements": "build/entitlements.mac.plist",
+    "entitlementsInherit": "build/entitlements.mac.plist",
+    "extendInfo": {
+      "NSCameraUsageDescription": "ChapCam needs camera access for real-time face transformation",
+      "NSMicrophoneUsageDescription": "ChapCam needs microphone access for video calls"
+    }
+  },
+  "dmg": {
+    "title": "ChapCam Installer",
+    "icon": "public/icons/icon.jpg",
+    "contents": [
+      {
+        "x": 130,
+        "y": 220
+      },
+      {
+        "x": 410,
+        "y": 220,
+        "type": "link",
+        "path": "/Applications"
+      }
+    ]
+  },
+  "win": {
+    "icon": "public/icons/icon.jpg",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "publisherName": "ChapCam",
+    "legalTrademarks": "ChapCam - Face Swap en Temps Reel"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "ChapCam",
+    "uninstallDisplayName": "ChapCam",
+    "installerLanguages": ["fr", "en"],
+    "language": "1036"
+  },
+  "linux": {
+    "icon": "public/icons",
+    "target": [
+      "AppImage",
+      "deb"
+    ],
+    "category": "Video",
+    "maintainer": "ChapCam <support@chapcam.com>",
+    "desktop": {
+      "Name": "ChapCam",
+      "Comment": "Face Swap en Temps Reel",
+      "Keywords": "face;swap;video;camera"
+    }
+  },
+  "publish": {
+    "provider": "github",
+    "owner": "meryl225",
+    "repo": "chapcam-kz"
+  }
+}
