@@ -16,7 +16,7 @@ export interface PcOffer {
 
 export const PC_OFFER: PcOffer = {
   id: 'pc',
-  name: 'ChapCam PC — Mode Gamer',
+  name: 'ChapCam PC — Logiciel a vie',
   price: 50000,
   description:
     "Utilise la puissance de ton PC. Aucune connexion internet requise apres installation. Compatible WhatsApp, Zoom, Discord, TikTok Live.",

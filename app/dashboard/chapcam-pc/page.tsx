@@ -61,7 +61,7 @@ export default function ChapCamPcPage() {
             <h1 className="mt-5 text-4xl font-black leading-[1.05] text-foreground text-balance md:text-5xl">
               ChapCam PC
               <span className="block bg-gradient-to-r from-primary to-emerald-300 bg-clip-text text-transparent">
-                Mode Gamer
+                Logiciel a vie
               </span>
             </h1>
 
