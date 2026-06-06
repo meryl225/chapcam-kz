@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Zap, Video, Mic, Languages, ImageIcon, Film, ArrowRight } from 'lucide-react'
+import { Zap, Video, Mic, Languages, ImageIcon, Film, Monitor, ArrowRight } from 'lucide-react'
 import {
   LiveSwapPreview,
   LiveProPreview,
@@ -7,6 +7,7 @@ import {
   VoiceTranslatorPreview,
   PhotoVideoPreview,
   VideoTranslationPreview,
+  DesktopPCPreview,
 } from '@/components/dashboard/hub/tool-previews'
 
 interface Tool {
@@ -43,6 +44,17 @@ const tools: Tool[] = [
     glow: 'rgba(139,92,246,0.18)',
     buttonClass: 'bg-violet-600 text-white hover:bg-violet-700',
     Preview: LiveProPreview,
+  },
+  {
+    href: '/desktop',
+    icon: Monitor,
+    title: 'ChapCam PC — Mode Gamer',
+    description: 'Face swap 60 FPS sur ton GPU, sans latence cloud. Achat unique, licence à vie.',
+    badge: 'NEW',
+    accent: '#00ff88',
+    glow: 'rgba(0,255,136,0.18)',
+    buttonClass: 'bg-primary text-black hover:bg-primary/90',
+    Preview: DesktopPCPreview,
   },
   {
     href: '/dashboard/voice-changer',

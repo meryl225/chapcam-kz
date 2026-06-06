@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { Mic, Play, Radio, ArrowRight } from 'lucide-react'
+import { Mic, Play, Radio, ArrowRight, Monitor, Cpu, Zap } from 'lucide-react'
 
 /* ---------- Live Swap : visage original -> IA -> visage transforme ---------- */
 export function LiveSwapPreview() {
@@ -148,6 +148,41 @@ export function VideoTranslationPreview() {
         <span className="rounded bg-muted px-2 py-0.5 text-muted-foreground">Hello</span>
         <ArrowRight className="h-3 w-3 text-blue-400" />
         <span className="rounded bg-blue-500/20 px-2 py-0.5 text-blue-200">Bonjour</span>
+      </div>
+    </div>
+  )
+}
+
+/* ---------- ChapCam PC : app de bureau "mode gamer" ---------- */
+export function DesktopPCPreview() {
+  return (
+    <div className="rounded-xl border border-hairline bg-black/30 p-3">
+      <div className="flex items-center gap-3">
+        {/* Mini "ecran" PC */}
+        <div className="relative flex h-16 w-24 shrink-0 flex-col overflow-hidden rounded-md border border-primary/30 bg-gradient-to-br from-primary/15 to-black/40">
+          <div className="flex items-center gap-1 border-b border-primary/20 bg-black/40 px-1.5 py-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-primary/70" />
+            <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+          </div>
+          <div className="flex flex-1 items-center justify-center">
+            <Monitor className="h-6 w-6 text-primary" />
+          </div>
+        </div>
+
+        <div className="flex flex-1 flex-col gap-1.5">
+          <span className="flex items-center gap-1.5 text-[11px] font-bold text-primary">
+            <Zap className="h-3.5 w-3.5" fill="currentColor" />
+            60 FPS · GPU local
+          </span>
+          <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+            <Cpu className="h-3 w-3 text-primary/70" />
+            Windows · sans latence cloud
+          </span>
+          <div className="mt-0.5 flex gap-1">
+            <span className="h-1.5 flex-1 rounded-full bg-primary/60" />
+            <span className="h-1.5 w-4 rounded-full bg-white/15" />
+          </div>
+        </div>
       </div>
     </div>
   )
