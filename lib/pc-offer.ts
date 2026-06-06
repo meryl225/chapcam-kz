@@ -9,7 +9,9 @@
 export interface PcOffer {
   id: string
   name: string
-  price: number // FCFA, paiement unique
+  price: number // FCFA, prix promo (paiement unique)
+  originalPrice: number // FCFA, prix normal barre
+  discountPercent: number // % de reduction affiche
   description: string
   features: string[]
 }
@@ -18,6 +20,8 @@ export const PC_OFFER: PcOffer = {
   id: 'pc',
   name: 'ChapCam PC — Logiciel a vie',
   price: 50000,
+  originalPrice: 100000,
+  discountPercent: 50,
   description:
     "Utilise la puissance de ton PC. Aucune connexion internet requise apres installation. Compatible WhatsApp, Zoom, Discord, TikTok Live.",
   features: [
