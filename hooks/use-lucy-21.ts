@@ -258,6 +258,22 @@ export function useLucy21() {
     }
   }, [disconnect, startPointsDeduction, stopPointsDeduction])
 
+  // Changer d'avatar a chaud, sans couper la session Decart en cours.
+  const updateAvatar = useCallback(async (avatarImageUrl: string) => {
+    if (!realtimeClientRef.current) return
+    try {
+      const avatarRes = await fetch(avatarImageUrl)
+      const avatarBlob = await avatarRes.blob()
+      await realtimeClientRef.current.set({
+        image: avatarBlob,
+        prompt: "Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.",
+        enhance: true,
+      })
+    } catch (err) {
+      console.error('[Lucy 2.1] Erreur changement avatar:', err)
+    }
+  }, [])
+
   return {
     isConnected,
     isConnecting,
@@ -267,6 +283,7 @@ export function useLucy21() {
     remoteVideoRef,
     connect,
     disconnect,
+    updateAvatar,
     pointsUsed,
     sessionDuration,
   }
