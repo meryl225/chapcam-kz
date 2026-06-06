@@ -48,8 +48,8 @@ const tools: Tool[] = [
   {
     href: '/dashboard/chapcam-pc',
     icon: Monitor,
-    title: 'ChapCam PC — Mode Gamer',
-    description: 'Face swap 60 FPS sur ton GPU, sans latence cloud. Achat unique, licence à vie.',
+    title: 'ChapCam PC — Logiciel a vie',
+    description: 'Le logiciel ChapCam sur ton PC, sans abonnement ni cloud. Achat unique, licence à vie.',
     badge: 'NEW',
     accent: '#00ff88',
     glow: 'rgba(0,255,136,0.18)',

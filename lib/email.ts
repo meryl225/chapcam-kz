@@ -612,7 +612,7 @@ export async function sendPcLicenseEmail(
 
               <div style="background:#111111;border-radius:12px;padding:16px;margin:0 0 20px 0;border:1px solid #333;">
                 <table width="100%" cellspacing="0" cellpadding="6">
-                  <tr><td style="color:#888;font-size:14px;">Produit</td><td style="color:#fff;font-size:14px;text-align:right;font-weight:bold;">ChapCam PC — Mode Gamer</td></tr>
+                  <tr><td style="color:#888;font-size:14px;">Produit</td><td style="color:#fff;font-size:14px;text-align:right;font-weight:bold;">ChapCam PC — Logiciel a vie</td></tr>
                   <tr><td style="color:#888;font-size:14px;">Montant regle</td><td style="color:#00ff88;font-size:14px;text-align:right;font-weight:bold;">${amount.toLocaleString()} FCFA</td></tr>
                   <tr><td style="color:#888;font-size:14px;">Licence</td><td style="color:#fff;font-size:14px;text-align:right;">A vie, 1 PC</td></tr>
                 </table>
