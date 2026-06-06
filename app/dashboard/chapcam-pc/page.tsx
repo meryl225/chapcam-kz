@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { ArrowLeft, Eye, Cpu, Wifi, Infinity as InfinityIcon, ShieldCheck, Download, CreditCard, Mail } from 'lucide-react'
 import { ChapCamPcCard } from '@/components/dashboard/hub/chapcam-pc-card'
 import { DesktopDownloadSection } from '@/components/desktop/desktop-download-section'
-import { getDesktopDownloadUrl } from '@/lib/pc-offer'
+import { getDesktopDownloadUrl, PC_OFFER } from '@/lib/pc-offer'
 
 export const metadata: Metadata = {
   title: 'ChapCam PC — Logiciel Premium à vie',
@@ -70,10 +70,22 @@ export default function ChapCamPcPage() {
               Pas d&apos;abonnement, pas de cloud, pas de limites. Tu paies une seule fois.
             </p>
 
-            <div className="mt-7 flex flex-wrap items-end gap-x-3 gap-y-1">
-              <span className="text-5xl font-black text-primary">50 000</span>
-              <span className="pb-1.5 text-lg text-muted-foreground">FCFA</span>
-              <span className="pb-1.5 text-sm text-text-faint">· une seule fois</span>
+            <div className="mt-7">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="text-xl text-text-faint line-through">
+                  {PC_OFFER.originalPrice.toLocaleString('fr-FR')} FCFA
+                </span>
+                <span className="rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-bold text-white">
+                  -{PC_OFFER.discountPercent}%
+                </span>
+              </div>
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                <span className="text-5xl font-black text-primary">
+                  {PC_OFFER.price.toLocaleString('fr-FR')}
+                </span>
+                <span className="pb-1.5 text-lg text-muted-foreground">FCFA</span>
+                <span className="pb-1.5 text-sm text-text-faint">· une seule fois</span>
+              </div>
             </div>
 
             <div className="mt-6 max-w-md">

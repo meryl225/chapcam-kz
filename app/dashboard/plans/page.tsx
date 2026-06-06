@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
 import { LIVE_OFFERS, LIVE_TRIAL_SECONDS, getLiveOffer } from '@/lib/live-offers'
+import { ChapCamPcPromo } from '@/components/chapcam-pc-promo'
 
 const LIVE_OFFER = LIVE_OFFERS[0]
 
@@ -98,6 +99,15 @@ function PlansContent() {
             {error}
           </div>
         )}
+
+        {/* Offre ChapCam PC (logiciel a vie) - mise en avant au-dessus des offres a credit */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-10"
+        >
+          <ChapCamPcPromo />
+        </motion.div>
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan, index) => {
