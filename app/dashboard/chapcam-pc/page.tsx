@@ -3,6 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, Eye, Cpu, Wifi, Infinity as InfinityIcon, ShieldCheck, Download, CreditCard, Mail } from 'lucide-react'
 import { ChapCamPcCard } from '@/components/dashboard/hub/chapcam-pc-card'
+import { ChapCamPcCountdown } from '@/components/chapcam-pc-countdown'
 import { DesktopDownloadSection } from '@/components/desktop/desktop-download-section'
 import { getDesktopDownloadUrl, PC_OFFER } from '@/lib/pc-offer'
 
@@ -86,6 +87,10 @@ export default function ChapCamPcPage() {
                 <span className="pb-1.5 text-lg text-muted-foreground">FCFA</span>
                 <span className="pb-1.5 text-sm text-text-faint">· une seule fois</span>
               </div>
+            </div>
+
+            <div className="mt-5 max-w-md">
+              <ChapCamPcCountdown />
             </div>
 
             <div className="mt-6 max-w-md">

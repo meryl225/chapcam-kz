@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { Download, Infinity as InfinityIcon, Check, Sparkles } from 'lucide-react'
 import { PC_OFFER } from '@/lib/pc-offer'
+import { ChapCamPcCountdown } from '@/components/chapcam-pc-countdown'
 
 // Bandeau promo premium pour ChapCam PC (logiciel a vie).
 // Reutilise sur la page d'accueil et la page Recharger : il met en avant
@@ -73,6 +74,9 @@ export function ChapCamPcPromo() {
                 <span className="text-xl text-gray-400"> FCFA</span>
               </div>
               <p className="text-xs text-gray-500">paiement unique a vie</p>
+            </div>
+            <div className="pointer-events-none">
+              <ChapCamPcCountdown compact />
             </div>
             <span className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#00ff88] py-4 text-base font-bold text-black transition-all group-hover:bg-[#00dd77]">
               <Download className="h-5 w-5" />
