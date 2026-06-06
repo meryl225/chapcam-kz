@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, Video, CreditCard, Home, Mic, Languages, ImageIcon, Film, HelpCircle } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, Video, CreditCard, Home, Mic, Languages, ImageIcon, Film, HelpCircle, Monitor } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -106,8 +106,26 @@ function SidebarContent({
         {navItems.map((item) => {
           const isActivePath = pathname === item.href
           return (
+            <div key={item.href}>
+              {/* Bouton vedette ChapCam PC, place juste au-dessus de LIVE SWAP */}
+              {item.href === '/dashboard/live-swap' && (
+                <Link
+                  href="/dashboard/chapcam-pc"
+                  className={`group relative mb-2 flex items-center gap-3 overflow-hidden rounded-lg px-3 py-3 text-[13px] font-bold uppercase tracking-tight shadow-lg shadow-primary/30 transition-all duration-200 ${
+                    pathname === '/dashboard/chapcam-pc'
+                      ? 'bg-primary text-black ring-2 ring-primary/50'
+                      : 'bg-primary text-black hover:brightness-110'
+                  }`}
+                >
+                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                  <Monitor className="h-[18px] w-[18px] shrink-0" />
+                  <span className="flex-1 truncate leading-tight">ChapCam PC</span>
+                  <span className="rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-extrabold tracking-wide">
+                    60 FPS
+                  </span>
+                </Link>
+              )}
             <Link
-              key={item.href}
               href={item.href}
               className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 ${
                 isActivePath
@@ -128,6 +146,7 @@ function SidebarContent({
                 </span>
               )}
             </Link>
+            </div>
           )
         })}
 

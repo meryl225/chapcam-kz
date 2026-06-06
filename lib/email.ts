@@ -549,6 +549,100 @@ export async function sendInstallationPaidEmail(to: string, userName: string, am
   }
 }
 
+// Email envoye apres l'achat de ChapCam PC : contient la cle de licence a vie
+// + le lien de telechargement du logiciel Windows.
+export async function sendPcLicenseEmail(
+  to: string,
+  userName: string,
+  licenseKey: string,
+  downloadUrl: string,
+  amount: number,
+) {
+  const client = await getResendClient()
+  if (!client) {
+    console.warn('[Email] Resend not configured - skipping email')
+    return { success: false, error: 'Email service not configured' }
+  }
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: 'ChapCam PC - Ta cle de licence + telechargement',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+        <body style="margin:0;padding:0;background-color:#0a0a0a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;margin:0 auto;padding:40px 20px;">
+            <tr><td style="text-align:center;padding-bottom:30px;">
+              <img src="https://chapcam.com/favicon.jpg" alt="ChapCam" width="80" height="80" style="border-radius:16px;">
+            </td></tr>
+            <tr><td style="background:linear-gradient(135deg,#1a1a1a 0%,#0d0d0d 100%);border-radius:16px;padding:40px;border:1px solid #222;">
+              <div style="text-align:center;margin-bottom:20px;">
+                <div style="display:inline-block;background:#00ff8820;border-radius:50%;padding:16px;"><span style="font-size:32px;">&#127942;</span></div>
+              </div>
+              <h1 style="color:#00ff88;margin:0 0 20px 0;font-size:24px;text-align:center;">Bienvenue sur ChapCam PC !</h1>
+              <p style="color:#ffffff;font-size:16px;line-height:1.6;margin:0 0 20px 0;">Bonjour <strong>${userName}</strong>,</p>
+              <p style="color:#cccccc;font-size:16px;line-height:1.6;margin:0 0 24px 0;">
+                Merci pour ton achat ! Voici ta cle de licence <strong>a vie</strong>. Garde-la precieusement :
+                elle te servira a activer le logiciel sur ton PC.
+              </p>
+
+              <!-- Cle de licence -->
+              <div style="background:#000000;border:1px solid #00ff8855;border-radius:12px;padding:20px;margin:0 0 24px 0;text-align:center;">
+                <p style="color:#888;font-size:12px;margin:0 0 8px 0;text-transform:uppercase;letter-spacing:1px;">Ta cle de licence</p>
+                <p style="color:#00ff88;font-size:22px;font-weight:bold;font-family:'Courier New',monospace;letter-spacing:2px;margin:0;">${licenseKey}</p>
+              </div>
+
+              <!-- Telechargement -->
+              <div style="text-align:center;margin:0 0 24px 0;">
+                <a href="${downloadUrl}" style="display:inline-block;background:#00ff88;color:#000;text-decoration:none;padding:16px 36px;border-radius:8px;font-weight:bold;font-size:16px;">Telecharger ChapCam PC</a>
+              </div>
+
+              <!-- Etapes -->
+              <div style="background:#111111;border-radius:12px;padding:20px;margin:0 0 20px 0;border:1px solid #333;">
+                <p style="color:#fff;font-size:14px;font-weight:bold;margin:0 0 12px 0;">Comment installer :</p>
+                <ol style="color:#cccccc;font-size:14px;line-height:1.8;margin:0;padding-left:20px;">
+                  <li>Telecharge et installe ChapCam PC (Windows).</li>
+                  <li>Lance le logiciel et colle ta cle de licence.</li>
+                  <li>Choisis un visage, active la camera virtuelle et c'est parti !</li>
+                </ol>
+              </div>
+
+              <div style="background:#111111;border-radius:12px;padding:16px;margin:0 0 20px 0;border:1px solid #333;">
+                <table width="100%" cellspacing="0" cellpadding="6">
+                  <tr><td style="color:#888;font-size:14px;">Produit</td><td style="color:#fff;font-size:14px;text-align:right;font-weight:bold;">ChapCam PC — Mode Gamer</td></tr>
+                  <tr><td style="color:#888;font-size:14px;">Montant regle</td><td style="color:#00ff88;font-size:14px;text-align:right;font-weight:bold;">${amount.toLocaleString()} FCFA</td></tr>
+                  <tr><td style="color:#888;font-size:14px;">Licence</td><td style="color:#fff;font-size:14px;text-align:right;">A vie, 1 PC</td></tr>
+                </table>
+              </div>
+
+              <p style="color:#888;font-size:13px;line-height:1.6;margin:0;">
+                La cle s'active sur un seul PC. Pour changer de machine, contacte le support.
+              </p>
+            </td></tr>
+            <tr><td style="text-align:center;padding-top:30px;">
+              <p style="color:#666;font-size:12px;margin:0;">ChapCam - Face Swap en Temps Reel<br><a href="https://chapcam.com" style="color:#00ff88;text-decoration:none;">chapcam.com</a></p>
+            </td></tr>
+          </table>
+        </body>
+        </html>
+      `,
+    })
+
+    if (error) {
+      console.error('[Email] Error sending PC license email:', error)
+      return { success: false, error }
+    }
+    console.log('[Email] PC license email sent:', data?.id)
+    return { success: true, id: data?.id }
+  } catch (error) {
+    console.error('[Email] Exception sending PC license email:', error)
+    return { success: false, error }
+  }
+}
+
 // Envoi d'emails en batch pour les gros volumes (newsletters, etc.)
 export async function sendBatchEmails(
   emails: Array<{

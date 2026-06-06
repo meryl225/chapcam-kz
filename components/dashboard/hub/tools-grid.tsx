@@ -46,7 +46,7 @@ const tools: Tool[] = [
     Preview: LiveProPreview,
   },
   {
-    href: '/desktop',
+    href: '/dashboard/chapcam-pc',
     icon: Monitor,
     title: 'ChapCam PC — Mode Gamer',
     description: 'Face swap 60 FPS sur ton GPU, sans latence cloud. Achat unique, licence à vie.',

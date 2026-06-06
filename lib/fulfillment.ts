@@ -12,11 +12,14 @@ import { ADMIN_EMAIL } from '@/lib/admin-auth'
 import { getPlan, type PlanConfig } from '@/lib/plans'
 import { getLiveOffer, type LiveOffer } from '@/lib/live-offers'
 import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
+import { getPcOffer, getDesktopDownloadUrl, type PcOffer } from '@/lib/pc-offer'
+import { createPcLicense } from '@/lib/pc-license'
 import { grantLiveWindow } from '@/lib/live-access'
 import {
   sendSubscriptionApprovedEmail,
   sendLiveAccessApprovedEmail,
   sendInstallationPaidEmail,
+  sendPcLicenseEmail,
 } from '@/lib/email'
 
 type Admin = ReturnType<typeof createAdminClient>
@@ -143,9 +146,10 @@ export interface PurchaseInput {
 
 export interface PurchaseResult {
   ok: boolean
-  kind: 'plan' | 'live' | 'installation' | null
+  kind: 'plan' | 'live' | 'installation' | 'pc' | null
   userLinked: boolean
   message: string
+  licenseKey?: string
 }
 
 // Cœur du crediting : determine le type de produit (formule a points OU offre
@@ -158,13 +162,44 @@ export async function creditPurchase(
   const plan: PlanConfig | undefined = getPlan(input.productId)
   const liveOffer: LiveOffer | undefined = getLiveOffer(input.productId)
   const installOffer: InstallOffer | undefined = getInstallOffer(input.productId)
+  const pcOffer: PcOffer | undefined = getPcOffer(input.productId)
 
-  if (!plan && !liveOffer && !installOffer) {
+  if (!plan && !liveOffer && !installOffer && !pcOffer) {
     return { ok: false, kind: null, userLinked: false, message: `Produit inconnu : ${input.productId}` }
   }
 
   let userId = input.userId || null
   if (!userId) userId = await resolveUserIdByEmail(admin, input.email)
+
+  // ChapCam PC : achat unique a vie. On genere une cle de licence et on
+  // l'envoie par email. Aucun compte ChapCam n'est requis (la licence est liee
+  // a l'email + au PC du client), donc on traite ce cas AVANT la verification
+  // d'un compte existant.
+  if (pcOffer) {
+    const created = await createPcLicense(admin, { userId, email: input.email })
+    if (!created) {
+      return {
+        ok: false,
+        kind: 'pc',
+        userLinked: !!userId,
+        message: 'Generation de la cle de licence impossible.',
+      }
+    }
+    sendPcLicenseEmail(
+      input.email,
+      input.fullName,
+      created.key,
+      getDesktopDownloadUrl(),
+      pcOffer.price,
+    ).catch((e) => console.error('[fulfillment] Email licence PC echoue:', e))
+    return {
+      ok: true,
+      kind: 'pc',
+      userLinked: !!userId,
+      message: 'Licence ChapCam PC generee.',
+      licenseKey: created.key,
+    }
+  }
 
   if (!userId) {
     return {

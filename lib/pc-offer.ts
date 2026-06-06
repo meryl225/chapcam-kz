@@ -29,13 +29,18 @@ export const PC_OFFER: PcOffer = {
   ],
 }
 
-// Lien de telechargement du logiciel (Cloudflare R2 ou autre). Configurable via
-// variable d'environnement, avec un repli raisonnable.
+// Lien de telechargement du logiciel ChapCam PC.
+// Repli par defaut : le fichier Google Drive fourni. Peut etre surcharge a tout
+// moment via la variable d'environnement DESKTOP_DOWNLOAD_URL (ex: quand on
+// migrera vers un hebergement direct type Cloudflare R2).
+export const DEFAULT_DESKTOP_DOWNLOAD_URL =
+  'https://drive.google.com/file/d/1E_o7kFtBHKCkLBxnjhxLpPduNqdAqq1O/view?usp=sharing'
+
 export function getDesktopDownloadUrl(): string {
   return (
     process.env.DESKTOP_DOWNLOAD_URL ||
     process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL ||
-    'https://chapcam.com/download'
+    DEFAULT_DESKTOP_DOWNLOAD_URL
   )
 }
 
