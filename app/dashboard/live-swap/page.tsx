@@ -150,10 +150,10 @@ export default function DashboardPage() {
       // Charger les points via l'API
       try {
         const pointsRes = await fetch('/api/points')
-        const pointsData = await pointsRes.json()
-        if (pointsData.success) {
-          setUserPoints(pointsData.points)
-          setMaxPoints(pointsData.maxPoints)
+        const pointsData = await pointsRes.json().catch(() => null)
+        if (pointsData?.success) {
+          setUserPoints(pointsData.points ?? 0)
+          setMaxPoints(pointsData.maxPoints ?? 0)
         }
       } catch (err) {
         console.error('Erreur chargement points:', err)
@@ -209,10 +209,10 @@ export default function DashboardPage() {
             sessionDuration: duration 
           })
         })
-        const data = await res.json()
-        if (data.success) {
-          setUserPoints(data.currentPoints)
-          setMaxPoints(data.maxPoints)
+        const data = await res.json().catch(() => null)
+        if (data?.success) {
+          setUserPoints(data.currentPoints ?? 0)
+          setMaxPoints(data.maxPoints ?? 0)
         }
       } catch (err) {
         console.error('Erreur sauvegarde points:', err)

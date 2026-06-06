@@ -52,10 +52,11 @@ export function useLucy21() {
               sessionDuration: DEDUCTION_INTERVAL,
             }),
           })
-          const data = await res.json()
+          const data = await res.json().catch(() => null)
 
-          // Plus de points OU solde epuise par cette deduction -> couper le swap
-          if (!data.success || data.depleted) {
+          // Plus de points OU solde epuise par cette deduction -> couper le swap.
+          // Si la reponse est illisible/undefined, on coupe aussi par securite.
+          if (!data?.success || data?.depleted) {
             disconnect()
           }
         } catch (err) {
@@ -161,15 +162,19 @@ export function useLucy21() {
       // Il suffit d'avoir au moins 1 palier de points (5s) pour demarrer ;
       // le client pourra ensuite swaper jusqu'a epuisement total du solde.
       const pointsRes = await fetch('/api/points')
-      const pointsData = await pointsRes.json()
+      const pointsData = await pointsRes.json().catch(() => null)
 
       const minToStart = POINTS_PER_SECOND * DEDUCTION_INTERVAL // 10 points = 5s
-      if (!pointsData.success || pointsData.points < minToStart) {
+      if (!pointsData?.success || (pointsData?.points ?? 0) < minToStart) {
         throw new Error('Points insuffisants. Recharge ton compte pour utiliser le swap.')
       }
 
       const tokenRes = await fetch('/api/decart-token')
-      const { token: clientToken } = await tokenRes.json()
+      const tokenData = await tokenRes.json().catch(() => null)
+      const clientToken = tokenData?.token
+      if (!tokenRes.ok || !clientToken) {
+        throw new Error('Service de transformation indisponible pour le moment. Reessaie dans un instant.')
+      }
 
       let stream: MediaStream
       try {
