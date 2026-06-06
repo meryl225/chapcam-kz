@@ -24,9 +24,18 @@ export function useVirtualCamera() {
       setAvailable(false)
       return
     }
-    setAvailable(true)
     const api = getElectronAPI()
-    if (!api) return
+    // IMPORTANT : les anciennes versions de l'app de bureau ChapCam exposent
+    // window.electronAPI SANS le namespace `virtualCamera`. Appeler
+    // api.virtualCamera.status() levait alors "Cannot read properties of
+    // undefined (reading 'status')", ce qui faisait planter Live Swap ET
+    // Live Pro (les deux affichent VirtualCameraIndicator). On verifie donc
+    // que la fonctionnalite existe avant de l'utiliser.
+    if (!api || typeof api.virtualCamera?.status !== 'function') {
+      setAvailable(false)
+      return
+    }
+    setAvailable(true)
 
     let active = true
 
@@ -36,15 +45,15 @@ export function useVirtualCamera() {
       .then((s) => active && s && setState(s))
       .catch(() => {})
 
-    // Evenements pousses par le process principal
-    api.onVirtualCameraState((s) => {
+    // Evenements pousses par le process principal (peut ne pas exister)
+    api.onVirtualCameraState?.((s) => {
       if (active && s) setState(s)
     })
 
     // Polling de secours (si un evenement est manque)
     const interval = setInterval(() => {
       api.virtualCamera
-        .status()
+        ?.status?.()
         .then((s) => active && s && setState(s))
         .catch(() => {})
     }, 3000)
@@ -57,14 +66,14 @@ export function useVirtualCamera() {
 
   const start = useCallback(async () => {
     const api = getElectronAPI()
-    if (!api) return
+    if (typeof api?.virtualCamera?.start !== 'function') return
     const s = await api.virtualCamera.start({ width: 1280, height: 720, fps: 30 })
     if (s) setState(s)
   }, [])
 
   const stop = useCallback(async () => {
     const api = getElectronAPI()
-    if (!api) return
+    if (typeof api?.virtualCamera?.stop !== 'function') return
     const s = await api.virtualCamera.stop()
     if (s) setState(s)
   }, [])
