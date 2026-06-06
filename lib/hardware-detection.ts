@@ -232,17 +232,24 @@ export interface UserProcessingPreferences {
 const PREFERENCES_KEY = 'chapcam_processing_preferences'
 
 export function saveProcessingPreferences(prefs: UserProcessingPreferences) {
-  localStorage.setItem(PREFERENCES_KEY, JSON.stringify(prefs))
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(PREFERENCES_KEY, JSON.stringify(prefs))
+  } catch {
+    // Ignore (mode prive, quota, etc.)
+  }
 }
 
 export function loadProcessingPreferences(): UserProcessingPreferences {
-  try {
-    const saved = localStorage.getItem(PREFERENCES_KEY)
-    if (saved) {
-      return JSON.parse(saved)
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(PREFERENCES_KEY)
+      if (saved) {
+        return JSON.parse(saved)
+      }
+    } catch {
+      // Ignore
     }
-  } catch {
-    // Ignore
   }
   return {
     mode: 'auto',

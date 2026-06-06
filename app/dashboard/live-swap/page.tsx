@@ -33,7 +33,16 @@ export default function DashboardPage() {
 
   // Nouveau: Detection hardware et mode de traitement
   const [hardware, setHardware] = useState<HardwareCapabilities | null>(null)
-  const [preferences, setPreferences] = useState<UserProcessingPreferences>(loadProcessingPreferences())
+  // IMPORTANT : on initialise avec les MEMES valeurs par defaut que le rendu
+  // serveur. Lire localStorage ici (pendant le rendu) provoquait un mismatch
+  // d'hydratation (React #418) qui faisait planter toute la page Live.
+  // Les vraies preferences sont chargees apres le montage dans un useEffect.
+  const [preferences, setPreferences] = useState<UserProcessingPreferences>({
+    mode: 'auto',
+    maxLocalFPS: 25,
+    preferQuality: true,
+    forceCloud: false,
+  })
   const [processingMode, setProcessingMode] = useState<'local' | 'cloud'>('cloud')
   const [networkQuality, setNetworkQuality] = useState<'good' | 'medium' | 'poor'>('good')
   const [showModeSettings, setShowModeSettings] = useState(false)
@@ -82,6 +91,12 @@ export default function DashboardPage() {
   } = useLucy21()
 
   const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  // Charger les preferences sauvegardees uniquement cote client (apres montage)
+  // pour eviter tout mismatch d'hydratation avec le rendu serveur.
+  useEffect(() => {
+    setPreferences(loadProcessingPreferences())
+  }, [])
 
   // Detecter le hardware au montage
   useEffect(() => {
@@ -214,18 +229,30 @@ export default function DashboardPage() {
   // === TRACKING UTILISATEURS ACTIFS ===
   useEffect(() => {
     const trackActivity = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
 
-      await supabase
-        .from('user_activity')
-        .upsert({
-          user_id: user.id,
-          last_active: new Date().toISOString(),
-          current_page: window.location.pathname,
-        }, { 
-          onConflict: 'user_id' 
-        })
+        // Le tracking d'activite est purement "best effort" : si la table
+        // user_activity n'existe pas / n'a pas de contrainte unique sur
+        // user_id (erreur 400), on ignore silencieusement pour ne JAMAIS
+        // faire planter la page Live.
+        const { error: activityError } = await supabase
+          .from('user_activity')
+          .upsert({
+            user_id: user.id,
+            last_active: new Date().toISOString(),
+            current_page: window.location.pathname,
+          }, {
+            onConflict: 'user_id',
+          })
+
+        if (activityError) {
+          console.warn('[live-swap] Suivi activite ignore:', activityError.message)
+        }
+      } catch (err) {
+        console.warn('[live-swap] Suivi activite indisponible:', err)
+      }
     }
 
     trackActivity()

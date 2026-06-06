@@ -18,7 +18,6 @@ import {
   Receipt,
   AlertTriangle,
   RotateCcw,
-  Monitor,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -207,13 +206,6 @@ export default function AdminPaymentsPage() {
             >
               <ArrowLeft className="h-4 w-4" />
               Abonnements
-            </Link>
-            <Link
-              href="/admin/licenses"
-              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#111] px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white"
-            >
-              <Monitor className="h-4 w-4" />
-              Licences PC
             </Link>
             <button
               onClick={() => load(true)}

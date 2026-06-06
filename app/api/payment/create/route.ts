@@ -4,7 +4,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getPlan } from '@/lib/plans'
 import { getLiveOffer } from '@/lib/live-offers'
 import { getInstallOffer } from '@/lib/install-offer'
-import { getPcOffer } from '@/lib/pc-offer'
 import { paydunyaHeaders } from '@/lib/fulfillment'
 
 export const runtime = 'nodejs'
@@ -35,37 +34,25 @@ export async function POST(request: NextRequest) {
       String(body.fullName || user.user_metadata?.full_name || '').trim() || 'Client ChapCam'
     const phoneNumber = String(body.phoneNumber || '').trim() || 'PayDunya'
 
-    // Determiner le produit : formule a points, offre Live Pro, frais
-    // d'installation ou licence ChapCam PC (achat unique).
+    // Determiner le produit : formule a points, offre Live Pro ou frais d'installation.
     const plan = getPlan(productId)
     const liveOffer = getLiveOffer(productId)
     const installOffer = getInstallOffer(productId)
-    const pcOffer = getPcOffer(productId)
-    if (!plan && !liveOffer && !installOffer && !pcOffer) {
+    if (!plan && !liveOffer && !installOffer) {
       return NextResponse.json({ success: false, error: 'Produit inconnu.' }, { status: 400 })
     }
 
-    const amount = plan
-      ? plan.price
-      : liveOffer
-        ? liveOffer.price
-        : installOffer
-          ? installOffer.price
-          : pcOffer!.price
-    const kind: 'plan' | 'live' | 'installation' | 'pc' = plan
+    const amount = plan ? plan.price : liveOffer ? liveOffer.price : installOffer!.price
+    const kind: 'plan' | 'live' | 'installation' = plan
       ? 'plan'
       : liveOffer
         ? 'live'
-        : installOffer
-          ? 'installation'
-          : 'pc'
+        : 'installation'
     const label = plan
       ? `Formule ${plan.name} (${plan.points} points, ${plan.duration})`
       : liveOffer
         ? `${liveOffer.name} (${liveOffer.windowMinutes} min d'acces Live)`
-        : installOffer
-          ? installOffer.name
-          : pcOffer!.name
+        : installOffer!.name
 
     const headers = paydunyaHeaders()
     if (!headers) {

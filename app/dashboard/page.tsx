@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
-import { ChapCamPcCard } from '@/components/dashboard/hub/chapcam-pc-card'
 import { HeaderActions } from '@/components/dashboard/hub/header-actions'
 import { ConsentCard } from '@/components/dashboard/consent-card'
 import { UserCircle, Cloud, Sparkles, Gauge, Clock, Crown, Check, Zap, Timer, Users, Hourglass } from 'lucide-react'
@@ -134,11 +133,6 @@ export default async function DashboardHubPage() {
           <p className="mt-1 text-sm text-muted-foreground">Choisissez l’outil que vous souhaitez utiliser.</p>
         </div>
         <ToolsGrid />
-      </section>
-
-      {/* Offre ChapCam PC */}
-      <section aria-label="ChapCam PC" className="mt-8">
-        <ChapCamPcCard />
       </section>
 
       {/* Utilisation rapide */}
