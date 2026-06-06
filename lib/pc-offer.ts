@@ -48,6 +48,15 @@ export function getDesktopDownloadUrl(): string {
   )
 }
 
+// Fin de l'offre de lancement (prix promo 50 000 FCFA). Apres cette date,
+// le prix officiel passe a 100 000 FCFA. Surcharge possible via la variable
+// d'environnement NEXT_PUBLIC_PC_LAUNCH_END (format ISO, ex: 2026-06-20T23:59:59Z).
+export const PC_LAUNCH_OFFER_END = '2026-06-13T23:59:59Z'
+
+export function getPcLaunchOfferEnd(): string {
+  return process.env.NEXT_PUBLIC_PC_LAUNCH_END || PC_LAUNCH_OFFER_END
+}
+
 export function getPcOffer(id: string): PcOffer | undefined {
   return id === PC_OFFER.id ? PC_OFFER : undefined
 }
