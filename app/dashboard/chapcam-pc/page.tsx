@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Eye, Cpu, Wifi, Infinity as InfinityIcon, ShieldCheck, Download, CreditCard, Mail, MonitorCog } from 'lucide-react'
+import { ArrowLeft, Eye, Cpu, Wifi, Infinity as InfinityIcon, ShieldCheck, Download, CreditCard, Mail, MonitorCog, Info } from 'lucide-react'
 import { ChapCamPcCard } from '@/components/dashboard/hub/chapcam-pc-card'
 import { ChapCamPcCountdown } from '@/components/chapcam-pc-countdown'
 import { DesktopDownloadSection } from '@/components/desktop/desktop-download-section'
@@ -98,6 +98,16 @@ export default function ChapCamPcPage() {
               <p className="text-sm leading-relaxed text-amber-200/90 text-pretty">
                 <span className="font-bold text-amber-300">Config requise :</span>{' '}
                 {PC_OFFER.requirement}
+              </p>
+            </div>
+
+            <div className="mt-3 flex max-w-md items-start gap-3 rounded-xl border border-hairline bg-card p-4">
+              <Info className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+                <span className="font-bold text-foreground">Qualite du rendu :</span>{' '}
+                elle depend de la puissance de ton PC, de ta connexion internet, de la
+                qualite de l&apos;avatar choisi et de la lumiere de ton environnement.
+                Plus ces elements sont bons, plus le swap est realiste et fluide.
               </p>
             </div>
 
