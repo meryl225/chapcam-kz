@@ -99,7 +99,7 @@ export function ChapCamPcCountdown({ compact = false }: { compact?: boolean }) {
           compact ? 'text-[10px]' : 'text-xs'
         }`}
       >
-        Logiciel officiel a 50 000 FCFA, puis 100 000 FCFA
+        50 000 FCFA a vie maintenant, puis 50 000 FCFA/mois des le 14 juin
       </p>
     </div>
   )
