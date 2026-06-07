@@ -13,6 +13,7 @@ export interface PcOffer {
   originalPrice: number // FCFA, prix normal barre
   discountPercent: number // % de reduction affiche
   description: string
+  requirement: string
   features: string[]
 }
 
@@ -24,7 +25,10 @@ export const PC_OFFER: PcOffer = {
   discountPercent: 50,
   description:
     "Utilise la puissance de ton PC. Aucune connexion internet requise apres installation. Compatible WhatsApp, Zoom, Discord, TikTok Live.",
+  requirement:
+    "Necessite un PC avec carte graphique GPU dediee (type PC Gamer). Ne fonctionne pas sur un PC sans GPU dedie.",
   features: [
+    'PC avec carte graphique GPU dediee (PC Gamer) requis',
     'Face swap temps reel sur ton GPU local',
     'Camera virtuelle (WhatsApp, Zoom, Discord, TikTok Live)',
     'Aucun abonnement, paiement unique',

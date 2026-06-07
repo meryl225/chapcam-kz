@@ -53,6 +53,9 @@ export function ChapCamPcPromo() {
                   Sans abonnement
                 </li>
               </ul>
+              <p className="mt-2 text-[11px] font-medium text-amber-400/90">
+                PC avec carte graphique GPU dediee (PC Gamer) requis
+              </p>
             </div>
           </div>
 
