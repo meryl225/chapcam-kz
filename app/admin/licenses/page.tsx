@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Copy,
   Check,
+  Send,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -43,6 +44,7 @@ export default function AdminLicensesPage() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [resending, setResending] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -94,6 +96,31 @@ export default function AdminLicensesPage() {
     }
   }
 
+  const resendDownload = async () => {
+    const count = stats?.active ?? licenses.filter((l) => l.status === 'active').length
+    if (
+      !window.confirm(
+        `Renvoyer la cle de licence + le nouveau lien de telechargement a ${count} client(s) avec licence active ?`,
+      )
+    ) {
+      return
+    }
+    setResending(true)
+    try {
+      const res = await fetch('/api/admin/licenses/resend-download', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        showToast('ok', data.message || 'Emails envoyes.')
+      } else {
+        showToast('err', data.error || "Erreur lors de l'envoi.")
+      }
+    } catch {
+      showToast('err', 'Erreur de connexion.')
+    } finally {
+      setResending(false)
+    }
+  }
+
   const copyKey = async (id: string, key: string) => {
     try {
       await navigator.clipboard.writeText(key)
@@ -138,14 +165,25 @@ export default function AdminLicensesPage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:border-[#00ff88] disabled:opacity-60"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={resendDownload}
+              disabled={resending || loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#00ff88] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
+              title="Renvoie a chaque client actif sa cle + le nouveau lien de telechargement"
+            >
+              {resending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {resending ? 'Envoi en cours...' : 'Renvoyer le lien a tous'}
+            </button>
+            <button
+              onClick={load}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:border-[#00ff88] disabled:opacity-60"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Actualiser
+            </button>
+          </div>
         </div>
 
         {stats && (
