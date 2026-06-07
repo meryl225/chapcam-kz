@@ -61,9 +61,12 @@ export async function GET() {
     const paidInstalls = installList.filter((i) => i.paid)
     const installRevenue = paidInstalls.length * INSTALL_PRICE
 
-    // Journal PayDunya : tous les callbacks recus, recents en premier.
+    // Journal PayDunya : on affiche seulement les 200 derniers (performance),
+    // mais les statistiques sont calculees sur TOUTE la table via des count().
     const startOfDay = new Date()
     startOfDay.setHours(0, 0, 0, 0)
+    const startOfDayIso = startOfDay.toISOString()
+
     const { data: logs } = await admin
       .from('payment_logs')
       .select('id, source, token, transaction_id, email, product_id, amount, status, credited, already_done, credit_kind, user_linked, failure_reason, created_at')
@@ -71,8 +74,28 @@ export async function GET() {
       .limit(200)
 
     const logList = logs || []
-    const todayLogs = logList.filter((l) => new Date(l.created_at) >= startOfDay)
-    const failedLogs = logList.filter((l) => l.status === 'completed' && !l.credited)
+
+    // Comptes reels (head: true ne ramene aucune ligne, juste le total)
+    const [todayCountRes, creditedTodayCountRes, failedCountRes] = await Promise.all([
+      admin
+        .from('payment_logs')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', startOfDayIso),
+      admin
+        .from('payment_logs')
+        .select('id', { count: 'exact', head: true })
+        .gte('created_at', startOfDayIso)
+        .eq('credited', true),
+      admin
+        .from('payment_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'completed')
+        .eq('credited', false),
+    ])
+
+    const paydunyaTodayCount = todayCountRes.count ?? 0
+    const paydunyaCreditedTodayCount = creditedTodayCountRes.count ?? 0
+    const paydunyaFailedCount = failedCountRes.count ?? 0
 
     return NextResponse.json({
       clients,
@@ -112,9 +135,9 @@ export async function GET() {
         installPaid: paidInstalls.length,
         installRevenue,
         totalRevenue: subRevenue + installRevenue,
-        paydunyaToday: todayLogs.length,
-        paydunyaCreditedToday: todayLogs.filter((l) => l.credited).length,
-        paydunyaFailed: failedLogs.length,
+        paydunyaToday: paydunyaTodayCount,
+        paydunyaCreditedToday: paydunyaCreditedTodayCount,
+        paydunyaFailed: paydunyaFailedCount,
       },
     })
   } catch (err: any) {
