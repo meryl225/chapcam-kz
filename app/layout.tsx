@@ -11,23 +11,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'ChapCam - Face Swap en Temps Reel',
   description: 'Transforme instantanement ton apparence pendant tes streams, appels WhatsApp, Telegram, Zoom, Teams et autres plateformes video.',
-  icons: {
-    icon: [
-      {
-        url: '/favicon.ico',
-        sizes: 'any',
-      },
-      {
-        url: '/icon-light-32x32.jpg',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.jpg',
-        media: '(prefers-color-scheme: dark)',
-      },
-    ],
-    apple: '/apple-icon.jpg',
-  },
 }
 
 export default function RootLayout({
