@@ -38,7 +38,7 @@ export const PC_OFFER: PcOffer = {
 // moment via la variable d'environnement DESKTOP_DOWNLOAD_URL (ex: quand on
 // migrera vers un hebergement direct type Cloudflare R2).
 export const DEFAULT_DESKTOP_DOWNLOAD_URL =
-  'https://drive.google.com/file/d/1E_o7kFtBHKCkLBxnjhxLpPduNqdAqq1O/view?usp=sharing'
+  'https://drive.google.com/file/d/1h-9d5vmschn60e-y6AujN_b71iOpH_nN/view?usp=sharing'
 
 export function getDesktopDownloadUrl(): string {
   return (
