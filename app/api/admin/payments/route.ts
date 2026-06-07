@@ -70,16 +70,20 @@ export async function GET() {
     const { data: logs } = await admin
       .from('payment_logs')
       .select('id, source, token, transaction_id, email, product_id, amount, status, credited, already_done, credit_kind, user_linked, failure_reason, created_at')
+      .neq('source', 'reconcile')
       .order('created_at', { ascending: false })
       .limit(200)
 
     const logList = logs || []
 
-    // Comptes reels (head: true ne ramene aucune ligne, juste le total)
+    // Comptes reels (head: true ne ramene aucune ligne, juste le total).
+    // On exclut la source "reconcile" (verifications automatiques de statut,
+    // pas de vrais evenements de paiement) pour ne pas gonfler les chiffres.
     const [todayCountRes, creditedTodayCountRes, failedCountRes] = await Promise.all([
       admin
         .from('payment_logs')
         .select('id', { count: 'exact', head: true })
+        .neq('source', 'reconcile')
         .gte('created_at', startOfDayIso),
       admin
         .from('payment_logs')

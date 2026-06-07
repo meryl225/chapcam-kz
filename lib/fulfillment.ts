@@ -353,21 +353,28 @@ async function fulfillConfirmedInvoice(params: {
 
   if (status !== 'completed') {
     const mapped = status === 'cancelled' ? 'cancelled' : 'pending'
-    await logPaymentEvent(admin, {
-      source,
-      token,
-      transactionId,
-      email: reqRow?.email || customData?.email || customData?.user_email || null,
-      productId: reqRow?.plan || customData?.product_id || customData?.plan || null,
-      amount: totalAmount,
-      status: mapped,
-      credited: false,
-      failureReason:
-        mapped === 'cancelled'
-          ? 'Paiement annule ou abandonne cote PayDunya'
-          : 'Paiement non complete (statut en attente)',
-      raw: customData,
-    })
+    // Anti-spam du journal : le cron de reconciliation re-verifie les memes
+    // factures abandonnees toutes les 5 min. On NE journalise PAS ses verifications
+    // non-completees (pending/cancelled), sinon la table payment_logs explose
+    // (des dizaines de milliers de lignes de bruit). Les sources temps reel
+    // (callback / status), elles, sont tracees car utiles au diagnostic.
+    if (source !== 'reconcile') {
+      await logPaymentEvent(admin, {
+        source,
+        token,
+        transactionId,
+        email: reqRow?.email || customData?.email || customData?.user_email || null,
+        productId: reqRow?.plan || customData?.product_id || customData?.plan || null,
+        amount: totalAmount,
+        status: mapped,
+        credited: false,
+        failureReason:
+          mapped === 'cancelled'
+            ? 'Paiement annule ou abandonne cote PayDunya'
+            : 'Paiement non complete (statut en attente)',
+        raw: customData,
+      })
+    }
     return { status: mapped, alreadyDone: false }
   }
 
