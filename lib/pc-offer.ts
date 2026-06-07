@@ -26,7 +26,7 @@ export const PC_OFFER: PcOffer = {
   description:
     "Utilise la puissance de ton PC. Aucune connexion internet requise apres installation. Compatible WhatsApp, Zoom, Discord, TikTok Live.",
   requirement:
-    "Necessite un PC avec carte graphique GPU dediee (type PC Gamer). Ne fonctionne pas sur un PC sans GPU dedie.",
+    "Vous avez la possibilite d'installer sur tout type de PC, mais necessite un PC avec carte graphique GPU dediee (type PC Gamer).",
   features: [
     'PC avec carte graphique GPU dediee (PC Gamer) requis',
     'Face swap temps reel sur ton GPU local',
