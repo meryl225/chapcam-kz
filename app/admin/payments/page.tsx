@@ -18,6 +18,7 @@ import {
   Receipt,
   AlertTriangle,
   RotateCcw,
+  Megaphone,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -200,6 +201,13 @@ export default function AdminPaymentsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/admin/campaign"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#00d4ff]/40 bg-[#0d2030] px-4 py-2.5 text-sm font-medium text-[#00d4ff] transition-colors hover:border-[#00d4ff] hover:text-white"
+            >
+              <Megaphone className="h-4 w-4" />
+              Campagnes email
+            </Link>
             <Link
               href="/admin/subscriptions"
               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#111] px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white"
