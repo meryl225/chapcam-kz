@@ -192,3 +192,75 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
   }
 }
+
+// DELETE admin : retirer / desactiver l'abonnement d'un utilisateur via son email.
+export async function DELETE(req: NextRequest) {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: 'Acces refuse.' }, { status: 403 })
+  }
+
+  try {
+    const body = await req.json().catch(() => ({}))
+    const email = String(body.email || '').trim().toLowerCase()
+
+    if (!EMAIL_RE.test(email)) {
+      return NextResponse.json({ error: 'Email invalide.' }, { status: 400 })
+    }
+
+    const admin = createAdminClient()
+    const userId = await resolveUserIdByEmail(admin, email)
+    if (!userId) {
+      return NextResponse.json(
+        { error: `Aucun compte ChapCam ne correspond a "${email}".` },
+        { status: 404 },
+      )
+    }
+
+    // On cible l'abonnement par user_id ET par email (au cas ou le user_id
+    // n'aurait pas ete renseigne a la creation).
+    const { data: subs } = await admin
+      .from('subscriptions')
+      .select('id')
+      .or(`user_id.eq.${userId},email.eq.${email}`)
+
+    if (!subs || subs.length === 0) {
+      return NextResponse.json(
+        { error: `Aucun abonnement trouve pour "${email}".` },
+        { status: 404 },
+      )
+    }
+
+    // Desactivation : on remet les points a zero et on marque l'abonnement
+    // comme annule/expire pour couper immediatement l'acces.
+    const now = new Date()
+    const { error } = await admin
+      .from('subscriptions')
+      .update({
+        status: 'cancelled',
+        is_active: false,
+        points: 0,
+        end_date: now.toISOString(),
+        expires_at: now.toISOString(),
+      })
+      .or(`user_id.eq.${userId},email.eq.${email}`)
+
+    if (error) {
+      console.error('[admin/subscriptions] Erreur suppression:', error.message)
+      return NextResponse.json({ error: 'Erreur lors de la suppression.' }, { status: 500 })
+    }
+
+    await admin.from('admin_logs').insert({
+      action: 'remove_subscription',
+      admin_email: ADMIN_EMAIL,
+      details: { email, removed_count: subs.length },
+    })
+
+    return NextResponse.json({
+      success: true,
+      message: `Abonnement retire pour ${email} (${subs.length} ligne${subs.length > 1 ? 's' : ''} desactivee${subs.length > 1 ? 's' : ''}).`,
+    })
+  } catch (err: any) {
+    console.error('[admin/subscriptions] Exception DELETE:', err?.message || err)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
+  }
+}
