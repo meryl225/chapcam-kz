@@ -1,16 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, KeyRound, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Download, KeyRound, Loader2, CheckCircle2, AlertCircle, Apple, Monitor } from 'lucide-react'
 
-export function DesktopDownloadSection({ downloadUrl }: { downloadUrl: string }) {
+export function DesktopDownloadSection({
+  downloadUrl,
+  macDownloadUrl,
+}: {
+  downloadUrl: string
+  macDownloadUrl?: string
+}) {
   const [licenseKey, setLicenseKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [verified, setVerified] = useState(false)
 
-  const openDownload = () => {
-    window.open(downloadUrl, '_blank', 'noopener,noreferrer')
+  const openDownload = (url: string = downloadUrl) => {
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const verifyAndDownload = async () => {
@@ -29,7 +35,8 @@ export function DesktopDownloadSection({ downloadUrl }: { downloadUrl: string })
       const data = await res.json()
       if (res.ok && data.valid) {
         setVerified(true)
-        openDownload()
+        // Si une seule plateforme est disponible, on lance directement.
+        if (!macDownloadUrl) openDownload()
       } else {
         setError(data.message || 'Cle de licence invalide.')
       }

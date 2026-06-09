@@ -5,7 +5,7 @@ import { ArrowLeft, Eye, Cpu, Wifi, Infinity as InfinityIcon, ShieldCheck, Downl
 import { ChapCamPcCard } from '@/components/dashboard/hub/chapcam-pc-card'
 import { ChapCamPcCountdown } from '@/components/chapcam-pc-countdown'
 import { DesktopDownloadSection } from '@/components/desktop/desktop-download-section'
-import { getDesktopDownloadUrl, PC_OFFER } from '@/lib/pc-offer'
+import { getDesktopDownloadUrl, getDesktopDownloadUrlMac, PC_OFFER } from '@/lib/pc-offer'
 
 export const metadata: Metadata = {
   title: 'ChapCam PC — Logiciel Premium à vie',
@@ -28,6 +28,7 @@ const STEPS = [
 
 export default function ChapCamPcPage() {
   const downloadUrl = getDesktopDownloadUrl()
+  const macDownloadUrl = getDesktopDownloadUrlMac()
 
   return (
     <div className="min-h-screen bg-background">
@@ -175,7 +176,7 @@ export default function ChapCamPcPage() {
 
       {/* DEJA CLIENT */}
       <section className="mx-auto mt-16 max-w-6xl px-4 pb-20 md:px-6">
-        <DesktopDownloadSection downloadUrl={downloadUrl} />
+        <DesktopDownloadSection downloadUrl={downloadUrl} macDownloadUrl={macDownloadUrl} />
       </section>
     </div>
   )

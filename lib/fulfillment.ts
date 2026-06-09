@@ -12,7 +12,7 @@ import { ADMIN_EMAIL } from '@/lib/admin-auth'
 import { getPlan, type PlanConfig } from '@/lib/plans'
 import { getLiveOffer, type LiveOffer } from '@/lib/live-offers'
 import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
-import { getPcOffer, getDesktopDownloadUrl, type PcOffer } from '@/lib/pc-offer'
+import { getPcOffer, getDesktopDownloadUrl, getDesktopDownloadUrlMac, type PcOffer } from '@/lib/pc-offer'
 import { createPcLicense } from '@/lib/pc-license'
 import { grantLiveWindow } from '@/lib/live-access'
 import {
@@ -191,6 +191,7 @@ export async function creditPurchase(
       created.key,
       getDesktopDownloadUrl(),
       pcOffer.price,
+      getDesktopDownloadUrlMac(),
     ).catch((e) => console.error('[fulfillment] Email licence PC echoue:', e))
     return {
       ok: true,

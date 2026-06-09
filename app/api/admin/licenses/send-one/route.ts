@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminRequest } from '@/lib/admin-auth'
-import { getDesktopDownloadUrl, PC_OFFER } from '@/lib/pc-offer'
+import { getDesktopDownloadUrl, getDesktopDownloadUrlMac, PC_OFFER } from '@/lib/pc-offer'
 import { createPcLicense } from '@/lib/pc-license'
 import { resolveUserIdByEmail } from '@/lib/fulfillment'
 import { sendPcLicenseEmail } from '@/lib/email'
@@ -78,6 +78,7 @@ export async function POST(request: Request) {
       licenseKey,
       getDesktopDownloadUrl(),
       PC_OFFER.price,
+      getDesktopDownloadUrlMac(),
     )
 
     if (!result?.success) {
