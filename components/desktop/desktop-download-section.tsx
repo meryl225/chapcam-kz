@@ -99,17 +99,34 @@ export function DesktopDownloadSection({
         </p>
       )}
       {verified && !error && (
-        <p className="mt-3 flex items-center gap-1.5 text-xs text-primary">
-          <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-          Licence valide — le telechargement a demarre.{' '}
-          <button onClick={openDownload} className="underline underline-offset-2">
-            Relancer
-          </button>
-        </p>
+        <div className="mt-4">
+          <p className="mb-3 flex items-center gap-1.5 text-xs text-primary">
+            <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+            Licence valide — choisis ta version.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              onClick={() => openDownload(downloadUrl)}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-black transition-colors hover:bg-primary/90"
+            >
+              <Monitor className="h-4 w-4" />
+              Telecharger pour Windows
+            </button>
+            {macDownloadUrl && (
+              <button
+                onClick={() => openDownload(macDownloadUrl)}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-hairline bg-background px-5 py-3 font-bold text-foreground transition-colors hover:bg-card"
+              >
+                <Apple className="h-4 w-4" />
+                Telecharger pour MacBook
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       <p className="mt-4 text-xs text-text-faint text-pretty">
-        Logiciel Windows. Compatible GPU NVIDIA. Cle activable sur 1 PC.
+        Compatible Windows et MacBook. Cle activable sur 1 ordinateur.
       </p>
     </section>
   )

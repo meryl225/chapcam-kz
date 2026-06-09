@@ -42,6 +42,10 @@ export function ChapCamPcPromo() {
               <ul className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-gray-300 sm:justify-start">
                 <li className="flex items-center gap-1.5">
                   <Check className="h-3.5 w-3.5 text-[#00ff88]" />
+                  Windows et MacBook
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <Check className="h-3.5 w-3.5 text-[#00ff88]" />
                   Paiement unique
                 </li>
                 <li className="flex items-center gap-1.5">
@@ -54,7 +58,7 @@ export function ChapCamPcPromo() {
                 </li>
               </ul>
               <p className="mt-2 text-[11px] font-medium text-amber-400/90">
-                PC avec carte graphique GPU dediee (PC Gamer) requis
+                Compatible Windows et MacBook — GPU dedie (PC Gamer) recommande pour de meilleures performances
               </p>
             </div>
           </div>
