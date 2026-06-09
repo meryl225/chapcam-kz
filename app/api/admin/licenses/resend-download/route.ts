@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminRequest } from '@/lib/admin-auth'
-import { getDesktopDownloadUrl } from '@/lib/pc-offer'
+import { getDesktopDownloadUrl, getDesktopDownloadUrlMac } from '@/lib/pc-offer'
 import { sendPcLicenseEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
@@ -38,6 +38,7 @@ export async function POST() {
     }
 
     const downloadUrl = getDesktopDownloadUrl()
+    const macDownloadUrl = getDesktopDownloadUrlMac()
 
     // Deduplique par email (on garde une cle par client).
     const seen = new Set<string>()
@@ -69,7 +70,7 @@ export async function POST() {
     // Envoi sequentiel doux pour respecter les limites de Resend.
     for (const r of recipients) {
       const userName = r.email.split('@')[0]
-      const result = await sendPcLicenseEmail(r.email, userName, r.licenseKey, downloadUrl, 0)
+      const result = await sendPcLicenseEmail(r.email, userName, r.licenseKey, downloadUrl, 0, macDownloadUrl)
       if (result?.success) {
         successCount++
       } else {

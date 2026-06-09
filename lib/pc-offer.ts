@@ -24,11 +24,12 @@ export const PC_OFFER: PcOffer = {
   originalPrice: 100000,
   discountPercent: 50,
   description:
-    "Utilise la puissance de ton PC. Aucune connexion internet requise apres installation. Compatible WhatsApp, Zoom, Discord, TikTok Live.",
+    "Utilise la puissance de ton ordinateur. Compatible Windows ET MacBook. Aucune connexion internet requise apres installation. Compatible WhatsApp, Zoom, Discord, TikTok Live.",
   requirement:
-    "Vous avez la possibilite d'installer sur tout type de PC, mais necessite un PC avec carte graphique GPU dediee (type PC Gamer).",
+    "Compatible Windows et MacBook. Vous pouvez installer sur tout type d'ordinateur, mais une carte graphique GPU dediee (type PC Gamer) est recommandee pour de meilleures performances.",
   features: [
-    'PC avec carte graphique GPU dediee (PC Gamer) requis',
+    'Compatible Windows et MacBook',
+    'GPU dedie (PC Gamer) recommande pour de meilleures performances',
     'Face swap temps reel sur ton GPU local',
     'Camera virtuelle (WhatsApp, Zoom, Discord, TikTok Live)',
     'Aucun abonnement, paiement unique',
@@ -49,6 +50,20 @@ export function getDesktopDownloadUrl(): string {
     process.env.DESKTOP_DOWNLOAD_URL ||
     process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL ||
     DEFAULT_DESKTOP_DOWNLOAD_URL
+  )
+}
+
+// Lien de telechargement de la version MacBook de ChapCam PC.
+// Repli par defaut : le fichier Google Drive fourni. Surcharge possible via la
+// variable d'environnement DESKTOP_DOWNLOAD_URL_MAC.
+export const DEFAULT_DESKTOP_DOWNLOAD_URL_MAC =
+  'https://drive.google.com/file/d/1ot7viPdKWZrrOQkCFoTPYUqHaNwl2wkm/view?usp=drive_link'
+
+export function getDesktopDownloadUrlMac(): string {
+  return (
+    process.env.DESKTOP_DOWNLOAD_URL_MAC ||
+    process.env.NEXT_PUBLIC_DESKTOP_DOWNLOAD_URL_MAC ||
+    DEFAULT_DESKTOP_DOWNLOAD_URL_MAC
   )
 }
 

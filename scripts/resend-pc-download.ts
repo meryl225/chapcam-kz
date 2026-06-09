@@ -1,7 +1,7 @@
 // Script ponctuel : renvoie a chaque detenteur d'une licence PC active
 // sa cle + le NOUVEAU lien de telechargement. Reutilise les vraies fonctions.
 import { createClient } from '@supabase/supabase-js'
-import { getDesktopDownloadUrl } from '../lib/pc-offer'
+import { getDesktopDownloadUrl, getDesktopDownloadUrlMac } from '../lib/pc-offer'
 import { sendPcLicenseEmail } from '../lib/email'
 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
@@ -28,6 +28,7 @@ async function main() {
   if (error) throw new Error('Lecture pc_licenses echouee: ' + error.message)
 
   const downloadUrl = getDesktopDownloadUrl()
+  const macDownloadUrl = getDesktopDownloadUrlMac()
   console.log('[resend] Nouveau lien:', downloadUrl)
 
   const seen = new Set<string>()
@@ -52,7 +53,7 @@ async function main() {
 
   for (const r of recipients) {
     const userName = r.email.split('@')[0]
-    const result = await sendPcLicenseEmail(r.email, userName, r.licenseKey, downloadUrl, 0)
+    const result = await sendPcLicenseEmail(r.email, userName, r.licenseKey, downloadUrl, 0, macDownloadUrl)
     if (result?.success) {
       successCount++
       console.log(`[resend] OK -> ${r.email}`)
