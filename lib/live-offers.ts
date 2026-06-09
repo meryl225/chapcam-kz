@@ -13,16 +13,11 @@ export interface LiveOffer {
 // Essai gratuit offert une seule fois a tous les comptes (en secondes).
 export const LIVE_TRIAL_SECONDS = 120
 
-export const LIVE_OFFERS: LiveOffer[] = [
-  {
-    id: 'live15',
-    name: 'Live Pro 15 min',
-    price: 10000,
-    windowMinutes: 15,
-    description:
-      'Acces au Face Swap temps reel basse latence pendant 15 minutes (fenetre demarrant au premier lancement).',
-  },
-]
+// OFFRE LIVE PRO 15 MIN RETIREE : le forfait n'est plus valide ni vendable.
+// On garde le type + les helpers pour ne pas casser le backend (fulfillment,
+// paiement, admin), mais la liste est vide : aucune offre Live ne peut plus
+// etre achetee et plus rien ne s'affiche cote client.
+export const LIVE_OFFERS: LiveOffer[] = []
 
 export function getLiveOffer(id: string): LiveOffer | undefined {
   return LIVE_OFFERS.find((o) => o.id === id)
