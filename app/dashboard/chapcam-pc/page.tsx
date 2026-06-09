@@ -106,9 +106,10 @@ export default function ChapCamPcPage() {
               <Info className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
               <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
                 <span className="font-bold text-foreground">Qualite du rendu :</span>{' '}
-                elle depend de la puissance de ton PC, de ta connexion internet, de la
-                qualite de l&apos;avatar choisi et de la lumiere de ton environnement.
-                Plus ces elements sont bons, plus le swap est realiste et fluide.
+                les performances du logiciel dependent de l&apos;etat de votre appareil
+                (puissance du processeur, carte graphique, memoire), de votre connexion
+                internet, de la qualite de l&apos;avatar choisi et de la lumiere de votre
+                environnement. Plus ces elements sont bons, plus le swap est realiste et fluide.
               </p>
             </div>
 
@@ -175,9 +176,14 @@ export default function ChapCamPcPage() {
       </section>
 
       {/* DEJA CLIENT */}
-      <section className="mx-auto mt-16 max-w-6xl px-4 pb-20 md:px-6">
+      <section className="mx-auto mt-16 max-w-6xl px-4 md:px-6">
         <DesktopDownloadSection downloadUrl={downloadUrl} macDownloadUrl={macDownloadUrl} />
       </section>
+
+      {/* MENTION LEGALE */}
+      <p className="mx-auto max-w-6xl px-4 pb-12 pt-8 text-center text-[11px] leading-relaxed text-text-faint md:px-6">
+        Paiement unique. Aucun remboursement apres l&apos;achat.
+      </p>
     </div>
   )
 }
