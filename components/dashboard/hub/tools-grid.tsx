@@ -1,8 +1,7 @@
 import Link from 'next/link'
-import { Zap, Video, Mic, Languages, ImageIcon, Film, Monitor, ArrowRight } from 'lucide-react'
+import { Zap, Mic, Languages, ImageIcon, Film, Monitor, ArrowRight } from 'lucide-react'
 import {
   LiveSwapPreview,
-  LiveProPreview,
   VoiceChangerPreview,
   VoiceTranslatorPreview,
   PhotoVideoPreview,
@@ -33,17 +32,6 @@ const tools: Tool[] = [
     glow: 'rgba(0,255,136,0.18)',
     buttonClass: 'bg-primary text-black hover:bg-primary/90',
     Preview: LiveSwapPreview,
-  },
-  {
-    href: '/live',
-    icon: Video,
-    title: 'Live Pro',
-    description: 'Diffusez en haute qualité avec votre avatar en temps réel.',
-    badge: 'PRO',
-    accent: '#8b5cf6',
-    glow: 'rgba(139,92,246,0.18)',
-    buttonClass: 'bg-violet-600 text-white hover:bg-violet-700',
-    Preview: LiveProPreview,
   },
   {
     href: '/dashboard/chapcam-pc',

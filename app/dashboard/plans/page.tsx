@@ -1,15 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Zap, Gift, Video } from 'lucide-react'
+import { Check, Crown, Clock, Sparkles, Loader2, CreditCard } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
-import { LIVE_OFFERS, LIVE_TRIAL_SECONDS, getLiveOffer } from '@/lib/live-offers'
 import { ChapCamPcPromo } from '@/components/chapcam-pc-promo'
-
-const LIVE_OFFER = LIVE_OFFERS[0]
 
 function PlansContent() {
   const searchParams = useSearchParams()
@@ -48,7 +45,7 @@ function PlansContent() {
     if (autoStarted.current) return
     const requested = searchParams.get('plan')
     if (!requested) return
-    if (getPlan(requested) || getLiveOffer(requested)) {
+    if (getPlan(requested)) {
       autoStarted.current = true
       startCheckout(requested)
     }
@@ -186,86 +183,6 @@ function PlansContent() {
             )
           })}
         </div>
-
-        {/* ===================== OFFRE LIVE PRO (separee, encadree en rouge) ===================== */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          className="mt-12"
-        >
-          <div className="relative overflow-hidden rounded-3xl border-2 border-red-500 bg-gradient-to-br from-red-500/10 via-[#111] to-[#111] p-6 shadow-[0_0_40px_-10px_rgba(239,68,68,0.5)] md:p-8">
-            {/* Badge distinctif */}
-            <div className="absolute -right-3 -top-3 flex items-center gap-1 rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
-              <Zap className="h-3.5 w-3.5" />
-              OFFRE SPECIALE
-            </div>
-
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex-1">
-                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-red-400">
-                  <Video className="h-3.5 w-3.5" />
-                  Face Swap Temps Reel
-                </div>
-                <h3 className="text-2xl font-black text-foreground md:text-3xl">{LIVE_OFFER.name}</h3>
-                <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-                  {LIVE_OFFER.description} Cette offre est <span className="font-semibold text-red-400">independante</span> des
-                  formules a points : elle ouvre une fenetre d&apos;acces dediee au moteur GPU temps reel.
-                </p>
-
-                <ul className="mt-4 grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 flex-shrink-0 text-red-400" />
-                    {LIVE_OFFER.windowMinutes} minutes de swap en direct
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 flex-shrink-0 text-red-400" />
-                    Basse latence, jusqu&apos;a 4 personas
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Check className="h-4 w-4 flex-shrink-0 text-red-400" />
-                    Utilisable en appel video (OBS)
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <Gift className="h-4 w-4 flex-shrink-0 text-primary" />
-                    Essai gratuit de {Math.round(LIVE_TRIAL_SECONDS / 60)} min offert
-                  </li>
-                </ul>
-              </div>
-
-              <div className="flex flex-col items-stretch gap-3 lg:w-64">
-                <div className="text-center lg:text-right">
-                  <span className="text-4xl font-black text-red-400">
-                    {LIVE_OFFER.price.toLocaleString()}
-                  </span>
-                  <span className="text-xl text-muted-foreground"> FCFA</span>
-                  <p className="text-xs text-text-faint">pour {LIVE_OFFER.windowMinutes} min d&apos;acces</p>
-                </div>
-                <Link
-                  href="/live"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/50 bg-primary/10 py-3 font-semibold text-primary transition-colors hover:bg-primary/20"
-                >
-                  <Gift className="h-4 w-4" />
-                  Essayer gratuitement
-                </Link>
-                <button
-                  onClick={() => startCheckout(LIVE_OFFER.id)}
-                  disabled={!!pendingId}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-500 py-3 font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
-                >
-                  {pendingId === LIVE_OFFER.id ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <>
-                      Acheter {LIVE_OFFER.windowMinutes} min
-                      <CreditCard className="h-4 w-4" />
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
