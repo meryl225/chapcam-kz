@@ -1,89 +1,80 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// Normalise une cle saisie (majuscules, espaces retires).
-function normalizeKey(key: string): string {
-  return String(key || '').trim().toUpperCase().replace(/\s+/g, '')
-}
-
-// Verifie / active une licence ChapCam PC.
-// Appelee par le logiciel desktop a chaque lancement.
-// Corps attendu : { license_key: string, hardware_id?: string }
-export async function POST(request: NextRequest) {
+// Verifie / active une licence ChapCam PC contre la table pc_licenses.
+// Appelee par le logiciel desktop. Corps attendu :
+// { license_key: string, hardware_id: string }
+export async function POST(request: Request) {
   try {
-    const body = await request.json().catch(() => ({}))
-    const licenseKey = normalizeKey(body.license_key || body.licenseKey || '')
-    const hardwareId = String(body.hardware_id || body.hardwareId || '').trim()
+    const body = await request.json().catch(() => null)
+    const license_key = body?.license_key
+    const hardware_id = body?.hardware_id
 
-    if (!licenseKey) {
+    // 1 + 2. Champs manquants.
+    if (!license_key || !hardware_id) {
       return NextResponse.json(
-        { valid: false, message: 'Cle de licence requise.' },
+        { valid: false, message: 'Données manquantes.' },
         { status: 400 },
       )
     }
 
-    const admin = createAdminClient()
+    const supabase = createAdminClient()
 
-    // 1. Chercher la cle dans la table pc_licenses.
-    const { data: license, error } = await admin
+    // 3. Rechercher la licence.
+    const { data, error } = await supabase
       .from('pc_licenses')
-      .select('id, hardware_id, status')
-      .eq('license_key', licenseKey)
+      .select('*')
+      .eq('license_key', license_key)
       .maybeSingle()
 
     if (error) {
-      console.error('[desktop/verify] Lecture echouee:', error.message)
-      return NextResponse.json({ valid: false, message: 'Erreur serveur.' }, { status: 500 })
+      throw error
     }
 
-    // 2. Cle inexistante.
-    if (!license) {
-      return NextResponse.json(
-        { valid: false, message: 'Cle de licence invalide.' },
-        { status: 403 },
-      )
+    // 4. Cle inexistante.
+    if (!data) {
+      return NextResponse.json({ valid: false, message: 'Clé de licence invalide.' })
     }
 
-    // 3. Licence revoquee.
-    if (license.status === 'revoked') {
-      return NextResponse.json(
-        { valid: false, message: 'Licence revoquee. Contacte le support.' },
-        { status: 403 },
-      )
+    // 5. Licence non active.
+    if (data.status !== 'active') {
+      return NextResponse.json({ valid: false, message: 'Licence désactivée ou expirée.' })
     }
 
-    // 4. Premiere activation : hardware_id encore vide -> on lie ce PC.
-    if (!license.hardware_id) {
-      const { error: updErr } = await admin
+    // 6. Premiere activation : aucun hardware_id encore lie.
+    if (!data.hardware_id) {
+      const { error: updateError } = await supabase
         .from('pc_licenses')
-        .update({ hardware_id: hardwareId || null, activated_at: new Date().toISOString() })
-        .eq('id', license.id)
-        .is('hardware_id', null) // garde-fou anti course
-      if (updErr) {
-        console.error('[desktop/verify] Activation echouee:', updErr.message)
-        return NextResponse.json(
-          { valid: false, message: 'Activation impossible. Reessaie.' },
-          { status: 500 },
-        )
+        .update({
+          hardware_id,
+          activated_at: new Date().toISOString(),
+        })
+        .eq('license_key', license_key)
+
+      if (updateError) {
+        throw updateError
       }
-      return NextResponse.json({ valid: true, message: 'Licence activee sur ce PC.' }, { status: 200 })
+
+      return NextResponse.json({ valid: true })
     }
 
-    // 5. Meme PC qui se reconnecte.
-    if (license.hardware_id === hardwareId) {
-      return NextResponse.json({ valid: true, message: 'Licence valide.' }, { status: 200 })
+    // 7. Licence deja liee a un autre PC.
+    if (data.hardware_id !== hardware_id) {
+      return NextResponse.json({
+        valid: false,
+        message: 'Licence déjà activée sur un autre PC.\nContacte le support sur chapcam.com',
+      })
     }
 
-    // 6. Licence deja liee a un autre PC.
+    // 8. Tout correspond.
+    return NextResponse.json({ valid: true })
+  } catch {
     return NextResponse.json(
-      { valid: false, message: 'Licence deja activee sur un autre PC. Contacte le support.' },
-      { status: 403 },
+      { valid: false, message: 'Erreur serveur.' },
+      { status: 500 },
     )
-  } catch (err) {
-    console.error('[desktop/verify] Erreur:', err)
-    return NextResponse.json({ valid: false, message: 'Erreur serveur.' }, { status: 500 })
   }
 }
