@@ -273,10 +273,10 @@ export default function LivePage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </span>
           <div className="text-sm text-muted-foreground">
-            <p className="font-semibold text-foreground">Beaucoup de monde essaie en ce moment</p>
+            <p className="font-semibold text-foreground">Beaucoup de monde utilise le Live en ce moment</p>
             <p className="mt-1 text-muted-foreground">
-              L&apos;essai est gratuit, donc plusieurs personnes l&apos;utilisent en meme temps. Tu peux
-              parfois attendre un peu avant que ca demarre. Avec un{' '}
+              Plusieurs personnes l&apos;utilisent en meme temps, tu peux parfois attendre un peu
+              avant que ca demarre. Avec un{' '}
               <Link href="/dashboard" className="text-primary underline-offset-2 hover:underline">
                 abonnement
               </Link>
@@ -385,6 +385,7 @@ export default function LivePage() {
                   <span className="flex items-center gap-2">
                     <Zap className="h-5 w-5 fill-black" />
                     {effectiveMode === 'trial' ? 'Démarrer Live Pro (essai 2 min)' : 'Démarrer Live Pro'}
+                    {/* Note: le mode 'trial' n'est plus jamais actif depuis la fin de la periode d'essai. */}
                   </span>
                   <span className="text-xs font-medium text-black/70">
                     Le changement de visage commencera en temps réel
