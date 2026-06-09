@@ -7,12 +7,16 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
 import { ChapCamPcPromo } from '@/components/chapcam-pc-promo'
+import { isInAppBrowser } from '@/lib/in-app-browser'
+import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 
 function PlansContent() {
   const searchParams = useSearchParams()
   // id du produit en cours de redirection vers PayDunya (pour le loader par bouton)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  // URL PayDunya a ouvrir manuellement quand on est dans un navigateur integre
+  const [inAppUrl, setInAppUrl] = useState<string | null>(null)
   // evite de relancer le checkout auto plusieurs fois (ex: arrivee depuis l'accueil)
   const autoStarted = useRef(false)
 
@@ -27,6 +31,12 @@ function PlansContent() {
       })
       const data = await res.json()
       if (res.ok && data.success && data.invoice_url) {
+        // Dans un navigateur integre (TikTok, Instagram...), la page PayDunya
+        // ne se charge pas : on invite a ouvrir le lien dans le vrai navigateur.
+        if (isInAppBrowser()) {
+          setInAppUrl(data.invoice_url)
+          return
+        }
         // Redirection vers la page de paiement securisee PayDunya.
         window.location.href = data.invoice_url
         return
@@ -54,6 +64,7 @@ function PlansContent() {
 
   return (
     <div className="min-h-screen bg-background px-6 py-12">
+      {inAppUrl && <InAppBrowserNotice url={inAppUrl} onClose={() => setInAppUrl(null)} />}
       <div className="mx-auto max-w-7xl">
         {/* Banniere offre */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
