@@ -85,16 +85,9 @@ export function computeState(row: LiveAccessRow): LiveAccessState {
     }
   }
 
-  if (row.trial_seconds_remaining > 0) {
-    return {
-      mode: 'trial',
-      secondsRemaining: row.trial_seconds_remaining,
-      trialSecondsRemaining: row.trial_seconds_remaining,
-      pendingWindows: 0,
-      windowExpiresAt: null,
-      canStart: true,
-    }
-  }
+  // Essai gratuit DESACTIVE : la periode d'essai de 2 min est terminee.
+  // On ne renvoie plus jamais le mode 'trial', meme pour les comptes qui
+  // avaient encore des secondes d'essai. Ils basculent sur 'none' (doivent payer).
 
   return {
     mode: 'none',

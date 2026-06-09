@@ -33,7 +33,11 @@ export async function POST(_req: NextRequest) {
 
     if (!state.canStart) {
       return NextResponse.json(
-        { error: 'Aucun acces Live disponible. Achetez l\'offre Live Pro pour continuer.', mode: 'none' },
+        {
+          error:
+            "La periode d'essai gratuit de 2 minutes a pris fin il y a quelques jours. Achetez l'offre Live Pro pour continuer.",
+          mode: 'none',
+        },
         { status: 403 },
       )
     }
