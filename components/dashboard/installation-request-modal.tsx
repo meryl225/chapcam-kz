@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import { X, Download, Loader2, Check, MapPin, Phone } from 'lucide-react'
+import { isInAppBrowser } from '@/lib/in-app-browser'
+import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 
 const APPS = [
   'WhatsApp',
@@ -28,6 +30,7 @@ export function InstallationRequestModal({ open, onClose }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
   const [paying, setPaying] = useState(false)
+  const [inAppUrl, setInAppUrl] = useState<string | null>(null)
 
   const INSTALL_FEE = 8500
 
@@ -46,6 +49,10 @@ export function InstallationRequestModal({ open, onClose }: Props) {
         return
       }
       // Redirection directe vers PayDunya : credit automatique au retour.
+      if (isInAppBrowser()) {
+        setInAppUrl(data.invoice_url)
+        return
+      }
       window.location.href = data.invoice_url
     } catch {
       setError('Erreur reseau. Reessayez.')
@@ -109,7 +116,9 @@ export function InstallationRequestModal({ open, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+    <>
+      {inAppUrl && <InAppBrowserNotice url={inAppUrl} onClose={() => setInAppUrl(null)} />}
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="relative w-full max-w-lg rounded-2xl border border-[#2563eb]/30 bg-card p-6 shadow-[0_0_40px_rgba(37,99,235,0.25)]">
         <button
           onClick={handleClose}
@@ -285,5 +294,6 @@ export function InstallationRequestModal({ open, onClose }: Props) {
         )}
       </div>
     </div>
+    </>
   )
 }

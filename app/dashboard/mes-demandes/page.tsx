@@ -11,6 +11,8 @@ import {
   MapPin,
   CreditCard,
 } from 'lucide-react'
+import { isInAppBrowser } from '@/lib/in-app-browser'
+import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 
 interface InstallRequest {
   id: string
@@ -38,6 +40,7 @@ export default function MesDemandesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [paying, setPaying] = useState<string | null>(null)
+  const [inAppUrl, setInAppUrl] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -73,6 +76,10 @@ export default function MesDemandesPage() {
         setError(data.error || 'Erreur lors du lancement du paiement.')
         return
       }
+      if (isInAppBrowser()) {
+        setInAppUrl(data.invoice_url)
+        return
+      }
       window.location.href = data.invoice_url
     } catch {
       setError('Erreur reseau. Reessayez.')
@@ -83,6 +90,7 @@ export default function MesDemandesPage() {
 
   return (
     <div className="p-6">
+      {inAppUrl && <InAppBrowserNotice url={inAppUrl} onClose={() => setInAppUrl(null)} />}
       <div className="mb-6 flex items-center gap-3">
         <Link
           href="/dashboard"
