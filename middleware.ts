@@ -138,6 +138,12 @@ export async function middleware(request: NextRequest) {
     pathname === '/api/payment/callback' ||
     pathname.startsWith('/api/cron')
 
+  // App desktop native (ChapCam PC en Python) : ces routes sont appelees
+  // directement par le logiciel, sans navigateur ni session. Leur User-Agent
+  // (ex: "python-requests/2.x") declencherait l'anti-scraping ci-dessous, ce
+  // qui renvoyait un 403. On les autorise donc publiquement, sans token.
+  const isDesktopApi = pathname.startsWith('/api/desktop/')
+
   // 1. Block suspicious patterns (anti-scraping)
   for (const pattern of BLOCKED_PATTERNS) {
     if (pattern.test(pathname)) {
@@ -151,14 +157,14 @@ export async function middleware(request: NextRequest) {
     const isEmptyUA = !userAgent || userAgent.length < 10
     
     // Allow empty UA only for webhooks
-    if ((isSuspicious || isEmptyUA) && !isServerWebhook) {
+    if ((isSuspicious || isEmptyUA) && !isServerWebhook && !isDesktopApi) {
       console.log(`[Security] Blocked suspicious request: ${ip} - ${userAgent}`)
       return new NextResponse('Forbidden', { status: 403 })
     }
   }
   
-  // 3. Rate limiting for API routes (les webhooks serveur sont exemptes)
-  if (pathname.startsWith('/api/') && !isServerWebhook) {
+  // 3. Rate limiting for API routes (les webhooks serveur et l'app desktop sont exemptes)
+  if (pathname.startsWith('/api/') && !isServerWebhook && !isDesktopApi) {
     const { allowed, remaining } = checkRateLimit(ip, pathname)
     
     if (!allowed) {
