@@ -38,12 +38,10 @@ export const PC_OFFER: PcOffer = {
   ],
 }
 
-// Lien de telechargement du logiciel ChapCam PC.
-// Repli par defaut : le fichier Google Drive fourni. Peut etre surcharge a tout
-// moment via la variable d'environnement DESKTOP_DOWNLOAD_URL (ex: quand on
-// migrera vers un hebergement direct type Cloudflare R2).
+// Lien de telechargement du logiciel ChapCam PC (Windows).
+// Surchageable via la variable d'environnement DESKTOP_DOWNLOAD_URL.
 export const DEFAULT_DESKTOP_DOWNLOAD_URL =
-  'https://drive.google.com/file/d/1h-9d5vmschn60e-y6AujN_b71iOpH_nN/view?usp=sharing'
+  'https://drive.google.com/file/d/1kzFOUM6TseywncgcNcyG0x9d5yJJ1DSj/view?usp=drive_link'
 
 export function getDesktopDownloadUrl(): string {
   return (
@@ -54,10 +52,9 @@ export function getDesktopDownloadUrl(): string {
 }
 
 // Lien de telechargement de la version MacBook de ChapCam PC.
-// Repli par defaut : le fichier Google Drive fourni. Surcharge possible via la
-// variable d'environnement DESKTOP_DOWNLOAD_URL_MAC.
-export const DEFAULT_DESKTOP_DOWNLOAD_URL_MAC =
-  'https://drive.google.com/file/d/1ot7viPdKWZrrOQkCFoTPYUqHaNwl2wkm/view?usp=drive_link'
+// Heberge sur Bunny.net. Defini via la variable d'environnement
+// DESKTOP_DOWNLOAD_URL_MAC (ex: https://chapcam.b-cdn.net/chapcam-pc-mac.dmg).
+export const DEFAULT_DESKTOP_DOWNLOAD_URL_MAC = ''
 
 export function getDesktopDownloadUrlMac(): string {
   return (

@@ -16,6 +16,10 @@ export function DesktopDownloadSection({
   const [verified, setVerified] = useState(false)
 
   const openDownload = (url: string = downloadUrl) => {
+    if (!url) {
+      setError('Le lien de telechargement est momentanement indisponible. Reessaie plus tard ou contacte le support sur chapcam.com.')
+      return
+    }
     window.open(url, '_blank', 'noopener,noreferrer')
   }
 
