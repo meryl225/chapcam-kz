@@ -103,7 +103,7 @@ export function LiveAccessBanner({
     )
   }
 
-  // Plus aucun acces : doit acheter
+  // Plus aucun acces : la periode d'essai gratuit est terminee, il faut acheter.
   return (
     <div className="flex flex-col items-start justify-between gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 sm:flex-row sm:items-center">
       <div className="flex items-center gap-3">
@@ -111,9 +111,10 @@ export function LiveAccessBanner({
           <Lock className="h-5 w-5 text-red-400" />
         </span>
         <div>
-          <p className="text-sm font-semibold text-foreground">Acces epuise</p>
+          <p className="text-sm font-semibold text-foreground">Periode d&apos;essai terminee</p>
           <p className="text-xs text-muted-foreground">
-            Ton essai gratuit est termine. Achete {offerName} pour continuer.
+            La periode d&apos;essai gratuit de 2 minutes a pris fin il y a quelques jours.
+            Achete {offerName} pour continuer a utiliser le Live Pro.
           </p>
         </div>
       </div>

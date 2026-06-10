@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   Copy,
   Check,
+  Send,
+  Mail,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -43,6 +45,9 @@ export default function AdminLicensesPage() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [resending, setResending] = useState(false)
+  const [sendEmail, setSendEmail] = useState('')
+  const [sendingOne, setSendingOne] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -73,6 +78,17 @@ export default function AdminLicensesPage() {
   }
 
   const act = async (id: string, action: 'revoke' | 'reactivate' | 'reset') => {
+    // Confirmation pour les actions sensibles (transfert de PC / revocation).
+    if (action === 'reset' && !window.confirm(
+      'Detacher cette licence de son PC actuel ?\nLe client pourra ensuite l\'activer sur un nouvel ordinateur.',
+    )) {
+      return
+    }
+    if (action === 'revoke' && !window.confirm(
+      'Revoquer cette licence ? Le logiciel cessera de fonctionner pour ce client.',
+    )) {
+      return
+    }
     setBusyId(id)
     try {
       const res = await fetch('/api/admin/licenses', {
@@ -91,6 +107,57 @@ export default function AdminLicensesPage() {
       showToast('err', 'Erreur de connexion.')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  const resendDownload = async () => {
+    const count = stats?.active ?? licenses.filter((l) => l.status === 'active').length
+    if (
+      !window.confirm(
+        `Renvoyer la cle de licence + le nouveau lien de telechargement a ${count} client(s) avec licence active ?`,
+      )
+    ) {
+      return
+    }
+    setResending(true)
+    try {
+      const res = await fetch('/api/admin/licenses/resend-download', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        showToast('ok', data.message || 'Emails envoyes.')
+      } else {
+        showToast('err', data.error || "Erreur lors de l'envoi.")
+      }
+    } catch {
+      showToast('err', 'Erreur de connexion.')
+    } finally {
+      setResending(false)
+    }
+  }
+
+  const sendOne = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const email = sendEmail.trim()
+    if (!email) return
+    setSendingOne(true)
+    try {
+      const res = await fetch('/api/admin/licenses/send-one', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        showToast('ok', data.message || 'Email envoye.')
+        setSendEmail('')
+        await load()
+      } else {
+        showToast('err', data.error || "Erreur lors de l'envoi.")
+      }
+    } catch {
+      showToast('err', 'Erreur de connexion.')
+    } finally {
+      setSendingOne(false)
     }
   }
 
@@ -138,14 +205,25 @@ export default function AdminLicensesPage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:border-[#00ff88] disabled:opacity-60"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Actualiser
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={resendDownload}
+              disabled={resending || loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#00ff88] px-4 py-2.5 text-sm font-semibold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
+              title="Renvoie a chaque client actif sa cle + le nouveau lien de telechargement"
+            >
+              {resending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {resending ? 'Envoi en cours...' : 'Renvoyer le lien a tous'}
+            </button>
+            <button
+              onClick={load}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-[#111] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:border-[#00ff88] disabled:opacity-60"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Actualiser
+            </button>
+          </div>
         </div>
 
         {stats && (
@@ -156,6 +234,41 @@ export default function AdminLicensesPage() {
             <StatCard icon={<Ban className="h-5 w-5" />} label="Revoquees" value={stats.revoked} />
           </div>
         )}
+
+        <form
+          onSubmit={sendOne}
+          className="mb-4 rounded-2xl border border-[#00d4ff]/30 bg-[#0a1722] p-4"
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <Mail className="h-4 w-4 text-[#00d4ff]" />
+            <h2 className="text-sm font-semibold text-white">
+              Envoi manuel - email ChapCam PC (cle + liens Windows et MacBook)
+            </h2>
+          </div>
+          <p className="mb-3 text-xs text-gray-400">
+            Envoie a un client l&apos;email officiel ChapCam PC (50 000 FCFA) avec sa cle de licence
+            et les liens de telechargement Windows ET MacBook. Si une licence active existe deja
+            pour cet email, elle est reutilisee ; sinon une nouvelle cle est generee.
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="email"
+              required
+              value={sendEmail}
+              onChange={(e) => setSendEmail(e.target.value)}
+              placeholder="client@exemple.com"
+              className="flex-1 rounded-xl border border-gray-700 bg-[#0a0a0a] px-4 py-3 text-white outline-none transition-colors focus:border-[#00d4ff]"
+            />
+            <button
+              type="submit"
+              disabled={sendingOne}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#00d4ff] px-5 py-3 text-sm font-semibold text-black transition-colors hover:bg-[#00bfe6] disabled:opacity-60"
+            >
+              {sendingOne ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {sendingOne ? 'Envoi...' : 'Envoyer l\'email'}
+            </button>
+          </div>
+        </form>
 
         <div className="mb-4 relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />

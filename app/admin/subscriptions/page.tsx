@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { UserPlus, Loader2, ArrowLeft, Check } from 'lucide-react'
+import { UserPlus, Loader2, ArrowLeft, Check, UserMinus, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { PLANS } from '@/lib/plans'
 import { LIVE_OFFERS } from '@/lib/live-offers'
@@ -13,6 +13,8 @@ export default function AdminSubscriptionsPage() {
   const [expiresAt, setExpiresAt] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
+  const [removeEmail, setRemoveEmail] = useState('')
+  const [removing, setRemoving] = useState(false)
 
   const selectedPlan = PLANS.find((p) => p.id === plan)
   const selectedLiveOffer = LIVE_OFFERS.find((o) => o.id === plan)
@@ -45,6 +47,33 @@ export default function AdminSubscriptionsPage() {
       setToast({ type: 'err', msg: 'Erreur de connexion' })
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleRemove = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const email = removeEmail.trim()
+    if (!email) return
+    if (!confirm(`Retirer l'abonnement de ${email} ? L'acces sera coupe immediatement.`)) return
+    setRemoving(true)
+    setToast(null)
+    try {
+      const res = await fetch('/api/admin/subscriptions', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setToast({ type: 'ok', msg: data.message || 'Abonnement retire' })
+        setRemoveEmail('')
+      } else {
+        setToast({ type: 'err', msg: data.error || 'Erreur' })
+      }
+    } catch {
+      setToast({ type: 'err', msg: 'Erreur de connexion' })
+    } finally {
+      setRemoving(false)
     }
   }
 
@@ -194,6 +223,56 @@ export default function AdminSubscriptionsPage() {
             )}
           </button>
         </form>
+
+        <div className="mt-8 rounded-2xl border border-red-500/30 bg-[#160a0a] p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-500/15">
+              <UserMinus className="h-6 w-6 text-red-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Retirer un abonnement</h2>
+              <p className="text-sm text-gray-400">
+                Coupe immediatement l&apos;acces Premium d&apos;un utilisateur via son email.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleRemove} className="flex flex-col gap-4">
+            <div>
+              <label className={labelClass}>Email de l&apos;utilisateur</label>
+              <input
+                type="email"
+                required
+                value={removeEmail}
+                onChange={(e) => setRemoveEmail(e.target.value)}
+                className="w-full rounded-xl border border-gray-700 bg-[#0a0a0a] px-4 py-3 text-white outline-none transition-colors focus:border-red-500"
+                placeholder="utilisateur@exemple.com"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                L&apos;abonnement est marque comme annule, les points sont remis a zero et
+                l&apos;acces expire immediatement.
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={removing}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-red-500 py-4 font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+            >
+              {removing ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Suppression...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-5 w-5" />
+                  Retirer l&apos;abonnement
+                </>
+              )}
+            </button>
+          </form>
+        </div>
       </div>
 
       {toast && (

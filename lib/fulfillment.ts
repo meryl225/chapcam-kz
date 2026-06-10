@@ -12,7 +12,7 @@ import { ADMIN_EMAIL } from '@/lib/admin-auth'
 import { getPlan, type PlanConfig } from '@/lib/plans'
 import { getLiveOffer, type LiveOffer } from '@/lib/live-offers'
 import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
-import { getPcOffer, getDesktopDownloadUrl, type PcOffer } from '@/lib/pc-offer'
+import { getPcOffer, getDesktopDownloadUrl, getDesktopDownloadUrlMac, type PcOffer } from '@/lib/pc-offer'
 import { createPcLicense } from '@/lib/pc-license'
 import { grantLiveWindow } from '@/lib/live-access'
 import {
@@ -191,6 +191,7 @@ export async function creditPurchase(
       created.key,
       getDesktopDownloadUrl(),
       pcOffer.price,
+      getDesktopDownloadUrlMac(),
     ).catch((e) => console.error('[fulfillment] Email licence PC echoue:', e))
     return {
       ok: true,
@@ -353,21 +354,28 @@ async function fulfillConfirmedInvoice(params: {
 
   if (status !== 'completed') {
     const mapped = status === 'cancelled' ? 'cancelled' : 'pending'
-    await logPaymentEvent(admin, {
-      source,
-      token,
-      transactionId,
-      email: reqRow?.email || customData?.email || customData?.user_email || null,
-      productId: reqRow?.plan || customData?.product_id || customData?.plan || null,
-      amount: totalAmount,
-      status: mapped,
-      credited: false,
-      failureReason:
-        mapped === 'cancelled'
-          ? 'Paiement annule ou abandonne cote PayDunya'
-          : 'Paiement non complete (statut en attente)',
-      raw: customData,
-    })
+    // Anti-spam du journal : le cron de reconciliation re-verifie les memes
+    // factures abandonnees toutes les 5 min. On NE journalise PAS ses verifications
+    // non-completees (pending/cancelled), sinon la table payment_logs explose
+    // (des dizaines de milliers de lignes de bruit). Les sources temps reel
+    // (callback / status), elles, sont tracees car utiles au diagnostic.
+    if (source !== 'reconcile') {
+      await logPaymentEvent(admin, {
+        source,
+        token,
+        transactionId,
+        email: reqRow?.email || customData?.email || customData?.user_email || null,
+        productId: reqRow?.plan || customData?.product_id || customData?.plan || null,
+        amount: totalAmount,
+        status: mapped,
+        credited: false,
+        failureReason:
+          mapped === 'cancelled'
+            ? 'Paiement annule ou abandonne cote PayDunya'
+            : 'Paiement non complete (statut en attente)',
+        raw: customData,
+      })
+    }
     return { status: mapped, alreadyDone: false }
   }
 

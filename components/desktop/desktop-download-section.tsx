@@ -1,16 +1,26 @@
 'use client'
 
 import { useState } from 'react'
-import { Download, KeyRound, Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { Download, KeyRound, Loader2, CheckCircle2, AlertCircle, Apple, Monitor } from 'lucide-react'
 
-export function DesktopDownloadSection({ downloadUrl }: { downloadUrl: string }) {
+export function DesktopDownloadSection({
+  downloadUrl,
+  macDownloadUrl,
+}: {
+  downloadUrl: string
+  macDownloadUrl?: string
+}) {
   const [licenseKey, setLicenseKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [verified, setVerified] = useState(false)
 
-  const openDownload = () => {
-    window.open(downloadUrl, '_blank', 'noopener,noreferrer')
+  const openDownload = (url: string = downloadUrl) => {
+    if (!url) {
+      setError('Le lien de telechargement est momentanement indisponible. Reessaie plus tard ou contacte le support sur chapcam.com.')
+      return
+    }
+    window.open(url, '_blank', 'noopener,noreferrer')
   }
 
   const verifyAndDownload = async () => {
@@ -29,7 +39,8 @@ export function DesktopDownloadSection({ downloadUrl }: { downloadUrl: string })
       const data = await res.json()
       if (res.ok && data.valid) {
         setVerified(true)
-        openDownload()
+        // Si une seule plateforme est disponible, on lance directement.
+        if (!macDownloadUrl) openDownload()
       } else {
         setError(data.message || 'Cle de licence invalide.')
       }
@@ -92,17 +103,34 @@ export function DesktopDownloadSection({ downloadUrl }: { downloadUrl: string })
         </p>
       )}
       {verified && !error && (
-        <p className="mt-3 flex items-center gap-1.5 text-xs text-primary">
-          <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-          Licence valide — le telechargement a demarre.{' '}
-          <button onClick={openDownload} className="underline underline-offset-2">
-            Relancer
-          </button>
-        </p>
+        <div className="mt-4">
+          <p className="mb-3 flex items-center gap-1.5 text-xs text-primary">
+            <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+            Licence valide — choisis ta version.
+          </p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <button
+              onClick={() => openDownload(downloadUrl)}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-black transition-colors hover:bg-primary/90"
+            >
+              <Monitor className="h-4 w-4" />
+              Telecharger pour Windows
+            </button>
+            {macDownloadUrl && (
+              <button
+                onClick={() => openDownload(macDownloadUrl)}
+                className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-hairline bg-background px-5 py-3 font-bold text-foreground transition-colors hover:bg-card"
+              >
+                <Apple className="h-4 w-4" />
+                Telecharger pour MacBook
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       <p className="mt-4 text-xs text-text-faint text-pretty">
-        Logiciel Windows. Compatible GPU NVIDIA. Cle activable sur 1 PC.
+        Compatible Windows et MacBook. Cle activable sur 1 ordinateur.
       </p>
     </section>
   )

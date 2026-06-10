@@ -93,27 +93,17 @@ function PaymentSuccessContent() {
             <h1 className="mb-2 text-2xl font-bold text-foreground">Paiement confirme</h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
               {kind === 'live'
-                ? 'Votre acces Live Pro a ete credite. Lancez votre session quand vous voulez.'
+                ? 'Votre acces a ete credite. Rendez-vous sur votre tableau de bord.'
                 : 'Vos points ont ete credites sur votre compte. Vous pouvez commencer a creer.'}
             </p>
             <div className="mt-6 flex flex-col gap-3">
-              {kind === 'live' ? (
-                <Link
-                  href="/live"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-black transition-colors hover:bg-primary/90"
-                >
-                  <Video className="h-4 w-4" />
-                  Demarrer le Live Pro
-                </Link>
-              ) : (
-                <Link
-                  href="/dashboard"
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-black transition-colors hover:bg-primary/90"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Aller au tableau de bord
-                </Link>
-              )}
+              <Link
+                href="/dashboard"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 font-semibold text-black transition-colors hover:bg-primary/90"
+              >
+                <Sparkles className="h-4 w-4" />
+                Aller au tableau de bord
+              </Link>
             </div>
           </>
         )}

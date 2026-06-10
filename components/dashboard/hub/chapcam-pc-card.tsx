@@ -3,10 +3,13 @@
 import { useState } from 'react'
 import { Check, Download, Loader2, Lock } from 'lucide-react'
 import { PC_OFFER } from '@/lib/pc-offer'
+import { isInAppBrowser } from '@/lib/in-app-browser'
+import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 
 export function ChapCamPcCard() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [inAppUrl, setInAppUrl] = useState<string | null>(null)
 
   const buy = async () => {
     setError(null)
@@ -19,6 +22,10 @@ export function ChapCamPcCard() {
       })
       const data = await res.json().catch(() => null)
       if (res.ok && data?.success && data?.invoice_url) {
+        if (isInAppBrowser()) {
+          setInAppUrl(data.invoice_url)
+          return
+        }
         window.location.href = data.invoice_url
         return
       }
@@ -32,6 +39,7 @@ export function ChapCamPcCard() {
 
   return (
     <div className="rounded-2xl border border-hairline bg-card p-5">
+      {inAppUrl && <InAppBrowserNotice url={inAppUrl} onClose={() => setInAppUrl(null)} />}
       {/* Bouton principal : telecharger = lancer le paiement */}
       <button
         onClick={buy}

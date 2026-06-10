@@ -1,10 +1,11 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowLeft, Eye, Cpu, Wifi, Infinity as InfinityIcon, ShieldCheck, Download, CreditCard, Mail } from 'lucide-react'
+import { ArrowLeft, Eye, Cpu, Wifi, Infinity as InfinityIcon, ShieldCheck, Download, CreditCard, Mail, MonitorCog, Info } from 'lucide-react'
 import { ChapCamPcCard } from '@/components/dashboard/hub/chapcam-pc-card'
+import { ChapCamPcCountdown } from '@/components/chapcam-pc-countdown'
 import { DesktopDownloadSection } from '@/components/desktop/desktop-download-section'
-import { getDesktopDownloadUrl } from '@/lib/pc-offer'
+import { getDesktopDownloadUrl, getDesktopDownloadUrlMac, PC_OFFER } from '@/lib/pc-offer'
 
 export const metadata: Metadata = {
   title: 'ChapCam PC — Logiciel Premium à vie',
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 }
 
 const HIGHLIGHTS = [
-  { icon: Cpu, title: 'GPU local', desc: 'Tourne sur ta carte graphique, aucune latence cloud.' },
+  { icon: Cpu, title: 'GPU dedie requis', desc: 'PC avec carte graphique dediee (PC Gamer). Tourne sur ta carte, sans latence cloud.' },
   { icon: Wifi, title: 'Sans internet', desc: 'Fonctionne hors ligne apres installation.' },
   { icon: InfinityIcon, title: 'Licence a vie', desc: 'Un seul paiement, aucune mensualite.' },
   { icon: ShieldCheck, title: 'Camera virtuelle', desc: 'Compatible Zoom, Discord, WhatsApp, TikTok.' },
@@ -27,6 +28,7 @@ const STEPS = [
 
 export default function ChapCamPcPage() {
   const downloadUrl = getDesktopDownloadUrl()
+  const macDownloadUrl = getDesktopDownloadUrlMac()
 
   return (
     <div className="min-h-screen bg-background">
@@ -70,10 +72,45 @@ export default function ChapCamPcPage() {
               Pas d&apos;abonnement, pas de cloud, pas de limites. Tu paies une seule fois.
             </p>
 
-            <div className="mt-7 flex flex-wrap items-end gap-x-3 gap-y-1">
-              <span className="text-5xl font-black text-primary">50 000</span>
-              <span className="pb-1.5 text-lg text-muted-foreground">FCFA</span>
-              <span className="pb-1.5 text-sm text-text-faint">· une seule fois</span>
+            <div className="mt-7">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="text-xl text-text-faint line-through">
+                  {PC_OFFER.originalPrice.toLocaleString('fr-FR')} FCFA
+                </span>
+                <span className="rounded-full bg-red-500 px-2.5 py-0.5 text-xs font-bold text-white">
+                  -{PC_OFFER.discountPercent}%
+                </span>
+              </div>
+              <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+                <span className="text-5xl font-black text-primary">
+                  {PC_OFFER.price.toLocaleString('fr-FR')}
+                </span>
+                <span className="pb-1.5 text-lg text-muted-foreground">FCFA</span>
+                <span className="pb-1.5 text-sm text-text-faint">· une seule fois</span>
+              </div>
+            </div>
+
+            <div className="mt-5 max-w-md">
+              <ChapCamPcCountdown />
+            </div>
+
+            <div className="mt-5 flex max-w-md items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
+              <MonitorCog className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
+              <p className="text-sm leading-relaxed text-amber-200/90 text-pretty">
+                <span className="font-bold text-amber-300">Config requise :</span>{' '}
+                {PC_OFFER.requirement}
+              </p>
+            </div>
+
+            <div className="mt-3 flex max-w-md items-start gap-3 rounded-xl border border-hairline bg-card p-4">
+              <Info className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
+                <span className="font-bold text-foreground">Qualite du rendu :</span>{' '}
+                les performances du logiciel dependent de l&apos;etat de votre appareil
+                (puissance du processeur, carte graphique, memoire), de votre connexion
+                internet, de la qualite de l&apos;avatar choisi et de la lumiere de votre
+                environnement. Plus ces elements sont bons, plus le swap est realiste et fluide.
+              </p>
             </div>
 
             <div className="mt-6 max-w-md">
@@ -139,9 +176,14 @@ export default function ChapCamPcPage() {
       </section>
 
       {/* DEJA CLIENT */}
-      <section className="mx-auto mt-16 max-w-6xl px-4 pb-20 md:px-6">
-        <DesktopDownloadSection downloadUrl={downloadUrl} />
+      <section className="mx-auto mt-16 max-w-6xl px-4 md:px-6">
+        <DesktopDownloadSection downloadUrl={downloadUrl} macDownloadUrl={macDownloadUrl} />
       </section>
+
+      {/* MENTION LEGALE */}
+      <p className="mx-auto max-w-6xl px-4 pb-12 pt-8 text-center text-[11px] leading-relaxed text-text-faint md:px-6">
+        Paiement unique. Aucun remboursement apres l&apos;achat.
+      </p>
     </div>
   )
 }

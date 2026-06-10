@@ -18,6 +18,7 @@ import {
   Receipt,
   AlertTriangle,
   RotateCcw,
+  Megaphone,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -102,6 +103,7 @@ export default function AdminPaymentsPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
+  const [installFilter, setInstallFilter] = useState<'all' | 'paid' | 'pending'>('all')
   const [error, setError] = useState<string | null>(null)
   const [recrediting, setRecrediting] = useState<string | null>(null)
 
@@ -163,15 +165,20 @@ export default function AdminPaymentsPage() {
 
   const filteredInstalls = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return installations
-    return installations.filter(
-      (i) =>
+    return installations.filter((i) => {
+      if (installFilter === 'paid' && !i.paid) return false
+      if (installFilter === 'pending' && i.paid) return false
+      if (!q) return true
+      return (
         i.email?.toLowerCase().includes(q) ||
         i.fullName?.toLowerCase().includes(q) ||
         i.phone?.toLowerCase().includes(q) ||
-        i.location?.toLowerCase().includes(q),
-    )
-  }, [installations, search])
+        i.location?.toLowerCase().includes(q)
+      )
+    })
+  }, [installations, search, installFilter])
+
+  const paidInstallsCount = useMemo(() => installations.filter((i) => i.paid).length, [installations])
 
   const filteredLogs = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -200,6 +207,13 @@ export default function AdminPaymentsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/admin/campaign"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#00d4ff]/40 bg-[#0d2030] px-4 py-2.5 text-sm font-medium text-[#00d4ff] transition-colors hover:border-[#00d4ff] hover:text-white"
+            >
+              <Megaphone className="h-4 w-4" />
+              Campagnes email
+            </Link>
             <Link
               href="/admin/subscriptions"
               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-[#111] px-4 py-2.5 text-sm font-medium text-gray-300 transition-colors hover:border-[#00ff88] hover:text-white"
@@ -247,6 +261,21 @@ export default function AdminPaymentsPage() {
             <StatCard icon={Receipt} label="Recus aujourd'hui" value={stats.paydunyaToday.toString()} color="text-white" />
             <StatCard icon={CheckCircle2} label="Credites aujourd'hui" value={stats.paydunyaCreditedToday.toString()} color="text-[#00ff88]" />
             <StatCard icon={AlertTriangle} label="Echecs de credit" value={stats.paydunyaFailed.toString()} color="text-red-400" />
+          </div>
+        )}
+
+        {/* Sous-filtre Installations : Tous / Payes / En attente */}
+        {tab === 'installations' && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            <SubFilterButton active={installFilter === 'all'} onClick={() => setInstallFilter('all')}>
+              Tous ({installations.length})
+            </SubFilterButton>
+            <SubFilterButton active={installFilter === 'paid'} onClick={() => setInstallFilter('paid')}>
+              Payes ({paidInstallsCount})
+            </SubFilterButton>
+            <SubFilterButton active={installFilter === 'pending'} onClick={() => setInstallFilter('pending')}>
+              En attente ({installations.length - paidInstallsCount})
+            </SubFilterButton>
           </div>
         )}
 
@@ -329,7 +358,15 @@ export default function AdminPaymentsPage() {
           )
         ) : tab === 'installations' ? (
           filteredInstalls.length === 0 ? (
-          <EmptyState text="Aucune demande d'installation." />
+          <EmptyState
+            text={
+              installFilter === 'paid'
+                ? 'Aucune installation payee.'
+                : installFilter === 'pending'
+                  ? 'Aucune demande en attente.'
+                  : "Aucune demande d'installation."
+            }
+          />
         ) : (
           <div className="space-y-3">
             {filteredInstalls.map((i) => (
@@ -455,6 +492,21 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 
 function EmptyState({ text }: { text: string }) {
   return <div className="rounded-2xl border border-white/10 bg-[#111] py-16 text-center text-gray-500">{text}</div>
+}
+
+function SubFilterButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-lg px-3.5 py-1.5 text-xs font-bold transition-colors ${
+        active
+          ? 'bg-[#00ff88]/15 text-[#00ff88] ring-1 ring-[#00ff88]/40'
+          : 'border border-white/10 bg-[#0d0d0d] text-gray-500 hover:text-white'
+      }`}
+    >
+      {children}
+    </button>
+  )
 }
 
 function StatCard({

@@ -550,13 +550,14 @@ export async function sendInstallationPaidEmail(to: string, userName: string, am
 }
 
 // Email envoye apres l'achat de ChapCam PC : contient la cle de licence a vie
-// + le lien de telechargement du logiciel Windows.
+// + les liens de telechargement du logiciel (Windows et MacBook).
 export async function sendPcLicenseEmail(
   to: string,
   userName: string,
   licenseKey: string,
   downloadUrl: string,
   amount: number,
+  macDownloadUrl?: string,
 ) {
   const client = await getResendClient()
   if (!client) {
@@ -597,14 +598,19 @@ export async function sendPcLicenseEmail(
 
               <!-- Telechargement -->
               <div style="text-align:center;margin:0 0 24px 0;">
-                <a href="${downloadUrl}" style="display:inline-block;background:#00ff88;color:#000;text-decoration:none;padding:16px 36px;border-radius:8px;font-weight:bold;font-size:16px;">Telecharger ChapCam PC</a>
+                <a href="${downloadUrl}" style="display:inline-block;background:#00ff88;color:#000;text-decoration:none;padding:16px 36px;border-radius:8px;font-weight:bold;font-size:16px;">Telecharger pour Windows</a>
+                ${
+                  macDownloadUrl
+                    ? `<div style="margin-top:12px;"><a href="${macDownloadUrl}" style="display:inline-block;background:#1a1a1a;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:bold;font-size:15px;border:1px solid #444;">Telecharger pour MacBook</a></div>`
+                    : ''
+                }
               </div>
 
               <!-- Etapes -->
               <div style="background:#111111;border-radius:12px;padding:20px;margin:0 0 20px 0;border:1px solid #333;">
                 <p style="color:#fff;font-size:14px;font-weight:bold;margin:0 0 12px 0;">Comment installer :</p>
                 <ol style="color:#cccccc;font-size:14px;line-height:1.8;margin:0;padding-left:20px;">
-                  <li>Telecharge et installe ChapCam PC (Windows).</li>
+                  <li>Telecharge et installe ChapCam PC (Windows ou MacBook).</li>
                   <li>Lance le logiciel et colle ta cle de licence.</li>
                   <li>Choisis un visage, active la camera virtuelle et c'est parti !</li>
                 </ol>
