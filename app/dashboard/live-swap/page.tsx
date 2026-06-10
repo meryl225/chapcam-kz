@@ -443,8 +443,9 @@ export default function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         {/* Colonne principale */}
         <div className="space-y-6">
-          {/* Cameras avec cercle IA */}
-          <div className="relative grid gap-6 md:grid-cols-2">
+          {/* Cameras avec cercle IA — la camera ChapCam est volontairement plus grande
+              pour faciliter la capture en fenetre dans OBS */}
+          <div className="relative grid gap-6 md:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
             {/* Camera reelle */}
             <div className="overflow-hidden rounded-2xl border border-hairline bg-card shadow-[0_8px_40px_rgba(0,0,0,0.4)]">
               <div className="flex items-center gap-2 border-b border-hairline bg-muted px-4 py-2.5 backdrop-blur-md">
