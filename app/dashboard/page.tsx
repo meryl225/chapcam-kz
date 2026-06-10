@@ -80,77 +80,95 @@ export default async function DashboardHubPage() {
   const infoCards = [
     { icon: UserCircle, label: 'Avatar actif', value: avatarName, sub: 'Naturel', color: '#00ff88' },
     { icon: Cloud, label: 'Mode', value: 'Cloud', sub: 'Connecté', color: '#22d3ee' },
-    { icon: Sparkles, label: 'Qualité', value: 'Ultra HD', sub: '4K', color: '#8b5cf6' },
+    { icon: Sparkles, label: 'Qualité', value: 'Ultra HD', sub: '4K', color: '#22d3ee' },
     { icon: Gauge, label: 'Latence', value: '120 ms', sub: 'Faible', color: '#2563eb' },
     { icon: Clock, label: 'Crédits restants', value: fmtMinutes(points), sub: PLAN_LABELS[plan] || plan, color: '#f97316' },
   ]
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8">
-      {/* Header */}
-      <header className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground md:text-3xl text-balance">
-            {`Bienvenue ${displayName} `}
-            <span aria-hidden>👋</span>
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">Voici un aperçu de tous les outils ChapCam.</p>
+      {/* Hero header */}
+      <header className="relative mb-6 overflow-hidden rounded-3xl border border-hairline bg-card p-6 md:p-8">
+        {/* subtle brand glow */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full opacity-40 blur-3xl"
+          style={{ background: 'radial-gradient(circle, rgba(0,255,136,0.25), transparent 70%)' }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-24 right-1/3 h-56 w-56 rounded-full opacity-30 blur-3xl"
+          style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.25), transparent 70%)' }}
+        />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-background/60 px-3 py-1 text-xs font-semibold text-muted-foreground backdrop-blur">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              {isPro ? PLAN_LABELS[plan] || plan : 'Compte gratuit'}
+            </span>
+            <h1 className="mt-3 text-2xl font-bold text-foreground md:text-3xl text-balance">
+              {`Bonjour ${displayName}`}
+            </h1>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground text-pretty">
+              Tous tes outils de transformation IA réunis au même endroit. Choisis un outil et lance-toi.
+            </p>
+          </div>
+          <HeaderActions />
         </div>
-        <HeaderActions />
+
+        {/* Quick account chips */}
+        <div className="relative mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {infoCards.map((c) => (
+            <div
+              key={c.label}
+              className="flex items-center gap-3 rounded-2xl border border-hairline bg-background/50 p-3 backdrop-blur transition-colors hover:border-primary/30"
+            >
+              <div
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                style={{ backgroundColor: `${c.color}22` }}
+              >
+                <c.icon className="h-[18px] w-[18px]" style={{ color: c.color }} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] text-text-faint">{c.label}</p>
+                <p className="truncate text-sm font-bold text-foreground">{c.value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
       </header>
 
       {/* Confirmation d'utilisation responsable */}
       <ConsentCard initiallyAccepted={consentAccepted} />
 
-      {/* Info bar */}
-      <section
-        aria-label="Aperçu du compte"
-        className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
-      >
-        {infoCards.map((c) => (
-          <div
-            key={c.label}
-            className="flex items-center gap-3 rounded-2xl border border-hairline bg-card p-4"
-          >
-            <div
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-              style={{ backgroundColor: `${c.color}22` }}
-            >
-              <c.icon className="h-5 w-5" style={{ color: c.color }} />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-text-faint">{c.label}</p>
-              <p className="truncate text-sm font-bold text-foreground">{c.value}</p>
-            </div>
-          </div>
-        ))}
-      </section>
-
       {/* Tools */}
-      <section aria-label="Outils ChapCam">
-        <div className="mb-5">
-          <h2 className="text-xl font-bold text-foreground">Tous les outils ChapCam</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Choisissez l’outil que vous souhaitez utiliser.</p>
+      <section aria-label="Outils ChapCam" className="mt-2">
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-foreground md:text-2xl">Tous les outils ChapCam</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Choisis l’outil que tu souhaites utiliser.</p>
+          </div>
         </div>
         <ToolsGrid />
       </section>
 
       {/* Utilisation rapide */}
-      <section aria-label="Utilisation rapide" className="mt-8">
-        <h2 className="mb-4 text-xl font-bold text-foreground">Utilisation rapide</h2>
+      <section aria-label="Utilisation rapide" className="mt-10">
+        <h2 className="mb-4 text-xl font-bold text-foreground md:text-2xl">Utilisation rapide</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {[
             { icon: Zap, label: 'Swaps aujourd’hui', value: String(swapsToday), color: '#00ff88' },
             { icon: Timer, label: 'Minutes restantes', value: fmtMinutes(points), color: '#f97316' },
-            { icon: Users, label: 'Avatars créés', value: String(avatarCount ?? 0), color: '#8b5cf6' },
-            { icon: Hourglass, label: 'Temps aujourd’hui', value: `${minutesToday} min`, color: '#22d3ee' },
+            { icon: Users, label: 'Avatars créés', value: String(avatarCount ?? 0), color: '#22d3ee' },
+            { icon: Hourglass, label: 'Temps aujourd’hui', value: `${minutesToday} min`, color: '#00ff88' },
           ].map((s) => (
             <div
               key={s.label}
-              className="rounded-2xl border border-hairline bg-card p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30"
+              className="group rounded-2xl border border-hairline bg-card p-4 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_12px_40px_-12px_rgba(0,255,136,0.25)]"
             >
               <div
-                className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg"
+                className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg transition-transform duration-300 group-hover:scale-110"
                 style={{ backgroundColor: `${s.color}22` }}
               >
                 <s.icon className="h-5 w-5" style={{ color: s.color }} />
@@ -164,13 +182,23 @@ export default async function DashboardHubPage() {
 
       {/* Premium banner */}
       {!isPro && (
-        <section className="mt-8 overflow-hidden rounded-2xl border border-hairline bg-gradient-to-r from-primary/15 via-[#0f1a14] to-violet-600/20 p-6 md:p-8">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+        <section className="relative mt-10 overflow-hidden rounded-3xl border border-hairline bg-card p-6 md:p-8">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 rounded-full opacity-40 blur-3xl"
+            style={{ background: 'radial-gradient(circle, rgba(0,255,136,0.22), transparent 70%)' }}
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-24 right-0 h-56 w-56 rounded-full opacity-30 blur-3xl"
+            style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.22), transparent 70%)' }}
+          />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="mb-3 flex items-center gap-2">
                 <Crown className="h-5 w-5 text-primary" />
                 <h3 className="text-lg font-bold text-foreground md:text-xl text-balance">
-                  Passez en Pro et débloquez tout le potentiel de ChapCam
+                  Passe en Pro et débloque tout le potentiel de ChapCam
                 </h3>
               </div>
               <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
@@ -184,7 +212,7 @@ export default async function DashboardHubPage() {
             </div>
             <Link
               href="/dashboard/plans"
-              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-primary px-6 py-3 font-bold text-black transition-colors hover:bg-primary/90"
+              className="inline-flex shrink-0 items-center justify-center rounded-xl bg-primary px-6 py-3 font-bold text-black shadow-[0_0_24px_rgba(0,255,136,0.35)] transition-all hover:bg-primary/90"
             >
               Voir les offres
             </Link>
