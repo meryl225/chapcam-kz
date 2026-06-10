@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { normalizeLicenseKey } from '@/lib/pc-license'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -10,8 +11,13 @@ export const dynamic = 'force-dynamic'
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => null)
-    const license_key = body?.license_key
-    const hardware_id = body?.hardware_id
+    // Normalisation : les cles sont stockees en MAJUSCULES (CHAPCAM-XXXX-...).
+    // Sans ca, une cle tapee en minuscules ou avec des espaces / un espace
+    // colle par copier-coller etait rejetee a tort comme "invalide".
+    const license_key = normalizeLicenseKey(body?.license_key || '')
+    // On nettoie aussi le hardware_id (espaces / sauts de ligne parasites) pour
+    // eviter un faux "deja active sur un autre PC" du au seul formatage.
+    const hardware_id = String(body?.hardware_id || '').trim()
 
     // 1 + 2. Champs manquants.
     if (!license_key || !hardware_id) {
@@ -23,7 +29,7 @@ export async function POST(request: Request) {
 
     const supabase = createAdminClient()
 
-    // 3. Rechercher la licence.
+    // 3. Rechercher la licence (cle deja normalisee).
     const { data, error } = await supabase
       .from('pc_licenses')
       .select('*')
@@ -53,6 +59,7 @@ export async function POST(request: Request) {
           activated_at: new Date().toISOString(),
         })
         .eq('license_key', license_key)
+        .is('hardware_id', null) // garde-fou anti course (double activation)
 
       if (updateError) {
         throw updateError
@@ -61,8 +68,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ valid: true })
     }
 
-    // 7. Licence deja liee a un autre PC.
-    if (data.hardware_id !== hardware_id) {
+    // 7. Licence deja liee a un autre PC (comparaison sur valeur nettoyee).
+    if (String(data.hardware_id).trim() !== hardware_id) {
       return NextResponse.json({
         valid: false,
         message: 'Licence déjà activée sur un autre PC.\nContacte le support sur chapcam.com',

@@ -78,6 +78,17 @@ export default function AdminLicensesPage() {
   }
 
   const act = async (id: string, action: 'revoke' | 'reactivate' | 'reset') => {
+    // Confirmation pour les actions sensibles (transfert de PC / revocation).
+    if (action === 'reset' && !window.confirm(
+      'Detacher cette licence de son PC actuel ?\nLe client pourra ensuite l\'activer sur un nouvel ordinateur.',
+    )) {
+      return
+    }
+    if (action === 'revoke' && !window.confirm(
+      'Revoquer cette licence ? Le logiciel cessera de fonctionner pour ce client.',
+    )) {
+      return
+    }
     setBusyId(id)
     try {
       const res = await fetch('/api/admin/licenses', {
