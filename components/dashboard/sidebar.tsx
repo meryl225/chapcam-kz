@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, Video, CreditCard, Home, Mic, Languages, ImageIcon, Film, HelpCircle, Monitor } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Mic, Languages, ImageIcon, Film, HelpCircle, Monitor } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -48,7 +48,6 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'DASHBOARD' },
   { href: '/dashboard/live-swap', icon: Zap, label: 'LIVE SWAP' },
-  { href: '/live', icon: Video, label: 'LIVE PRO', badge: 'PRO' },
   { href: '/dashboard/voice-changer', icon: Mic, label: 'VOICE CHANGER V1', badge: 'NEW' },
   { href: '/dashboard/voice-translator', icon: Languages, label: 'VOICE TRADUCTEUR', badge: 'NEW' },
   { href: '/dashboard/photo-video', icon: ImageIcon, label: 'PHOTOS EN VIDEO', badge: 'NEW' },
