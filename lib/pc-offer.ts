@@ -39,9 +39,9 @@ export const PC_OFFER: PcOffer = {
 }
 
 // Lien de telechargement du logiciel ChapCam PC (Windows).
-// Heberge sur Bunny.net. Defini via la variable d'environnement
-// DESKTOP_DOWNLOAD_URL (ex: https://chapcam.b-cdn.net/chapcam-pc-windows.exe).
-export const DEFAULT_DESKTOP_DOWNLOAD_URL = ''
+// Surchageable via la variable d'environnement DESKTOP_DOWNLOAD_URL.
+export const DEFAULT_DESKTOP_DOWNLOAD_URL =
+  'https://drive.google.com/file/d/1kzFOUM6TseywncgcNcyG0x9d5yJJ1DSj/view?usp=drive_link'
 
 export function getDesktopDownloadUrl(): string {
   return (
