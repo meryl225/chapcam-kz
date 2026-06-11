@@ -123,9 +123,13 @@ export function useVoiceSwap() {
       if (s && s.phase === 'error') return
 
       // 2. Demarre le moteur audio reel (capture micro -> conversion -> sortie).
+      const outDevice = devices.find(
+        (d) => d.kind === 'audiooutput' && d.deviceId === config.outputDeviceId,
+      )
       const engine = new VoiceSwapEngine({
         inputDeviceId: config.inputDeviceId ?? null,
         outputDeviceId: config.outputDeviceId ?? null,
+        outputIsVirtual: !!outDevice?.isVirtual,
         callbacks: {
           onError: (message) =>
             setState((prev) => ({ ...prev, error: message })),
@@ -142,7 +146,7 @@ export function useVoiceSwap() {
         await api.stop()
       }
     },
-    [],
+    [devices],
   )
 
   const stop = useCallback(async () => {

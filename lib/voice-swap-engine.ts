@@ -90,6 +90,7 @@ export class VoiceSwapEngine {
   private cb: VoiceSwapEngineCallbacks
   private inputDeviceId: string | null
   private outputDeviceId: string | null
+  private outputIsVirtual: boolean
 
   private stream: MediaStream | null = null
   private ctx: AudioContext | null = null
@@ -117,10 +118,12 @@ export class VoiceSwapEngine {
   constructor(opts: {
     inputDeviceId?: string | null
     outputDeviceId?: string | null
+    outputIsVirtual?: boolean
     callbacks?: VoiceSwapEngineCallbacks
   }) {
     this.inputDeviceId = opts.inputDeviceId ?? null
     this.outputDeviceId = opts.outputDeviceId ?? null
+    this.outputIsVirtual = opts.outputIsVirtual ?? false
     this.cb = opts.callbacks ?? {}
   }
 
@@ -320,7 +323,7 @@ export class VoiceSwapEngine {
 
   /** Heuristique : la sortie choisie ressemble-t-elle a VB-Cable ? */
   private isOutputVirtual(): boolean {
-    return false // affine par le hook qui connait le label du peripherique
+    return this.outputIsVirtual
   }
 
   /** Arrete tout, libere micro/contextes/timers. */
