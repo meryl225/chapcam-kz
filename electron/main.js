@@ -3,6 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
 const { getVirtualCamera, setupVirtualCameraIPC } = require('./virtual-camera')
+const { getVoiceSwap, setupVoiceSwapIPC } = require('./voice-swap')
 
 // Resolution/cadence de sortie de la camera virtuelle
 const VCAM = { width: 1280, height: 720, fps: 30 }
@@ -170,6 +171,14 @@ function createWindow() {
 
   // Load the app
   loadApp()
+
+  // Voice Swap : relier la fenetre au service pour les push d'etat (latence,
+  // sante connexion, buffering) vers l'UI web.
+  try {
+    getVoiceSwap().attachWindow(mainWindow)
+  } catch (e) {
+    log(`Voice Swap attach error: ${e.message}`)
+  }
 
   // Show DevTools in development
   if (isDev) {
@@ -585,6 +594,9 @@ app.whenReady().then(() => {
   // Enregistrer les handlers IPC de la camera virtuelle
   setupVirtualCameraIPC()
 
+  // Enregistrer les handlers IPC de Voice Swap (architecture/scaffolding)
+  setupVoiceSwapIPC()
+
   // Show splash screen first
   createSplashScreen()
   
@@ -620,6 +632,11 @@ app.on('before-quit', () => {
   // Couper proprement la camera virtuelle
   try {
     getVirtualCamera().stop()
+  } catch (_) {}
+
+  // Couper proprement la session Voice Swap
+  try {
+    getVoiceSwap().stop()
   } catch (_) {}
 
   if (nextServer) {
