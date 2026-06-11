@@ -238,7 +238,7 @@ export default function VoiceSwapPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-text-faint">
-              Voix cible ElevenLabs
+              Voix cible ChapCam
               <span className="ml-2 font-normal text-text-faint/70">
                 {voices.length} voix disponibles
               </span>

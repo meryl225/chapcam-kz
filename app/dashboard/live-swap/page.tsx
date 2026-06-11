@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2 } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2, AudioLines } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
@@ -314,7 +314,7 @@ export default function DashboardPage() {
   const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND
 
   const quickTools = [
-    { href: '/dashboard/voice-changer', label: 'Voice Changer V1', icon: Mic, color: '#06b6d4' },
+    { href: '/dashboard/voice-swap', label: 'Voice Swap', icon: AudioLines, color: '#8b5cf6' },
     { href: '/dashboard/voice-translator', label: 'Voice Traducteur', icon: Languages, color: '#3b82f6' },
     { href: '/dashboard/photo-video', label: 'Photos → Vidéo', icon: ImageIcon, color: '#f97316' },
     { href: '/dashboard/video-translation', label: 'Traduction Vidéo', icon: Film, color: '#8b5cf6' },
