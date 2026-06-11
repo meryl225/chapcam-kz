@@ -60,11 +60,30 @@ export async function POST(request: NextRequest) {
     const id = String(body.id || '')
     const action = String(body.action || '')
 
+    const admin = createAdminClient()
+
+    // Action de masse : detacher TOUTES les licences de leur PC pour permettre
+    // a chaque client de reactiver sur son ordinateur (debloque les faux
+    // "deja active sur un autre PC"). Ne touche pas aux licences revoquees.
+    if (action === 'reset-all') {
+      const { data, error } = await admin
+        .from('pc_licenses')
+        .update({ hardware_id: null, activated_at: null })
+        .neq('status', 'revoked')
+        .not('hardware_id', 'is', null)
+        .select('id')
+
+      if (error) {
+        console.error('[admin/licenses] reset-all echoue:', error.message)
+        return NextResponse.json({ error: 'Detachement global impossible.' }, { status: 500 })
+      }
+
+      return NextResponse.json({ success: true, detached: data?.length ?? 0 })
+    }
+
     if (!id || !['revoke', 'reactivate', 'reset'].includes(action)) {
       return NextResponse.json({ error: 'Parametres invalides.' }, { status: 400 })
     }
-
-    const admin = createAdminClient()
 
     // 'reset' : detache le PC actuel pour permettre une reactivation ailleurs.
     const patch =

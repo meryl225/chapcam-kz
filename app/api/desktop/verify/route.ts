@@ -68,12 +68,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ valid: true })
     }
 
-    // 7. Licence deja liee a un autre PC (comparaison sur valeur nettoyee).
+    // 7. Licence deja liee a une autre empreinte materielle.
+    //    Politique : re-liaison automatique (1 PC a la fois). On remplace
+    //    l'ancienne empreinte par la nouvelle, ce qui debloque les clients dont
+    //    l'app desktop genere une empreinte instable (mise a jour Windows, GPU,
+    //    reinstallation...). La licence reste donc liee a un seul PC a la fois.
     if (String(data.hardware_id).trim() !== hardware_id) {
-      return NextResponse.json({
-        valid: false,
-        message: 'Licence déjà activée sur un autre PC.\nContacte le support sur chapcam.com',
-      })
+      const previousHardwareId = String(data.hardware_id).trim()
+
+      const { error: rebindError } = await supabase
+        .from('pc_licenses')
+        .update({
+          hardware_id,
+          activated_at: new Date().toISOString(),
+        })
+        .eq('license_key', license_key)
+        // garde-fou : on ne re-lie que si l'empreinte est toujours l'ancienne,
+        // pour eviter une course entre deux PC qui activent en meme temps.
+        .eq('hardware_id', previousHardwareId)
+
+      if (rebindError) {
+        throw rebindError
+      }
+
+      // Journaliser le transfert (best-effort, n'empeche pas l'activation).
+      try {
+        await supabase.from('license_rebinds').insert({
+          license_key,
+          previous_hardware_id: previousHardwareId,
+          new_hardware_id: hardware_id,
+        })
+      } catch {
+        // table de log optionnelle : on ignore si elle n'existe pas
+      }
+
+      return NextResponse.json({ valid: true, rebound: true })
     }
 
     // 8. Tout correspond.
