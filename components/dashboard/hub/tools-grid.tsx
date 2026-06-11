@@ -1,8 +1,7 @@
 import Link from 'next/link'
-import { Zap, Mic, Languages, ImageIcon, Film, Monitor, ArrowRight } from 'lucide-react'
+import { Zap, Languages, ImageIcon, Film, Monitor, ArrowRight } from 'lucide-react'
 import {
   LiveSwapPreview,
-  VoiceChangerPreview,
   VoiceTranslatorPreview,
   PhotoVideoPreview,
   VideoTranslationPreview,
@@ -43,16 +42,6 @@ const tools: Tool[] = [
     accent: '#00ff88',
     gradient: 'linear-gradient(135deg, rgba(0,255,136,0.16), rgba(20,184,166,0.10))',
     Preview: DesktopPCPreview,
-  },
-  {
-    href: '/dashboard/voice-changer',
-    icon: Mic,
-    title: 'Voice Changer',
-    description: 'Change ta voix en direct avec des voix humaines réalistes.',
-    badge: 'NEW',
-    accent: '#22d3ee',
-    gradient: 'linear-gradient(135deg, rgba(34,211,238,0.18), rgba(37,99,235,0.10))',
-    Preview: VoiceChangerPreview,
   },
   {
     href: '/dashboard/voice-translator',
