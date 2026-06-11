@@ -24,6 +24,7 @@ import {
   Copy,
 } from 'lucide-react'
 import { useVoiceSwap } from '@/hooks/use-voice-swap'
+import { VoiceOffersSection } from '@/components/voice-swap/voice-offers-section'
 import {
   DEFAULT_AUDIO_FORMAT,
   DEFAULT_CHUNKING,
@@ -470,6 +471,9 @@ export default function VoiceSwapPage() {
             : 'Streaming temps reel vers le micro virtuel'}
         </span>
       </button>
+
+      {/* Offres ChapVoice : recharge des minutes via PayDunya */}
+      <VoiceOffersSection />
 
       {/* Details techniques (architecture) */}
       <section className="rounded-2xl border border-hairline bg-card">
