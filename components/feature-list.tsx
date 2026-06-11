@@ -1,28 +1,28 @@
-import { Sparkles, Wand2, Camera, Lock } from "lucide-react"
+import { Sparkles, Radio, Camera, Lock } from "lucide-react"
 
 const features = [
   {
     icon: Sparkles,
-    title: "FaceSwap IA",
-    description: "en temps reel",
+    title: "Avatar IA",
+    description: "ton perso en live",
     color: "from-[#00d4ff] to-[#8b5cf6]",
   },
   {
-    icon: Wand2,
-    title: "Transformation",
-    description: "instantanee",
+    icon: Radio,
+    title: "Stream & gaming",
+    description: "OBS, Twitch, Discord",
     color: "from-[#8b5cf6] to-[#e91e8c]",
   },
   {
     icon: Camera,
-    title: "Haute qualite",
+    title: "Qualite contenu",
     description: "1080p / 4K",
     color: "from-[#e91e8c] to-[#00d4ff]",
   },
   {
     icon: Lock,
-    title: "Securise & prive",
-    description: "Aucune donnee stockee",
+    title: "Reste anonyme",
+    description: "ton vrai visage cache",
     color: "from-[#8b5cf6] to-[#00d4ff]",
   },
 ]

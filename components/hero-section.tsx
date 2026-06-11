@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Zap, Shield, Monitor, MessageCircle } from "lucide-react"
+import { ArrowRight, Zap, Shield, Monitor, MessageCircle, Gamepad2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FeatureList } from "@/components/feature-list"
 import { PhoneMockup } from "@/components/phone-mockup"
@@ -56,7 +56,7 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 0.2 }}
           className="flex flex-col gap-6 relative z-10"
         >
-          {/* AI Live Badge - Neon Green */}
+          {/* Badge createurs & gamers */}
           <motion.div 
             animate={{ 
               scale: [1, 1.02, 1],
@@ -74,7 +74,7 @@ export function HeroSection() {
               transition={{ duration: 1, repeat: Infinity }}
               className="w-2.5 h-2.5 rounded-full bg-white" 
             />
-            <span className="text-white font-bold text-sm tracking-wide">AI LIVE</span>
+            <span className="text-white font-bold text-sm tracking-wide">CREATEURS &amp; GAMERS</span>
           </motion.div>
 
           <FeatureList />
@@ -97,6 +97,11 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 0.6 }}
           className="flex flex-col gap-6 relative z-10"
         >
+          <span className="inline-flex w-fit items-center gap-2 text-sm font-semibold uppercase tracking-widest text-[#00d4ff]">
+            <Gamepad2 className="w-4 h-4" />
+            La cam des createurs &amp; streamers
+          </span>
+
           <h1 className="text-4xl lg:text-5xl font-black text-white leading-tight text-balance">
             CHANGE DE VISAGE ET TON CORPS ENTIER{" "}
             <motion.span 
@@ -112,8 +117,23 @@ export function HeroSection() {
           </h1>
           
           <p className="text-gray-400 text-lg leading-relaxed">
-            Transforme instantanement ton apparence pendant tes streams, appels WhatsApp, Telegram, Zoom, Teams et autres plateformes video.
+            Cree du contenu sans montrer ton vrai visage : streams gaming, videos TikTok &amp; YouTube, lives et appels. ChapCam transforme ton apparence en direct, sur toutes tes plateformes.
           </p>
+
+          {/* Plateformes compatibles - createurs & gamers */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              Compatible :
+            </span>
+            {["Twitch", "YouTube", "TikTok", "OBS", "Discord", "Zoom"].map((platform) => (
+              <span
+                key={platform}
+                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-gray-300 backdrop-blur-sm"
+              >
+                {platform}
+              </span>
+            ))}
+          </div>
 
           {/* Premium CTA Button - Blue Violet */}
           <Link href="/auth/sign-up">
