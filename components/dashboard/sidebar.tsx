@@ -324,10 +324,18 @@ interface PlanGuardBannerProps {
   expiresAt: string | null
   isActive: boolean
   pointsRemaining?: number
+  voiceSecondsRemaining?: number
 }
 
-export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0 }: PlanGuardBannerProps) {
+export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0, voiceSecondsRemaining = 0 }: PlanGuardBannerProps) {
+  const pathname = usePathname()
   const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false
+
+  // La page Voice Swap utilise un credit distinct (minutes ChapVoice). Si
+  // l'utilisateur a des minutes de voix, on ne montre pas la banniere "points".
+  const onVoiceSwap = pathname === '/dashboard/voice-swap'
+  if (onVoiceSwap && voiceSecondsRemaining > 0) return null
+
   const showBanner = plan === 'free' || isExpired || !isActive || pointsRemaining <= 0
 
   if (!showBanner) return null
@@ -335,13 +343,14 @@ export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0
   return (
     <div className="fixed left-0 right-0 top-14 z-40 flex items-center justify-between bg-orange-500 px-4 py-2 md:left-[240px] md:top-0">
       <p className="text-sm font-medium text-foreground">
-        {pointsRemaining <= 0 
-          ? 'Tu as epuise tes points — Recharge pour continuer le swap'
-          : 'Tu es sur le plan gratuit — Active un abonnement pour demarrer le swap'
-        }
+        {onVoiceSwap
+          ? 'Recharge une offre ChapVoice pour activer le changement de voix'
+          : pointsRemaining <= 0
+            ? 'Tu as epuise tes points — Recharge pour continuer le swap'
+            : 'Tu es sur le plan gratuit — Active un abonnement pour demarrer le swap'}
       </p>
       <Link
-        href="/dashboard/plans"
+        href={onVoiceSwap ? '/dashboard/voice-swap' : '/dashboard/plans'}
         className="rounded-lg bg-white px-4 py-1.5 text-xs font-bold uppercase text-orange-500 transition-colors hover:bg-gray-100"
       >
         RECHARGER
