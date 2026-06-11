@@ -5,6 +5,7 @@ import { getPlan } from '@/lib/plans'
 import { getLiveOffer } from '@/lib/live-offers'
 import { getInstallOffer } from '@/lib/install-offer'
 import { getPcOffer } from '@/lib/pc-offer'
+import { getVoiceOffer } from '@/lib/voice-offers'
 import { paydunyaHeaders } from '@/lib/fulfillment'
 
 export const runtime = 'nodejs'
@@ -41,7 +42,8 @@ export async function POST(request: NextRequest) {
     const liveOffer = getLiveOffer(productId)
     const installOffer = getInstallOffer(productId)
     const pcOffer = getPcOffer(productId)
-    if (!plan && !liveOffer && !installOffer && !pcOffer) {
+    const voiceOffer = getVoiceOffer(productId)
+    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer) {
       return NextResponse.json({ success: false, error: 'Produit inconnu.' }, { status: 400 })
     }
 
@@ -51,21 +53,27 @@ export async function POST(request: NextRequest) {
         ? liveOffer.price
         : installOffer
           ? installOffer.price
-          : pcOffer!.price
-    const kind: 'plan' | 'live' | 'installation' | 'pc' = plan
+          : pcOffer
+            ? pcOffer.price
+            : voiceOffer!.price
+    const kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' = plan
       ? 'plan'
       : liveOffer
         ? 'live'
         : installOffer
           ? 'installation'
-          : 'pc'
+          : pcOffer
+            ? 'pc'
+            : 'voice'
     const label = plan
       ? `Formule ${plan.name} (${plan.points} points, ${plan.duration})`
       : liveOffer
         ? `${liveOffer.name} (${liveOffer.windowMinutes} min d'acces Live)`
         : installOffer
           ? installOffer.name
-          : `${pcOffer!.name} (licence a vie)`
+          : pcOffer
+            ? `${pcOffer.name} (licence a vie)`
+            : `${voiceOffer!.name} (${voiceOffer!.minutes} min de voix)`
 
     const headers = paydunyaHeaders()
     if (!headers) {
