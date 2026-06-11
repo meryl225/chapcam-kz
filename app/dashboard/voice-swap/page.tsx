@@ -20,6 +20,8 @@ import {
   MessageCircle,
   Send,
   Hash,
+  Check,
+  Copy,
 } from 'lucide-react'
 import { useVoiceSwap } from '@/hooks/use-voice-swap'
 import {
@@ -72,8 +74,26 @@ const TARGETS = [
 export default function VoiceSwapPage() {
   const { state, available, devices, voices, start, stop } = useVoiceSwap()
   const [selectedVoice, setSelectedVoice] = useState('')
+  const [voiceMenuOpen, setVoiceMenuOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
   const [busy, setBusy] = useState(false)
+
+  const selectedVoiceProfile = useMemo(
+    () => voices.find((v) => v.id === selectedVoice) || null,
+    [voices, selectedVoice],
+  )
+
+  const copyVoiceId = async () => {
+    if (!selectedVoice) return
+    try {
+      await navigator.clipboard.writeText(selectedVoice)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {
+      // presse-papiers indisponible : on ignore
+    }
+  }
 
   const isRunning = state.phase === 'running'
   const isTransitioning = state.phase === 'connecting' || state.phase === 'stopping' || state.phase === 'reconnecting'
@@ -268,23 +288,121 @@ export default function VoiceSwapPage() {
       {/* Selection voix + peripheriques */}
       <section className="mb-5 rounded-2xl border border-hairline bg-card p-6">
         <h2 className="mb-4 text-lg font-semibold text-foreground">Configuration</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-xs font-medium text-text-faint">Voix cible</span>
-            <select
-              value={selectedVoice}
-              onChange={(e) => setSelectedVoice(e.target.value)}
-              disabled={!available || isRunning}
-              className="rounded-xl border border-hairline bg-muted px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary disabled:opacity-50"
+
+        {/* Voix actuellement selectionnee : nom + voice_id visibles */}
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <AudioLines className="h-5 w-5 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-text-faint">
+                Voix selectionnee
+              </p>
+              {selectedVoiceProfile ? (
+                <>
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {selectedVoiceProfile.name}
+                  </p>
+                  <p className="truncate font-mono text-xs text-primary">
+                    {selectedVoiceProfile.id}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Aucune voix selectionnee</p>
+              )}
+            </div>
+          </div>
+          {selectedVoiceProfile && (
+            <button
+              type="button"
+              onClick={copyVoiceId}
+              className="flex shrink-0 items-center gap-1.5 rounded-lg border border-hairline bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+              title="Copier le voice_id"
             >
-              <option value="">{voices.length ? 'Choisir une voix...' : 'Aucune voix disponible'}</option>
-              {voices.map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.name}
-                </option>
-              ))}
-            </select>
-          </label>
+              {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied ? 'Copie' : 'Copier ID'}
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-text-faint">
+              Voix cible ElevenLabs
+              <span className="ml-2 font-normal text-text-faint/70">
+                {voices.length} voix disponibles
+              </span>
+            </span>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setVoiceMenuOpen((o) => !o)}
+                disabled={!available || isRunning || voices.length === 0}
+                aria-haspopup="listbox"
+                aria-expanded={voiceMenuOpen}
+                className="flex w-full items-center justify-between gap-2 rounded-xl border border-hairline bg-muted px-3 py-2.5 text-left text-sm text-foreground outline-none transition-colors focus:border-primary disabled:opacity-50"
+              >
+                {selectedVoiceProfile ? (
+                  <span className="flex min-w-0 flex-col">
+                    <span className="truncate font-medium text-foreground">
+                      {selectedVoiceProfile.name}
+                    </span>
+                    <span className="truncate font-mono text-[11px] text-text-faint">
+                      {selectedVoiceProfile.id}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">
+                    {voices.length ? 'Choisir une voix...' : 'Aucune voix disponible'}
+                  </span>
+                )}
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 text-text-faint transition-transform ${voiceMenuOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {voiceMenuOpen && voices.length > 0 && (
+                <ul
+                  role="listbox"
+                  className="absolute z-20 mt-1 max-h-72 w-full overflow-auto rounded-xl border border-hairline bg-card p-1 shadow-xl"
+                >
+                  {voices.map((v) => {
+                    const active = v.id === selectedVoice
+                    return (
+                      <li key={v.id} role="option" aria-selected={active}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedVoice(v.id)
+                            setVoiceMenuOpen(false)
+                          }}
+                          className={`flex w-full items-start justify-between gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-muted ${active ? 'bg-primary/10' : ''}`}
+                        >
+                          <span className="flex min-w-0 flex-col">
+                            <span className="truncate text-sm font-medium text-foreground">
+                              {v.name}
+                              {v.locale ? (
+                                <span className="ml-2 text-[10px] uppercase text-text-faint">
+                                  {v.locale}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="truncate font-mono text-[11px] text-text-faint">
+                              {v.id}
+                            </span>
+                            {v.description ? (
+                              <span className="truncate text-[11px] text-muted-foreground">
+                                {v.description}
+                              </span>
+                            ) : null}
+                          </span>
+                          {active && <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
           <label className="flex flex-col gap-1.5">
             <span className="text-xs font-medium text-text-faint">Micro d&apos;entree</span>
             <select
@@ -332,7 +450,7 @@ export default function VoiceSwapPage() {
       {/* Bouton activation */}
       <button
         onClick={handleToggle}
-        disabled={!available || busy || isTransitioning}
+        disabled={!available || busy || isTransitioning || (!isRunning && !selectedVoice)}
         className="mb-5 flex w-full flex-col items-center justify-center rounded-2xl bg-gradient-to-r from-[#7c3aed] via-[#8b5cf6] to-[#a855f7] py-5 text-center transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         style={{ boxShadow: '0 8px 30px rgba(124,58,237,0.4)' }}
       >

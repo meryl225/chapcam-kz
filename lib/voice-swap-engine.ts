@@ -171,6 +171,9 @@ export class VoiceSwapEngine {
     this.running = true
     this.cb.onCaptureChange?.(true)
     this.startMetricsLoop()
+    console.log(
+      `[v0] VoiceSwap engine demarre - capture micro OK (inputRate=${inputRate}Hz, sortie=${this.outputDeviceId || 'defaut'}, virtuel=${this.outputIsVirtual})`,
+    )
   }
 
   /** Construit la sortie audio routee vers outputDeviceId (setSinkId). */
@@ -251,6 +254,9 @@ export class VoiceSwapEngine {
     const captureMs = Math.round(now - this.segmentStartTs)
     const pcm = floatTo16BitPCM(merged)
 
+    const segMs = Math.round((merged.length / TARGET_SAMPLE_RATE) * 1000)
+    console.log(`[v0] VoiceSwap segment capture: ${segMs}ms d'audio -> envoi a ElevenLabs`)
+
     // Reset du segment pour la suite.
     this.segment = []
     this.segmentSamples = 0
@@ -266,10 +272,14 @@ export class VoiceSwapEngine {
     try {
       const result: ConvertResult = await api.convert({ pcm })
       if (!result.ok || !result.pcm) {
+        console.log(`[v0] VoiceSwap conversion ECHEC: ${result.error || 'aucun audio renvoye'}`)
         if (result.error) this.cb.onError?.(result.error)
         return
       }
       const playbackMs = this.enqueuePlayback(result.pcm)
+      console.log(
+        `[v0] VoiceSwap voix convertie recue (RTT ElevenLabs=${result.rttMs ?? '?'}ms) -> lecture vers ${this.outputIsVirtual ? 'VB-Cable' : 'sortie'} (buffer=${playbackMs}ms)`,
+      )
       this.reportMetrics({ captureMs, playbackMs })
     } catch (err) {
       this.cb.onError?.((err as Error).message)
