@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   getVoiceSwapAPI,
-  isVoiceSwapAvailable,
   INITIAL_VOICE_SWAP_STATE,
   type VoiceSwapState,
   type VoiceConversionSettings,
@@ -32,6 +31,8 @@ export function useVoiceSwap() {
   const [available, setAvailable] = useState(false)
   const [devices, setDevices] = useState<AudioDevice[]>([])
   const [voices, setVoices] = useState<VoiceProfile[]>([])
+  // true = pas de pont Electron : Voice Swap tourne via les routes web.
+  const [webMode, setWebMode] = useState(false)
 
   // Instance du moteur audio (capture/lecture) cote renderer.
   const engineRef = useRef<VoiceSwapEngine | null>(null)
@@ -63,22 +64,13 @@ export function useVoiceSwap() {
   }, [])
 
   useEffect(() => {
-    if (!isVoiceSwapAvailable()) {
-      setAvailable(false)
-      return
-    }
     const api = getVoiceSwapAPI()
-    if (!api) {
-      setAvailable(false)
-      return
-    }
+    const desktop = api !== null
+    // Web mode : pas de pont Electron mais on peut convertir via les routes web.
+    setWebMode(!desktop)
     setAvailable(true)
 
     let active = true
-
-    // Etat initial + catalogue de voix (vrai appel ElevenLabs cote main).
-    api.status().then((s) => active && s && setState(s)).catch(() => {})
-    api.listVoices().then((v) => active && Array.isArray(v) && setVoices(v)).catch(() => {})
 
     // Enumeration des peripheriques (necessite l'autorisation micro pour les
     // labels : on la demande puis on enumere).
@@ -94,19 +86,34 @@ export function useVoiceSwap() {
     }
     void loadDevices()
 
-    // Etat pousse par le main process (latence reseau, sante, qualite).
-    api.onState?.((s) => {
-      if (active && s) setState(s)
-    })
-
-    // Polling de secours si un evenement est manque.
-    const interval = setInterval(() => {
+    if (desktop && api) {
+      // App de bureau : etat + voix + metriques via le pont Electron.
       api.status().then((s) => active && s && setState(s)).catch(() => {})
-    }, 3000)
+      api.listVoices().then((v) => active && Array.isArray(v) && setVoices(v)).catch(() => {})
+      api.onState?.((s) => {
+        if (active && s) setState(s)
+      })
+      const interval = setInterval(() => {
+        api.status().then((s) => active && s && setState(s)).catch(() => {})
+      }, 3000)
+      return () => {
+        active = false
+        clearInterval(interval)
+        void engineRef.current?.stop()
+        engineRef.current = null
+      }
+    }
+
+    // Mode web : on recupere le catalogue de voix via la route serveur.
+    fetch('/api/voice-swap/voices')
+      .then((r) => r.json())
+      .then((data) => {
+        if (active && Array.isArray(data.voices)) setVoices(data.voices)
+      })
+      .catch(() => {})
 
     return () => {
       active = false
-      clearInterval(interval)
       void engineRef.current?.stop()
       engineRef.current = null
     }
@@ -115,21 +122,59 @@ export function useVoiceSwap() {
   const start = useCallback(
     async (config: Partial<VoiceSwapConfig> = {}) => {
       const api = getVoiceSwapAPI()
-      if (!api) return
+      const outDevice = devices.find(
+        (d) => d.kind === 'audiooutput' && d.deviceId === config.outputDeviceId,
+      )
+      const voiceId = config.conversion?.voiceId ?? null
 
+      // --- Mode web (pas de pont Electron) : on pilote le moteur directement. ---
+      if (!api) {
+        if (!voiceId) {
+          setState((prev) => ({ ...prev, phase: 'error', error: 'Selectionnez une voix cible.' }))
+          return
+        }
+        setState((prev) => ({ ...prev, phase: 'connecting', error: null }))
+        const engine = new VoiceSwapEngine({
+          inputDeviceId: config.inputDeviceId ?? null,
+          outputDeviceId: config.outputDeviceId ?? null,
+          outputIsVirtual: !!outDevice?.isVirtual,
+          voiceId,
+          callbacks: {
+            onError: (message) => setState((prev) => ({ ...prev, error: message })),
+          },
+        })
+        engineRef.current = engine
+        try {
+          await engine.start()
+          setState((prev) => ({
+            ...prev,
+            phase: 'running',
+            virtualMicAvailable: !!outDevice?.isVirtual,
+          }))
+        } catch (err) {
+          setState((prev) => ({
+            ...prev,
+            phase: 'error',
+            error: `Capture audio impossible: ${(err as Error).message}`,
+          }))
+          await engine.stop()
+          engineRef.current = null
+        }
+        return
+      }
+
+      // --- App de bureau : session pilotee par le main process. ---
       // 1. Demarre la session cote main (valide cle + voix, passe a running).
       const s = await api.start(config)
       if (s) setState(s)
       if (s && s.phase === 'error') return
 
       // 2. Demarre le moteur audio reel (capture micro -> conversion -> sortie).
-      const outDevice = devices.find(
-        (d) => d.kind === 'audiooutput' && d.deviceId === config.outputDeviceId,
-      )
       const engine = new VoiceSwapEngine({
         inputDeviceId: config.inputDeviceId ?? null,
         outputDeviceId: config.outputDeviceId ?? null,
         outputIsVirtual: !!outDevice?.isVirtual,
+        voiceId,
         callbacks: {
           onError: (message) =>
             setState((prev) => ({ ...prev, error: message })),
@@ -154,7 +199,11 @@ export function useVoiceSwap() {
     // Arrete d'abord le moteur audio (micro/lecture), puis la session main.
     await engineRef.current?.stop()
     engineRef.current = null
-    if (!api) return
+    if (!api) {
+      // Mode web : pas de session main, on repasse simplement a idle.
+      setState((prev) => ({ ...prev, phase: 'idle', error: null }))
+      return
+    }
     const s = await api.stop()
     if (s) setState(s)
   }, [])
@@ -171,5 +220,5 @@ export function useVoiceSwap() {
     setDevices(d)
   }, [enumerateDevices])
 
-  return { state, available, devices, voices, start, stop, updateSettings, refreshDevices }
+  return { state, available, webMode, devices, voices, start, stop, updateSettings, refreshDevices }
 }

@@ -38,7 +38,7 @@ const TARGETS = [
 ]
 
 export default function VoiceSwapPage() {
-  const { state, available, devices, voices, start, stop } = useVoiceSwap()
+  const { state, available, webMode, devices, voices, start, stop } = useVoiceSwap()
   const voiceSub = useVoiceSubscription()
   const hasMinutes = voiceSub.active && voiceSub.secondsRemaining > 0
   const [selectedVoice, setSelectedVoice] = useState('')
@@ -165,18 +165,18 @@ export default function VoiceSwapPage() {
         )}
       </div>
 
-      {/* Avertissement : disponible uniquement dans l'app de bureau */}
-      {!available && (
+      {/* Note mode web : conversion OK, mais routage micro virtuel = app de bureau */}
+      {webMode && (
         <div className="mb-5 flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
           <Monitor className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
           <div>
             <p className="text-sm font-semibold text-amber-300">
-              Voice Swap fonctionne dans l&apos;application de bureau ChapCam PC
+              Conversion disponible ici - routage micro virtuel via l&apos;app de bureau
             </p>
             <p className="mt-1 text-xs text-amber-200/80 text-pretty">
-              Le streaming audio temps reel (micro -&gt; ElevenLabs -&gt; micro virtuel VB-Cable)
-              necessite l&apos;app de bureau. Cette page reste consultable, mais l&apos;activation
-              est desactivee ici.
+              Tu peux convertir ta voix en direct dans le navigateur et l&apos;ecouter sur ta sortie
+              audio. Pour l&apos;envoyer comme micro vers WhatsApp, Telegram ou Discord, installe
+              VB-Cable et selectionne-le comme sortie (disponible dans l&apos;app de bureau ChapCam PC).
             </p>
           </div>
         </div>

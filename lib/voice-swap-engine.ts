@@ -36,6 +36,8 @@ export interface VoiceSwapEngineCallbacks {
   onError?: (message: string) => void
   /** Appele quand l'etat de capture change (true = capture active). */
   onCaptureChange?: (capturing: boolean) => void
+  /** Appele quand le solde de minutes restant est connu (mode web). */
+  onSecondsRemaining?: (seconds: number) => void
 }
 
 /**
@@ -91,6 +93,10 @@ export class VoiceSwapEngine {
   private inputDeviceId: string | null
   private outputDeviceId: string | null
   private outputIsVirtual: boolean
+  /** Voix cible (utilisee par le mode web via la route API). */
+  private voiceId: string | null
+  /** true = pas d'API Electron : on convertit via les routes web. */
+  private webMode: boolean
 
   private stream: MediaStream | null = null
   private ctx: AudioContext | null = null
@@ -119,22 +125,21 @@ export class VoiceSwapEngine {
     inputDeviceId?: string | null
     outputDeviceId?: string | null
     outputIsVirtual?: boolean
+    voiceId?: string | null
     callbacks?: VoiceSwapEngineCallbacks
   }) {
     this.inputDeviceId = opts.inputDeviceId ?? null
     this.outputDeviceId = opts.outputDeviceId ?? null
     this.outputIsVirtual = opts.outputIsVirtual ?? false
+    this.voiceId = opts.voiceId ?? null
     this.cb = opts.callbacks ?? {}
+    // Sans pont Electron, on bascule sur la conversion via routes web.
+    this.webMode = getVoiceSwapAPI() === null
   }
 
   /** Demarre la capture, la segmentation et la lecture. */
   async start(): Promise<void> {
     if (this.running) return
-    const api = getVoiceSwapAPI()
-    if (!api) {
-      this.cb.onError?.("Voice Swap n'est disponible que dans l'app de bureau.")
-      return
-    }
 
     // 1. Capture micro (desactive les traitements navigateur pour un PCM propre).
     this.stream = await navigator.mediaDevices.getUserMedia({
@@ -267,6 +272,10 @@ export class VoiceSwapEngine {
 
   /** Envoie le PCM au main (ElevenLabs) puis joue le resultat. */
   private async convertAndPlay(pcm: ArrayBuffer, captureMs: number) {
+    if (this.webMode) {
+      await this.convertAndPlayWeb(pcm, captureMs)
+      return
+    }
     const api = getVoiceSwapAPI()
     if (!api) return
     try {
@@ -281,6 +290,40 @@ export class VoiceSwapEngine {
         `[v0] VoiceSwap voix convertie recue (RTT ElevenLabs=${result.rttMs ?? '?'}ms) -> lecture vers ${this.outputIsVirtual ? 'VB-Cable' : 'sortie'} (buffer=${playbackMs}ms)`,
       )
       this.reportMetrics({ captureMs, playbackMs })
+    } catch (err) {
+      this.cb.onError?.((err as Error).message)
+    }
+  }
+
+  /** Conversion via la route web /api/voice-swap/convert (cle ElevenLabs cote serveur). */
+  private async convertAndPlayWeb(pcm: ArrayBuffer, _captureMs: number) {
+    if (!this.voiceId) {
+      this.cb.onError?.('Aucune voix cible selectionnee.')
+      return
+    }
+    try {
+      const res = await fetch(`/api/voice-swap/convert?voiceId=${encodeURIComponent(this.voiceId)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/octet-stream' },
+        body: pcm,
+      })
+      if (!res.ok) {
+        if (res.status === 402) {
+          this.cb.onSecondsRemaining?.(0)
+          this.cb.onError?.('Minutes epuisees. Recharge une offre ChapVoice.')
+          return
+        }
+        const data = await res.json().catch(() => ({}))
+        this.cb.onError?.(data.error || `Conversion HTTP ${res.status}`)
+        return
+      }
+      const remaining = res.headers.get('X-Seconds-Remaining')
+      if (remaining !== null) this.cb.onSecondsRemaining?.(Number(remaining))
+      const buf = await res.arrayBuffer()
+      const playbackMs = this.enqueuePlayback(buf)
+      console.log(
+        `[v0] VoiceSwap (web) voix convertie -> lecture vers ${this.outputIsVirtual ? 'VB-Cable' : 'sortie'} (buffer=${playbackMs}ms)`,
+      )
     } catch (err) {
       this.cb.onError?.((err as Error).message)
     }
