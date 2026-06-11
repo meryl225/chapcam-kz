@@ -197,8 +197,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onState: (callback) => {
       ipcRenderer.on('voice-swap-state', (_event, state) => callback(state))
     },
-    // Envoi d'un chunk PCM capture cote renderer (reserve pour plus tard).
-    sendChunk: (payload) => ipcRenderer.send('voice-swap:chunk', payload),
+    // Conversion d'un segment audio : envoie le PCM capture, recoit le PCM
+    // converti par ElevenLabs (aller-retour reel).
+    convert: (payload) => ipcRenderer.invoke('voice-swap-convert', payload),
+    // Remonte les metriques mesurees cote renderer (capture/playback/buffer).
+    reportMetrics: (metrics) => ipcRenderer.send('voice-swap-metrics', metrics),
   },
 
   // Navigation events

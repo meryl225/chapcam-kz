@@ -252,6 +252,38 @@ export interface VoiceSwapAPI {
   updateSettings: (settings: Partial<VoiceConversionSettings>) => Promise<VoiceSwapState>
   /** Abonnement aux mises a jour d'etat poussees par le main process. */
   onState: (callback: (state: VoiceSwapState) => void) => void
+  /**
+   * Convertit un segment audio (PCM 16-bit 16kHz mono) via ElevenLabs et
+   * renvoie le PCM converti. Appele en boucle par le moteur audio du renderer.
+   */
+  convert: (payload: { pcm: ArrayBuffer }) => Promise<ConvertResult>
+  /** Remonte au main les metriques mesurees cote renderer. */
+  reportMetrics: (metrics: RendererMetrics) => void
+}
+
+/** Resultat d'une conversion de segment renvoye par le main process. */
+export interface ConvertResult {
+  ok: boolean
+  /** PCM 16-bit 16kHz mono converti (present si ok). */
+  pcm?: ArrayBuffer
+  /** Aller-retour reseau ElevenLabs en ms. */
+  rttMs?: number
+  /** Message d'erreur si la conversion a echoue. */
+  error?: string
+}
+
+/** Metriques mesurees cote renderer et remontees au main process. */
+export interface RendererMetrics {
+  /** Latence de capture micro -> segment pret, en ms. */
+  captureMs?: number
+  /** Latence reception -> lecture (incl. jitter buffer), en ms. */
+  playbackMs?: number
+  /** Statistiques de buffer courantes. */
+  buffer?: Partial<BufferStats>
+  /** La sortie selectionnee est-elle le micro virtuel VB-Cable ? */
+  virtualMicSelected?: boolean
+  /** Vrai si un underrun de buffer vient de se produire. */
+  underrun?: boolean
 }
 
 // ----------------------------------------------------------------------------
