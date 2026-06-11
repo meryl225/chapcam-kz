@@ -14,8 +14,10 @@ import {
   Hash,
   Check,
   Copy,
+  Clock,
 } from 'lucide-react'
 import { useVoiceSwap } from '@/hooks/use-voice-swap'
+import { useVoiceSubscription } from '@/hooks/use-voice-subscription'
 import { VoiceOffersSection } from '@/components/voice-swap/voice-offers-section'
 import { type VoiceSwapPhase } from '@/lib/voice-swap'
 
@@ -37,6 +39,8 @@ const TARGETS = [
 
 export default function VoiceSwapPage() {
   const { state, available, devices, voices, start, stop } = useVoiceSwap()
+  const voiceSub = useVoiceSubscription()
+  const hasMinutes = voiceSub.active && voiceSub.secondsRemaining > 0
   const [selectedVoice, setSelectedVoice] = useState('')
   const [voiceMenuOpen, setVoiceMenuOpen] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -112,6 +116,54 @@ export default function VoiceSwapPage() {
           {PHASE_LABELS[state.phase]}
         </span>
       </header>
+
+      {/* Solde de minutes Voice Swap (ChapVoice) */}
+      <div
+        className={`mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border p-5 ${
+          hasMinutes
+            ? 'border-primary/30 bg-primary/5'
+            : 'border-hairline bg-card'
+        }`}
+      >
+        <div className="flex items-center gap-3">
+          <div
+            className={`flex h-11 w-11 items-center justify-center rounded-xl ${
+              hasMinutes ? 'bg-primary/15 text-primary' : 'bg-muted text-text-faint'
+            }`}
+          >
+            <Clock className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-wide text-text-faint">
+              Minutes de changement de voix
+            </p>
+            {voiceSub.loading ? (
+              <p className="text-sm text-muted-foreground">Chargement...</p>
+            ) : hasMinutes ? (
+              <p className="text-2xl font-bold text-foreground">
+                {voiceSub.minutesRemaining}
+                <span className="ml-1 text-sm font-medium text-text-faint">
+                  / {voiceSub.minutesTotal} min restantes
+                </span>
+              </p>
+            ) : (
+              <p className="text-sm font-semibold text-foreground">
+                Aucune minute disponible — recharge une offre ChapVoice ci-dessous
+              </p>
+            )}
+          </div>
+        </div>
+        {hasMinutes && voiceSub.expiresAt && (
+          <span className="rounded-full border border-hairline bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground">
+            Valable jusqu&apos;au{' '}
+            {new Date(voiceSub.expiresAt).toLocaleDateString('fr-FR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            })}
+          </span>
+        )}
+      </div>
 
       {/* Avertissement : disponible uniquement dans l'app de bureau */}
       {!available && (
@@ -309,8 +361,8 @@ export default function VoiceSwapPage() {
       {/* Bouton activation */}
       <button
         onClick={handleToggle}
-        disabled={!available || busy || isTransitioning || (!isRunning && !selectedVoice)}
-        className="mb-5 flex w-full flex-col items-center justify-center rounded-2xl bg-gradient-to-r from-[#7c3aed] via-[#8b5cf6] to-[#a855f7] py-5 text-center transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={!available || busy || isTransitioning || (!isRunning && (!selectedVoice || !hasMinutes))}
+        className="mb-2 flex w-full flex-col items-center justify-center rounded-2xl bg-gradient-to-r from-[#7c3aed] via-[#8b5cf6] to-[#a855f7] py-5 text-center transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         style={{ boxShadow: '0 8px 30px rgba(124,58,237,0.4)' }}
       >
         <span className="flex items-center gap-2 text-lg font-bold text-white">
@@ -329,6 +381,17 @@ export default function VoiceSwapPage() {
             : 'Streaming temps reel vers le micro virtuel'}
         </span>
       </button>
+
+      {/* Aide contextuelle quand le demarrage est bloque */}
+      {!isRunning && available && !voiceSub.loading && (
+        <p className="mb-5 text-center text-xs text-text-faint">
+          {!hasMinutes
+            ? 'Recharge une offre ChapVoice ci-dessous pour activer le changement de voix.'
+            : !selectedVoice
+              ? 'Choisis une voix cible ci-dessus pour pouvoir demarrer.'
+              : 'Pret a demarrer.'}
+        </p>
+      )}
 
       {/* Offres ChapVoice : recharge des minutes via PayDunya */}
       <VoiceOffersSection />

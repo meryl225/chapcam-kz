@@ -55,6 +55,16 @@ export default async function DashboardLayout({
     .select('*', { count: 'exact', head: true })
     .eq('user_id', user.id)
 
+  // Fetch solde de minutes Voice Swap (ChapVoice) — produit distinct des points
+  const { data: voiceSub } = await supabase
+    .from('voice_subscriptions')
+    .select('seconds_remaining, expires_at')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  const voiceExpired = voiceSub?.expires_at ? new Date(voiceSub.expires_at) < new Date() : false
+  const voiceSecondsRemaining = voiceExpired ? 0 : voiceSub?.seconds_remaining ?? 0
+
   const plan = subscription?.plan ?? 'free'
   const expiresAt = subscription?.expires_at ?? null
   const isActive = subscription?.is_active ?? false
@@ -78,6 +88,7 @@ export default async function DashboardLayout({
         expiresAt={expiresAt}
         isActive={isActive}
         pointsRemaining={pointsRemaining}
+        voiceSecondsRemaining={voiceSecondsRemaining}
       />
 
       {/* Main Content Area */}
