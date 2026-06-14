@@ -61,7 +61,7 @@ export default function ConditionsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="5. Abonnements, crédits et paiements">
+      <LegalSection id="paiements" title="5. Abonnements, crédits et paiements">
         <p>
           Certaines fonctionnalités sont payantes, comme indiqué sur la Plateforme. Le paiement peut donner droit à un
           abonnement ou à un certain nombre de crédits utilisables sur la Plateforme. Sauf disposition légale impérative

@@ -92,6 +92,62 @@ export async function sendWelcomeEmail(to: string, userName: string) {
   }
 }
 
+// Signalement d'abus -> envoye au contact juridique
+export async function sendAbuseReportEmail(report: {
+  name: string
+  email: string
+  contentUrl?: string
+  reason: string
+  description: string
+  ip?: string
+}) {
+  const client = await getResendClient()
+  if (!client) {
+    console.warn('[Email] Resend not configured - skipping abuse report email')
+    return { success: false, error: 'Email service not configured' }
+  }
+
+  const esc = (v: string) =>
+    v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: ['contact@chapcam.com'],
+      replyTo: report.email,
+      subject: `Signalement d'abus — ${report.reason}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #0a0a0a; color: #ffffff;">
+          <h2 style="color: #00ff88; margin: 0 0 16px;">Nouveau signalement d'abus</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr><td style="padding: 8px 0; color: #9aa3b2; width: 160px;">Nom</td><td style="padding: 8px 0;">${esc(report.name)}</td></tr>
+            <tr><td style="padding: 8px 0; color: #9aa3b2;">Email</td><td style="padding: 8px 0;">${esc(report.email)}</td></tr>
+            <tr><td style="padding: 8px 0; color: #9aa3b2;">Motif</td><td style="padding: 8px 0;">${esc(report.reason)}</td></tr>
+            <tr><td style="padding: 8px 0; color: #9aa3b2;">Lien du contenu</td><td style="padding: 8px 0;">${report.contentUrl ? esc(report.contentUrl) : '—'}</td></tr>
+            <tr><td style="padding: 8px 0; color: #9aa3b2;">Adresse IP</td><td style="padding: 8px 0;">${report.ip ? esc(report.ip) : '—'}</td></tr>
+          </table>
+          <div style="margin-top: 16px; padding: 16px; background: #111111; border: 1px solid #242424; border-radius: 12px;">
+            <p style="color: #9aa3b2; margin: 0 0 8px; font-size: 13px;">Description</p>
+            <p style="margin: 0; white-space: pre-wrap; line-height: 1.6;">${esc(report.description)}</p>
+          </div>
+          <p style="margin-top: 16px; color: #666; font-size: 12px;">Reçu le ${new Date().toLocaleString('fr-FR')}</p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[Email] Error sending abuse report:', error)
+      return { success: false, error }
+    }
+
+    console.log('[Email] Abuse report sent:', data?.id)
+    return { success: true, id: data?.id }
+  } catch (error) {
+    console.error('[Email] Exception sending abuse report:', error)
+    return { success: false, error }
+  }
+}
+
 // Template email de reinitialisation de mot de passe
 export async function sendPasswordResetEmail(to: string, resetLink: string) {
   const client = await getResendClient()

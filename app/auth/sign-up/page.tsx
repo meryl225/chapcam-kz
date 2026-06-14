@@ -16,11 +16,19 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [consent, setConsent] = useState(false)
   const router = useRouter()
+
+  const CGU_VERSION = '2026-06'
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    if (!consent) {
+      setError('Vous devez accepter les Conditions d’utilisation et la Politique de confidentialité')
+      return
+    }
 
     if (password !== confirmPassword) {
       setError('Les mots de passe ne correspondent pas')
@@ -43,7 +51,12 @@ export default function SignUpPage() {
         options: {
           data: {
             plan: 'free',
-            avatar_limit: 1
+            avatar_limit: 1,
+            // Tracabilite de l'acceptation des CGU a l'inscription
+            cgu_accepted: true,
+            cgu_accepted_at: new Date().toISOString(),
+            cgu_version: CGU_VERSION,
+            consent_accepted: true,
           },
           emailRedirectTo: `${window.location.origin}/auth/callback`
         }
@@ -244,9 +257,41 @@ export default function SignUpPage() {
               </div>
             </div>
 
+            <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/10 bg-[#1e293b]/50 p-3.5 transition-colors hover:border-[#00d4ff]/40">
+              <span
+                className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
+                  consent ? 'border-[#00d4ff] bg-[#00d4ff]' : 'border-white/20 bg-transparent'
+                }`}
+              >
+                {consent && (
+                  <svg className="h-3.5 w-3.5 text-[#0a0e1a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </span>
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={consent}
+                onChange={(e) => setConsent(e.target.checked)}
+                aria-label="Accepter les conditions d'utilisation et la politique de confidentialite"
+              />
+              <span className="text-sm leading-relaxed text-gray-300">
+                J&apos;ai lu et j&apos;accepte les{' '}
+                <Link href="/conditions" target="_blank" className="text-[#00d4ff] hover:underline">
+                  Conditions d&apos;utilisation
+                </Link>{' '}
+                et la{' '}
+                <Link href="/confidentialite" target="_blank" className="text-[#00d4ff] hover:underline">
+                  Politique de confidentialité
+                </Link>
+                .
+              </span>
+            </label>
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !consent}
               className="w-full py-4 bg-gradient-to-r from-[#e91e8c] to-[#8b5cf6] hover:from-[#d11a7d] hover:to-[#7c3aed] text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-[#e91e8c]/20"
             >
               {loading ? (
