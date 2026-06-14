@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2, AudioLines } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
-import { useDecartNoWatermark } from '@/hooks/useDecartNoWatermark'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
@@ -60,9 +59,6 @@ export default function DashboardPage() {
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
 
-  // ==================== WATERMARK REMOVAL ====================
-  const [watermarkDisabled, setWatermarkDisabled] = useState(true)
-
   // Agrandissement de la camera ChapCam (plein ecran natif pour faciliter le cadrage / OBS)
   const chapCamRef = useRef<HTMLDivElement | null>(null)
   const [isCamFullscreen, setIsCamFullscreen] = useState(false)
@@ -89,37 +85,12 @@ export default function DashboardPage() {
     error,
     localVideoRef,
     remoteVideoRef,
-    remoteRawStream,
     connect,
     disconnect,
     updateAvatar,
   } = useLucy21()
 
   const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-
-  // ==================== HOOK RETRAIT WATERMARK ====================
-  // remoteRawStream provient directement de useLucy21 : c'est un etat React
-  // stable mis a jour par Decart via onRemoteStream, sans jamais toucher
-  // remoteVideoRef.srcObject directement (voir use-lucy-21.ts). On peut donc
-  // le passer en toute securite au hook de retrait de watermark sans risque
-  // de boucle de feedback.
-  const { videoRef: hiddenVideoRef, canvasRef } = useDecartNoWatermark({
-    decartStream: remoteRawStream,
-    enabled: watermarkDisabled,
-    onCleanStreamReady: (cleanStream) => {
-      if (remoteVideoRef.current && watermarkDisabled) {
-        remoteVideoRef.current.srcObject = cleanStream
-      }
-    }
-  })
-
-  // Affiche le flux brut directement quand le retrait de watermark est
-  // desactive, ou tant que le flux nettoye n'est pas encore pret.
-  useEffect(() => {
-    if (!watermarkDisabled && remoteVideoRef.current && remoteRawStream) {
-      remoteVideoRef.current.srcObject = remoteRawStream
-    }
-  }, [watermarkDisabled, remoteRawStream, remoteVideoRef])
 
   // Charger les preferences sauvegardees uniquement cote client (apres montage)
   // pour eviter tout mismatch d'hydratation avec le rendu serveur.
@@ -565,13 +536,6 @@ export default function DashboardPage() {
                   className="h-full w-full object-cover"
                 />
 
-                {watermarkDisabled && isConnected && (
-                  <div className="absolute right-3 top-3 z-30 flex items-center gap-1.5 rounded-md bg-black/70 px-3 py-1 text-xs text-green-400 backdrop-blur-md">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
-                    Watermark Retiré
-                  </div>
-                )}
-
                 <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-md bg-black/60 px-3 py-1 text-xs text-foreground backdrop-blur-md">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
                   ChapCam • {processingMode === 'local' ? 'Local' : 'Cloud'}
@@ -875,26 +839,6 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Retrait du watermark */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-foreground/60">Retrait du watermark</span>
-            <button
-              onClick={() => setWatermarkDisabled(v => !v)}
-              role="switch"
-              aria-checked={watermarkDisabled}
-              aria-label="Retrait du watermark"
-              className={`relative h-6 w-11 rounded-full transition-colors ${
-                watermarkDisabled ? 'bg-primary' : 'bg-white/15'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
-                  watermarkDisabled ? 'translate-x-5' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
-          </div>
-
           {/* Mode de traitement */}
           <div>
             <p className="mb-2 text-xs font-medium text-foreground/60">Mode de traitement</p>
@@ -943,10 +887,6 @@ export default function DashboardPage() {
           </div>
         </aside>
       </div>
-
-      {/* Elements caches obligatoires pour le retrait du watermark */}
-      <video ref={hiddenVideoRef} style={{ display: 'none' }} muted playsInline />
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
 
       <InstallationRequestModal
         open={showInstallModal}
