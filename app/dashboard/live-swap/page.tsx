@@ -514,6 +514,11 @@ export default function DashboardPage() {
                       <span className="font-semibold text-primary">{stats.fps} FPS</span>
                       <span className="text-foreground/30">|</span>
                       <span className="text-foreground/60">{stats.resolution}</span>
+                      <span className="text-foreground/30">|</span>
+                      <span className="flex items-center gap-1 text-foreground/60">
+                        <Clock className="h-3 w-3" />
+                        {formatDuration(duration)}
+                      </span>
                     </>
                   )}
                   <button
@@ -536,53 +541,11 @@ export default function DashboardPage() {
                   className="h-full w-full object-cover"
                 />
 
-                {!isConnected && (
-                  <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-md bg-black/60 px-3 py-1 text-xs text-foreground backdrop-blur-md">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
-                    ChapCam • {processingMode === 'local' ? 'Local' : 'Cloud'}
-                  </div>
-                )}
-
-                {!isConnected && (
-                  <button
-                    onClick={toggleCamFullscreen}
-                    aria-label={isCamFullscreen ? 'Réduire la caméra' : 'Agrandir la caméra'}
-                    title={isCamFullscreen ? 'Réduire' : 'Agrandir en plein écran'}
-                    className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-hairline bg-black/50 text-foreground/80 backdrop-blur-md transition-colors hover:bg-black/70"
-                  >
-                    {isCamFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                  </button>
-                )}
-
-                {!isConnected && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background text-text-faint">
-                    <Zap className="mb-2 h-12 w-12 opacity-50" />
-                    <p className="text-sm">{isConnecting ? 'Connexion en cours...' : 'Swap inactif'}</p>
-                  </div>
-                )}
-
+                {/* Spinner de connexion uniquement (transient, sans texte) pour
+                    garder la scene parfaitement vierge cote OBS. */}
                 {isConnecting && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                )}
-
-                {/* Controles camera (masques pendant le swap pour un rendu propre sur OBS) */}
-                {!isConnected && (
-                  <div className="absolute inset-x-3 bottom-3 z-20 flex items-center justify-between">
-                    <div className="flex h-9 items-end gap-0.5 rounded-lg border border-hairline bg-black/50 px-2 py-2 backdrop-blur-md">
-                      {[0, 1, 2, 3, 4, 5].map(i => (
-                        <span
-                          key={i}
-                          className="cc-wave-bar w-0.5 rounded-full bg-primary"
-                          style={{ height: '100%', animationDelay: `${i * 0.1}s` }}
-                        />
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2 rounded-lg border border-hairline bg-black/50 px-3 py-2 text-xs text-foreground/70 backdrop-blur-md">
-                      <Clock className="h-3.5 w-3.5" />
-                      {formatDuration(duration)}
-                    </div>
                   </div>
                 )}
               </div>
@@ -591,22 +554,6 @@ export default function DashboardPage() {
               <VirtualCameraIndicator className="m-3" />
             </div>
 
-            {/* Cercle IA anime au centre (masque pendant le swap pour un rendu propre sur OBS) */}
-            {!isConnected && (
-              <div className="pointer-events-none absolute left-1/2 top-1/2 z-30 hidden -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 md:flex">
-                <div className="relative">
-                  <div className="absolute inset-0 rounded-full bg-primary/30 blur-xl cc-pulse" />
-                  <div className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-primary bg-background shadow-[0_0_30px_rgba(0,255,136,0.5)]">
-                    <Zap className="h-6 w-6 text-primary" />
-                  </div>
-                </div>
-                <span className="rounded-md bg-black/60 px-2 py-1 text-center text-[10px] leading-tight text-foreground/70 backdrop-blur-md">
-                  Transformation
-                  <br />
-                  en temps réel
-                </span>
-              </div>
-            )}
           </div>
 
           {/* Outils rapides ChapCam */}
