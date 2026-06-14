@@ -16,6 +16,11 @@ export function useLucy21() {
   const [error, setError] = useState<string | null>(null)
   const [pointsUsed, setPointsUsed] = useState(0)
   const [sessionDuration, setSessionDuration] = useState(0)
+  // Flux transforme brut renvoye par Decart (avec le watermark natif).
+  // Expose pour permettre, plus tard, un traitement optionnel (ex: retrait
+  // de watermark pour clients VIP via canvas). Actuellement non utilise pour
+  // l'affichage : le <video> consomme directement transformedStream.
+  const [remoteRawStream, setRemoteRawStream] = useState<MediaStream | null>(null)
 
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
@@ -145,6 +150,7 @@ export function useLucy21() {
       remoteVideoRef.current.srcObject = null
     }
 
+    setRemoteRawStream(null)
     setIsConnected(false)
     setIsConnecting(false)
     setConnectionState('disconnected')
@@ -207,6 +213,9 @@ export function useLucy21() {
         resolution: '720p',
 
         onRemoteStream: (transformedStream: MediaStream) => {
+          // Conserver une reference au flux brut (avec watermark natif Decart)
+          // pour un eventuel post-traitement optionnel cote consommateur.
+          setRemoteRawStream(transformedStream)
           if (remoteVideoRef.current) {
             remoteVideoRef.current.srcObject = transformedStream
           }
@@ -286,6 +295,7 @@ export function useLucy21() {
     error,
     localVideoRef,
     remoteVideoRef,
+    remoteRawStream,
     connect,
     disconnect,
     updateAvatar,
