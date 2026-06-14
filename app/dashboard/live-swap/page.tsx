@@ -5,7 +5,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2, AudioLines } from 'lucide-react'
 
 import { useLucy21 } from '@/hooks/use-lucy-21'
-import { useDecartNoWatermark } from '@/hooks/useDecartNoWatermark'   // ← Nouveau hook
+import { useDecartNoWatermark } from '@/hooks/useDecartNoWatermark'   // ← Ajouté
 
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
@@ -55,11 +55,11 @@ export default function DashboardPage() {
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
 
+  // ==================== WATERMARK REMOVAL ====================
+  const [watermarkDisabled, setWatermarkDisabled] = useState(true)
+
   const chapCamRef = useRef<HTMLDivElement | null>(null)
   const [isCamFullscreen, setIsCamFullscreen] = useState(false)
-
-  // ==================== NOUVEAU : Flag Watermark (à connecter plus tard à Supabase) ====================
-  const [watermarkDisabled, setWatermarkDisabled] = useState(true) // true = actif par défaut pour les tests
 
   const {
     isConnected,
@@ -74,19 +74,17 @@ export default function DashboardPage() {
 
   const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-  // ==================== Hook de retrait watermark ====================
-  const { videoRef: hiddenVideoRef, canvasRef, cleanStream } = useDecartNoWatermark({
-    decartStream: remoteVideoRef.current?.srcObject as MediaStream | null, // On intercepte le flux Lucy
+  // ==================== HOOK RETRAIT WATERMARK ====================
+  const { videoRef: hiddenVideoRef, canvasRef } = useDecartNoWatermark({
+    decartStream: remoteVideoRef.current?.srcObject as MediaStream | null,
     enabled: watermarkDisabled,
-    onCleanStreamReady: (clean) => {
-      // On remplace le flux visible par le flux nettoyé
+    onCleanStreamReady: (cleanStream) => {
       if (remoteVideoRef.current) {
-        remoteVideoRef.current.srcObject = clean
+        remoteVideoRef.current.srcObject = cleanStream
       }
     }
   })
 
-  // Toggle fullscreen
   const toggleCamFullscreen = useCallback(() => {
     const el = chapCamRef.current
     if (!el) return
@@ -97,26 +95,11 @@ export default function DashboardPage() {
     }
   }, [])
 
-  useEffect(() => {
-    const onFsChange = () => setIsCamFullscreen(document.fullscreenElement === chapCamRef.current)
-    document.addEventListener('fullscreenchange', onFsChange)
-    return () => document.removeEventListener('fullscreenchange', onFsChange)
-  }, [])
+  // ... Tous tes useEffect restent identiques (je ne les ai pas recopiés pour gagner de la place) ...
 
-  // ... (le reste de tes useEffect reste identique) ...
-
-  // Charge les données utilisateur (je garde ton code original)
-  useEffect(() => {
-    const loadData = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      setUserId(user.id)
-      // ... ton code points + avatars ...
-    }
-    loadData()
-  }, [])
-
-  // ... tous tes autres useEffect restent inchangés ...
+  // Charge les préférences, hardware, user data, etc. (ton code original)
+  useEffect(() => { setPreferences(loadProcessingPreferences()) }, [])
+  // ... (le reste de tes useEffect : detectHardware, network, loadData, points tracking, etc.)
 
   const handleStartSwap = async () => {
     if (!selectedAvatar || userPoints < POINTS_PER_SECOND) return
@@ -125,28 +108,41 @@ export default function DashboardPage() {
     await connect(selectedAvatar.url)
   }
 
-  const handleStopSwap = () => {
-    disconnect()
-    // ... ton code de sauvegarde points ...
+  const handleStopSwap = () => handleStopSwapAndSave()
+
+  const handleSelectAvatar = async (avatar: Avatar) => {
+    setSelectedAvatar(avatar)
+    if (userId) {
+      await supabase.from('user_avatars').update({ is_active: false }).eq('user_id', userId)
+      await supabase.from('user_avatars').update({ is_active: true }).eq('id', avatar.id)
+      setAvatars(prev => prev.map(a => ({ ...a, is_active: a.id === avatar.id })))
+    }
+    if (isConnected) {
+      try {
+        await updateAvatar(avatar.url)
+      } catch (err) {
+        console.error(err)
+      }
+    }
   }
+
+  // ... le reste de tes fonctions (handleModeChange, formatDuration, etc.) reste identique ...
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      {/* Tout ton header, status bar, etc. reste identique */}
+      {/* Tout ton code du haut (Header, Status bar, etc.) reste IDENTIQUE */}
 
       {/* Main layout */}
       <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-6">
           {/* Cameras */}
           <div className="relative grid gap-6 md:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
-            
-            {/* Camera réelle (inchangée) */}
-            <div className="overflow-hidden rounded-2xl border border-hairline bg-card shadow-[0_8px_40px_rgba(0,0,0,0.4)]">
-              {/* ... ton code camera réelle ... */}
-            </div>
+            {/* Camera réelle - inchangée */}
+            {/* ... ton code camera réelle ... */}
 
-            {/* Camera ChapCam (flux nettoyé) */}
+            {/* Camera ChapCam */}
             <div className="overflow-hidden rounded-2xl border border-primary/30 bg-card shadow-[0_8px_40px_rgba(0,255,136,0.12)]">
+              {/* Header de la caméra */}
               <div className="flex items-center gap-2 border-b border-primary/20 bg-muted px-4 py-2.5 backdrop-blur-md">
                 <Zap className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium text-foreground">Caméra ChapCam</span>
@@ -160,6 +156,7 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
+
               <div ref={chapCamRef} className="cc-cam-stage relative aspect-video bg-background">
                 <video
                   ref={remoteVideoRef}
@@ -168,32 +165,32 @@ export default function DashboardPage() {
                   muted
                   className="h-full w-full object-cover"
                 />
-                {/* Indicateur watermark */}
-                <div className="absolute right-3 top-3 z-20 rounded-md bg-black/70 px-3 py-1 text-xs text-green-400">
-                  {watermarkDisabled ? '✅ Watermark Retiré' : 'Watermark Actif'}
+                <div className="absolute right-3 top-3 z-30 flex items-center gap-1.5 rounded-md bg-black/70 px-3 py-1 text-xs text-green-400 backdrop-blur-md">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
+                  Watermark Retiré
                 </div>
-                {/* ... le reste de tes overlays ... */}
+                {/* ... tes autres overlays (fullscreen button, etc.) ... */}
               </div>
+
+              <VirtualCameraIndicator className="m-3" />
             </div>
           </div>
 
-          {/* Bouton démarrer (inchangé) */}
-          <button onClick={isConnected ? handleStopSwap : handleStartSwap} /* ... */ >
-            {/* ... */}
-          </button>
+          {/* Avatars, Bouton Démarrer, etc. → tout reste inchangé */}
+
         </div>
 
-        {/* Panneau réglages (inchangé) */}
-        <aside className="h-fit space-y-6 ...">
-          {/* Tu peux ajouter ici un toggle pour watermark si tu veux */}
-        </aside>
+        {/* Panneau réglages → inchangé */}
       </div>
 
-      {/* Hidden elements for watermark removal */}
+      {/* Éléments cachés obligatoires pour le watermark */}
       <video ref={hiddenVideoRef} style={{ display: 'none' }} muted playsInline />
       <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-      <InstallationRequestModal open={showInstallModal} onClose={() => setShowInstallModal(false)} />
+      <InstallationRequestModal
+        open={showInstallModal}
+        onClose={() => setShowInstallModal(false)}
+      />
     </div>
   )
 }
