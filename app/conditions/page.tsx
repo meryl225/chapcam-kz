@@ -61,7 +61,7 @@ export default function ConditionsPage() {
         </p>
       </LegalSection>
 
-      <LegalSection title="5. Abonnements, crédits et paiements">
+      <LegalSection id="paiements" title="5. Abonnements, crédits et paiements">
         <p>
           Certaines fonctionnalités sont payantes, comme indiqué sur la Plateforme. Le paiement peut donner droit à un
           abonnement ou à un certain nombre de crédits utilisables sur la Plateforme. Sauf disposition légale impérative
@@ -110,6 +110,25 @@ export default function ConditionsPage() {
         <p>
           Vous êtes seul responsable de l&apos;usage que vous faites de ChapCam. Toute violation de cette section peut
           entraîner la suspension immédiate de votre compte et votre signalement aux autorités compétentes.
+        </p>
+        <h3 className="mt-6 font-semibold text-foreground">6.1 Lutte contre le broutage et cadre légal ivoirien</h3>
+        <p>
+          En Côte d&apos;Ivoire, l&apos;escroquerie en ligne communément appelée «&nbsp;broutage&nbsp;»,
+          l&apos;usurpation d&apos;identité numérique et les arnaques sentimentales constituent des infractions pénales.
+          Elles sont notamment réprimées par la{" "}
+          <strong>loi n° 2013-451 du 19 juin 2013 relative à la lutte contre la cybercriminalité</strong> ainsi que par
+          les dispositions du Code pénal ivoirien relatives à l&apos;escroquerie, lesquelles prévoient des peines
+          d&apos;emprisonnement et des amendes. Vous vous engagez à ne jamais utiliser la Plateforme pour préparer,
+          faciliter ou commettre de tels actes.
+        </p>
+        <p>
+          Indépendamment de votre lieu de résidence, vous demeurez tenu de respecter l&apos;ensemble des lois
+          applicables sur votre territoire (protection des données personnelles, droit à l&apos;image, lutte contre la
+          fraude, Règlement général sur la protection des données — RGPD — pour l&apos;Union européenne, etc.). En cas
+          d&apos;usage frauduleux avéré, ChapCam conserve les preuves techniques disponibles (métadonnées, identifiants,
+          marqueurs de traçabilité) et coopère avec les autorités compétentes, notamment, en Côte d&apos;Ivoire, la
+          Plateforme de Lutte Contre la Cybercriminalité (PLCC) et la Direction de l&apos;Informatique et des Traces
+          Technologiques (DITT).
         </p>
       </LegalSection>
 

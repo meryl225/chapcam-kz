@@ -7,6 +7,7 @@ import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, W
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
+import { SwapConsent, GenerateNotice } from '@/components/dashboard/swap-consent'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
@@ -30,6 +31,8 @@ export default function DashboardPage() {
   const [duration, setDuration] = useState(0)
   const [pointsUsed, setPointsUsed] = useState(0)
   const [isSyncingPoints, setIsSyncingPoints] = useState(false)
+  // Certification d'usage responsable, requise avant chaque demarrage de swap.
+  const [swapConsent, setSwapConsent] = useState(false)
 
   // Detection hardware et mode de traitement
   const [hardware, setHardware] = useState<HardwareCapabilities | null>(null)
@@ -262,7 +265,14 @@ export default function DashboardPage() {
   }, [])
 
   const handleStartSwap = async () => {
-    if (!selectedAvatar || userPoints < POINTS_PER_SECOND) return
+    if (!selectedAvatar || userPoints < POINTS_PER_SECOND || !swapConsent) return
+    // Journalisation de l'acceptation de la certification d'usage responsable.
+    console.log('[v0] swap-consent accepted', {
+      type: 'live-face-swap',
+      userId,
+      avatarId: selectedAvatar.id,
+      acceptedAt: new Date().toISOString(),
+    })
     setDuration(0)
     setPointsUsed(0)
     await connect(selectedAvatar.url)
@@ -311,7 +321,7 @@ export default function DashboardPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND
+  const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND && swapConsent
 
   const quickTools = [
     { href: '/dashboard/voice-swap', label: 'Voice Swap', icon: AudioLines, color: '#8b5cf6' },
@@ -658,6 +668,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Certification d'usage responsable (avant demarrage) */}
+          {!isConnected && (
+            <SwapConsent checked={swapConsent} onChange={setSwapConsent} className="mb-3" />
+          )}
+
           {/* Bouton Demarrer (degrade vert -> violet) */}
           <button
             onClick={isConnected ? handleStopSwap : handleStartSwap}
@@ -696,6 +711,8 @@ export default function DashboardPage() {
               )}
             </span>
           </button>
+
+          {!isConnected && <GenerateNotice className="mt-3" />}
         </div>
 
         {/* Panneau de reglages */}
