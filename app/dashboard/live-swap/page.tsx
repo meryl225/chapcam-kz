@@ -89,6 +89,7 @@ export default function DashboardPage() {
     error,
     localVideoRef,
     remoteVideoRef,
+    remoteRawStream,
     connect,
     disconnect,
     updateAvatar,
@@ -97,17 +98,28 @@ export default function DashboardPage() {
   const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
   // ==================== HOOK RETRAIT WATERMARK ====================
-  // Prend le flux brut renvoye par Decart (remoteVideoRef), le nettoie via
-  // canvas + hidden video, puis remplace le srcObject affiche par le flux propre.
+  // remoteRawStream provient directement de useLucy21 : c'est un etat React
+  // stable mis a jour par Decart via onRemoteStream, sans jamais toucher
+  // remoteVideoRef.srcObject directement (voir use-lucy-21.ts). On peut donc
+  // le passer en toute securite au hook de retrait de watermark sans risque
+  // de boucle de feedback.
   const { videoRef: hiddenVideoRef, canvasRef } = useDecartNoWatermark({
-    decartStream: remoteVideoRef.current?.srcObject as MediaStream | null,
+    decartStream: remoteRawStream,
     enabled: watermarkDisabled,
     onCleanStreamReady: (cleanStream) => {
-      if (remoteVideoRef.current) {
+      if (remoteVideoRef.current && watermarkDisabled) {
         remoteVideoRef.current.srcObject = cleanStream
       }
     }
   })
+
+  // Affiche le flux brut directement quand le retrait de watermark est
+  // desactive, ou tant que le flux nettoye n'est pas encore pret.
+  useEffect(() => {
+    if (!watermarkDisabled && remoteVideoRef.current && remoteRawStream) {
+      remoteVideoRef.current.srcObject = remoteRawStream
+    }
+  }, [watermarkDisabled, remoteRawStream, remoteVideoRef])
 
   // Charger les preferences sauvegardees uniquement cote client (apres montage)
   // pour eviter tout mismatch d'hydratation avec le rendu serveur.
