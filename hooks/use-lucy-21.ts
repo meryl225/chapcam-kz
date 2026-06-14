@@ -16,7 +16,6 @@ export function useLucy21() {
   const [error, setError] = useState<string | null>(null)
   const [pointsUsed, setPointsUsed] = useState(0)
   const [sessionDuration, setSessionDuration] = useState(0)
-
   // Flux brut renvoye par Decart (avec watermark), expose separement de
   // remoteVideoRef. C'est ce flux qui doit etre consomme par tout traitement
   // (ex: retrait de watermark) - remoteVideoRef ne doit recevoir QUE le
