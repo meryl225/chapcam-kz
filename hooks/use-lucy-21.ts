@@ -16,12 +16,6 @@ export function useLucy21() {
   const [error, setError] = useState<string | null>(null)
   const [pointsUsed, setPointsUsed] = useState(0)
   const [sessionDuration, setSessionDuration] = useState(0)
-  // Flux brut renvoye par Decart (avec watermark), expose separement de
-  // remoteVideoRef. C'est ce flux qui doit etre consomme par tout traitement
-  // (ex: retrait de watermark) - remoteVideoRef ne doit recevoir QUE le
-  // resultat final a afficher, jamais directement ecrit par Decart, pour
-  // eviter toute course d'ecriture concurrente sur srcObject.
-  const [remoteRawStream, setRemoteRawStream] = useState<MediaStream | null>(null)
 
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
@@ -129,10 +123,9 @@ export function useLucy21() {
       streamRef.current = null
     }
 
-    // 3. Couper egalement les tracks attaches aux elements video et au flux
-    //    brut Decart expose (flux local, flux brut Decart, flux affiche)
-    //    pour eteindre le voyant camera et liberer la ressource dans tous
-    //    les cas.
+    // 3. Couper egalement les tracks attaches aux elements video (flux local
+    //    et flux affiche) pour eteindre le voyant camera et liberer la
+    //    ressource dans tous les cas.
     const localStream = localVideoRef.current?.srcObject as MediaStream | null
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop())
@@ -140,9 +133,6 @@ export function useLucy21() {
     const remoteStream = remoteVideoRef.current?.srcObject as MediaStream | null
     if (remoteStream) {
       remoteStream.getTracks().forEach((track) => track.stop())
-    }
-    if (remoteRawStream) {
-      remoteRawStream.getTracks().forEach((track) => track.stop())
     }
 
     // 4. Detacher et mettre en pause les elements video
@@ -155,12 +145,11 @@ export function useLucy21() {
       remoteVideoRef.current.srcObject = null
     }
 
-    setRemoteRawStream(null)
     setIsConnected(false)
     setIsConnecting(false)
     setConnectionState('disconnected')
     setError(null)
-  }, [stopPointsDeduction, remoteRawStream])
+  }, [stopPointsDeduction])
 
   const connect = useCallback(async (avatarImageUrl: string) => {
     disconnect()
@@ -217,15 +206,13 @@ export function useLucy21() {
         mirror: 'auto',
         resolution: '720p',
 
-        // IMPORTANT : on n'ecrit JAMAIS directement sur remoteVideoRef ici.
-        // On expose le flux brut via remoteRawStream (etat React). C'est au
-        // consommateur (page) de decider quoi afficher dans remoteVideoRef
-        // (flux brut tel quel, ou flux nettoye du watermark).
-        // Cela evite une course d'ecriture sur srcObject si Decart rappelle
-        // onRemoteStream plusieurs fois (renegociation) alors qu'un
-        // traitement externe a deja remplace le srcObject affiche.
+        // Affichage direct du flux transforme renvoye par Decart, sans aucun
+        // traitement intermediaire. Le badge natif "AI Generated" de Decart
+        // reste visible, c'est normal et attendu.
         onRemoteStream: (transformedStream: MediaStream) => {
-          setRemoteRawStream(transformedStream)
+          if (remoteVideoRef.current) {
+            remoteVideoRef.current.srcObject = transformedStream
+          }
         },
       })
 
@@ -271,7 +258,6 @@ export function useLucy21() {
         localVideoRef.current.pause()
         localVideoRef.current.srcObject = null
       }
-      setRemoteRawStream(null)
       stopPointsDeduction()
       setIsConnected(false)
       setConnectionState('error')
@@ -303,7 +289,6 @@ export function useLucy21() {
     error,
     localVideoRef,
     remoteVideoRef,
-    remoteRawStream,
     connect,
     disconnect,
     updateAvatar,
