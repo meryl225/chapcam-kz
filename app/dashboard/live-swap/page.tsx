@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2 } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2, AudioLines } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
+import { useDecartNoWatermark } from '@/hooks/useDecartNoWatermark'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
@@ -31,7 +32,7 @@ export default function DashboardPage() {
   const [pointsUsed, setPointsUsed] = useState(0)
   const [isSyncingPoints, setIsSyncingPoints] = useState(false)
 
-  // Nouveau: Detection hardware et mode de traitement
+  // Detection hardware et mode de traitement
   const [hardware, setHardware] = useState<HardwareCapabilities | null>(null)
   // IMPORTANT : on initialise avec les MEMES valeurs par defaut que le rendu
   // serveur. Lire localStorage ici (pendant le rendu) provoquait un mismatch
@@ -59,6 +60,9 @@ export default function DashboardPage() {
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
 
+  // ==================== WATERMARK REMOVAL ====================
+  const [watermarkDisabled, setWatermarkDisabled] = useState(true)
+
   // Agrandissement de la camera ChapCam (plein ecran natif pour faciliter le cadrage / OBS)
   const chapCamRef = useRef<HTMLDivElement | null>(null)
   const [isCamFullscreen, setIsCamFullscreen] = useState(false)
@@ -85,12 +89,37 @@ export default function DashboardPage() {
     error,
     localVideoRef,
     remoteVideoRef,
+    remoteRawStream,
     connect,
     disconnect,
     updateAvatar,
   } = useLucy21()
 
   const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  // ==================== HOOK RETRAIT WATERMARK ====================
+  // remoteRawStream provient directement de useLucy21 : c'est un etat React
+  // stable mis a jour par Decart via onRemoteStream, sans jamais toucher
+  // remoteVideoRef.srcObject directement (voir use-lucy-21.ts). On peut donc
+  // le passer en toute securite au hook de retrait de watermark sans risque
+  // de boucle de feedback.
+  const { videoRef: hiddenVideoRef, canvasRef } = useDecartNoWatermark({
+    decartStream: remoteRawStream,
+    enabled: watermarkDisabled,
+    onCleanStreamReady: (cleanStream) => {
+      if (remoteVideoRef.current && watermarkDisabled) {
+        remoteVideoRef.current.srcObject = cleanStream
+      }
+    }
+  })
+
+  // Affiche le flux brut directement quand le retrait de watermark est
+  // desactive, ou tant que le flux nettoye n'est pas encore pret.
+  useEffect(() => {
+    if (!watermarkDisabled && remoteVideoRef.current && remoteRawStream) {
+      remoteVideoRef.current.srcObject = remoteRawStream
+    }
+  }, [watermarkDisabled, remoteRawStream, remoteVideoRef])
 
   // Charger les preferences sauvegardees uniquement cote client (apres montage)
   // pour eviter tout mismatch d'hydratation avec le rendu serveur.
@@ -103,7 +132,7 @@ export default function DashboardPage() {
     async function detectHardware() {
       const caps = await detectHardwareCapabilities()
       setHardware(caps)
-      
+
       // Si PC gamer detecte, forcer le mode local obligatoirement
       if (caps.isGamingPC) {
         setProcessingMode('local')
@@ -196,7 +225,7 @@ export default function DashboardPage() {
   // Fonction pour arreter le swap et sauvegarder les points
   const handleStopSwapAndSave = async () => {
     disconnect()
-    
+
     // Sauvegarder les points utilises dans Supabase
     if (pointsUsed > 0 && !isSyncingPoints) {
       setIsSyncingPoints(true)
@@ -204,9 +233,9 @@ export default function DashboardPage() {
         const res = await fetch('/api/points', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             pointsToDeduct: pointsUsed,
-            sessionDuration: duration 
+            sessionDuration: duration
           })
         })
         const data = await res.json().catch(() => null)
@@ -220,7 +249,7 @@ export default function DashboardPage() {
         setIsSyncingPoints(false)
       }
     }
-    
+
     // Reset les compteurs
     setPointsUsed(0)
     setDuration(0)
@@ -293,11 +322,11 @@ export default function DashboardPage() {
     if (hardware?.isGamingPC) {
       return
     }
-    
+
     const newPrefs = { ...preferences, mode }
     setPreferences(newPrefs)
     saveProcessingPreferences(newPrefs)
-    
+
     if (hardware) {
       const result = determineProcessingMode(hardware, newPrefs, networkQuality)
       setProcessingMode(result.mode)
@@ -314,7 +343,7 @@ export default function DashboardPage() {
   const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND
 
   const quickTools = [
-    { href: '/dashboard/voice-changer', label: 'Voice Changer V1', icon: Mic, color: '#06b6d4' },
+    { href: '/dashboard/voice-swap', label: 'Voice Swap', icon: AudioLines, color: '#8b5cf6' },
     { href: '/dashboard/voice-translator', label: 'Voice Traducteur', icon: Languages, color: '#3b82f6' },
     { href: '/dashboard/photo-video', label: 'Photos → Vidéo', icon: ImageIcon, color: '#f97316' },
     { href: '/dashboard/video-translation', label: 'Traduction Vidéo', icon: Film, color: '#8b5cf6' },
@@ -535,6 +564,13 @@ export default function DashboardPage() {
                   muted
                   className="h-full w-full object-cover"
                 />
+
+                {watermarkDisabled && isConnected && (
+                  <div className="absolute right-3 top-3 z-30 flex items-center gap-1.5 rounded-md bg-black/70 px-3 py-1 text-xs text-green-400 backdrop-blur-md">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
+                    Watermark Retiré
+                  </div>
+                )}
 
                 <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-md bg-black/60 px-3 py-1 text-xs text-foreground backdrop-blur-md">
                   <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
@@ -839,6 +875,26 @@ export default function DashboardPage() {
             </button>
           </div>
 
+          {/* Retrait du watermark */}
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-foreground/60">Retrait du watermark</span>
+            <button
+              onClick={() => setWatermarkDisabled(v => !v)}
+              role="switch"
+              aria-checked={watermarkDisabled}
+              aria-label="Retrait du watermark"
+              className={`relative h-6 w-11 rounded-full transition-colors ${
+                watermarkDisabled ? 'bg-primary' : 'bg-white/15'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${
+                  watermarkDisabled ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
+          </div>
+
           {/* Mode de traitement */}
           <div>
             <p className="mb-2 text-xs font-medium text-foreground/60">Mode de traitement</p>
@@ -887,6 +943,10 @@ export default function DashboardPage() {
           </div>
         </aside>
       </div>
+
+      {/* Elements caches obligatoires pour le retrait du watermark */}
+      <video ref={hiddenVideoRef} style={{ display: 'none' }} muted playsInline />
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
 
       <InstallationRequestModal
         open={showInstallModal}

@@ -1,66 +1,158 @@
-'use client'
+'use client';
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useEffect, useCallback } from 'react';
 
-/**
- * useDecartNoWatermark — SCAFFOLDING DORMANT (desactive par defaut).
- *
- * But : permettre, plus tard, de produire une variante du flux transforme
- * Decart destinee a certains utilisateurs (ex: clients VIP) via un pipeline
- * canvas (drawImage -> captureStream). Tant que `enabled` est `false`, ce hook
- * est un simple PASS-THROUGH : il renvoie exactement le flux d'entree, sans
- * aucun traitement, sans cout CPU.
- *
- * IMPORTANT — comportement fail-safe :
- *   - Par defaut `enabled = false` => le flux natif Decart (avec son watermark)
- *     est renvoye tel quel.
- *   - Toute activation futur DOIT etre pilotee cote serveur (flag securise),
- *     jamais decidee cote client, pour rester inviolable.
- *
- * Ce hook n'est volontairement branche nulle part pour l'instant. Il sert de
- * point d'extension propre et reactivable sans toucher au reste du code.
- */
-export interface UseDecartNoWatermarkOptions {
-  /** Active le pipeline de traitement. `false` = pass-through (defaut). */
-  enabled?: boolean
+interface Props {
+  decartStream: MediaStream | null;
+  enabled: boolean; // true = active le retrait du watermark
+  onCleanStreamReady?: (cleanStream: MediaStream) => void;
 }
 
-export function useDecartNoWatermark(
-  inputStream: MediaStream | null,
-  options: UseDecartNoWatermarkOptions = {},
-): MediaStream | null {
-  const { enabled = false } = options
-  const [outputStream, setOutputStream] = useState<MediaStream | null>(inputStream)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-  const rafRef = useRef<number | null>(null)
+export function useDecartNoWatermark({ decartStream, enabled, onCleanStreamReady }: Props) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cleanStreamRef = useRef<MediaStream | null>(null);
+  const rafIdRef = useRef<number | null>(null);
+  const enabledRef = useRef(enabled);
 
+  // On garde une ref toujours a jour de `enabled` pour que la boucle RAF en
+  // cours puisse lire la valeur courante sans avoir besoin d'etre relancee.
   useEffect(() => {
-    // Pass-through : tant que le pipeline est desactive ou qu'il n'y a pas de
-    // flux, on renvoie l'entree inchangee. C'est le chemin par defaut.
-    if (!enabled || !inputStream) {
-      setOutputStream(inputStream)
-      return
+    enabledRef.current = enabled;
+  }, [enabled]);
+
+  const processFrame = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    // Copie le flux Decart
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    if (enabledRef.current) {
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // Zones larges pour couvrir le watermark mobile
+      const zones = [
+        { x: w * 0.55, y: h * 0.72, w: w * 0.45, h: h * 0.28 },
+        { x: 0, y: h * 0.72, w: w * 0.45, h: h * 0.28 },
+        { x: w * 0.55, y: 10, w: w * 0.45, h: h * 0.25 },
+        { x: w * 0.25, y: h * 0.68, w: w * 0.5, h: h * 0.32 },
+        { x: w * 0.65, y: h * 0.35, w: w * 0.35, h: h * 0.3 },
+      ];
+
+      zones.forEach((zone) => {
+        // Clone des pixels voisins
+        ctx.drawImage(
+          canvas,
+          zone.x - zone.w * 0.7,
+          zone.y - 40,
+          zone.w * 1.6,
+          zone.h * 1.3,
+          zone.x,
+          zone.y,
+          zone.w,
+          zone.h
+        );
+
+        // Blur puissant pour masquer le texte
+        ctx.save();
+        ctx.filter = 'blur(5px)';
+        ctx.drawImage(
+          canvas,
+          zone.x - 20,
+          zone.y - 20,
+          zone.w + 40,
+          zone.h + 40,
+          zone.x - 10,
+          zone.y - 10,
+          zone.w + 20,
+          zone.h + 20
+        );
+        ctx.filter = 'none';
+        ctx.restore();
+      });
     }
 
-    // --- Point d'extension futur (laisse intentionnellement inerte) ---
-    // Lorsque cette fonctionnalite sera reactivee, le pipeline canvas viendra
-    // ici : dessiner chaque frame du flux d'entree sur un <canvas>, puis
-    // produire un nouveau flux via canvas.captureStream(). Pour l'instant, et
-    // par securite, on conserve le pass-through afin de ne jamais alterer le
-    // flux ni retirer le watermark natif tant que rien n'est explicitement
-    // active cote serveur.
-    setOutputStream(inputStream)
+    rafIdRef.current = requestAnimationFrame(processFrame);
+  }, []);
+
+  const stopLoop = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+  }, []);
+
+  const stopCleanStream = useCallback(() => {
+    if (cleanStreamRef.current) {
+      cleanStreamRef.current.getTracks().forEach((track) => track.stop());
+      cleanStreamRef.current = null;
+    }
+  }, []);
+
+  // Connexion du flux
+  useEffect(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+
+    if (!video || !canvas || !decartStream) {
+      return;
+    }
+
+    video.srcObject = decartStream;
+    video.muted = true;
+    video.playsInline = true;
+
+    const handleLoadedMetadata = () => {
+      canvas.width = video.videoWidth || 1280;
+      canvas.height = video.videoHeight || 720;
+
+      // Stoppe toute boucle precedente avant d'en demarrer une nouvelle,
+      // pour eviter d'accumuler plusieurs RAF en parallele.
+      stopLoop();
+
+      // Cree (ou recree) le flux propre. On le recree systematiquement ici
+      // car decartStream a change (nouvelle reference), donc l'ancien
+      // cleanStream pointe potentiellement vers un canvas dont le contenu
+      // ne correspond plus au nouveau flux source.
+      stopCleanStream();
+      cleanStreamRef.current = canvas.captureStream(30);
+      onCleanStreamReady?.(cleanStreamRef.current);
+
+      rafIdRef.current = requestAnimationFrame(processFrame);
+    };
+
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.play().catch(() => {
+      // Lecture bloquee par le navigateur (autoplay policy) : on retente
+      // silencieusement, la video est muted donc generalement autorisee.
+    });
+
+    // Si les metadonnees sont deja disponibles (flux deja actif), on
+    // declenche manuellement car l'evenement ne sera pas re-emis.
+    if (video.readyState >= 1 && video.videoWidth > 0) {
+      handleLoadedMetadata();
+    }
 
     return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current)
-        rafRef.current = null
-      }
-    }
-  }, [enabled, inputStream])
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      stopLoop();
+      video.srcObject = null;
+    };
+  }, [decartStream, processFrame, onCleanStreamReady, stopLoop, stopCleanStream]);
 
-  // Reference conservee pour un usage canvas futur (evite un warning d'unused).
-  void canvasRef
+  // Nettoyage complet au demontage du composant
+  useEffect(() => {
+    return () => {
+      stopLoop();
+      stopCleanStream();
+    };
+  }, [stopLoop, stopCleanStream]);
 
-  return outputStream
+  return { videoRef, canvasRef };
 }

@@ -184,6 +184,26 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('virtual-camera-state', (_event, state) => callback(state))
   },
 
+  // Voice Swap : conversion de voix temps reel (architecture/scaffolding).
+  // Meme pattern que virtualCamera. Le streaming reel n'est pas encore branche.
+  voiceSwap: {
+    status: () => ipcRenderer.invoke('voice-swap-status'),
+    listDevices: () => ipcRenderer.invoke('voice-swap-list-devices'),
+    listVoices: () => ipcRenderer.invoke('voice-swap-list-voices'),
+    start: (config) => ipcRenderer.invoke('voice-swap-start', config),
+    stop: () => ipcRenderer.invoke('voice-swap-stop'),
+    updateSettings: (settings) => ipcRenderer.invoke('voice-swap-update-settings', settings),
+    // Etat pousse par le main process (latence, sante connexion, buffering).
+    onState: (callback) => {
+      ipcRenderer.on('voice-swap-state', (_event, state) => callback(state))
+    },
+    // Conversion d'un segment audio : envoie le PCM capture, recoit le PCM
+    // converti par ElevenLabs (aller-retour reel).
+    convert: (payload) => ipcRenderer.invoke('voice-swap-convert', payload),
+    // Remonte les metriques mesurees cote renderer (capture/playback/buffer).
+    reportMetrics: (metrics) => ipcRenderer.send('voice-swap-metrics', metrics),
+  },
+
   // Navigation events
   onOpenPreferences: (callback) => {
     ipcRenderer.on('open-preferences', () => callback())

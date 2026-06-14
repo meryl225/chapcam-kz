@@ -13,6 +13,7 @@ import { getPlan, type PlanConfig } from '@/lib/plans'
 import { getLiveOffer, type LiveOffer } from '@/lib/live-offers'
 import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
 import { getPcOffer, getDesktopDownloadUrl, getDesktopDownloadUrlMac, type PcOffer } from '@/lib/pc-offer'
+import { getVoiceOffer, type VoiceOffer } from '@/lib/voice-offers'
 import { createPcLicense } from '@/lib/pc-license'
 import { grantLiveWindow } from '@/lib/live-access'
 import {
@@ -137,6 +138,52 @@ export async function activateSubscription(
   return { now, end }
 }
 
+// Credite des MINUTES de voix (ChapVoice / Voice Swap) pour un user donne.
+// Comme les recharges de points : les minutes s'ACCUMULENT (ajout au solde
+// restant) et l'expiration est prolongee a partir de la fin en cours.
+export async function creditVoiceMinutes(
+  admin: Admin,
+  userId: string,
+  offer: { id: string; minutes: number; validityDays: number },
+): Promise<{ now: Date; end: Date; secondsRemaining: number }> {
+  const now = new Date()
+  const addSeconds = Math.round(offer.minutes * 60)
+  const durationMs = offer.validityDays * 24 * 60 * 60 * 1000
+
+  const { data: existing } = await admin
+    .from('voice_subscriptions')
+    .select('id, seconds_remaining, seconds_total, expires_at')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  const stillValid =
+    existing && existing.expires_at ? new Date(existing.expires_at) > now : false
+  const prevRemaining = stillValid ? Number(existing?.seconds_remaining ?? 0) : 0
+  const prevTotal = stillValid ? Number(existing?.seconds_total ?? 0) : 0
+  const base = stillValid && existing?.expires_at ? new Date(existing.expires_at) : now
+  const end = new Date(base.getTime() + durationMs)
+
+  const payload = {
+    user_id: userId,
+    plan: offer.id,
+    last_plan: offer.id,
+    seconds_remaining: prevRemaining + addSeconds,
+    seconds_total: prevTotal + addSeconds,
+    expires_at: end.toISOString(),
+    updated_at: now.toISOString(),
+  }
+
+  if (existing) {
+    const { error } = await admin.from('voice_subscriptions').update(payload).eq('id', existing.id)
+    if (error) console.error('[fulfillment] Erreur update voice_subscriptions:', error.message)
+  } else {
+    const { error } = await admin.from('voice_subscriptions').insert(payload)
+    if (error) console.error('[fulfillment] Erreur insert voice_subscriptions:', error.message)
+  }
+
+  return { now, end, secondsRemaining: prevRemaining + addSeconds }
+}
+
 export interface PurchaseInput {
   productId: string // id de formule (plans.ts) OU id d'offre Live (live-offers.ts)
   email: string
@@ -146,7 +193,7 @@ export interface PurchaseInput {
 
 export interface PurchaseResult {
   ok: boolean
-  kind: 'plan' | 'live' | 'installation' | 'pc' | null
+  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | null
   userLinked: boolean
   message: string
   licenseKey?: string
@@ -163,8 +210,9 @@ export async function creditPurchase(
   const liveOffer: LiveOffer | undefined = getLiveOffer(input.productId)
   const installOffer: InstallOffer | undefined = getInstallOffer(input.productId)
   const pcOffer: PcOffer | undefined = getPcOffer(input.productId)
+  const voiceOffer: VoiceOffer | undefined = getVoiceOffer(input.productId)
 
-  if (!plan && !liveOffer && !installOffer && !pcOffer) {
+  if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer) {
     return { ok: false, kind: null, userLinked: false, message: `Produit inconnu : ${input.productId}` }
   }
 
@@ -205,7 +253,7 @@ export async function creditPurchase(
   if (!userId) {
     return {
       ok: false,
-      kind: installOffer ? 'installation' : liveOffer ? 'live' : 'plan',
+      kind: installOffer ? 'installation' : liveOffer ? 'live' : voiceOffer ? 'voice' : 'plan',
       userLinked: false,
       message: `Aucun compte ChapCam ne correspond a ${input.email}.`,
     }
@@ -241,6 +289,16 @@ export async function creditPurchase(
       liveOffer.windowMinutes,
     ).catch((e) => console.error('[fulfillment] Email Live echoue:', e))
     return { ok: true, kind: 'live', userLinked: true, message: 'Acces Live Pro credite.' }
+  }
+
+  if (voiceOffer) {
+    const { secondsRemaining } = await creditVoiceMinutes(admin, userId, voiceOffer)
+    return {
+      ok: true,
+      kind: 'voice',
+      userLinked: true,
+      message: `${voiceOffer.name} credite (${Math.round(secondsRemaining / 60)} min disponibles).`,
+    }
   }
 
   // Formule a points

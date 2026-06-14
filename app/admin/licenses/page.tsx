@@ -46,6 +46,7 @@ export default function AdminLicensesPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
   const [resending, setResending] = useState(false)
+  const [resettingAll, setResettingAll] = useState(false)
   const [sendEmail, setSendEmail] = useState('')
   const [sendingOne, setSendingOne] = useState(false)
 
@@ -135,6 +136,36 @@ export default function AdminLicensesPage() {
     }
   }
 
+  const resetAll = async () => {
+    const count = stats?.activated ?? licenses.filter((l) => l.activated).length
+    if (
+      !window.confirm(
+        `Detacher TOUTES les licences de leur PC (${count} activee(s)) ?\n\nChaque client pourra ensuite reactiver sa cle sur son ordinateur. Les licences revoquees ne sont pas touchees.`,
+      )
+    ) {
+      return
+    }
+    setResettingAll(true)
+    try {
+      const res = await fetch('/api/admin/licenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reset-all' }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        showToast('ok', `${data.detached ?? 0} licence(s) detachee(s).`)
+        await load()
+      } else {
+        showToast('err', data.error || 'Erreur.')
+      }
+    } catch {
+      showToast('err', 'Erreur de connexion.')
+    } finally {
+      setResettingAll(false)
+    }
+  }
+
   const sendOne = async (e: React.FormEvent) => {
     e.preventDefault()
     const email = sendEmail.trim()
@@ -214,6 +245,15 @@ export default function AdminLicensesPage() {
             >
               {resending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               {resending ? 'Envoi en cours...' : 'Renvoyer le lien a tous'}
+            </button>
+            <button
+              onClick={resetAll}
+              disabled={resettingAll || loading}
+              className="inline-flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-semibold text-amber-300 transition-colors hover:bg-amber-500/20 disabled:opacity-60"
+              title="Detache toutes les licences de leur PC pour que chaque client puisse reactiver sa cle"
+            >
+              {resettingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+              {resettingAll ? 'Detachement...' : 'Detacher tous les PC'}
             </button>
             <button
               onClick={load}

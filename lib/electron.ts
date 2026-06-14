@@ -9,6 +9,10 @@ export interface VirtualCameraState {
   error?: string | null
 }
 
+// Contrat de l'API Voice Swap (defini dans lib/voice-swap.ts) expose par le
+// preload sous window.electronAPI.voiceSwap.
+import type { VoiceSwapAPI } from '@/lib/voice-swap'
+
 // Electron API types for ChapCam Desktop
 export interface ElectronAPI {
   // Camera access
@@ -27,6 +31,10 @@ export interface ElectronAPI {
     status: () => Promise<VirtualCameraState>
   }
   onVirtualCameraState: (callback: (state: VirtualCameraState) => void) => void
+  
+  // Voice Swap : conversion de voix temps reel (app de bureau uniquement).
+  // Optionnel : absent sur le web et sur les anciennes versions de l'app.
+  voiceSwap?: VoiceSwapAPI
   
   // Navigation events
   onOpenPreferences: (callback: () => void) => void

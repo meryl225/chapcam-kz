@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Mic, Languages, ImageIcon, Film, HelpCircle, Monitor } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -48,7 +48,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'DASHBOARD' },
   { href: '/dashboard/live-swap', icon: Zap, label: 'LIVE SWAP' },
-  { href: '/dashboard/voice-changer', icon: Mic, label: 'VOICE CHANGER V1', badge: 'NEW' },
+  { href: '/dashboard/voice-swap', icon: AudioLines, label: 'VOICE SWAP', badge: 'PRO' },
   { href: '/dashboard/voice-translator', icon: Languages, label: 'VOICE TRADUCTEUR', badge: 'NEW' },
   { href: '/dashboard/photo-video', icon: ImageIcon, label: 'PHOTOS EN VIDEO', badge: 'NEW' },
   { href: '/dashboard/video-translation', icon: Film, label: 'TRADUCTION VIDEO', badge: 'NEW' },
@@ -323,10 +323,18 @@ interface PlanGuardBannerProps {
   expiresAt: string | null
   isActive: boolean
   pointsRemaining?: number
+  voiceSecondsRemaining?: number
 }
 
-export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0 }: PlanGuardBannerProps) {
+export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0, voiceSecondsRemaining = 0 }: PlanGuardBannerProps) {
+  const pathname = usePathname()
   const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false
+
+  // La page Voice Swap utilise un credit distinct (minutes ChapVoice). Si
+  // l'utilisateur a des minutes de voix, on ne montre pas la banniere "points".
+  const onVoiceSwap = pathname === '/dashboard/voice-swap'
+  if (onVoiceSwap && voiceSecondsRemaining > 0) return null
+
   const showBanner = plan === 'free' || isExpired || !isActive || pointsRemaining <= 0
 
   if (!showBanner) return null
@@ -334,13 +342,14 @@ export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0
   return (
     <div className="fixed left-0 right-0 top-14 z-40 flex items-center justify-between bg-orange-500 px-4 py-2 md:left-[240px] md:top-0">
       <p className="text-sm font-medium text-foreground">
-        {pointsRemaining <= 0 
-          ? 'Tu as epuise tes points — Recharge pour continuer le swap'
-          : 'Tu es sur le plan gratuit — Active un abonnement pour demarrer le swap'
-        }
+        {onVoiceSwap
+          ? 'Recharge une offre ChapVoice pour activer le changement de voix'
+          : pointsRemaining <= 0
+            ? 'Tu as epuise tes points — Recharge pour continuer le swap'
+            : 'Tu es sur le plan gratuit — Active un abonnement pour demarrer le swap'}
       </p>
       <Link
-        href="/dashboard/plans"
+        href={onVoiceSwap ? '/dashboard/voice-swap' : '/dashboard/plans'}
         className="rounded-lg bg-white px-4 py-1.5 text-xs font-bold uppercase text-orange-500 transition-colors hover:bg-gray-100"
       >
         RECHARGER
