@@ -20,6 +20,8 @@ import {
   Lock,
   Building2,
   Fingerprint,
+  Gavel,
+  Globe,
 } from 'lucide-react'
 import { ReportForm } from '@/components/legal/report-form'
 
@@ -253,10 +255,79 @@ export default function ChartePage() {
             </p>
           </InfoSection>
 
-          {/* ===== SECTION 7 — SIGNALEMENT ===== */}
+          {/* ===== SECTION 7 — CADRE LÉGAL & BROUTAGE ===== */}
+          <section aria-labelledby="loi-title" className="scroll-mt-24">
+            <div className="overflow-hidden rounded-3xl border border-destructive/30 bg-card">
+              <div className="border-b border-destructive/20 bg-destructive/10 p-7 md:p-10">
+                <div className="flex items-center gap-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-destructive/20">
+                    <Gavel className="h-6 w-6 text-destructive" aria-hidden />
+                  </span>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-destructive">Section 7</p>
+                    <h2 id="loi-title" className="mt-1 text-xl font-bold tracking-tight md:text-2xl">
+                      Cadre légal &amp; lutte contre le broutage
+                    </h2>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6 p-7 md:p-10">
+                <p className="text-muted-foreground">
+                  En Côte d’Ivoire, l’escroquerie en ligne — communément appelée «&nbsp;broutage&nbsp;» — ainsi que
+                  l’usurpation d’identité numérique et les arnaques sentimentales sont des infractions pénales
+                  sévèrement réprimées. L’utilisation de CHAPCAM à ces fins est{' '}
+                  <strong className="text-foreground">strictement interdite</strong>.
+                </p>
+
+                <div className="rounded-2xl border border-hairline bg-background/50 p-6">
+                  <div className="flex items-start gap-3">
+                    <Scale className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+                    <div>
+                      <h3 className="text-base font-bold text-foreground">Loi n° 2013-451 du 19 juin 2013</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        Relative à la lutte contre la cybercriminalité en Côte d’Ivoire. Elle réprime notamment
+                        l’escroquerie en ligne, l’usurpation d’identité, la fraude informatique, le chantage et la
+                        diffusion de fausses informations au moyen d’un système informatique. Ces faits sont passibles
+                        de peines d’emprisonnement et d’amendes, conformément aux articles applicables ainsi qu’aux
+                        dispositions du Code pénal ivoirien relatives à l’escroquerie.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-hairline bg-background/50 p-6">
+                  <div className="flex items-start gap-3">
+                    <Globe className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+                    <div>
+                      <h3 className="text-base font-bold text-foreground">Lois locales et internationales</h3>
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                        Quel que soit votre pays, vous demeurez responsable du respect des lois applicables sur votre
+                        territoire (protection des données, droit à l’image, lutte contre la fraude, RGPD pour
+                        l’Union européenne, etc.). CHAPCAM est un outil de création&nbsp;: tout détournement à des fins
+                        illégales engage votre seule responsabilité.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 rounded-2xl bg-destructive/10 p-5 text-sm leading-relaxed text-foreground">
+                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-destructive" aria-hidden />
+                  <p>
+                    Tout usage frauduleux détecté entraîne la suspension immédiate du compte, la conservation des
+                    preuves techniques (métadonnées, identifiants, traçabilité) et un signalement aux autorités
+                    compétentes — en Côte d’Ivoire, notamment la Plateforme de Lutte Contre la Cybercriminalité (PLCC)
+                    et la DITT.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ===== SECTION 8 — SIGNALEMENT ===== */}
           <section id="signaler" aria-labelledby="signaler-title" className="scroll-mt-24">
             <SectionHeader
-              eyebrow="Section 7"
+              eyebrow="Section 8"
               id="signaler-title"
               title="Signaler un contenu"
               desc="Vous avez repéré un contenu qui enfreint nos conditions ? Signalez-le et notre équipe interviendra."
