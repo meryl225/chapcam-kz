@@ -4,6 +4,7 @@ import { getUsdToXof, tierMaxCostUsd, tierPriceXof } from '@/lib/numbers/pricing
 import { fivesim } from './fivesim'
 import { smsman } from './smsman'
 import { smspool } from './smspool'
+import { DEFAULT_SUCCESS_RATE, MIN_SUCCESS_RATE } from './types'
 import type { CodeResult, ProviderAdapter, ProviderId, PurchaseResult, Quote } from './types'
 
 export const adapters: Record<ProviderId, ProviderAdapter> = {
@@ -13,6 +14,31 @@ export const adapters: Record<ProviderId, ProviderAdapter> = {
 }
 
 const ALL = [fivesim, smsman, smspool]
+
+/** Taux de réussite effectif d'un devis (valeur par défaut si non communiquée). */
+function effectiveRate(q: Quote): number {
+  return typeof q.successRate === 'number' && q.successRate > 0 ? q.successRate : DEFAULT_SUCCESS_RATE
+}
+
+/**
+ * Classe les devis « prix client, puis qualité » pour viser un taux de réussite
+ * SMS d'au moins MIN_SUCCESS_RATE % sans jamais faire payer plus le client :
+ *  1. Les offres atteignant le seuil passent avant celles qui ne l'atteignent pas.
+ *  2. Au sein de chaque groupe, on trie par PALIER de prix client croissant
+ *     (le client paie un prix par paliers : deux coûts du même palier sont
+ *     identiques pour lui), puis par taux de réussite décroissant (à prix client
+ *     égal, on prend le plus fiable), puis par coût fournisseur croissant.
+ * L'ordre obtenu sert au prix affiché ET à l'ordre d'achat (bascule auto).
+ */
+export function rankQuotes(quotes: Quote[], usdToXof: number): Quote[] {
+  const cmp = (a: Quote, b: Quote) =>
+    tierPriceXof(a.costUsd, usdToXof) - tierPriceXof(b.costUsd, usdToXof) ||
+    effectiveRate(b) - effectiveRate(a) ||
+    a.costUsd - b.costUsd
+  const eligible = quotes.filter((q) => effectiveRate(q) >= MIN_SUCCESS_RATE).sort(cmp)
+  const fallback = quotes.filter((q) => effectiveRate(q) < MIN_SUCCESS_RATE).sort(cmp)
+  return [...eligible, ...fallback]
+}
 
 export type BestQuote = {
   available: boolean
@@ -35,8 +61,7 @@ export async function getBestQuote(country: CanonCountry, service: CanonService)
       ),
     ),
   ])
-  const quotes = results.filter((q): q is Quote => !!q && q.costUsd > 0)
-  quotes.sort((a, b) => a.costUsd - b.costUsd)
+  const quotes = rankQuotes(results.filter((q): q is Quote => !!q && q.costUsd > 0), usdToXof)
   const best = quotes[0] ?? null
   return {
     available: !!best,
@@ -116,8 +141,7 @@ export async function getRentQuote(
       ),
     ),
   ])
-  const quotes = results.filter((q): q is Quote => !!q && q.costUsd > 0)
-  quotes.sort((a, b) => a.costUsd - b.costUsd)
+  const quotes = rankQuotes(results.filter((q): q is Quote => !!q && q.costUsd > 0), usdToXof)
   const best = quotes[0] ?? null
   return {
     available: !!best,

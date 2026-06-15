@@ -39,6 +39,11 @@ export const fivesim: ProviderAdapter = {
     const operators = products?.[service.fivesim]
     if (!operators) return null
     // Choisit l'opérateur le moins cher avec de la disponibilité.
+    // Remarque : 5sim expose un champ `rate`, mais sur une échelle peu fiable
+    // (souvent 0 même pour des pools à fort stock) ; s'en servir pour choisir
+    // l'opérateur conduirait à retenir des numéros absurdement chers. On laisse
+    // donc le taux à « inconnu » (neutre) et le scoring qualité s'appuie sur les
+    // fournisseurs qui renvoient une vraie valeur (ex: SMSPool).
     let best: { cost: number; count: number } | null = null
     for (const op of Object.values(operators)) {
       if (!op || op.count <= 0) continue

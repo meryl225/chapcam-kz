@@ -39,6 +39,15 @@ function idOf(it: RefItem): string {
   return String(it.ID ?? it.id ?? '')
 }
 
+/** Normalise un taux de réussite vers une échelle 0-100, ou undefined si inconnu. */
+function parseRate(raw: unknown): number | undefined {
+  if (raw == null) return undefined
+  const n = Number(String(raw).replace('%', '').trim())
+  if (!Number.isFinite(n) || n <= 0) return undefined
+  // Une valeur <= 1 est probablement une fraction (0.72 -> 72%).
+  return n <= 1 ? n * 100 : Math.min(100, n)
+}
+
 async function refs() {
   if (refCache && Date.now() - refCache.at < REF_TTL) return refCache
   const [c, s] = await Promise.all([post('/country/retrieve_all'), post('/service/retrieve_all')])
@@ -80,11 +89,12 @@ export const smspool: ProviderAdapter = {
     if (!countryId || !serviceId) return null
     const { ok, json } = await post('/request/price', { country: countryId, service: serviceId })
     if (!ok || !json || typeof json !== 'object') return null
-    const data = json as { price?: number | string; success?: number }
+    const data = json as { price?: number | string; success?: number; success_rate?: number | string }
     const cost = Number(data.price ?? 0)
     if (!(cost > 0)) return null
-    // smspool facture en USD.
-    return { provider: 'smspool', costUsd: cost, count: 1 }
+    // smspool facture en USD. On capte le taux de réussite annoncé (0-100) pour
+    // le scoring qualité côté sélection.
+    return { provider: 'smspool', costUsd: cost, count: 1, successRate: parseRate(data.success_rate ?? data.success) }
   },
 
   async purchase(country: CanonCountry, service: CanonService, maxCostUsd?: number): Promise<PurchaseResult> {
