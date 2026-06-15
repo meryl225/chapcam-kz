@@ -85,8 +85,8 @@ export default function MarketplacePage() {
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold text-white">Acheter un numéro</h1>
         <p className="text-sm text-white/50">
-          Choisissez un pays et un service. ChapCam sélectionne automatiquement le fournisseur le moins cher parmi
-          5sim, SMS-Man et SMSPool. Prix en FCFA, tout compris.
+          Choisissez un pays et un service. ChapCam vous garantit automatiquement le meilleur prix, en FCFA, tout
+          compris.
         </p>
       </div>
 
