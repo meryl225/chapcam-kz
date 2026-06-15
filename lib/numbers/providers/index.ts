@@ -81,6 +81,62 @@ export async function purchaseCheapest(country: CanonCountry, service: CanonServ
   throw lastErr ?? new Error("L'achat a échoué chez tous les fournisseurs.")
 }
 
+/** Devis de LOCATION : interroge les fournisseurs supportant la location. */
+export async function getRentQuote(
+  country: CanonCountry,
+  service: CanonService,
+  minHours: number,
+): Promise<BestQuote> {
+  const renters = ALL.filter((a) => typeof a.rentQuote === 'function' && typeof a.rent === 'function')
+  const [usdToXof, results] = await Promise.all([
+    getUsdToXof(),
+    Promise.all(
+      renters.map((a) =>
+        a.rentQuote!(country, service, minHours).catch((e) => {
+          console.log(`[v0] rentQuote ${a.id} failed:`, (e as Error)?.message)
+          return null
+        }),
+      ),
+    ),
+  ])
+  const quotes = results.filter((q): q is Quote => !!q && q.costUsd > 0)
+  quotes.sort((a, b) => a.costUsd - b.costUsd)
+  const best = quotes[0] ?? null
+  return {
+    available: !!best,
+    priceXof: best ? tierPriceXof(best.costUsd, usdToXof) : null,
+    best,
+    quotes,
+    usdToXof,
+  }
+}
+
+/** Loue chez le fournisseur le moins cher ; bascule auto en cas d'échec. */
+export async function rentCheapest(
+  country: CanonCountry,
+  service: CanonService,
+  minHours: number,
+): Promise<PurchaseOutcome> {
+  const { quotes, usdToXof } = await getRentQuote(country, service, minHours)
+  if (quotes.length === 0) throw new Error('Aucun fournisseur ne propose la location pour ce pays/service.')
+
+  let lastErr: Error | null = null
+  for (const q of quotes) {
+    const adapter = adapters[q.provider]
+    if (!adapter.rent) continue
+    try {
+      const result = await adapter.rent(country, service, minHours)
+      const costUsd = result.costUsd > 0 ? result.costUsd : q.costUsd
+      const priceXof = tierPriceXof(costUsd, usdToXof)
+      return { result: { ...result, costUsd }, priceXof, costUsd, usdToXof }
+    } catch (e) {
+      lastErr = e as Error
+      console.log(`[v0] rent ${q.provider} failed:`, lastErr?.message)
+    }
+  }
+  throw lastErr ?? new Error('La location a échoué chez tous les fournisseurs.')
+}
+
 export async function getCodeFor(provider: ProviderId, order: string): Promise<CodeResult> {
   return adapters[provider].getCode(order)
 }

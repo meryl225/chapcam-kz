@@ -36,6 +36,12 @@ export interface ProviderAdapter {
   cancel(providerOrder: string): Promise<void>
   /** Clôture la commande après réception (optionnel). */
   finish?(providerOrder: string): Promise<void>
+
+  // --- Location (numéro réutilisable, multi-SMS) — optionnel par fournisseur ---
+  /** Devis de location ; null si la location n'est pas disponible pour ce pays/service. */
+  rentQuote?(country: CanonCountry, service: CanonService, minHours: number): Promise<Quote | null>
+  /** Loue un numéro. Lève une erreur si indisponible. expiresAt = fin réelle imposée par le fournisseur. */
+  rent?(country: CanonCountry, service: CanonService, minHours: number): Promise<PurchaseResult>
 }
 
 export function normalizePhone(raw: string): string {
