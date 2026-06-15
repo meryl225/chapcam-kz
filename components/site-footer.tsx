@@ -16,6 +16,9 @@ export function SiteFooter() {
         </div>
 
         <nav aria-label="Liens légaux" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
+          <Link href="/numbers" className="font-semibold text-[#2563EB] transition-colors hover:text-[#1d4ed8]">
+            ESIM ChapCam
+          </Link>
           <Link href="/conditions" className="text-muted-foreground transition-colors hover:text-primary">
             Conditions d&apos;utilisation
           </Link>

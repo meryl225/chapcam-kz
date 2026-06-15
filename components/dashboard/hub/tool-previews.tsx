@@ -1,6 +1,21 @@
 import Image from 'next/image'
 import { Mic, Play, Radio, ArrowRight, Monitor, Cpu, Zap } from 'lucide-react'
 
+/* ---------- ESIM ChapCam : 1000+ apps au-dessus d'un téléphone ---------- */
+export function EsimPreview() {
+  return (
+    <div className="relative aspect-[785/346] w-full overflow-hidden rounded-xl border border-hairline bg-[#1d4ed8]">
+      <Image
+        src="/images/esim-apps.png"
+        alt="Plus de 1000 applications supportées par les numéros eSIM ChapCam"
+        fill
+        sizes="260px"
+        className="object-cover object-top"
+      />
+    </div>
+  )
+}
+
 /* ---------- Live Swap : visage original -> IA -> visage transforme ---------- */
 export function LiveSwapPreview() {
   return (
