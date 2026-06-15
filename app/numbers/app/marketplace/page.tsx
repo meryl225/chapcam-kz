@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useNumbers } from '@/components/numbers/numbers-provider'
+import { ServiceLogo } from '@/components/numbers/service-logo'
 import { COUNTRIES, SERVICES, RENTAL_PLANS, countryByCode, serviceBySlug } from '@/lib/numbers/catalog'
 import { formatXOF, type QuoteResponse } from '@/lib/numbers/types'
 import {
@@ -143,9 +144,7 @@ export default function MarketplacePage() {
                 onClick={() => setService(s.slug)}
                 className={`${card} flex items-center gap-3 p-4 text-left transition-colors hover:border-blue-500/50`}
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15 text-sm font-bold text-blue-300">
-                  {s.label.slice(0, 2)}
-                </span>
+                <ServiceLogo logo={s.logo} label={s.label} variant={s.logoVariant} size={40} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-white">{s.label}</p>
                   <p className="text-xs text-white/40">SMS de vérification</p>
@@ -175,13 +174,14 @@ export default function MarketplacePage() {
             </div>
 
             <div className="mt-4 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-              <span className="text-2xl">{selectedCountry?.flag}</span>
+              <ServiceLogo logo={selectedService.logo} label={selectedService.label} variant={selectedService.logoVariant} size={44} />
               <div className="flex-1">
                 <p className="font-medium text-white">{selectedService.label}</p>
                 <p className="text-xs text-white/40">
                   {selectedCountry?.name} · {selectedCountry?.dial}
                 </p>
               </div>
+              <span className="text-2xl">{selectedCountry?.flag}</span>
             </div>
 
             {/* Forfaits : vérification (SMS unique) ou location (numéro réutilisable) */}
