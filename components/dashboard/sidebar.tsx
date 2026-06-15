@@ -124,6 +124,20 @@ function SidebarContent({
                   </span>
                 </Link>
               )}
+              {/* Bouton vedette ESIM ChapCam — bleu, place juste sous ChapCam PC */}
+              {item.href === '/dashboard/live-swap' && (
+                <Link
+                  href="/numbers"
+                  className="group relative mb-2 flex items-center gap-3 overflow-hidden rounded-lg bg-[#2563EB] px-3 py-3 text-[13px] font-bold uppercase tracking-tight text-white shadow-lg shadow-[#2563EB]/40 transition-all duration-200 hover:bg-[#1d4ed8] hover:brightness-110"
+                >
+                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                  <Smartphone className="h-[18px] w-[18px] shrink-0" />
+                  <span className="flex-1 truncate leading-tight">ESIM ChapCam</span>
+                  <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-extrabold tracking-wide">
+                    NEW
+                  </span>
+                </Link>
+              )}
             <Link
               href={item.href}
               className={`mb-0.5 flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 ${
@@ -159,19 +173,6 @@ function SidebarContent({
           <HelpCircle className="h-[18px] w-[18px] shrink-0" />
           <span className="flex-1 truncate">AIDE & SUPPORT</span>
         </a>
-
-        {/* Bouton vedette ESIM ChapCam — bleu, tres visible, tout en bas */}
-        <Link
-          href="/numbers"
-          className="group relative mt-3 flex items-center gap-3 overflow-hidden rounded-lg bg-[#2563EB] px-3 py-3 text-[13px] font-bold uppercase tracking-tight text-white shadow-lg shadow-[#2563EB]/40 transition-all duration-200 hover:bg-[#1d4ed8] hover:brightness-110"
-        >
-          <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-          <Smartphone className="h-[18px] w-[18px] shrink-0" />
-          <span className="flex-1 truncate leading-tight">ESIM ChapCam</span>
-          <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-extrabold tracking-wide">
-            NEW
-          </span>
-        </Link>
 
         {/* Lien Secret Admin Stats */}
         {isAdmin && (
