@@ -1,261 +1,158 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useNumbers } from '@/components/numbers/numbers-provider'
-import {
-  LISTINGS,
-  COUNTRIES,
-  PROVIDERS,
-  countryByCode,
-  providerById,
-  formatUSD,
-  type Listing,
-  type NumberType,
-  type Capability,
-} from '@/lib/numbers/data'
+import { COUNTRIES, SERVICES, countryByCode, serviceBySlug } from '@/lib/numbers/catalog'
+import { formatXOF, type QuoteResponse } from '@/lib/numbers/types'
 import {
   Search,
-  SlidersHorizontal,
-  MessageSquareText,
-  Phone as PhoneIcon,
-  Image as ImageIcon,
   Check,
   X,
   Zap,
   ShieldCheck,
+  Loader2,
+  Wallet,
+  ArrowRight,
 } from 'lucide-react'
 
 const card = 'rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl'
 
-const TYPE_FR: Record<NumberType, string> = {
-  temporary: 'Temporaire',
-  'long-term': 'Longue durée',
-}
-
-const capIcon: Record<Capability, typeof MessageSquareText> = {
-  sms: MessageSquareText,
-  voice: PhoneIcon,
-  mms: ImageIcon,
-}
-
 export default function MarketplacePage() {
-  const { buyNumber } = useNumbers()
+  const router = useRouter()
+  const { balanceXof, buyActivation } = useNumbers()
   const [query, setQuery] = useState('')
-  const [country, setCountry] = useState<string>('all')
-  const [type, setType] = useState<NumberType | 'all'>('all')
-  const [provider, setProvider] = useState<string>('all')
-  const [maxPrice, setMaxPrice] = useState(20)
-  const [selected, setSelected] = useState<Listing | null>(null)
-  const [label, setLabel] = useState('')
+  const [country, setCountry] = useState<string>('US')
+  const [service, setService] = useState<string | null>(null)
+  const [quote, setQuoteState] = useState<QuoteResponse | null>(null)
+  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [buying, setBuying] = useState(false)
+  const { quote: getQuote } = useNumbers()
 
-  const filtered = useMemo(() => {
-    return LISTINGS.filter((l) => {
-      if (country !== 'all' && l.countryCode !== country) return false
-      if (type !== 'all' && l.type !== type) return false
-      if (provider !== 'all' && l.providerId !== provider) return false
-      if (l.price > maxPrice) return false
-      if (query) {
-        const c = countryByCode(l.countryCode)
-        const p = providerById(l.providerId)
-        const hay = `${c?.name} ${c?.dial} ${p?.name}`.toLowerCase()
-        if (!hay.includes(query.toLowerCase())) return false
+  const selectedCountry = countryByCode(country)
+  const selectedService = service ? serviceBySlug(service) : null
+
+  const filteredServices = useMemo(() => {
+    if (!query) return SERVICES
+    const q = query.toLowerCase()
+    return SERVICES.filter((s) => s.label.toLowerCase().includes(q) || s.slug.includes(q))
+  }, [query])
+
+  // Récupère un devis (fournisseur le moins cher) à chaque changement.
+  useEffect(() => {
+    if (!service) {
+      setQuoteState(null)
+      return
+    }
+    let cancelled = false
+    setQuoteLoading(true)
+    getQuote(country, service).then((q) => {
+      if (!cancelled) {
+        setQuoteState(q)
+        setQuoteLoading(false)
       }
-      return true
     })
-  }, [country, type, provider, maxPrice, query])
+    return () => {
+      cancelled = true
+    }
+  }, [country, service, getQuote])
 
-  function confirmBuy() {
-    if (!selected) return
-    const ok = buyNumber(selected, label || `${countryByCode(selected.countryCode)?.name} number`)
-    if (ok) {
-      setSelected(null)
-      setLabel('')
+  async function confirmBuy() {
+    if (!service || !quote?.available) return
+    setBuying(true)
+    const res = await buyActivation(country, service)
+    setBuying(false)
+    if (res.ok) {
+      setService(null)
+      router.push('/numbers/app/numbers')
     }
   }
+
+  const insufficient = quote?.available && quote.priceXof != null && balanceXof < quote.priceXof
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-xl font-semibold text-white">Acheter un numéro</h1>
         <p className="text-sm text-white/50">
-          Parcourez plus de {LISTINGS.length} numéros dans {COUNTRIES.length} pays et {PROVIDERS.length} opérateurs.
+          Choisissez un pays et un service. ChapCam sélectionne automatiquement le fournisseur le moins cher parmi
+          5sim, SMS-Man et SMSPool. Prix en FCFA, tout compris.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
-        {/* Filters */}
+        {/* Pays */}
         <aside className={`${card} h-fit p-5`}>
-          <div className="mb-4 flex items-center gap-2 text-white">
-            <SlidersHorizontal className="h-4 w-4 text-blue-400" />
-            <span className="font-medium">Filtres</span>
-          </div>
-
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
-            Pays
-          </label>
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">Pays</label>
           <select
             value={country}
             onChange={(e) => setCountry(e.target.value)}
             className="mb-4 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
           >
-            <option value="all">Tous les pays</option>
             {COUNTRIES.map((c) => (
               <option key={c.code} value={c.code} className="bg-[#0b1220]">
-                {c.flag} {c.name}
+                {c.flag} {c.name} ({c.dial})
               </option>
             ))}
           </select>
 
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
-            Type
-          </label>
-          <div className="mb-4 flex gap-2">
-            {(['all', 'temporary', 'long-term'] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setType(t)}
-                className={`flex-1 rounded-lg border px-2 py-1.5 text-xs transition-colors ${
-                  type === t
-                    ? 'border-blue-500 bg-blue-500/15 text-blue-300'
-                    : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
-                }`}
-              >
-                {t === 'all' ? 'Tous' : t === 'long-term' ? 'Longue durée' : 'Temporaire'}
-              </button>
-            ))}
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-sm">
+            <div className="flex items-center gap-2 text-white/60">
+              <Wallet className="h-4 w-4 text-blue-400" />
+              Solde
+            </div>
+            <p className="mt-1 text-lg font-semibold text-white">{formatXOF(balanceXof)}</p>
+            <button
+              onClick={() => router.push('/numbers/app/wallet')}
+              className="mt-2 flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+            >
+              Recharger <ArrowRight className="h-3 w-3" />
+            </button>
           </div>
-
-          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
-            Opérateur
-          </label>
-          <select
-            value={provider}
-            onChange={(e) => setProvider(e.target.value)}
-            className="mb-4 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
-          >
-            <option value="all">Tous les opérateurs</option>
-            {PROVIDERS.map((p) => (
-              <option key={p.id} value={p.id} className="bg-[#0b1220]">
-                {p.name}
-              </option>
-            ))}
-          </select>
-
-          <label className="mb-1.5 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-white/40">
-            <span>Prix max</span>
-            <span className="text-blue-400">{formatUSD(maxPrice)}</span>
-          </label>
-          <input
-            type="range"
-            min={1}
-            max={20}
-            step={0.5}
-            value={maxPrice}
-            onChange={(e) => setMaxPrice(Number(e.target.value))}
-            className="w-full accent-blue-500"
-          />
         </aside>
 
-        {/* Results */}
+        {/* Services */}
         <div className="space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Rechercher par pays, indicatif ou opérateur..."
+              placeholder="Rechercher un service (WhatsApp, Telegram, Google...)"
               className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-500"
             />
           </div>
 
-          <p className="text-sm text-white/50">{filtered.length} numéros disponibles</p>
+          <p className="text-sm text-white/50">
+            {filteredServices.length} services disponibles pour {selectedCountry?.flag} {selectedCountry?.name}
+          </p>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {filtered.map((l) => {
-              const c = countryByCode(l.countryCode)
-              const p = providerById(l.providerId)
-              return (
-                <div key={l.id} className={`${card} flex flex-col p-5`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl leading-none">{c?.flag}</span>
-                      <div>
-                        <p className="font-medium text-white">{c?.name}</p>
-                        <p className="text-xs text-white/40">
-                          {c?.dial} · {p?.name}
-                        </p>
-                      </div>
-                    </div>
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                        l.type === 'temporary'
-                          ? 'bg-amber-500/15 text-amber-400'
-                          : 'bg-blue-500/15 text-blue-300'
-                      }`}
-                    >
-                      {TYPE_FR[l.type]}
-                    </span>
-                  </div>
-
-                  <div className="mt-4 flex items-center gap-2">
-                    {l.capabilities.map((cap) => {
-                      const Icon = capIcon[cap]
-                      return (
-                        <span
-                          key={cap}
-                          className="flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 text-[11px] uppercase text-white/60"
-                        >
-                          <Icon className="h-3 w-3" />
-                          {cap}
-                        </span>
-                      )
-                    })}
-                  </div>
-
-                  <div className="mt-4 flex items-center gap-4 text-xs text-white/50">
-                    <span className="flex items-center gap-1">
-                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                      {p?.reliability}% dispo
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Zap className="h-3.5 w-3.5 text-blue-400" />~{p?.avgDeliverySec}s
-                    </span>
-                  </div>
-
-                  <div className="mt-4 flex items-end justify-between border-t border-white/5 pt-4">
-                    <div>
-                      <p className="text-lg font-semibold text-white">{formatUSD(l.price)}</p>
-                      <p className="text-[11px] text-white/40">
-                        {l.type === 'temporary' ? 'paiement unique' : 'par mois'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setSelected(l)}
-                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
-                    >
-                      Acheter
-                    </button>
-                  </div>
+            {filteredServices.map((s) => (
+              <button
+                key={s.slug}
+                onClick={() => setService(s.slug)}
+                className={`${card} flex items-center gap-3 p-4 text-left transition-colors hover:border-blue-500/50`}
+              >
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15 text-sm font-bold text-blue-300">
+                  {s.label.slice(0, 2)}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-white">{s.label}</p>
+                  <p className="text-xs text-white/40">SMS de vérification</p>
                 </div>
-              )
-            })}
+                <ArrowRight className="h-4 w-4 text-white/30" />
+              </button>
+            ))}
           </div>
-
-          {filtered.length === 0 && (
-            <div className={`${card} flex flex-col items-center justify-center py-16 text-center`}>
-              <Search className="h-8 w-8 text-white/20" />
-              <p className="mt-3 text-white/60">Aucun numéro ne correspond à vos filtres</p>
-              <p className="text-sm text-white/40">Essayez d&apos;élargir votre fourchette de prix ou votre sélection de pays.</p>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Buy modal */}
-      {selected && (
+      {/* Modal d'achat */}
+      {selectedService && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-          onClick={() => setSelected(null)}
+          onClick={() => !buying && setService(null)}
         >
           <div
             className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0b1220] p-6 shadow-2xl"
@@ -263,56 +160,80 @@ export default function MarketplacePage() {
           >
             <div className="flex items-start justify-between">
               <h2 className="text-lg font-semibold text-white">Confirmer l&apos;achat</h2>
-              <button onClick={() => setSelected(null)} className="text-white/40 hover:text-white">
+              <button onClick={() => !buying && setService(null)} className="text-white/40 hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <div className="mt-4 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
-              <span className="text-2xl">{countryByCode(selected.countryCode)?.flag}</span>
+              <span className="text-2xl">{selectedCountry?.flag}</span>
               <div className="flex-1">
-                <p className="font-medium text-white">{countryByCode(selected.countryCode)?.name}</p>
+                <p className="font-medium text-white">{selectedService.label}</p>
                 <p className="text-xs text-white/40">
-                  {providerById(selected.providerId)?.name} · {TYPE_FR[selected.type]}
+                  {selectedCountry?.name} · {selectedCountry?.dial}
                 </p>
               </div>
-              <p className="text-lg font-semibold text-white">{formatUSD(selected.price)}</p>
             </div>
 
-            <label className="mb-1.5 mt-4 block text-xs font-medium uppercase tracking-wider text-white/40">
-              Libellé (facultatif)
-            </label>
-            <input
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              placeholder="ex. Ligne professionnelle"
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-500"
-            />
-
-            <div className="mt-4 space-y-1.5 rounded-xl bg-white/[0.02] p-3 text-sm">
-              <div className="flex justify-between text-white/60">
-                <span>Numéro</span>
-                <span>{formatUSD(selected.price)}</span>
-              </div>
-              <div className="flex justify-between text-white/60">
-                <span>Frais de plateforme</span>
-                <span>{formatUSD(0)}</span>
-              </div>
-              <div className="flex justify-between border-t border-white/10 pt-1.5 font-medium text-white">
-                <span>Total</span>
-                <span>{formatUSD(selected.price)}</span>
-              </div>
+            <div className="mt-4 space-y-2 rounded-xl bg-white/[0.02] p-4 text-sm">
+              {quoteLoading ? (
+                <div className="flex items-center justify-center gap-2 py-4 text-white/50">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Recherche du meilleur prix...
+                </div>
+              ) : quote?.available ? (
+                <>
+                  <div className="flex items-center gap-2 text-xs text-white/50">
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                    {quote.providerCount} fournisseur(s) disponible(s)
+                    <span className="ml-auto flex items-center gap-1 text-blue-400">
+                      <Zap className="h-3.5 w-3.5" /> Auto — le moins cher
+                    </span>
+                  </div>
+                  <div className="flex justify-between border-t border-white/10 pt-2 text-lg font-semibold text-white">
+                    <span>Total</span>
+                    <span>{formatXOF(quote.priceXof ?? 0)}</span>
+                  </div>
+                  {insufficient && (
+                    <p className="text-xs text-amber-400">
+                      Solde insuffisant. Rechargez votre portefeuille pour continuer.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="py-4 text-center text-sm text-white/50">
+                  Aucun numéro disponible pour cette combinaison. Essayez un autre pays.
+                </p>
+              )}
             </div>
 
-            <button
-              onClick={confirmBuy}
-              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white transition-colors hover:bg-blue-500"
-            >
-              <Check className="h-4 w-4" />
-              Confirmer et payer {formatUSD(selected.price)}
-            </button>
+            {insufficient ? (
+              <button
+                onClick={() => router.push('/numbers/app/wallet')}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white transition-colors hover:bg-blue-500"
+              >
+                <Wallet className="h-4 w-4" />
+                Recharger le portefeuille
+              </button>
+            ) : (
+              <button
+                onClick={confirmBuy}
+                disabled={!quote?.available || buying || quoteLoading}
+                className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {buying ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Achat en cours...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" /> Confirmer {quote?.priceXof ? `· ${formatXOF(quote.priceXof)}` : ''}
+                  </>
+                )}
+              </button>
+            )}
             <p className="mt-2 text-center text-xs text-white/40">
-              Débité instantanément du solde de votre portefeuille.
+              Débité du solde. Remboursé automatiquement si aucun SMS n&apos;est reçu.
             </p>
           </div>
         </div>

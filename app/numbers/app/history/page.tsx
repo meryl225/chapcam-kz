@@ -2,29 +2,24 @@
 
 import { useMemo, useState } from 'react'
 import { useNumbers } from '@/components/numbers/numbers-provider'
-import {
-  countryByCode,
-  providerById,
-  formatUSD,
-  formatDate,
-  type OrderStatus,
-} from '@/lib/numbers/data'
-import { Search, Download, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
+import { countryByCode, serviceBySlug } from '@/lib/numbers/catalog'
+import { formatXOF, type Activation } from '@/lib/numbers/types'
+import { Search, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
 
 const card = 'rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl'
 
-const orderStatusStyle: Record<OrderStatus, string> = {
-  completed: 'bg-emerald-500/15 text-emerald-400',
-  active: 'bg-blue-500/15 text-blue-300',
-  refunded: 'bg-amber-500/15 text-amber-400',
-  failed: 'bg-red-500/15 text-red-400',
+const orderStatusStyle: Record<Activation['status'], string> = {
+  received: 'bg-emerald-500/15 text-emerald-400',
+  waiting: 'bg-blue-500/15 text-blue-300',
+  cancelled: 'bg-amber-500/15 text-amber-400',
+  expired: 'bg-red-500/15 text-red-400',
 }
 
-const ORDER_STATUS_FR: Record<OrderStatus, string> = {
-  completed: 'Terminée',
-  active: 'Active',
-  refunded: 'Remboursée',
-  failed: 'Échouée',
+const ORDER_STATUS_FR: Record<Activation['status'], string> = {
+  received: 'Code reçu',
+  waiting: 'En attente',
+  cancelled: 'Annulée',
+  expired: 'Expirée',
 }
 
 const TX_KIND_FR: Record<string, string> = {
@@ -39,21 +34,25 @@ const TX_STATUS_FR: Record<string, string> = {
   failed: 'Échouée',
 }
 
+function fmtDate(ms: number) {
+  return new Date(ms).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 type Tab = 'orders' | 'transactions'
 
 export default function HistoryPage() {
-  const { orders, transactions } = useNumbers()
+  const { activations, transactions } = useNumbers()
   const [tab, setTab] = useState<Tab>('orders')
   const [query, setQuery] = useState('')
 
   const filteredOrders = useMemo(
     () =>
-      [...orders]
+      [...activations]
         .sort((a, b) => b.createdAt - a.createdAt)
         .filter((o) =>
-          query ? `${o.e164} ${o.numberLabel}`.toLowerCase().includes(query.toLowerCase()) : true,
+          query ? `${o.phone} ${o.serviceLabel}`.toLowerCase().includes(query.toLowerCase()) : true,
         ),
-    [orders, query],
+    [activations, query],
   )
 
   const filteredTx = useMemo(
@@ -61,7 +60,7 @@ export default function HistoryPage() {
       [...transactions]
         .sort((a, b) => b.createdAt - a.createdAt)
         .filter((t) =>
-          query ? `${t.method} ${t.reference} ${t.kind}`.toLowerCase().includes(query.toLowerCase()) : true,
+          query ? `${t.method} ${t.reference ?? ''} ${t.kind}`.toLowerCase().includes(query.toLowerCase()) : true,
         ),
     [transactions, query],
   )
@@ -71,11 +70,8 @@ export default function HistoryPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-white">Historique</h1>
-          <p className="text-sm text-white/50">Vos commandes et transactions du portefeuille</p>
+          <p className="text-sm text-white/50">Vos activations et transactions du portefeuille</p>
         </div>
-        <button className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-sm text-white/70 hover:bg-white/5">
-          <Download className="h-4 w-4" /> Exporter en CSV
-        </button>
       </div>
 
       <div className="flex items-center gap-2">
@@ -87,7 +83,7 @@ export default function HistoryPage() {
               tab === t ? 'bg-blue-600 text-white' : 'border border-white/10 text-white/60 hover:text-white'
             }`}
           >
-            {t === 'orders' ? 'Commandes' : 'Transactions'}
+            {t === 'orders' ? 'Activations' : 'Transactions'}
           </button>
         ))}
         <div className="relative ml-auto max-w-xs flex-1">
@@ -108,8 +104,8 @@ export default function HistoryPage() {
               <thead className="border-b border-white/5 text-xs uppercase tracking-wider text-white/40">
                 <tr>
                   <th className="p-4 font-medium">Numéro</th>
-                  <th className="p-4 font-medium">Libellé</th>
-                  <th className="p-4 font-medium">Opérateur</th>
+                  <th className="p-4 font-medium">Service</th>
+                  <th className="p-4 font-medium">Fournisseur</th>
                   <th className="p-4 font-medium">Montant</th>
                   <th className="p-4 font-medium">Statut</th>
                   <th className="p-4 text-right font-medium">Date</th>
@@ -118,27 +114,34 @@ export default function HistoryPage() {
               <tbody className="divide-y divide-white/5">
                 {filteredOrders.map((o) => {
                   const c = countryByCode(o.countryCode)
-                  const p = providerById(o.providerId)
+                  const svc = serviceBySlug(o.serviceSlug)
                   return (
                     <tr key={o.id} className="text-white/70">
                       <td className="p-4">
                         <span className="flex items-center gap-2">
                           <span>{c?.flag}</span>
-                          <span className="font-mono text-white">{o.e164}</span>
+                          <span className="font-mono text-white">{o.phone}</span>
                         </span>
                       </td>
-                      <td className="p-4">{o.numberLabel}</td>
-                      <td className="p-4">{p?.name}</td>
-                      <td className="p-4 text-white">{formatUSD(o.amount)}</td>
+                      <td className="p-4">{svc?.label ?? o.serviceLabel}</td>
+                      <td className="p-4 capitalize">{o.provider}</td>
+                      <td className="p-4 text-white">{formatXOF(o.priceXof)}</td>
                       <td className="p-4">
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${orderStatusStyle[o.status]}`}>
                           {ORDER_STATUS_FR[o.status]}
                         </span>
                       </td>
-                      <td className="p-4 text-right text-white/40">{formatDate(o.createdAt)}</td>
+                      <td className="p-4 text-right text-white/40">{fmtDate(o.createdAt)}</td>
                     </tr>
                   )
                 })}
+                {filteredOrders.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-10 text-center text-white/40">
+                      Aucune activation pour le moment
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           ) : (
@@ -155,7 +158,7 @@ export default function HistoryPage() {
               </thead>
               <tbody className="divide-y divide-white/5">
                 {filteredTx.map((t) => {
-                  const positive = t.amount >= 0
+                  const positive = t.kind !== 'purchase'
                   return (
                     <tr key={t.id} className="text-white/70">
                       <td className="p-4">
@@ -174,7 +177,7 @@ export default function HistoryPage() {
                       <td className="p-4 font-mono text-xs text-white/50">{t.reference}</td>
                       <td className={`p-4 font-medium ${positive ? 'text-emerald-400' : 'text-white'}`}>
                         {positive ? '+' : '−'}
-                        {formatUSD(Math.abs(t.amount))}
+                        {formatXOF(Math.abs(t.amountXof))}
                       </td>
                       <td className="p-4">
                         <span
@@ -189,10 +192,17 @@ export default function HistoryPage() {
                           {TX_STATUS_FR[t.status] ?? t.status}
                         </span>
                       </td>
-                      <td className="p-4 text-right text-white/40">{formatDate(t.createdAt)}</td>
+                      <td className="p-4 text-right text-white/40">{fmtDate(t.createdAt)}</td>
                     </tr>
                   )
                 })}
+                {filteredTx.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="p-10 text-center text-white/40">
+                      Aucune transaction pour le moment
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           )}

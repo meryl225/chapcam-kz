@@ -1,36 +1,40 @@
 'use client'
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import {
-  type OwnedNumber, type Message, type Transaction, type ApiKey, type Order, type SupportTicket, type Listing,
-  countryByCode,
-} from '@/lib/numbers/data'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import type { Activation, NumbersState, QuoteResponse, Tx } from '@/lib/numbers/types'
+import type { ApiKey, SupportTicket } from '@/lib/numbers/data'
 
 type Toast = { id: number; title: string; desc?: string }
 
 export type AccountUser = { name: string; email: string }
 
+type BuyResult = { ok: boolean; activation?: Activation; error?: string }
+
 type Ctx = {
   user: AccountUser
-  balance: number
-  owned: OwnedNumber[]
-  messages: Message[]
-  transactions: Transaction[]
-  orders: Order[]
-  apiKeys: ApiKey[]
-  tickets: SupportTicket[]
+  // Données réelles (FCFA)
+  balanceXof: number
+  activations: Activation[]
+  transactions: Tx[]
+  loading: boolean
   unreadCount: number
-  buyNumber: (listing: Listing, label: string) => boolean
-  releaseNumber: (id: string) => void
-  toggleAutoRenew: (id: string) => void
-  renameNumber: (id: string, label: string) => void
-  markRead: (id: string) => void
+  // Actions réelles
+  refreshState: () => Promise<void>
+  quote: (countryCode: string, serviceSlug: string) => Promise<QuoteResponse>
+  buyActivation: (countryCode: string, serviceSlug: string) => Promise<BuyResult>
+  refreshActivation: (id: number) => Promise<Activation | null>
+  cancelActivation: (id: number) => Promise<void>
+  deposit: (amountXof: number, method: string) => Promise<void>
+  // Lecture / archivage local des SMS reçus
+  markRead: (id: number) => void
   markAllRead: () => void
-  archiveMessage: (id: string) => void
-  deposit: (amount: number, method: string) => void
+  // API keys & support (session locale — branchement API ultérieur)
+  apiKeys: ApiKey[]
   createApiKey: (name: string) => ApiKey
   revokeApiKey: (id: string) => void
+  tickets: SupportTicket[]
   createTicket: (subject: string, category: string, priority: SupportTicket['priority'], body: string) => void
+  // Toasts
   toasts: Toast[]
   pushToast: (title: string, desc?: string) => void
 }
@@ -47,87 +51,210 @@ let idc = 1000
 const nextId = (p: string) => `${p}_${++idc}`
 
 export function NumbersProvider({ user, children }: { user: AccountUser; children: ReactNode }) {
-  // Compte neuf : aucun solde, numéro, message ou historique tant que rien n'a
-  // été acheté. Ces données seront alimentées par les API ChapCam.
-  const [balance, setBalance] = useState(0)
-  const [owned, setOwned] = useState<OwnedNumber[]>([])
-  const [messages, setMessages] = useState<Message[]>([])
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [orders, setOrders] = useState<Order[]>([])
+  const [state, setState] = useState<NumbersState>({ balanceXof: 0, activations: [], transactions: [] })
+  const [loading, setLoading] = useState(true)
+  const [readIds, setReadIds] = useState<Set<number>>(new Set())
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
 
-  const pushToast = (title: string, desc?: string) => {
+  const pushToast = useCallback((title: string, desc?: string) => {
     const id = Date.now() + Math.random()
     setToasts((t) => [...t, { id, title, desc }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4200)
-  }
+  }, [])
 
-  const unreadCount = useMemo(() => messages.filter((m) => !m.read && !m.archived).length, [messages])
-
-  const buyNumber: Ctx['buyNumber'] = (listing, label) => {
-    if (balance < listing.price) {
-      pushToast('Solde insuffisant', 'Ajoutez des fonds à votre portefeuille pour continuer.')
-      return false
+  const refreshState = useCallback(async () => {
+    try {
+      const res = await fetch('/api/numbers/state', { cache: 'no-store' })
+      if (!res.ok) throw new Error('state')
+      const data = (await res.json()) as NumbersState
+      setState(data)
+    } catch {
+      // silencieux : on garde l'état précédent
+    } finally {
+      setLoading(false)
     }
-    const country = countryByCode(listing.countryCode)
-    const e164 = `${country?.dial ?? '+1'} ${Math.floor(100 + Math.random() * 899)} ${Math.floor(1000 + Math.random() * 8999)}`
-    const id = nextId('num')
-    const duration = listing.type === 'temporary' ? 24 * 3600_000 : 30 * 24 * 3600_000
-    const num: OwnedNumber = {
-      id, e164, countryCode: listing.countryCode, providerId: listing.providerId, type: listing.type,
-      label: label || `Numéro ${country?.name}`, status: 'active', purchasedAt: Date.now(),
-      expiresAt: Date.now() + duration, autoRenew: listing.type === 'long-term', messageCount: 0,
-    }
-    setOwned((l) => [num, ...l])
-    setBalance((b) => +(b - listing.price).toFixed(2))
-    setTransactions((t) => [{ id: nextId('tx'), kind: 'purchase', method: 'Wallet', amount: -listing.price, status: 'completed', createdAt: Date.now(), reference: id }, ...t])
-    setOrders((o) => [{ id: nextId('ord'), numberLabel: num.label, e164, countryCode: listing.countryCode, providerId: listing.providerId, amount: listing.price, status: 'active', createdAt: Date.now() }, ...o])
-    pushToast('Numéro acheté', `${e164} est maintenant actif.`)
-    return true
-  }
+  }, [])
 
-  const releaseNumber = (id: string) => {
-    setOwned((l) => l.map((n) => (n.id === id ? { ...n, status: 'expired' as const, autoRenew: false } : n)))
-    pushToast('Numéro libéré')
-  }
-  const toggleAutoRenew = (id: string) => setOwned((l) => l.map((n) => (n.id === id ? { ...n, autoRenew: !n.autoRenew } : n)))
-  const renameNumber = (id: string, label: string) => setOwned((l) => l.map((n) => (n.id === id ? { ...n, label } : n)))
+  useEffect(() => {
+    refreshState()
+  }, [refreshState])
 
-  const markRead = (id: string) => setMessages((m) => m.map((x) => (x.id === id ? { ...x, read: true } : x)))
-  const markAllRead = () => setMessages((m) => m.map((x) => ({ ...x, read: true })))
-  const archiveMessage = (id: string) => setMessages((m) => m.map((x) => (x.id === id ? { ...x, archived: true, read: true } : x)))
+  // Sondage automatique tant qu'une activation attend un SMS.
+  const hasWaiting = state.activations.some((a) => a.status === 'waiting')
+  const waitingRef = useRef(hasWaiting)
+  waitingRef.current = hasWaiting
+  useEffect(() => {
+    if (!hasWaiting) return
+    const interval = setInterval(() => {
+      if (waitingRef.current) refreshState()
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [hasWaiting, refreshState])
 
-  const deposit = (amount: number, method: string) => {
-    setBalance((b) => +(b + amount).toFixed(2))
-    setTransactions((t) => [{ id: nextId('tx'), kind: 'deposit', method, amount, status: 'completed', createdAt: Date.now(), reference: `${method.slice(0, 4).toUpperCase()}-${Math.floor(1000 + Math.random() * 8999)}` }, ...t])
-    pushToast('Fonds ajoutés', `${method} : +$${amount.toFixed(2)}`)
-  }
+  const quote = useCallback<Ctx['quote']>(async (countryCode, serviceSlug) => {
+    const res = await fetch(`/api/numbers/quote?country=${countryCode}&service=${serviceSlug}`, { cache: 'no-store' })
+    if (!res.ok) return { available: false, priceXof: null, cheapestProvider: null, providerCount: 0 }
+    return (await res.json()) as QuoteResponse
+  }, [])
 
-  const createApiKey: Ctx['createApiKey'] = (name) => {
-    const rand = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
-    const key: ApiKey = { id: nextId('key'), name, prefix: `cck_live_${rand.slice(0, 4)}`, secret: `cck_live_${rand.slice(0, 32)}`, createdAt: Date.now(), lastUsedAt: null, scopes: ['numbers:read', 'numbers:write', 'messages:read'] }
-    setApiKeys((k) => [key, ...k])
-    pushToast('Clé API créée', 'Copiez-la maintenant — elle ne sera plus affichée.')
-    return key
-  }
-  const revokeApiKey = (id: string) => {
-    setApiKeys((k) => k.filter((x) => x.id !== id))
-    pushToast('Clé API révoquée')
-  }
+  const buyActivation = useCallback<Ctx['buyActivation']>(
+    async (countryCode, serviceSlug) => {
+      try {
+        const res = await fetch('/api/numbers/purchase', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ countryCode, serviceSlug }),
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          pushToast('Achat impossible', data?.error ?? 'Réessayez plus tard.')
+          return { ok: false, error: data?.error }
+        }
+        await refreshState()
+        pushToast('Numéro activé', `${data.activation.phone} — en attente du SMS.`)
+        return { ok: true, activation: data.activation as Activation }
+      } catch {
+        pushToast('Erreur réseau', 'Vérifiez votre connexion et réessayez.')
+        return { ok: false, error: 'network' }
+      }
+    },
+    [pushToast, refreshState],
+  )
 
-  const createTicket: Ctx['createTicket'] = (subject, category, priority, body) => {
-    const t: SupportTicket = { id: nextId('tkt'), subject, category, status: 'open', priority, createdAt: Date.now(), lastReplyAt: Date.now(), messages: [{ from: 'user', body, at: Date.now() }] }
-    setTickets((list) => [t, ...list])
-    pushToast('Demande envoyée', 'Notre équipe vous répondra sous peu.')
-  }
+  const refreshActivation = useCallback<Ctx['refreshActivation']>(
+    async (id) => {
+      try {
+        const res = await fetch(`/api/numbers/activation/${id}`, { cache: 'no-store' })
+        if (!res.ok) return null
+        const data = (await res.json()) as { activation: Activation }
+        setState((s) => ({
+          ...s,
+          activations: s.activations.map((a) => (a.id === id ? data.activation : a)),
+        }))
+        return data.activation
+      } catch {
+        return null
+      }
+    },
+    [],
+  )
+
+  const cancelActivation = useCallback<Ctx['cancelActivation']>(
+    async (id) => {
+      try {
+        const res = await fetch(`/api/numbers/activation/${id}`, { method: 'DELETE' })
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}))
+          pushToast('Annulation impossible', d?.error ?? 'Le SMS a peut-être déjà été reçu.')
+          return
+        }
+        await refreshState()
+        pushToast('Numéro annulé', 'Remboursé si aucun SMS reçu.')
+      } catch {
+        pushToast('Erreur réseau')
+      }
+    },
+    [pushToast, refreshState],
+  )
+
+  const deposit = useCallback<Ctx['deposit']>(
+    async (amountXof, method) => {
+      try {
+        const res = await fetch('/api/numbers/wallet/deposit', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ amountXof, method }),
+        })
+        if (!res.ok) {
+          pushToast('Rechargement impossible')
+          return
+        }
+        await refreshState()
+        pushToast('Fonds ajoutés', `${method}`)
+      } catch {
+        pushToast('Erreur réseau')
+      }
+    },
+    [pushToast, refreshState],
+  )
+
+  const markRead = useCallback((id: number) => setReadIds((s) => new Set(s).add(id)), [])
+  const markAllRead = useCallback(() => {
+    setState((s) => {
+      setReadIds(new Set(s.activations.filter((a) => a.code).map((a) => a.id)))
+      return s
+    })
+  }, [])
+
+  const unreadCount = useMemo(
+    () => state.activations.filter((a) => a.code && !readIds.has(a.id)).length,
+    [state.activations, readIds],
+  )
+
+  const createApiKey = useCallback<Ctx['createApiKey']>(
+    (name) => {
+      const rand = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+      const key: ApiKey = {
+        id: nextId('key'), name, prefix: `cck_live_${rand.slice(0, 4)}`,
+        secret: `cck_live_${rand.slice(0, 32)}`, createdAt: Date.now(), lastUsedAt: null,
+        scopes: ['numbers:read', 'numbers:write', 'messages:read'],
+      }
+      setApiKeys((k) => [key, ...k])
+      pushToast('Clé API créée', 'Copiez-la maintenant — elle ne sera plus affichée.')
+      return key
+    },
+    [pushToast],
+  )
+  const revokeApiKey = useCallback(
+    (id: string) => {
+      setApiKeys((k) => k.filter((x) => x.id !== id))
+      pushToast('Clé API révoquée')
+    },
+    [pushToast],
+  )
+
+  const createTicket = useCallback<Ctx['createTicket']>(
+    (subject, category, priority, body) => {
+      const t: SupportTicket = {
+        id: nextId('tkt'), subject, category, status: 'open', priority,
+        createdAt: Date.now(), lastReplyAt: Date.now(),
+        messages: [{ from: 'user', body, at: Date.now() }],
+      }
+      setTickets((list) => [t, ...list])
+      pushToast('Demande envoyée', 'Notre équipe vous répondra sous peu.')
+    },
+    [pushToast],
+  )
 
   const value: Ctx = {
-    user, balance, owned, messages, transactions, orders, apiKeys, tickets, unreadCount,
-    buyNumber, releaseNumber, toggleAutoRenew, renameNumber, markRead, markAllRead, archiveMessage,
-    deposit, createApiKey, revokeApiKey, createTicket, toasts, pushToast,
+    user,
+    balanceXof: state.balanceXof,
+    activations: state.activations,
+    transactions: state.transactions,
+    loading,
+    unreadCount,
+    refreshState,
+    quote,
+    buyActivation,
+    refreshActivation,
+    cancelActivation,
+    deposit,
+    markRead,
+    markAllRead,
+    apiKeys,
+    createApiKey,
+    revokeApiKey,
+    tickets,
+    createTicket,
+    toasts,
+    pushToast,
   }
 
   return <NumbersContext.Provider value={value}>{children}</NumbersContext.Provider>
+}
+
+export function activationIsRead(readIds: Set<number>, id: number) {
+  return readIds.has(id)
 }

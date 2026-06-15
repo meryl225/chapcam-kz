@@ -1,0 +1,136 @@
+import 'server-only'
+import { neon } from '@neondatabase/serverless'
+
+// Client Neon partagé (SQL brut, sécurisé par requêtes paramétrées).
+export const sql = neon(process.env.DATABASE_URL!)
+
+export type WalletRow = { user_id: string; balance_xof: number; updated_at: string }
+export type TxRow = {
+  id: number
+  user_id: string
+  kind: 'deposit' | 'purchase' | 'refund'
+  amount_xof: number
+  method: string
+  reference: string | null
+  status: string
+  created_at: string
+}
+export type ActivationRow = {
+  id: number
+  user_id: string
+  provider: string
+  provider_order: string
+  country_code: string
+  service_slug: string
+  service_label: string
+  phone_e164: string
+  price_xof: number
+  cost_usd: string
+  status: 'waiting' | 'received' | 'cancelled' | 'expired'
+  code: string | null
+  full_sms: string | null
+  created_at: string
+  expires_at: string | null
+  updated_at: string
+}
+
+/** Récupère (ou crée) le portefeuille de l'utilisateur. Solde en XOF. */
+export async function getWallet(userId: string): Promise<WalletRow> {
+  const rows = (await sql`
+    INSERT INTO numbers_wallets (user_id) VALUES (${userId})
+    ON CONFLICT (user_id) DO UPDATE SET user_id = EXCLUDED.user_id
+    RETURNING user_id, balance_xof, updated_at
+  `) as WalletRow[]
+  return rows[0]
+}
+
+export async function getBalance(userId: string): Promise<number> {
+  const w = await getWallet(userId)
+  return Number(w.balance_xof)
+}
+
+/** Crédite/débite le portefeuille de façon atomique et journalise le mouvement. */
+export async function adjustWallet(
+  userId: string,
+  deltaXof: number,
+  tx: { kind: TxRow['kind']; method?: string; reference?: string; status?: string },
+): Promise<number> {
+  await getWallet(userId)
+  const rows = (await sql`
+    UPDATE numbers_wallets
+    SET balance_xof = balance_xof + ${deltaXof}, updated_at = now()
+    WHERE user_id = ${userId}
+    RETURNING balance_xof
+  `) as { balance_xof: number }[]
+  await sql`
+    INSERT INTO numbers_wallet_tx (user_id, kind, amount_xof, method, reference, status)
+    VALUES (${userId}, ${tx.kind}, ${deltaXof}, ${tx.method ?? 'wallet'}, ${tx.reference ?? null}, ${tx.status ?? 'completed'})
+  `
+  return Number(rows[0].balance_xof)
+}
+
+export async function listTransactions(userId: string, limit = 50): Promise<TxRow[]> {
+  return (await sql`
+    SELECT * FROM numbers_wallet_tx
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `) as TxRow[]
+}
+
+export async function createActivation(a: {
+  userId: string
+  provider: string
+  providerOrder: string
+  countryCode: string
+  serviceSlug: string
+  serviceLabel: string
+  phoneE164: string
+  priceXof: number
+  costUsd: number
+  expiresAt: Date | null
+}): Promise<ActivationRow> {
+  const rows = (await sql`
+    INSERT INTO numbers_activations
+      (user_id, provider, provider_order, country_code, service_slug, service_label,
+       phone_e164, price_xof, cost_usd, expires_at)
+    VALUES
+      (${a.userId}, ${a.provider}, ${a.providerOrder}, ${a.countryCode}, ${a.serviceSlug}, ${a.serviceLabel},
+       ${a.phoneE164}, ${a.priceXof}, ${a.costUsd}, ${a.expiresAt ? a.expiresAt.toISOString() : null})
+    RETURNING *
+  `) as ActivationRow[]
+  return rows[0]
+}
+
+export async function listActivations(userId: string, limit = 100): Promise<ActivationRow[]> {
+  return (await sql`
+    SELECT * FROM numbers_activations
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+  `) as ActivationRow[]
+}
+
+export async function getActivation(userId: string, id: number): Promise<ActivationRow | null> {
+  const rows = (await sql`
+    SELECT * FROM numbers_activations WHERE user_id = ${userId} AND id = ${id} LIMIT 1
+  `) as ActivationRow[]
+  return rows[0] ?? null
+}
+
+export async function updateActivation(
+  userId: string,
+  id: number,
+  patch: { status?: ActivationRow['status']; code?: string | null; fullSms?: string | null },
+): Promise<ActivationRow | null> {
+  const rows = (await sql`
+    UPDATE numbers_activations
+    SET status = COALESCE(${patch.status ?? null}, status),
+        code = COALESCE(${patch.code ?? null}, code),
+        full_sms = COALESCE(${patch.fullSms ?? null}, full_sms),
+        updated_at = now()
+    WHERE user_id = ${userId} AND id = ${id}
+    RETURNING *
+  `) as ActivationRow[]
+  return rows[0] ?? null
+}

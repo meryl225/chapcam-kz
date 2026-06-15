@@ -2,7 +2,8 @@
 
 import { useState } from 'react'
 import { useNumbers } from '@/components/numbers/numbers-provider'
-import { FUNDING_METHODS, formatUSD, formatDate } from '@/lib/numbers/data'
+import { FUNDING_METHODS } from '@/lib/numbers/data'
+import { formatXOF } from '@/lib/numbers/types'
 import { Wallet, Plus, X, Check, ArrowDownLeft, ArrowUpRight, Smartphone, CreditCard, Coins } from 'lucide-react'
 
 const card = 'rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl'
@@ -13,7 +14,7 @@ const kindIcon: Record<string, typeof Smartphone> = {
   Crypto: Coins,
 }
 
-const QUICK = [10, 25, 50, 100]
+const QUICK = [1000, 2500, 5000, 10000]
 
 const TX_KIND_FR: Record<string, string> = {
   deposit: 'Dépôt',
@@ -27,14 +28,18 @@ const KIND_LABEL: Record<string, string> = {
   Crypto: 'Crypto',
 }
 
+function fmtDate(ms: number) {
+  return new Date(ms).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
 export default function WalletPage() {
-  const { balance, transactions, deposit } = useNumbers()
+  const { balanceXof, transactions, deposit } = useNumbers()
   const [open, setOpen] = useState(false)
-  const [amount, setAmount] = useState(25)
+  const [amount, setAmount] = useState(2500)
   const [method, setMethod] = useState(FUNDING_METHODS[0].name)
 
-  const deposits = transactions.filter((t) => t.kind === 'deposit').reduce((s, t) => s + t.amount, 0)
-  const spend = transactions.filter((t) => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0)
+  const deposits = transactions.filter((t) => t.kind === 'deposit').reduce((s, t) => s + t.amountXof, 0)
+  const spend = transactions.filter((t) => t.kind === 'purchase').reduce((s, t) => s + Math.abs(t.amountXof), 0)
 
   function confirm() {
     if (amount <= 0) return
@@ -62,26 +67,26 @@ export default function WalletPage() {
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/20 text-blue-300">
             <Wallet className="h-5 w-5" />
           </span>
-          <p className="mt-4 text-3xl font-semibold text-white">{formatUSD(balance)}</p>
+          <p className="mt-4 text-3xl font-semibold text-white">{formatXOF(balanceXof)}</p>
           <p className="text-sm text-white/50">Solde disponible</p>
         </div>
         <div className={`${card} p-5`}>
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
             <ArrowDownLeft className="h-5 w-5" />
           </span>
-          <p className="mt-4 text-2xl font-semibold text-white">{formatUSD(deposits)}</p>
+          <p className="mt-4 text-2xl font-semibold text-white">{formatXOF(deposits)}</p>
           <p className="text-sm text-white/50">Total déposé</p>
         </div>
         <div className={`${card} p-5`}>
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white/70">
             <ArrowUpRight className="h-5 w-5" />
           </span>
-          <p className="mt-4 text-2xl font-semibold text-white">{formatUSD(spend)}</p>
+          <p className="mt-4 text-2xl font-semibold text-white">{formatXOF(spend)}</p>
           <p className="text-sm text-white/50">Total dépensé</p>
         </div>
       </div>
 
-      {/* Funding methods */}
+      {/* Moyens de paiement */}
       <div className={`${card} p-5`}>
         <h2 className="mb-4 font-semibold text-white">Moyens de paiement acceptés</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -106,6 +111,10 @@ export default function WalletPage() {
             )
           })}
         </div>
+        <p className="mt-3 text-xs text-white/40">
+          Le paiement automatique (Mobile Money, carte, crypto) sera activé prochainement via API. Pour l&apos;instant,
+          les recharges sont enregistrées manuellement.
+        </p>
       </div>
 
       {/* Transactions */}
@@ -113,47 +122,54 @@ export default function WalletPage() {
         <div className="border-b border-white/5 p-5">
           <h2 className="font-semibold text-white">Transactions</h2>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <tbody className="divide-y divide-white/5">
-              {[...transactions]
-                .sort((a, b) => b.createdAt - a.createdAt)
-                .map((t) => {
-                  const positive = t.amount >= 0
-                  return (
-                    <tr key={t.id} className="text-white/70">
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`flex h-8 w-8 items-center justify-center rounded-lg ${
-                              positive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-500/15 text-blue-300'
-                            }`}
-                          >
-                            {positive ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
-                          </span>
-                          <div>
-                            <p className="text-white">{TX_KIND_FR[t.kind] ?? t.kind}</p>
-                            <p className="text-xs text-white/40">{t.method}</p>
+        {transactions.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Wallet className="h-8 w-8 text-white/20" />
+            <p className="mt-2 text-sm text-white/50">Aucune transaction pour le moment</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <tbody className="divide-y divide-white/5">
+                {[...transactions]
+                  .sort((a, b) => b.createdAt - a.createdAt)
+                  .map((t) => {
+                    const positive = t.kind !== 'purchase'
+                    return (
+                      <tr key={t.id} className="text-white/70">
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                                positive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-500/15 text-blue-300'
+                              }`}
+                            >
+                              {positive ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                            </span>
+                            <div>
+                              <p className="text-white">{TX_KIND_FR[t.kind] ?? t.kind}</p>
+                              <p className="text-xs text-white/40">{t.method}</p>
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="hidden p-4 font-mono text-xs text-white/40 sm:table-cell">{t.reference}</td>
-                      <td className="p-4 text-right">
-                        <p className={`font-medium ${positive ? 'text-emerald-400' : 'text-white'}`}>
-                          {positive ? '+' : '−'}
-                          {formatUSD(Math.abs(t.amount))}
-                        </p>
-                        <p className="text-xs text-white/40">{formatDate(t.createdAt)}</p>
-                      </td>
-                    </tr>
-                  )
-                })}
-            </tbody>
-          </table>
-        </div>
+                        </td>
+                        <td className="hidden p-4 font-mono text-xs text-white/40 sm:table-cell">{t.reference}</td>
+                        <td className="p-4 text-right">
+                          <p className={`font-medium ${positive ? 'text-emerald-400' : 'text-white'}`}>
+                            {positive ? '+' : '−'}
+                            {formatXOF(Math.abs(t.amountXof))}
+                          </p>
+                          <p className="text-xs text-white/40">{fmtDate(t.createdAt)}</p>
+                        </td>
+                      </tr>
+                    )
+                  })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Add funds modal */}
+      {/* Modal ajout de fonds */}
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
@@ -171,17 +187,18 @@ export default function WalletPage() {
             </div>
 
             <label className="mb-2 mt-4 block text-xs font-medium uppercase tracking-wider text-white/40">
-              Montant (USD)
+              Montant (FCFA)
             </label>
             <div className="flex items-center rounded-lg border border-white/10 bg-white/5 px-3">
-              <span className="text-white/50">$</span>
               <input
                 type="number"
-                min={1}
+                min={500}
+                step={500}
                 value={amount}
                 onChange={(e) => setAmount(Number(e.target.value))}
                 className="w-full bg-transparent px-2 py-2.5 text-lg font-semibold text-white outline-none"
               />
+              <span className="text-white/50">FCFA</span>
             </div>
             <div className="mt-2 flex gap-2">
               {QUICK.map((q) => (
@@ -194,7 +211,7 @@ export default function WalletPage() {
                       : 'border-white/10 text-white/60 hover:text-white'
                   }`}
                 >
-                  ${q}
+                  {q.toLocaleString('fr-FR')}
                 </button>
               ))}
             </div>
@@ -233,7 +250,7 @@ export default function WalletPage() {
               onClick={confirm}
               className="mt-5 w-full rounded-lg bg-blue-600 py-2.5 font-medium text-white transition-colors hover:bg-blue-500"
             >
-              Ajouter {formatUSD(amount)}
+              Ajouter {formatXOF(amount)}
             </button>
           </div>
         </div>
