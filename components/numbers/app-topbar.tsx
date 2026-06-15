@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { useNumbers } from '@/components/numbers/numbers-provider'
-import { formatUSD, timeAgo, getInitials } from '@/lib/numbers/data'
+import { timeAgo, getInitials } from '@/lib/numbers/data'
+import { serviceBySlug } from '@/lib/numbers/catalog'
+import { formatXOF } from '@/lib/numbers/types'
 import { Bell, Wallet, Plus, ChevronDown, User, Settings, LogOut } from 'lucide-react'
 
 const TITLES: Record<string, string> = {
@@ -23,11 +25,12 @@ const TITLES: Record<string, string> = {
 export function AppTopbar() {
   const pathname = usePathname()
   const title = TITLES[pathname] ?? 'Tableau de bord'
-  const { balance, messages, user } = useNumbers()
+  const { balanceXof, activations, unreadCount } = useNumbers()
+  const { user } = useNumbers()
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const recent = messages.slice(0, 5)
-  const unread = messages.filter((m) => !m.read && !m.archived).length
+  const recent = activations.filter((a) => a.code).sort((a, b) => b.createdAt - a.createdAt).slice(0, 5)
+  const unread = unreadCount
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-white/10 bg-[#0a0e1a]/80 px-4 backdrop-blur-xl sm:px-6">
@@ -39,7 +42,7 @@ export function AppTopbar() {
           className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm transition-colors hover:bg-white/10"
         >
           <Wallet className="h-4 w-4 text-[#60a5fa]" />
-          <span className="font-semibold text-white">{formatUSD(balance)}</span>
+          <span className="font-semibold text-white">{formatXOF(balanceXof)}</span>
           <span className="hidden text-slate-400 sm:inline">solde</span>
           <Plus className="h-3.5 w-3.5 text-slate-400" />
         </Link>
@@ -57,13 +60,18 @@ export function AppTopbar() {
             <div className="absolute right-0 top-11 w-80 overflow-hidden rounded-xl border border-white/10 bg-[#0c1322] shadow-2xl">
               <div className="border-b border-white/10 px-4 py-3 text-sm font-semibold text-white">Notifications</div>
               <ul className="max-h-80 divide-y divide-white/5 overflow-y-auto">
-                {recent.map((m) => (
-                  <li key={m.id} className="px-4 py-3">
+                {recent.length === 0 && (
+                  <li className="px-4 py-6 text-center text-xs text-slate-500">Aucune notification</li>
+                )}
+                {recent.map((a) => (
+                  <li key={a.id} className="px-4 py-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-white">{m.sender}</span>
-                      <span className="text-[11px] text-slate-500">{timeAgo(m.receivedAt)}</span>
+                      <span className="text-sm font-medium text-white">
+                        {serviceBySlug(a.serviceSlug)?.label ?? a.serviceLabel}
+                      </span>
+                      <span className="text-[11px] text-slate-500">{timeAgo(a.createdAt)}</span>
                     </div>
-                    <p className="mt-0.5 truncate text-xs text-slate-400">{m.body}</p>
+                    <p className="mt-0.5 truncate text-xs text-slate-400">{a.fullSms ?? `Code : ${a.code}`}</p>
                   </li>
                 ))}
               </ul>
