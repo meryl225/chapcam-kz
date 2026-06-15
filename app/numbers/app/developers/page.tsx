@@ -2,208 +2,199 @@
 
 import { useState } from 'react'
 import { useNumbers } from '@/components/numbers/numbers-provider'
-import { formatDate, timeAgo, type ApiKey } from '@/lib/numbers/data'
-import { cn } from '@/lib/utils'
-import {
-  Copy,
-  Check,
-  Eye,
-  EyeOff,
-  Plus,
-  Trash2,
-  KeyRound,
-  Webhook,
-  X,
-} from 'lucide-react'
+import { formatDate, timeAgo } from '@/lib/numbers/data'
+import { Copy, Check, Eye, EyeOff, Plus, Trash2, KeyRound, Webhook, Terminal, X } from 'lucide-react'
 
-const SAMPLES: Record<string, string> = {
-  cURL: `curl https://api.chapcam.dev/v1/numbers \\
-  -H "Authorization: Bearer $CHAPCAM_API_KEY" \\
-  -d country=US \\
-  -d type=temporary \\
-  -d capabilities[]=sms`,
-  Node: `import { ChapCam } from "@chapcam/numbers";
-
-const cc = new ChapCam(process.env.CHAPCAM_API_KEY);
-
-const number = await cc.numbers.buy({
-  country: "US",
-  type: "temporary",
-  capabilities: ["sms"],
-});
-
-cc.messages.on(number.id, (msg) => {
-  console.log(msg.sender, msg.code);
-});`,
-  Python: `from chapcam import ChapCam
-
-cc = ChapCam(api_key=os.environ["CHAPCAM_API_KEY"])
-
-number = cc.numbers.buy(
-    country="US",
-    type="temporary",
-    capabilities=["sms"],
-)
-
-for msg in cc.messages.stream(number.id):
-    print(msg.sender, msg.code)`,
-}
+const card = 'rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl'
 
 const ENDPOINTS = [
-  { method: 'GET', path: '/v1/numbers/available', desc: 'List purchasable numbers by country and capability.' },
-  { method: 'POST', path: '/v1/numbers', desc: 'Buy a number and add it to your account.' },
-  { method: 'GET', path: '/v1/numbers', desc: 'List your active numbers.' },
-  { method: 'DELETE', path: '/v1/numbers/:id', desc: 'Release a number.' },
-  { method: 'GET', path: '/v1/messages', desc: 'Retrieve inbound SMS, filterable by number.' },
-  { method: 'POST', path: '/v1/webhooks', desc: 'Register a webhook for realtime message delivery.' },
+  { method: 'GET', path: '/v1/numbers', desc: 'List your active numbers' },
+  { method: 'POST', path: '/v1/numbers', desc: 'Purchase a new number' },
+  { method: 'GET', path: '/v1/numbers/{id}/messages', desc: 'Fetch inbound SMS for a number' },
+  { method: 'DELETE', path: '/v1/numbers/{id}', desc: 'Release a number' },
+  { method: 'POST', path: '/v1/webhooks', desc: 'Register an inbound-message webhook' },
 ]
 
-const METHOD_COLOR: Record<string, string> = {
-  GET: 'text-primary',
-  POST: 'text-cyan-400',
-  DELETE: 'text-destructive',
+const SAMPLES: Record<string, string> = {
+  cURL: `curl https://api.chapcam.io/v1/numbers \\
+  -H "Authorization: Bearer cck_live_xxx"`,
+  Node: `import { ChapCam } from "chapcam";
+
+const cc = new ChapCam(process.env.CHAPCAM_API_KEY);
+const numbers = await cc.numbers.list();
+console.log(numbers);`,
+  Python: `import chapcam
+
+cc = chapcam.Client(api_key="cck_live_xxx")
+numbers = cc.numbers.list()
+print(numbers)`,
 }
 
-function KeyRow({ k }: { k: ApiKey }) {
-  const { revokeApiKey } = useNumbers()
-  const [show, setShow] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  const masked = `${k.token.slice(0, 12)}${'•'.repeat(12)}`
-
-  function copy() {
-    navigator.clipboard?.writeText(k.token)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
-  return (
-    <tr className="border-t border-hairline">
-      <td className="px-5 py-4">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-foreground">{k.name}</span>
-          <span
-            className={cn(
-              'rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase',
-              k.live ? 'bg-primary/15 text-primary' : 'bg-secondary text-muted-foreground',
-            )}
-          >
-            {k.live ? 'Live' : 'Test'}
-          </span>
-        </div>
-        <span className="text-xs capitalize text-muted-foreground">{k.scope}</span>
-      </td>
-      <td className="px-5 py-4">
-        <div className="flex items-center gap-2">
-          <code className="font-mono text-sm text-foreground">{show ? k.token : masked}</code>
-          <button
-            onClick={() => setShow((v) => !v)}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            aria-label={show ? 'Hide token' : 'Show token'}
-          >
-            {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-          </button>
-          <button
-            onClick={copy}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-            aria-label="Copy token"
-          >
-            {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-          </button>
-        </div>
-      </td>
-      <td className="hidden px-5 py-4 text-sm text-muted-foreground sm:table-cell">
-        {k.lastUsedAt ? timeAgo(k.lastUsedAt) : 'Never'}
-      </td>
-      <td className="hidden px-5 py-4 text-sm text-muted-foreground md:table-cell">{formatDate(k.createdAt)}</td>
-      <td className="px-5 py-4 text-right">
-        <button
-          onClick={() => revokeApiKey(k.id)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Revoke
-        </button>
-      </td>
-    </tr>
-  )
+const methodColor: Record<string, string> = {
+  GET: 'text-emerald-400',
+  POST: 'text-blue-400',
+  DELETE: 'text-red-400',
 }
 
 export default function DevelopersPage() {
-  const { apiKeys, createApiKey } = useNumbers()
-  const [tab, setTab] = useState<keyof typeof SAMPLES>('Node')
-  const [copiedCode, setCopiedCode] = useState(false)
+  const { apiKeys, createApiKey, revokeApiKey } = useNumbers()
+  const [revealed, setRevealed] = useState<Record<string, boolean>>({})
+  const [copied, setCopied] = useState<string | null>(null)
+  const [lang, setLang] = useState<keyof typeof SAMPLES>('cURL')
   const [creating, setCreating] = useState(false)
   const [newName, setNewName] = useState('')
-  const [newScope, setNewScope] = useState<ApiKey['scope']>('read-write')
-  const [newLive, setNewLive] = useState(false)
+  const [justCreated, setJustCreated] = useState<string | null>(null)
 
-  function copyCode() {
-    navigator.clipboard?.writeText(SAMPLES[tab])
-    setCopiedCode(true)
-    setTimeout(() => setCopiedCode(false), 1500)
+  function copy(text: string) {
+    navigator.clipboard?.writeText(text)
+    setCopied(text)
+    setTimeout(() => setCopied(null), 1500)
   }
 
-  function submitKey() {
-    createApiKey(newName, newScope, newLive)
-    setCreating(false)
+  function create() {
+    if (!newName.trim()) return
+    const key = createApiKey(newName.trim())
+    setJustCreated(key.secret)
+    setRevealed((r) => ({ ...r, [key.id]: true }))
     setNewName('')
-    setNewScope('read-write')
-    setNewLive(false)
+    setCreating(false)
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Developers</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Provision numbers and stream messages programmatically with the ChapCam Numbers API.
-        </p>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-white">API Access</h1>
+          <p className="text-sm text-white/50">Programmatically manage numbers and receive messages</p>
+        </div>
+        <button
+          onClick={() => setCreating(true)}
+          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+        >
+          <Plus className="h-4 w-4" /> Create key
+        </button>
       </div>
 
-      {/* quick start */}
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-2xl border border-hairline bg-[#0c0c0c]">
-          <div className="flex items-center justify-between border-b border-hairline px-4 py-2">
-            <div className="flex items-center gap-1">
-              {(Object.keys(SAMPLES) as (keyof typeof SAMPLES)[]).map((t) => (
+      {justCreated && (
+        <div className="flex items-start gap-3 rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
+          <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-blue-300" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-white">Copy your secret key now</p>
+            <p className="text-xs text-white/50">For your security, it won&apos;t be shown in full again.</p>
+            <code className="mt-2 block truncate rounded-md bg-black/40 px-3 py-2 font-mono text-xs text-blue-200">
+              {justCreated}
+            </code>
+          </div>
+          <button onClick={() => setJustCreated(null)} className="text-white/40 hover:text-white">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* API keys */}
+      <div className={`${card} overflow-hidden`}>
+        <div className="border-b border-white/5 p-5">
+          <h2 className="flex items-center gap-2 font-semibold text-white">
+            <KeyRound className="h-4 w-4 text-blue-400" /> API keys
+          </h2>
+        </div>
+        <ul className="divide-y divide-white/5">
+          {apiKeys.map((k) => (
+            <li key={k.id} className="flex flex-wrap items-center gap-3 p-5">
+              <div className="min-w-0 flex-1">
+                <p className="font-medium text-white">{k.name}</p>
+                <div className="mt-1 flex items-center gap-2">
+                  <code className="font-mono text-sm text-white/60">
+                    {revealed[k.id] ? k.secret : `${k.prefix}${'•'.repeat(20)}`}
+                  </code>
+                  <button
+                    onClick={() => setRevealed((r) => ({ ...r, [k.id]: !r[k.id] }))}
+                    className="text-white/40 hover:text-white"
+                    aria-label="Toggle visibility"
+                  >
+                    {revealed[k.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                  </button>
+                  <button
+                    onClick={() => copy(k.secret)}
+                    className="text-white/40 hover:text-blue-400"
+                    aria-label="Copy key"
+                  >
+                    {copied === k.secret ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-400" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-white/40">
+                  Created {formatDate(k.createdAt)} · {k.lastUsedAt ? `last used ${timeAgo(k.lastUsedAt)}` : 'never used'}
+                </p>
+              </div>
+              <button
+                onClick={() => revokeApiKey(k.id)}
+                className="flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/60 transition-colors hover:border-red-500/40 hover:text-red-400"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Revoke
+              </button>
+            </li>
+          ))}
+          {apiKeys.length === 0 && (
+            <li className="p-8 text-center text-sm text-white/50">No API keys yet. Create one to get started.</li>
+          )}
+        </ul>
+      </div>
+
+      {/* Quickstart */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className={`${card} overflow-hidden`}>
+          <div className="flex items-center justify-between border-b border-white/5 px-4 py-2.5">
+            <span className="flex items-center gap-2 text-sm font-medium text-white">
+              <Terminal className="h-4 w-4 text-blue-400" /> Quickstart
+            </span>
+            <div className="flex gap-1">
+              {(Object.keys(SAMPLES) as (keyof typeof SAMPLES)[]).map((l) => (
                 <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={cn(
-                    'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                    tab === t ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground',
-                  )}
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`rounded-md px-2.5 py-1 text-xs transition-colors ${
+                    lang === l ? 'bg-blue-500/20 text-blue-300' : 'text-white/50 hover:text-white'
+                  }`}
                 >
-                  {t}
+                  {l}
                 </button>
               ))}
             </div>
+          </div>
+          <div className="relative">
             <button
-              onClick={copyCode}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+              onClick={() => copy(SAMPLES[lang])}
+              className="absolute right-3 top-3 text-white/40 hover:text-blue-400"
               aria-label="Copy code"
             >
-              {copiedCode ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+              {copied === SAMPLES[lang] ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
             </button>
+            <pre className="overflow-x-auto p-4 text-sm leading-relaxed">
+              <code className="font-mono text-blue-100/90">{SAMPLES[lang]}</code>
+            </pre>
           </div>
-          <pre className="overflow-x-auto p-5 font-mono text-[13px] leading-relaxed text-foreground/90">
-            <code>{SAMPLES[tab]}</code>
-          </pre>
         </div>
 
-        {/* endpoints */}
-        <div className="rounded-2xl border border-hairline bg-card p-5">
-          <h3 className="text-base font-semibold text-foreground">Core endpoints</h3>
-          <ul className="mt-4 space-y-3">
+        {/* Endpoints */}
+        <div className={`${card} overflow-hidden`}>
+          <div className="border-b border-white/5 px-4 py-2.5">
+            <span className="flex items-center gap-2 text-sm font-medium text-white">
+              <Webhook className="h-4 w-4 text-blue-400" /> Endpoints
+            </span>
+          </div>
+          <ul className="divide-y divide-white/5">
             {ENDPOINTS.map((e) => (
-              <li key={e.path} className="flex items-start gap-3">
-                <span className={cn('mt-0.5 w-14 shrink-0 font-mono text-xs font-bold', METHOD_COLOR[e.method])}>
+              <li key={e.path} className="flex items-center gap-3 px-4 py-3">
+                <span className={`w-14 shrink-0 font-mono text-xs font-semibold ${methodColor[e.method]}`}>
                   {e.method}
                 </span>
                 <div className="min-w-0">
-                  <code className="font-mono text-sm text-foreground">{e.path}</code>
-                  <p className="text-xs text-muted-foreground">{e.desc}</p>
+                  <code className="font-mono text-sm text-white">{e.path}</code>
+                  <p className="text-xs text-white/40">{e.desc}</p>
                 </div>
               </li>
             ))}
@@ -211,127 +202,42 @@ export default function DevelopersPage() {
         </div>
       </div>
 
-      {/* API keys */}
-      <div className="mt-8 rounded-2xl border border-hairline bg-card">
-        <div className="flex items-center justify-between border-b border-hairline px-5 py-4">
-          <div className="flex items-center gap-2">
-            <KeyRound className="h-5 w-5 text-primary" />
-            <h3 className="text-base font-semibold text-foreground">API keys</h3>
-          </div>
-          <button
-            onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Create key
-          </button>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="text-left text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <th className="px-5 py-3">Name</th>
-                <th className="px-5 py-3">Token</th>
-                <th className="hidden px-5 py-3 sm:table-cell">Last used</th>
-                <th className="hidden px-5 py-3 md:table-cell">Created</th>
-                <th className="px-5 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {apiKeys.map((k) => (
-                <KeyRow key={k.id} k={k} />
-              ))}
-            </tbody>
-          </table>
-          {apiKeys.length === 0 && (
-            <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-              No API keys yet. Create one to start integrating.
-            </p>
-          )}
-        </div>
-      </div>
-
-      {/* webhooks note */}
-      <div className="mt-6 flex items-start gap-3 rounded-2xl border border-hairline bg-card/40 px-5 py-4">
-        <Webhook className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-        <div>
-          <p className="text-sm font-medium text-foreground">Realtime webhooks</p>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Register an endpoint and we will POST every inbound message — with the verification code already
-            extracted — within ~120ms of delivery.
-          </p>
-        </div>
-      </div>
-
-      {/* create key modal */}
+      {/* Create key modal */}
       {creating && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setCreating(false)} />
-          <div className="relative w-full max-w-md rounded-2xl border border-hairline bg-card p-6 shadow-2xl">
-            <button
-              onClick={() => setCreating(false)}
-              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-            <h2 className="text-lg font-semibold text-foreground">Create API key</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Generate a new key for your integration.</p>
-
-            <label className="mt-5 block">
-              <span className="text-sm font-medium text-foreground">Name</span>
-              <input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="e.g. Production server"
-                className="mt-1.5 w-full rounded-lg border border-hairline bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50"
-              />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setCreating(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0b1220] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-lg font-semibold text-white">Create API key</h2>
+            <label className="mb-1.5 mt-4 block text-xs font-medium uppercase tracking-wider text-white/40">
+              Key name
             </label>
-
-            <div className="mt-4">
-              <span className="text-sm font-medium text-foreground">Scope</span>
-              <div className="mt-1.5 flex gap-2">
-                {(['read', 'read-write', 'full'] as const).map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setNewScope(s)}
-                    className={cn(
-                      'flex-1 rounded-lg border px-3 py-2 text-sm font-medium capitalize transition-colors',
-                      newScope === s
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-hairline text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <label className="mt-4 flex items-center gap-2.5">
+            <input
+              autoFocus
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && create()}
+              placeholder="e.g. Production server"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-500"
+            />
+            <div className="mt-5 flex gap-3">
               <button
-                role="switch"
-                aria-checked={newLive}
-                onClick={() => setNewLive((v) => !v)}
-                className={cn('relative h-5 w-9 rounded-full transition-colors', newLive ? 'bg-primary' : 'bg-secondary')}
+                onClick={() => setCreating(false)}
+                className="flex-1 rounded-lg border border-white/10 py-2 text-sm text-white/70 hover:bg-white/5"
               >
-                <span
-                  className={cn(
-                    'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform',
-                    newLive ? 'translate-x-4' : 'translate-x-0.5',
-                  )}
-                />
+                Cancel
               </button>
-              <span className="text-sm text-foreground">Live key (production traffic)</span>
-            </label>
-
-            <button
-              onClick={submitKey}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              <KeyRound className="h-4 w-4" />
-              Generate key
-            </button>
+              <button
+                onClick={create}
+                className="flex-1 rounded-lg bg-blue-600 py-2 text-sm font-medium text-white hover:bg-blue-500"
+              >
+                Create
+              </button>
+            </div>
           </div>
         </div>
       )}

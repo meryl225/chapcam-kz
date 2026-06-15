@@ -1,327 +1,314 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
 import { useNumbers } from '@/components/numbers/numbers-provider'
 import {
-  AVAILABLE_NUMBERS,
+  LISTINGS,
   COUNTRIES,
-  getCountry,
-  getProvider,
-  capabilityLabel,
-  formatPrice,
-  type AvailableNumber,
+  PROVIDERS,
+  countryByCode,
+  providerById,
+  formatUSD,
+  type Listing,
   type NumberType,
   type Capability,
 } from '@/lib/numbers/data'
-import { cn } from '@/lib/utils'
 import {
   Search,
-  Check,
-  X,
-  MessageSquare,
+  SlidersHorizontal,
+  MessageSquareText,
   Phone as PhoneIcon,
   Image as ImageIcon,
-  Signal,
-  ShoppingCart,
-  CheckCircle2,
-  ArrowRight,
+  Check,
+  X,
+  Zap,
+  ShieldCheck,
 } from 'lucide-react'
 
-const TYPE_FILTERS: { value: NumberType | 'all'; label: string }[] = [
-  { value: 'all', label: 'All types' },
-  { value: 'temporary', label: 'Temporary' },
-  { value: 'long-term', label: 'Long-term' },
-]
+const card = 'rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl'
 
-const CAP_ICON: Record<Capability, typeof MessageSquare> = {
-  sms: MessageSquare,
+const capIcon: Record<Capability, typeof MessageSquareText> = {
+  sms: MessageSquareText,
   voice: PhoneIcon,
   mms: ImageIcon,
 }
 
 export default function MarketplacePage() {
   const { buyNumber } = useNumbers()
+  const [query, setQuery] = useState('')
   const [country, setCountry] = useState<string>('all')
   const [type, setType] = useState<NumberType | 'all'>('all')
-  const [cap, setCap] = useState<Capability | 'all'>('all')
-  const [query, setQuery] = useState('')
-
-  const [selected, setSelected] = useState<AvailableNumber | null>(null)
+  const [provider, setProvider] = useState<string>('all')
+  const [maxPrice, setMaxPrice] = useState(20)
+  const [selected, setSelected] = useState<Listing | null>(null)
   const [label, setLabel] = useState('')
-  const [purchased, setPurchased] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
-    return AVAILABLE_NUMBERS.filter((n) => {
-      if (country !== 'all' && n.countryCode !== country) return false
-      if (type !== 'all' && n.type !== type) return false
-      if (cap !== 'all' && !n.capabilities.includes(cap)) return false
-      if (query && !n.number.replace(/\s/g, '').includes(query.replace(/\s/g, ''))) return false
+    return LISTINGS.filter((l) => {
+      if (country !== 'all' && l.countryCode !== country) return false
+      if (type !== 'all' && l.type !== type) return false
+      if (provider !== 'all' && l.providerId !== provider) return false
+      if (l.price > maxPrice) return false
+      if (query) {
+        const c = countryByCode(l.countryCode)
+        const p = providerById(l.providerId)
+        const hay = `${c?.name} ${c?.dial} ${p?.name}`.toLowerCase()
+        if (!hay.includes(query.toLowerCase())) return false
+      }
       return true
     })
-  }, [country, type, cap, query])
-
-  function openBuy(n: AvailableNumber) {
-    setSelected(n)
-    setLabel('')
-    setPurchased(null)
-  }
+  }, [country, type, provider, maxPrice, query])
 
   function confirmBuy() {
     if (!selected) return
-    buyNumber(selected, label)
-    setPurchased(selected.number)
+    const ok = buyNumber(selected, label || `${countryByCode(selected.countryCode)?.name} number`)
+    if (ok) {
+      setSelected(null)
+      setLabel('')
+    }
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Marketplace</h1>
-        <p className="text-sm text-muted-foreground">
-          Browse available virtual numbers across {COUNTRIES.length} countries and multiple carriers.
+    <div className="space-y-6">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-xl font-semibold text-white">Number Marketplace</h1>
+        <p className="text-sm text-white/50">
+          Browse {LISTINGS.length}+ numbers across {COUNTRIES.length} countries and {PROVIDERS.length} carriers.
         </p>
       </div>
 
-      {/* filters */}
-      <div className="mt-8 space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by number…"
-            className="w-full rounded-xl border border-hairline bg-card py-3 pl-10 pr-4 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50"
-          />
-        </div>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
+        {/* Filters */}
+        <aside className={`${card} h-fit p-5`}>
+          <div className="mb-4 flex items-center gap-2 text-white">
+            <SlidersHorizontal className="h-4 w-4 text-blue-400" />
+            <span className="font-medium">Filters</span>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {TYPE_FILTERS.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setType(t.value)}
-              className={cn(
-                'rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors',
-                type === t.value
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-hairline text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {t.label}
-            </button>
-          ))}
-          <span className="mx-1 h-6 w-px bg-hairline" />
-          {(['all', 'sms', 'voice', 'mms'] as const).map((c) => (
-            <button
-              key={c}
-              onClick={() => setCap(c)}
-              className={cn(
-                'rounded-lg border px-3.5 py-2 text-sm font-medium capitalize transition-colors',
-                cap === c
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-hairline text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {c === 'all' ? 'All capabilities' : capabilityLabel(c as Capability)}
-            </button>
-          ))}
-        </div>
-
-        {/* country chips */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setCountry('all')}
-            className={cn(
-              'rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-              country === 'all'
-                ? 'border-primary bg-primary/10 text-primary'
-                : 'border-hairline text-muted-foreground hover:text-foreground',
-            )}
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
+            Country
+          </label>
+          <select
+            value={country}
+            onChange={(e) => setCountry(e.target.value)}
+            className="mb-4 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
           >
-            All countries
-          </button>
-          {COUNTRIES.map((c) => (
-            <button
-              key={c.code}
-              onClick={() => setCountry(c.code)}
-              className={cn(
-                'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-                country === c.code
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'border-hairline text-muted-foreground hover:text-foreground',
-              )}
-            >
-              <span>{c.flag}</span>
-              {c.code}
-            </button>
-          ))}
+            <option value="all">All countries</option>
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code} className="bg-[#0b1220]">
+                {c.flag} {c.name}
+              </option>
+            ))}
+          </select>
+
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
+            Type
+          </label>
+          <div className="mb-4 flex gap-2">
+            {(['all', 'temporary', 'long-term'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setType(t)}
+                className={`flex-1 rounded-lg border px-2 py-1.5 text-xs capitalize transition-colors ${
+                  type === t
+                    ? 'border-blue-500 bg-blue-500/15 text-blue-300'
+                    : 'border-white/10 bg-white/5 text-white/60 hover:text-white'
+                }`}
+              >
+                {t === 'all' ? 'All' : t === 'long-term' ? 'Long' : 'Temp'}
+              </button>
+            ))}
+          </div>
+
+          <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
+            Provider
+          </label>
+          <select
+            value={provider}
+            onChange={(e) => setProvider(e.target.value)}
+            className="mb-4 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
+          >
+            <option value="all">All providers</option>
+            {PROVIDERS.map((p) => (
+              <option key={p.id} value={p.id} className="bg-[#0b1220]">
+                {p.name}
+              </option>
+            ))}
+          </select>
+
+          <label className="mb-1.5 flex items-center justify-between text-xs font-medium uppercase tracking-wider text-white/40">
+            <span>Max price</span>
+            <span className="text-blue-400">{formatUSD(maxPrice)}</span>
+          </label>
+          <input
+            type="range"
+            min={1}
+            max={20}
+            step={0.5}
+            value={maxPrice}
+            onChange={(e) => setMaxPrice(Number(e.target.value))}
+            className="w-full accent-blue-500"
+          />
+        </aside>
+
+        {/* Results */}
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by country, dial code or provider..."
+              className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <p className="text-sm text-white/50">{filtered.length} numbers available</p>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((l) => {
+              const c = countryByCode(l.countryCode)
+              const p = providerById(l.providerId)
+              return (
+                <div key={l.id} className={`${card} flex flex-col p-5`}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl leading-none">{c?.flag}</span>
+                      <div>
+                        <p className="font-medium text-white">{c?.name}</p>
+                        <p className="text-xs text-white/40">
+                          {c?.dial} · {p?.name}
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${
+                        l.type === 'temporary'
+                          ? 'bg-amber-500/15 text-amber-400'
+                          : 'bg-blue-500/15 text-blue-300'
+                      }`}
+                    >
+                      {l.type}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2">
+                    {l.capabilities.map((cap) => {
+                      const Icon = capIcon[cap]
+                      return (
+                        <span
+                          key={cap}
+                          className="flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 text-[11px] uppercase text-white/60"
+                        >
+                          <Icon className="h-3 w-3" />
+                          {cap}
+                        </span>
+                      )
+                    })}
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-4 text-xs text-white/50">
+                    <span className="flex items-center gap-1">
+                      <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                      {p?.reliability}% uptime
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Zap className="h-3.5 w-3.5 text-blue-400" />~{p?.avgDeliverySec}s
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex items-end justify-between border-t border-white/5 pt-4">
+                    <div>
+                      <p className="text-lg font-semibold text-white">{formatUSD(l.price)}</p>
+                      <p className="text-[11px] text-white/40">
+                        {l.type === 'temporary' ? 'one-time' : 'per month'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSelected(l)}
+                      className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
+                    >
+                      Buy now
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {filtered.length === 0 && (
+            <div className={`${card} flex flex-col items-center justify-center py-16 text-center`}>
+              <Search className="h-8 w-8 text-white/20" />
+              <p className="mt-3 text-white/60">No numbers match your filters</p>
+              <p className="text-sm text-white/40">Try widening your price range or country selection.</p>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* results */}
-      <p className="mt-6 text-sm text-muted-foreground">{filtered.length} numbers available</p>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((n) => {
-          const c = getCountry(n.countryCode)
-          const provider = getProvider(n.providerId)
-          return (
-            <div
-              key={n.id}
-              className="flex flex-col rounded-2xl border border-hairline bg-card p-5 transition-colors hover:border-primary/30"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl leading-none">{c?.flag}</span>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{c?.name}</p>
-                    <p className="text-xs text-muted-foreground">{n.region}</p>
-                  </div>
-                </div>
-                <span
-                  className={cn(
-                    'rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize',
-                    n.type === 'temporary' ? 'bg-secondary text-foreground' : 'bg-primary/15 text-primary',
-                  )}
-                >
-                  {n.type}
-                </span>
+      {/* Buy modal */}
+      {selected && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setSelected(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0b1220] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between">
+              <h2 className="text-lg font-semibold text-white">Confirm purchase</h2>
+              <button onClick={() => setSelected(null)} className="text-white/40 hover:text-white">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4">
+              <span className="text-2xl">{countryByCode(selected.countryCode)?.flag}</span>
+              <div className="flex-1">
+                <p className="font-medium text-white">{countryByCode(selected.countryCode)?.name}</p>
+                <p className="text-xs text-white/40">
+                  {providerById(selected.providerId)?.name} · {selected.type}
+                </p>
               </div>
+              <p className="text-lg font-semibold text-white">{formatUSD(selected.price)}</p>
+            </div>
 
-              <p className="mt-4 font-mono text-lg font-semibold tracking-tight text-foreground">{n.number}</p>
+            <label className="mb-1.5 mt-4 block text-xs font-medium uppercase tracking-wider text-white/40">
+              Label (optional)
+            </label>
+            <input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="e.g. Business line"
+              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-500"
+            />
 
-              <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                {n.capabilities.map((cap) => {
-                  const Icon = CAP_ICON[cap]
-                  return (
-                    <span
-                      key={cap}
-                      className="inline-flex items-center gap-1 rounded-md border border-hairline px-2 py-0.5 text-[11px] font-medium text-muted-foreground"
-                    >
-                      <Icon className="h-3 w-3" />
-                      {capabilityLabel(cap)}
-                    </span>
-                  )
-                })}
+            <div className="mt-4 space-y-1.5 rounded-xl bg-white/[0.02] p-3 text-sm">
+              <div className="flex justify-between text-white/60">
+                <span>Number</span>
+                <span>{formatUSD(selected.price)}</span>
               </div>
-
-              <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Signal className="h-3.5 w-3.5 text-primary" />
-                {provider?.name} · {provider?.reliability}% uptime
+              <div className="flex justify-between text-white/60">
+                <span>Platform fee</span>
+                <span>{formatUSD(0)}</span>
               </div>
-
-              <div className="mt-5 flex items-end justify-between border-t border-hairline pt-4">
-                <div>
-                  <p className="text-lg font-bold text-foreground">
-                    {formatPrice(n.monthlyPrice)}
-                    <span className="text-xs font-normal text-muted-foreground">/mo</span>
-                  </p>
-                  {n.setupPrice > 0 && (
-                    <p className="text-[11px] text-muted-foreground">+ {formatPrice(n.setupPrice)} setup</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => openBuy(n)}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  <ShoppingCart className="h-4 w-4" />
-                  Buy
-                </button>
+              <div className="flex justify-between border-t border-white/10 pt-1.5 font-medium text-white">
+                <span>Total</span>
+                <span>{formatUSD(selected.price)}</span>
               </div>
             </div>
-          )
-        })}
-      </div>
 
-      {filtered.length === 0 && (
-        <div className="mt-8 rounded-2xl border border-dashed border-hairline p-12 text-center">
-          <p className="text-sm text-muted-foreground">No numbers match your filters. Try widening your search.</p>
-        </div>
-      )}
-
-      {/* buy modal */}
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSelected(null)} />
-          <div className="relative w-full max-w-md rounded-2xl border border-hairline bg-card p-6 shadow-2xl">
             <button
-              onClick={() => setSelected(null)}
-              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              aria-label="Close"
+              onClick={confirmBuy}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white transition-colors hover:bg-blue-500"
             >
-              <X className="h-4 w-4" />
+              <Check className="h-4 w-4" />
+              Confirm & pay {formatUSD(selected.price)}
             </button>
-
-            {!purchased ? (
-              <>
-                <h2 className="text-lg font-semibold text-foreground">Confirm purchase</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Activate this number on your account instantly.</p>
-
-                <div className="mt-5 rounded-xl border border-hairline bg-background/50 p-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl leading-none">{getCountry(selected.countryCode)?.flag}</span>
-                    <span className="font-mono text-base font-semibold text-foreground">{selected.number}</span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Monthly</span>
-                    <span className="font-medium text-foreground">{formatPrice(selected.monthlyPrice)}</span>
-                  </div>
-                  {selected.setupPrice > 0 && (
-                    <div className="mt-1 flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">One-time setup</span>
-                      <span className="font-medium text-foreground">{formatPrice(selected.setupPrice)}</span>
-                    </div>
-                  )}
-                  <div className="mt-3 flex items-center justify-between border-t border-hairline pt-3 text-sm">
-                    <span className="font-medium text-foreground">Due today</span>
-                    <span className="text-lg font-bold text-foreground">
-                      {formatPrice(selected.monthlyPrice + selected.setupPrice)}
-                    </span>
-                  </div>
-                </div>
-
-                <label className="mt-4 block">
-                  <span className="text-sm font-medium text-foreground">Label (optional)</span>
-                  <input
-                    value={label}
-                    onChange={(e) => setLabel(e.target.value)}
-                    placeholder="e.g. Production — Auth OTP"
-                    className="mt-1.5 w-full rounded-lg border border-hairline bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-primary/50"
-                  />
-                </label>
-
-                <button
-                  onClick={confirmBuy}
-                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  <Check className="h-4 w-4" />
-                  Confirm and activate
-                </button>
-              </>
-            ) : (
-              <div className="py-4 text-center">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/15 text-primary">
-                  <CheckCircle2 className="h-7 w-7" />
-                </div>
-                <h2 className="mt-4 text-lg font-semibold text-foreground">Number activated</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  <span className="font-mono text-foreground">{purchased}</span> is ready to receive messages.
-                </p>
-                <div className="mt-6 flex gap-3">
-                  <button
-                    onClick={() => setSelected(null)}
-                    className="flex-1 rounded-xl border border-hairline px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/40"
-                  >
-                    Keep browsing
-                  </button>
-                  <Link
-                    href="/numbers/app/numbers"
-                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                  >
-                    My Numbers
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </div>
-              </div>
-            )}
+            <p className="mt-2 text-center text-xs text-white/40">
+              Paid instantly from your wallet balance.
+            </p>
           </div>
         </div>
       )}

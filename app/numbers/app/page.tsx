@@ -2,162 +2,265 @@
 
 import Link from 'next/link'
 import { useNumbers } from '@/components/numbers/numbers-provider'
-import { UsageChart } from '@/components/numbers/usage-chart'
-import { getCountry, getProvider, formatPrice, timeAgo } from '@/lib/numbers/data'
+import { ActivityChart, RevenueChart } from '@/components/numbers/charts'
+import {
+  countryByCode,
+  providerById,
+  formatUSD,
+  timeAgo,
+  timeLeft,
+  DAILY_ACTIVITY,
+  REVENUE_SERIES,
+  TOP_COUNTRIES,
+} from '@/lib/numbers/data'
 import {
   Phone,
   MessageSquareText,
-  CreditCard,
+  Wallet,
   Globe2,
-  ArrowRight,
+  ArrowUpRight,
+  TrendingUp,
   Plus,
-  ShieldCheck,
+  Inbox,
 } from 'lucide-react'
 
-export default function OverviewPage() {
-  const { ownedNumbers, messages, unreadCount } = useNumbers()
+const card =
+  'rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl'
 
-  const monthlySpend = ownedNumbers.reduce((acc, n) => acc + n.monthlyPrice, 0)
-  const countries = new Set(ownedNumbers.map((n) => n.countryCode)).size
-  const startOfToday = new Date()
-  startOfToday.setHours(0, 0, 0, 0)
-  const messagesToday = messages.filter((m) => new Date(m.receivedAt) >= startOfToday).length
+export default function DashboardPage() {
+  const { balance, owned, messages, orders, unreadCount } = useNumbers()
+
+  const activeNumbers = owned.filter((n) => n.status !== 'expired')
+  const recentMessages = [...messages]
+    .filter((m) => !m.archived)
+    .sort((a, b) => b.receivedAt - a.receivedAt)
+    .slice(0, 5)
+  const recentOrders = [...orders].sort((a, b) => b.createdAt - a.createdAt).slice(0, 5)
 
   const stats = [
-    { icon: Phone, label: 'Active numbers', value: String(ownedNumbers.length), sub: `${countries} countries` },
-    { icon: MessageSquareText, label: 'Messages today', value: String(messagesToday), sub: `${unreadCount} unread` },
-    { icon: CreditCard, label: 'Monthly spend', value: formatPrice(monthlySpend), sub: 'Across all numbers' },
-    { icon: Globe2, label: 'Coverage', value: '150+', sub: 'Countries available' },
+    {
+      label: 'Active Numbers',
+      value: activeNumbers.length.toString(),
+      sub: `${owned.length} total`,
+      icon: Phone,
+      href: '/numbers/app/numbers',
+    },
+    {
+      label: 'Messages (24h)',
+      value: messages.filter((m) => Date.now() - m.receivedAt < 86400_000).length.toString(),
+      sub: `${unreadCount} unread`,
+      icon: MessageSquareText,
+      href: '/numbers/app/messages',
+    },
+    {
+      label: 'Wallet Balance',
+      value: formatUSD(balance),
+      sub: 'Available',
+      icon: Wallet,
+      href: '/numbers/app/wallet',
+    },
+    {
+      label: 'Countries',
+      value: new Set(activeNumbers.map((n) => n.countryCode)).size.toString(),
+      sub: 'In use',
+      icon: Globe2,
+      href: '/numbers/app/marketplace',
+    },
   ]
 
-  const recentMessages = messages.slice(0, 5)
-
   return (
-    <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">
-      {/* header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">Overview</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Welcome back. Here is what is happening across your numbers.</p>
-        </div>
-        <Link
-          href="/numbers/app/marketplace"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          Buy a number
-        </Link>
-      </div>
-
-      {/* stats */}
-      <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="space-y-6">
+      {/* Stat cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded-2xl border border-hairline bg-card p-5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <s.icon className="h-[18px] w-[18px]" />
+          <Link
+            key={s.label}
+            href={s.href}
+            className={`${card} group p-5 transition-colors hover:border-blue-500/40`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15 text-blue-400">
+                <s.icon className="h-5 w-5" />
+              </span>
+              <ArrowUpRight className="h-4 w-4 text-white/30 transition-colors group-hover:text-blue-400" />
             </div>
-            <p className="mt-4 text-2xl font-bold tracking-tight text-foreground md:text-3xl">{s.value}</p>
-            <p className="mt-1 text-sm font-medium text-foreground">{s.label}</p>
-            <p className="text-xs text-muted-foreground">{s.sub}</p>
-          </div>
+            <p className="mt-4 text-2xl font-semibold text-white">{s.value}</p>
+            <div className="mt-1 flex items-center justify-between">
+              <p className="text-sm text-white/50">{s.label}</p>
+              <p className="text-xs text-white/40">{s.sub}</p>
+            </div>
+          </Link>
         ))}
       </div>
 
-      {/* chart + numbers */}
-      <div className="mt-6 grid gap-6 lg:grid-cols-5">
-        <div className="lg:col-span-3">
-          <UsageChart />
+      {/* Charts row */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className={`${card} p-5 lg:col-span-2`}>
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-white">Activity</h2>
+              <p className="text-sm text-white/50">Messages and orders over the last 14 days</p>
+            </div>
+            <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-400">
+              <TrendingUp className="h-3.5 w-3.5" /> +18%
+            </span>
+          </div>
+          <ActivityChart data={DAILY_ACTIVITY} />
         </div>
 
-        <div className="rounded-2xl border border-hairline bg-card p-6 lg:col-span-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-foreground">Active numbers</h3>
-            <Link href="/numbers/app/numbers" className="text-sm font-medium text-primary hover:underline">
+        <div className={`${card} p-5`}>
+          <h2 className="font-semibold text-white">Spend</h2>
+          <p className="text-sm text-white/50">Last 12 months</p>
+          <div className="mt-4">
+            <RevenueChart data={REVENUE_SERIES} />
+          </div>
+        </div>
+      </div>
+
+      {/* Lower grid */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Recent messages */}
+        <div className={`${card} p-5 lg:col-span-2`}>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="font-semibold text-white">Recent messages</h2>
+            <Link href="/numbers/app/messages" className="text-sm text-blue-400 hover:text-blue-300">
               View all
             </Link>
           </div>
-          <ul className="mt-4 space-y-3">
-            {ownedNumbers.slice(0, 4).map((n) => {
-              const country = getCountry(n.countryCode)
-              return (
-                <li key={n.id} className="flex items-center gap-3">
-                  <span className="text-xl leading-none">{country?.flag}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-mono text-sm font-medium text-foreground">{n.number}</p>
-                    <p className="truncate text-xs text-muted-foreground">{n.label}</p>
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                      n.status === 'expiring'
-                        ? 'bg-yellow-500/15 text-yellow-500'
-                        : 'bg-primary/15 text-primary'
-                    }`}
-                  >
-                    {n.status === 'expiring' ? 'Expiring' : 'Active'}
-                  </span>
-                </li>
-              )
-            })}
-            {ownedNumbers.length === 0 && (
-              <li className="rounded-xl border border-dashed border-hairline p-6 text-center text-sm text-muted-foreground">
-                No numbers yet.{' '}
-                <Link href="/numbers/app/marketplace" className="font-medium text-primary hover:underline">
-                  Buy your first number
-                </Link>
-              </li>
-            )}
-          </ul>
+          {recentMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-10 text-center">
+              <Inbox className="h-8 w-8 text-white/20" />
+              <p className="mt-2 text-sm text-white/50">No messages yet</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-white/5">
+              {recentMessages.map((m) => {
+                const num = owned.find((n) => n.id === m.numberId)
+                const c = num ? countryByCode(num.countryCode) : undefined
+                return (
+                  <li key={m.id} className="flex items-start gap-3 py-3">
+                    <span className="text-lg leading-none">{c?.flag ?? '🌐'}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-sm font-medium text-white">{m.sender}</p>
+                        <span className="shrink-0 text-xs text-white/40">{timeAgo(m.receivedAt)}</span>
+                      </div>
+                      <p className="truncate text-sm text-white/55">{m.body}</p>
+                    </div>
+                    {!m.read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />}
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* Active numbers + top countries */}
+        <div className="space-y-4">
+          <div className={`${card} p-5`}>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="font-semibold text-white">Active numbers</h2>
+              <Link
+                href="/numbers/app/marketplace"
+                className="flex items-center gap-1 text-sm text-blue-400 hover:text-blue-300"
+              >
+                <Plus className="h-3.5 w-3.5" /> Buy
+              </Link>
+            </div>
+            <ul className="space-y-3">
+              {activeNumbers.slice(0, 4).map((n) => {
+                const c = countryByCode(n.countryCode)
+                const p = providerById(n.providerId)
+                return (
+                  <li key={n.id} className="flex items-center gap-3">
+                    <span className="text-lg leading-none">{c?.flag}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-mono text-sm text-white">{n.e164}</p>
+                      <p className="truncate text-xs text-white/40">{p?.name}</p>
+                    </div>
+                    <span className="shrink-0 text-xs text-white/40">{timeLeft(n.expiresAt)}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+
+          <div className={`${card} p-5`}>
+            <h2 className="mb-3 font-semibold text-white">Top countries</h2>
+            <ul className="space-y-2.5">
+              {TOP_COUNTRIES.map((t) => {
+                const c = countryByCode(t.code)
+                return (
+                  <li key={t.code}>
+                    <div className="mb-1 flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-white/70">
+                        <span>{c?.flag}</span>
+                        {c?.name}
+                      </span>
+                      <span className="text-white/40">{t.share}%</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
+                      <div className="h-full rounded-full bg-blue-500" style={{ width: `${t.share}%` }} />
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
         </div>
       </div>
 
-      {/* recent messages */}
-      <div className="mt-6 rounded-2xl border border-hairline bg-card">
-        <div className="flex items-center justify-between border-b border-hairline px-6 py-4">
-          <h3 className="text-base font-semibold text-foreground">Recent messages</h3>
-          <Link
-            href="/numbers/app/messages"
-            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            Open inbox
-            <ArrowRight className="h-4 w-4" />
+      {/* Recent orders */}
+      <div className={`${card} p-5`}>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-semibold text-white">Recent orders</h2>
+          <Link href="/numbers/app/history" className="text-sm text-blue-400 hover:text-blue-300">
+            View history
           </Link>
         </div>
-        <ul className="divide-y divide-hairline">
-          {recentMessages.map((m) => {
-            const number = ownedNumbers.find((n) => n.id === m.numberId)
-            const country = number ? getCountry(number.countryCode) : undefined
-            return (
-              <li key={m.id} className="flex items-start gap-4 px-6 py-4">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-foreground">
-                  {m.sender.slice(0, 2).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-semibold text-foreground">{m.sender}</span>
-                    {!m.read && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
-                    {m.kind !== 'general' && (
-                      <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-                        {m.kind}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="text-xs uppercase tracking-wider text-white/40">
+                <th className="pb-3 font-medium">Number</th>
+                <th className="pb-3 font-medium">Provider</th>
+                <th className="pb-3 font-medium">Amount</th>
+                <th className="pb-3 font-medium">Status</th>
+                <th className="pb-3 text-right font-medium">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5">
+              {recentOrders.map((o) => {
+                const c = countryByCode(o.countryCode)
+                const p = providerById(o.providerId)
+                const statusColor =
+                  o.status === 'completed' || o.status === 'active'
+                    ? 'bg-emerald-500/15 text-emerald-400'
+                    : o.status === 'refunded'
+                      ? 'bg-amber-500/15 text-amber-400'
+                      : 'bg-red-500/15 text-red-400'
+                return (
+                  <tr key={o.id} className="text-white/70">
+                    <td className="py-3">
+                      <span className="flex items-center gap-2">
+                        <span>{c?.flag}</span>
+                        <span className="font-mono text-white">{o.e164}</span>
                       </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 truncate text-sm text-muted-foreground">{m.body}</p>
-                  <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    {country?.flag} <span className="font-mono">{number?.number ?? 'Released number'}</span>
-                  </p>
-                </div>
-                <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(m.receivedAt)}</span>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
-
-      {/* reliability note */}
-      <div className="mt-6 flex items-center gap-3 rounded-2xl border border-hairline bg-card/40 px-6 py-4 text-sm text-muted-foreground">
-        <ShieldCheck className="h-5 w-5 shrink-0 text-primary" />
-        Numbers are routed across {getProvider('vertex')?.name} and 4 other carriers with automatic failover for
-        99.99% delivery reliability.
+                    </td>
+                    <td className="py-3">{p?.name}</td>
+                    <td className="py-3 text-white">{formatUSD(o.amount)}</td>
+                    <td className="py-3">
+                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusColor}`}>
+                        {o.status}
+                      </span>
+                    </td>
+                    <td className="py-3 text-right text-white/40">{timeAgo(o.createdAt)}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )

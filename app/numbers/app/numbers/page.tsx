@@ -4,229 +4,268 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useNumbers } from '@/components/numbers/numbers-provider'
 import {
-  getCountry,
-  getProvider,
-  capabilityLabel,
-  formatPrice,
+  countryByCode,
+  providerById,
+  formatUSD,
   formatDate,
+  timeLeft,
   type OwnedNumber,
+  type Capability,
 } from '@/lib/numbers/data'
-import { cn } from '@/lib/utils'
 import {
   Copy,
   Check,
   Trash2,
   Plus,
   Pencil,
-  Signal,
-  Calendar,
+  MessageSquareText,
+  Phone as PhoneIcon,
+  Image as ImageIcon,
+  RefreshCw,
   X,
-  AlertTriangle,
+  Search,
 } from 'lucide-react'
 
-function NumberCard({ n }: { n: OwnedNumber }) {
-  const { toggleAutoRenew, relabel, releaseNumber, messages } = useNumbers()
-  const [copied, setCopied] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(n.label)
-  const [confirmRelease, setConfirmRelease] = useState(false)
+const card = 'rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl'
 
-  const country = getCountry(n.countryCode)
-  const provider = getProvider(n.providerId)
-  const msgCount = messages.filter((m) => m.numberId === n.id).length
+const capIcon: Record<Capability, typeof MessageSquareText> = {
+  sms: MessageSquareText,
+  voice: PhoneIcon,
+  mms: ImageIcon,
+}
 
-  function copy() {
-    navigator.clipboard?.writeText(n.number.replace(/\s/g, ''))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
+const statusStyle: Record<OwnedNumber['status'], string> = {
+  active: 'bg-emerald-500/15 text-emerald-400',
+  expiring: 'bg-amber-500/15 text-amber-400',
+  expired: 'bg-red-500/15 text-red-400',
+}
+
+export default function NumbersPage() {
+  const { owned, toggleAutoRenew, releaseNumber, renameNumber } = useNumbers()
+  const [copied, setCopied] = useState<string | null>(null)
+  const [editing, setEditing] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const [confirmRelease, setConfirmRelease] = useState<OwnedNumber | null>(null)
+  const [filter, setFilter] = useState('')
+
+  const list = owned.filter((n) => {
+    if (!filter) return true
+    const c = countryByCode(n.countryCode)
+    return `${n.e164} ${n.label} ${c?.name}`.toLowerCase().includes(filter.toLowerCase())
+  })
+
+  function copy(text: string) {
+    navigator.clipboard?.writeText(text)
+    setCopied(text)
+    setTimeout(() => setCopied(null), 1500)
   }
 
-  function saveLabel() {
-    relabel(n.id, draft.trim() || n.label)
-    setEditing(false)
+  function saveLabel(id: string) {
+    renameNumber(id, draft)
+    setEditing(null)
   }
 
   return (
-    <div className="rounded-2xl border border-hairline bg-card p-5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl leading-none">{country?.flag}</span>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="font-mono text-lg font-semibold tracking-tight text-foreground">{n.number}</p>
-              <button
-                onClick={copy}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                aria-label="Copy number"
-              >
-                {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-              </button>
-            </div>
-
-            {editing ? (
-              <div className="mt-1.5 flex items-center gap-2">
-                <input
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  autoFocus
-                  onKeyDown={(e) => e.key === 'Enter' && saveLabel()}
-                  className="rounded-md border border-hairline bg-background px-2 py-1 text-sm text-foreground outline-none focus:border-primary/50"
-                />
-                <button onClick={saveLabel} className="text-sm font-medium text-primary hover:underline">
-                  Save
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setDraft(n.label)
-                  setEditing(true)
-                }}
-                className="mt-0.5 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-              >
-                {n.label}
-                <Pencil className="h-3 w-3" />
-              </button>
-            )}
-          </div>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-semibold text-white">Active Numbers</h1>
+          <p className="text-sm text-white/50">{owned.length} numbers on your account</p>
         </div>
-
-        <span
-          className={cn(
-            'shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold capitalize',
-            n.status === 'expiring' ? 'bg-yellow-500/15 text-yellow-500' : 'bg-primary/15 text-primary',
-          )}
+        <Link
+          href="/numbers/app/marketplace"
+          className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
         >
-          {n.status}
-        </span>
+          <Plus className="h-4 w-4" /> Buy number
+        </Link>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-1.5">
-        {n.capabilities.map((c) => (
-          <span key={c} className="rounded-md border border-hairline px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-            {capabilityLabel(c)}
-          </span>
-        ))}
-        <span className="rounded-md bg-secondary px-2 py-0.5 text-[11px] font-medium capitalize text-foreground">
-          {n.type}
-        </span>
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="Search your numbers..."
+          className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-500"
+        />
       </div>
 
-      <dl className="mt-4 grid grid-cols-2 gap-y-2.5 text-sm">
-        <dt className="flex items-center gap-1.5 text-muted-foreground">
-          <Signal className="h-3.5 w-3.5" /> Carrier
-        </dt>
-        <dd className="text-right font-medium text-foreground">{provider?.name}</dd>
-        <dt className="flex items-center gap-1.5 text-muted-foreground">
-          <Calendar className="h-3.5 w-3.5" /> Renews
-        </dt>
-        <dd className="text-right font-medium text-foreground">{formatDate(n.renewsAt)}</dd>
-        <dt className="text-muted-foreground">Messages</dt>
-        <dd className="text-right font-medium text-foreground">{msgCount}</dd>
-        <dt className="text-muted-foreground">Price</dt>
-        <dd className="text-right font-medium text-foreground">{formatPrice(n.monthlyPrice)}/mo</dd>
-      </dl>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {list.map((n) => {
+          const c = countryByCode(n.countryCode)
+          const p = providerById(n.providerId)
+          return (
+            <div key={n.id} className={`${card} p-5`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl leading-none">{c?.flag}</span>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono text-base text-white">{n.e164}</p>
+                      <button
+                        onClick={() => copy(n.e164)}
+                        className="text-white/40 transition-colors hover:text-blue-400"
+                        aria-label="Copy number"
+                      >
+                        {copied === n.e164 ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-400" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                    {editing === n.id ? (
+                      <div className="mt-1 flex items-center gap-1">
+                        <input
+                          autoFocus
+                          value={draft}
+                          onChange={(e) => setDraft(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && saveLabel(n.id)}
+                          className="w-40 rounded-md border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white outline-none focus:border-blue-500"
+                        />
+                        <button onClick={() => saveLabel(n.id)} className="text-emerald-400">
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                        <button onClick={() => setEditing(null)} className="text-white/40">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setEditing(n.id)
+                          setDraft(n.label)
+                        }}
+                        className="mt-0.5 flex items-center gap-1 text-xs text-white/50 transition-colors hover:text-white"
+                      >
+                        {n.label}
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusStyle[n.status]}`}>
+                  {n.status}
+                </span>
+              </div>
 
-      <div className="mt-4 flex items-center justify-between border-t border-hairline pt-4">
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-          <button
-            role="switch"
-            aria-checked={n.autoRenew}
-            onClick={() => toggleAutoRenew(n.id)}
-            className={cn(
-              'relative h-5 w-9 rounded-full transition-colors',
-              n.autoRenew ? 'bg-primary' : 'bg-secondary',
-            )}
-          >
-            <span
-              className={cn(
-                'absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform',
-                n.autoRenew ? 'translate-x-4' : 'translate-x-0.5',
-              )}
-            />
-          </button>
-          Auto-renew
-        </label>
+              <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-xs text-white/40">Provider</p>
+                  <p className="text-white/80">{p?.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/40">Type</p>
+                  <p className="capitalize text-white/80">{n.type}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/40">Messages</p>
+                  <p className="text-white/80">{n.messageCount}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-white/40">{n.status === 'expired' ? 'Expired' : 'Renews in'}</p>
+                  <p className="text-white/80">{n.status === 'expired' ? formatDate(n.expiresAt) : timeLeft(n.expiresAt)}</p>
+                </div>
+              </div>
 
-        <button
-          onClick={() => setConfirmRelease(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-hairline px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-          Release
-        </button>
-      </div>
+              <div className="mt-4 flex items-center gap-2">
+                {(['sms', 'voice', 'mms'] as Capability[]).map((cap) => {
+                  const Icon = capIcon[cap]
+                  return (
+                    <span
+                      key={cap}
+                      className="flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 text-[11px] uppercase text-white/50"
+                    >
+                      <Icon className="h-3 w-3" />
+                      {cap}
+                    </span>
+                  )
+                })}
+              </div>
 
-      {confirmRelease && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setConfirmRelease(false)} />
-          <div className="relative w-full max-w-sm rounded-2xl border border-hairline bg-card p-6 shadow-2xl">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-destructive/15 text-destructive">
-              <AlertTriangle className="h-5 w-5" />
+              <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-4">
+                <button
+                  onClick={() => toggleAutoRenew(n.id)}
+                  className="flex items-center gap-2 text-sm text-white/60 transition-colors hover:text-white"
+                >
+                  <span
+                    className={`relative h-5 w-9 rounded-full transition-colors ${n.autoRenew ? 'bg-blue-600' : 'bg-white/15'}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${n.autoRenew ? 'translate-x-4' : 'translate-x-0.5'}`}
+                    />
+                  </span>
+                  <RefreshCw className="h-3.5 w-3.5" /> Auto-renew
+                </button>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/numbers/app/messages"
+                    className="text-sm text-blue-400 transition-colors hover:text-blue-300"
+                  >
+                    Inbox
+                  </Link>
+                  <button
+                    onClick={() => setConfirmRelease(n)}
+                    className="flex items-center gap-1 text-sm text-white/50 transition-colors hover:text-red-400"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Release
+                  </button>
+                </div>
+              </div>
             </div>
-            <h3 className="mt-4 text-lg font-semibold text-foreground">Release this number?</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              <span className="font-mono text-foreground">{n.number}</span> will stop receiving messages and its
-              history will be removed. This cannot be undone.
+          )
+        })}
+      </div>
+
+      {owned.length === 0 && (
+        <div className={`${card} flex flex-col items-center justify-center py-16 text-center`}>
+          <PhoneIcon className="h-8 w-8 text-white/20" />
+          <p className="mt-3 text-white/60">You don&apos;t own any numbers yet</p>
+          <Link
+            href="/numbers/app/marketplace"
+            className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
+          >
+            Browse marketplace
+          </Link>
+        </div>
+      )}
+
+      {/* Release confirm modal */}
+      {confirmRelease && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          onClick={() => setConfirmRelease(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0b1220] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-500/15 text-red-400">
+              <Trash2 className="h-5 w-5" />
+            </div>
+            <h2 className="mt-4 text-lg font-semibold text-white">Release this number?</h2>
+            <p className="mt-1 text-sm text-white/50">
+              <span className="font-mono text-white/80">{confirmRelease.e164}</span> will be permanently removed and
+              you&apos;ll stop receiving messages. This can&apos;t be undone.
             </p>
             <div className="mt-5 flex gap-3">
               <button
-                onClick={() => setConfirmRelease(false)}
-                className="flex-1 rounded-xl border border-hairline px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:border-primary/40"
+                onClick={() => setConfirmRelease(null)}
+                className="flex-1 rounded-lg border border-white/10 py-2 text-sm text-white/70 hover:bg-white/5"
               >
                 Cancel
               </button>
               <button
-                onClick={() => releaseNumber(n.id)}
-                className="flex-1 rounded-xl bg-destructive px-4 py-2.5 text-sm font-semibold text-destructive-foreground transition-colors hover:bg-destructive/90"
+                onClick={() => {
+                  releaseNumber(confirmRelease.id)
+                  setConfirmRelease(null)
+                }}
+                className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-500"
               >
                 Release
               </button>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-export default function MyNumbersPage() {
-  const { ownedNumbers } = useNumbers()
-
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight md:text-3xl">My Numbers</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {ownedNumbers.length} active {ownedNumbers.length === 1 ? 'number' : 'numbers'} on your account.
-          </p>
-        </div>
-        <Link
-          href="/numbers/app/marketplace"
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          Buy a number
-        </Link>
-      </div>
-
-      {ownedNumbers.length === 0 ? (
-        <div className="mt-10 rounded-2xl border border-dashed border-hairline p-12 text-center">
-          <p className="text-sm text-muted-foreground">You have no active numbers.</p>
-          <Link
-            href="/numbers/app/marketplace"
-            className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
-          >
-            <Plus className="h-4 w-4" />
-            Browse the marketplace
-          </Link>
-        </div>
-      ) : (
-        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {ownedNumbers.map((n) => (
-            <NumberCard key={n.id} n={n} />
-          ))}
         </div>
       )}
     </div>
