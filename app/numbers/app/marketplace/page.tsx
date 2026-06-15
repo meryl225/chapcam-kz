@@ -236,7 +236,7 @@ export default function MarketplacePage() {
                 <>
                   <div className="flex items-center gap-2 text-xs text-white/50">
                     <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                    {quote.providerCount} fournisseur(s) disponible(s)
+                    {quote.providerCount} numéro(s) disponible(s)
                     <span className="ml-auto flex items-center gap-1 text-blue-400">
                       <Zap className="h-3.5 w-3.5" /> Auto — le moins cher
                     </span>
