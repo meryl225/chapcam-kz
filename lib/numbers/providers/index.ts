@@ -1,6 +1,6 @@
 import 'server-only'
 import type { CanonCountry, CanonService } from '@/lib/numbers/catalog'
-import { getUsdToXof, toClientXof } from '@/lib/numbers/pricing'
+import { getUsdToXof, tierPriceXof } from '@/lib/numbers/pricing'
 import { fivesim } from './fivesim'
 import { smsman } from './smsman'
 import { smspool } from './smspool'
@@ -40,7 +40,7 @@ export async function getBestQuote(country: CanonCountry, service: CanonService)
   const best = quotes[0] ?? null
   return {
     available: !!best,
-    priceXof: best ? toClientXof(best.costUsd, usdToXof) : null,
+    priceXof: best ? tierPriceXof(best.costUsd, usdToXof) : null,
     best,
     quotes,
     usdToXof,
@@ -71,7 +71,7 @@ export async function purchaseCheapest(country: CanonCountry, service: CanonServ
       // Certains fournisseurs (sms-man) ne renvoient pas le coût à l'achat :
       // on retombe sur le coût du devis.
       const costUsd = result.costUsd > 0 ? result.costUsd : q.costUsd
-      const priceXof = toClientXof(costUsd, usdToXof)
+      const priceXof = tierPriceXof(costUsd, usdToXof)
       return { result: { ...result, costUsd }, priceXof, costUsd, usdToXof }
     } catch (e) {
       lastErr = e as Error

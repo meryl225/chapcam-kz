@@ -193,10 +193,46 @@ export interface PurchaseInput {
 
 export interface PurchaseResult {
   ok: boolean
-  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | null
+  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'numbers_wallet' | null
   userLinked: boolean
   message: string
   licenseKey?: string
+}
+
+// Recharge du portefeuille ChapCam Numbers (solde Neon, en FCFA) apres un
+// paiement PayDunya. Independant du catalogue de produits ChapCam.
+// L'idempotence est assuree en amont par processed_payments (cle = token).
+export async function creditNumbersWallet(input: {
+  userId: string | null
+  email: string
+  amountXof: number
+  token: string
+}): Promise<PurchaseResult> {
+  if (!input.userId) {
+    return {
+      ok: false,
+      kind: 'numbers_wallet',
+      userLinked: false,
+      message: `Aucun compte ChapCam ne correspond a ${input.email}.`,
+    }
+  }
+  const amount = Math.round(input.amountXof)
+  if (amount <= 0) {
+    return { ok: false, kind: 'numbers_wallet', userLinked: true, message: 'Montant de recharge invalide.' }
+  }
+  const { adjustWallet } = await import('@/lib/numbers/db')
+  await adjustWallet(input.userId, amount, {
+    kind: 'deposit',
+    method: 'paydunya',
+    reference: input.token,
+    status: 'completed',
+  })
+  return {
+    ok: true,
+    kind: 'numbers_wallet',
+    userLinked: true,
+    message: `Portefeuille ChapCam Numbers credite de ${amount} FCFA.`,
+  }
 }
 
 // Cœur du crediting : determine le type de produit (formule a points OU offre
@@ -492,7 +528,17 @@ async function fulfillConfirmedInvoice(params: {
     return { status: 'completed', alreadyDone: true }
   }
 
-  const result = await creditPurchase(admin, { productId, email, fullName, userId })
+  // Recharge de portefeuille ChapCam Numbers : pas un produit du catalogue,
+  // on credite directement le solde Neon (en FCFA = montant de la facture).
+  const isNumbersWallet = productId === 'numbers_wallet' || cd.kind === 'numbers_wallet'
+  const result = isNumbersWallet
+    ? await creditNumbersWallet({
+        userId,
+        email,
+        amountXof: totalAmount || Number(reqRow?.amount || cd.amount_xof || 0),
+        token,
+      })
+    : await creditPurchase(admin, { productId, email, fullName, userId })
 
   // Marquer le token comme effectivement credite (pour audit).
   if (result.ok) {

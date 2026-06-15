@@ -115,15 +115,61 @@ export async function POST(request: NextRequest) {
       },
     }
 
-    const response = await fetch(`${PAYDUNYA_BASE_URL}/checkout-invoice/create`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(invoiceData),
-    })
-    const data = await response.json()
+    // Appel a PayDunya avec timeout : on ne laisse jamais la requete pendre
+    // indefiniment (sinon la fonction serverless time-out brutalement et le
+    // client voit "Erreur serveur." sans explication).
+    let response: Response
+    let rawBody = ''
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 20000)
+      response = await fetch(`${PAYDUNYA_BASE_URL}/checkout-invoice/create`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(invoiceData),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      rawBody = await response.text()
+    } catch (netErr) {
+      console.error('[PayDunya] Appel API injoignable:', netErr)
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Le service de paiement est momentanement injoignable. Reessaie dans quelques instants.",
+        },
+        { status: 502 },
+      )
+    }
+
+    // PayDunya doit renvoyer du JSON. En cas d'erreur (cle invalide, maintenance,
+    // page HTML 5xx...), la reponse peut ne pas etre du JSON : on l'intercepte
+    // proprement au lieu de planter sur response.json().
+    let data: any = null
+    try {
+      data = JSON.parse(rawBody)
+    } catch {
+      console.error(
+        `[PayDunya] Reponse non-JSON (HTTP ${response.status}):`,
+        rawBody.slice(0, 500),
+      )
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            "Reponse inattendue du service de paiement. Verifie la configuration PayDunya (cles API) ou reessaie plus tard.",
+        },
+        { status: 502 },
+      )
+    }
 
     if (data.response_code !== '00' || !data.token) {
-      console.error('[PayDunya] Creation facture echouee:', data)
+      // response_code 1001/1002 = cles invalides ; on log tout pour diagnostic.
+      console.error(
+        `[PayDunya] Creation facture echouee (HTTP ${response.status}, code ${data.response_code}):`,
+        data,
+      )
       return NextResponse.json(
         { success: false, error: data.response_text || 'Erreur lors de la creation de la facture.' },
         { status: 400 },
