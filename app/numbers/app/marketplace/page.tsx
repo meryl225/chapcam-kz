@@ -4,7 +4,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useNumbers } from '@/components/numbers/numbers-provider'
 import { ServiceLogo } from '@/components/numbers/service-logo'
-import { COUNTRIES, SERVICES, RENTAL_PLANS, countryByCode, serviceBySlug } from '@/lib/numbers/catalog'
+import { CountryFlag } from '@/components/numbers/country-flag'
+import { CountrySelect } from '@/components/numbers/country-select'
+import { SERVICES, RENTAL_PLANS, countryByCode, serviceBySlug } from '@/lib/numbers/catalog'
 import { formatXOF, type QuoteResponse } from '@/lib/numbers/types'
 import {
   Search,
@@ -94,17 +96,9 @@ export default function MarketplacePage() {
         {/* Pays */}
         <aside className={`${card} h-fit p-5`}>
           <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">Pays</label>
-          <select
-            value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            className="mb-4 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
-          >
-            {COUNTRIES.map((c) => (
-              <option key={c.code} value={c.code} className="bg-[#0b1220]">
-                {c.flag} {c.name} ({c.dial})
-              </option>
-            ))}
-          </select>
+          <div className="mb-4">
+            <CountrySelect value={country} onChange={setCountry} />
+          </div>
 
           <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-sm">
             <div className="flex items-center gap-2 text-white/60">
@@ -133,8 +127,10 @@ export default function MarketplacePage() {
             />
           </div>
 
-          <p className="text-sm text-white/50">
-            {filteredServices.length} services disponibles pour {selectedCountry?.flag} {selectedCountry?.name}
+          <p className="flex items-center gap-1.5 text-sm text-white/50">
+            {filteredServices.length} services disponibles pour
+            {selectedCountry && <CountryFlag code={selectedCountry.code} size={18} />}
+            {selectedCountry?.name}
           </p>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -181,7 +177,7 @@ export default function MarketplacePage() {
                   {selectedCountry?.name} · {selectedCountry?.dial}
                 </p>
               </div>
-              <span className="text-2xl">{selectedCountry?.flag}</span>
+              {selectedCountry && <CountryFlag code={selectedCountry.code} size={28} />}
             </div>
 
             {/* Forfaits : vérification (SMS unique) ou location (numéro réutilisable) */}
@@ -240,7 +236,7 @@ export default function MarketplacePage() {
                 <>
                   <div className="flex items-center gap-2 text-xs text-white/50">
                     <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
-                    {quote.providerCount} fournisseur(s) disponible(s)
+                    {quote.providerCount} numéro(s) disponible(s)
                     <span className="ml-auto flex items-center gap-1 text-blue-400">
                       <Zap className="h-3.5 w-3.5" /> Auto — le moins cher
                     </span>

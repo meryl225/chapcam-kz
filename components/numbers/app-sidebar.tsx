@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils'
 import { useNumbers } from '@/components/numbers/numbers-provider'
 import { getInitials } from '@/lib/numbers/data'
 import {
-  Phone, LayoutDashboard, Store, MessageSquareText, Code2, Settings, Menu, X,
+  Phone, LayoutDashboard, Store, MessageSquareText, Settings, Menu, X,
   ArrowUpRight, Wallet, History, LifeBuoy, SignalHigh, ShieldAlert,
 } from 'lucide-react'
 
@@ -18,7 +18,6 @@ const NAV = [
   { href: '/numbers/app/messages', label: 'Messages', icon: MessageSquareText, badge: true },
   { href: '/numbers/app/history', label: 'Historique', icon: History },
   { href: '/numbers/app/wallet', label: 'Portefeuille', icon: Wallet },
-  { href: '/numbers/app/developers', label: 'Accès API', icon: Code2 },
   { href: '/numbers/app/support', label: 'Assistance', icon: LifeBuoy },
   { href: '/numbers/app/settings', label: 'Paramètres', icon: Settings },
 ]

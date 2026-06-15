@@ -16,7 +16,6 @@ const TITLES: Record<string, string> = {
   '/numbers/app/messages': 'Messages',
   '/numbers/app/history': 'Historique',
   '/numbers/app/wallet': 'Portefeuille',
-  '/numbers/app/developers': 'Accès API',
   '/numbers/app/support': 'Assistance',
   '/numbers/app/settings': 'Paramètres',
   '/numbers/app/admin': "Panneau d'administration",
