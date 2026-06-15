@@ -1,8 +1,23 @@
 import 'server-only'
-import { neon } from '@neondatabase/serverless'
+import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 
 // Client Neon partagé (SQL brut, sécurisé par requêtes paramétrées).
-export const sql = neon(process.env.DATABASE_URL!)
+// Initialisation paresseuse : `neon()` n'est appelé qu'à la première requête
+// (au runtime), jamais à l'évaluation du module. Cela évite que `next build`
+// échoue lorsque DATABASE_URL n'est pas disponible à la compilation.
+let _client: NeonQueryFunction<false, false> | null = null
+function getClient(): NeonQueryFunction<false, false> {
+  if (!_client) {
+    const url = process.env.DATABASE_URL
+    if (!url) throw new Error('DATABASE_URL is not set')
+    _client = neon(url)
+  }
+  return _client
+}
+
+export const sql: NeonQueryFunction<false, false> = ((...args: unknown[]) =>
+  // @ts-expect-error — relais transparent vers le client Neon (tagged template + appels).
+  getClient()(...args)) as NeonQueryFunction<false, false>
 
 export type WalletRow = { user_id: string; balance_xof: number; updated_at: string }
 export type TxRow = {
