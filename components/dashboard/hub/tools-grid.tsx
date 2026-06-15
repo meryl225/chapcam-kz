@@ -1,11 +1,12 @@
 import Link from 'next/link'
-import { Zap, Languages, ImageIcon, Film, Monitor, ArrowRight } from 'lucide-react'
+import { Zap, Languages, ImageIcon, Film, Monitor, Smartphone, ArrowRight } from 'lucide-react'
 import {
   LiveSwapPreview,
   VoiceTranslatorPreview,
   PhotoVideoPreview,
   VideoTranslationPreview,
   DesktopPCPreview,
+  EsimPreview,
 } from '@/components/dashboard/hub/tool-previews'
 
 interface Tool {
@@ -42,6 +43,16 @@ const tools: Tool[] = [
     accent: '#00ff88',
     gradient: 'linear-gradient(135deg, rgba(0,255,136,0.16), rgba(20,184,166,0.10))',
     Preview: DesktopPCPreview,
+  },
+  {
+    href: '/numbers',
+    icon: Smartphone,
+    title: 'ESIM ChapCam',
+    description: 'Achète des numéros virtuels dans 150+ pays et reçois tes SMS en ligne.',
+    badge: 'NEW',
+    accent: '#2563eb',
+    gradient: 'linear-gradient(135deg, rgba(37,99,235,0.20), rgba(96,165,250,0.12) 55%, rgba(37,99,235,0.10))',
+    Preview: EsimPreview,
   },
   {
     href: '/dashboard/voice-translator',
