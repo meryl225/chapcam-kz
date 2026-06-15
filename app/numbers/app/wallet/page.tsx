@@ -15,6 +15,18 @@ const kindIcon: Record<string, typeof Smartphone> = {
 
 const QUICK = [10, 25, 50, 100]
 
+const TX_KIND_FR: Record<string, string> = {
+  deposit: 'Dépôt',
+  purchase: 'Achat',
+  refund: 'Remboursement',
+}
+
+const KIND_LABEL: Record<string, string> = {
+  'Mobile Money': 'Mobile Money',
+  Card: 'Carte',
+  Crypto: 'Crypto',
+}
+
 export default function WalletPage() {
   const { balance, transactions, deposit } = useNumbers()
   const [open, setOpen] = useState(false)
@@ -34,14 +46,14 @@ export default function WalletPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Wallet</h1>
-          <p className="text-sm text-white/50">Fund your account and review transactions</p>
+          <h1 className="text-xl font-semibold text-white">Portefeuille</h1>
+          <p className="text-sm text-white/50">Approvisionnez votre compte et consultez vos transactions</p>
         </div>
         <button
           onClick={() => setOpen(true)}
           className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
         >
-          <Plus className="h-4 w-4" /> Add funds
+          <Plus className="h-4 w-4" /> Ajouter des fonds
         </button>
       </div>
 
@@ -51,27 +63,27 @@ export default function WalletPage() {
             <Wallet className="h-5 w-5" />
           </span>
           <p className="mt-4 text-3xl font-semibold text-white">{formatUSD(balance)}</p>
-          <p className="text-sm text-white/50">Available balance</p>
+          <p className="text-sm text-white/50">Solde disponible</p>
         </div>
         <div className={`${card} p-5`}>
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400">
             <ArrowDownLeft className="h-5 w-5" />
           </span>
           <p className="mt-4 text-2xl font-semibold text-white">{formatUSD(deposits)}</p>
-          <p className="text-sm text-white/50">Total deposited</p>
+          <p className="text-sm text-white/50">Total déposé</p>
         </div>
         <div className={`${card} p-5`}>
           <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white/70">
             <ArrowUpRight className="h-5 w-5" />
           </span>
           <p className="mt-4 text-2xl font-semibold text-white">{formatUSD(spend)}</p>
-          <p className="text-sm text-white/50">Total spent</p>
+          <p className="text-sm text-white/50">Total dépensé</p>
         </div>
       </div>
 
       {/* Funding methods */}
       <div className={`${card} p-5`}>
-        <h2 className="mb-4 font-semibold text-white">Supported funding methods</h2>
+        <h2 className="mb-4 font-semibold text-white">Moyens de paiement acceptés</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {FUNDING_METHODS.map((m) => {
             const Icon = kindIcon[m.kind] ?? CreditCard
@@ -88,7 +100,7 @@ export default function WalletPage() {
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-white">{m.name}</p>
-                  <p className="text-xs text-white/40">{m.kind}</p>
+                  <p className="text-xs text-white/40">{KIND_LABEL[m.kind] ?? m.kind}</p>
                 </div>
               </div>
             )
@@ -120,7 +132,7 @@ export default function WalletPage() {
                             {positive ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
                           </span>
                           <div>
-                            <p className="capitalize text-white">{t.kind}</p>
+                            <p className="text-white">{TX_KIND_FR[t.kind] ?? t.kind}</p>
                             <p className="text-xs text-white/40">{t.method}</p>
                           </div>
                         </div>
@@ -152,14 +164,14 @@ export default function WalletPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between">
-              <h2 className="text-lg font-semibold text-white">Add funds</h2>
+              <h2 className="text-lg font-semibold text-white">Ajouter des fonds</h2>
               <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <label className="mb-2 mt-4 block text-xs font-medium uppercase tracking-wider text-white/40">
-              Amount (USD)
+              Montant (USD)
             </label>
             <div className="flex items-center rounded-lg border border-white/10 bg-white/5 px-3">
               <span className="text-white/50">$</span>
@@ -188,7 +200,7 @@ export default function WalletPage() {
             </div>
 
             <label className="mb-2 mt-4 block text-xs font-medium uppercase tracking-wider text-white/40">
-              Payment method
+              Moyen de paiement
             </label>
             <div className="grid max-h-44 grid-cols-1 gap-2 overflow-y-auto">
               {FUNDING_METHODS.map((m) => {
@@ -209,7 +221,7 @@ export default function WalletPage() {
                     </span>
                     <div className="flex-1">
                       <p className="text-sm font-medium text-white">{m.name}</p>
-                      <p className="text-xs text-white/40">{m.kind}</p>
+                      <p className="text-xs text-white/40">{KIND_LABEL[m.kind] ?? m.kind}</p>
                     </div>
                     {method === m.name && <Check className="h-4 w-4 text-blue-400" />}
                   </button>
@@ -221,7 +233,7 @@ export default function WalletPage() {
               onClick={confirm}
               className="mt-5 w-full rounded-lg bg-blue-600 py-2.5 font-medium text-white transition-colors hover:bg-blue-500"
             >
-              Add {formatUSD(amount)}
+              Ajouter {formatUSD(amount)}
             </button>
           </div>
         </div>

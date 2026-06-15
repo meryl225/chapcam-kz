@@ -40,6 +40,17 @@ const statusStyle: Record<OwnedNumber['status'], string> = {
   expired: 'bg-red-500/15 text-red-400',
 }
 
+const STATUS_FR: Record<OwnedNumber['status'], string> = {
+  active: 'Actif',
+  expiring: 'Bientôt expiré',
+  expired: 'Expiré',
+}
+
+const TYPE_FR: Record<OwnedNumber['type'], string> = {
+  temporary: 'Temporaire',
+  'long-term': 'Longue durée',
+}
+
 export default function NumbersPage() {
   const { owned, toggleAutoRenew, releaseNumber, renameNumber } = useNumbers()
   const [copied, setCopied] = useState<string | null>(null)
@@ -69,14 +80,14 @@ export default function NumbersPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Active Numbers</h1>
-          <p className="text-sm text-white/50">{owned.length} numbers on your account</p>
+          <h1 className="text-xl font-semibold text-white">Mes numéros</h1>
+          <p className="text-sm text-white/50">{owned.length} numéros sur votre compte</p>
         </div>
         <Link
           href="/numbers/app/marketplace"
           className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
         >
-          <Plus className="h-4 w-4" /> Buy number
+          <Plus className="h-4 w-4" /> Acheter un numéro
         </Link>
       </div>
 
@@ -85,7 +96,7 @@ export default function NumbersPage() {
         <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="Search your numbers..."
+          placeholder="Rechercher vos numéros..."
           className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-10 pr-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-500"
         />
       </div>
@@ -144,26 +155,26 @@ export default function NumbersPage() {
                     )}
                   </div>
                 </div>
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${statusStyle[n.status]}`}>
-                  {n.status}
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${statusStyle[n.status]}`}>
+                  {STATUS_FR[n.status]}
                 </span>
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <p className="text-xs text-white/40">Provider</p>
+                  <p className="text-xs text-white/40">Opérateur</p>
                   <p className="text-white/80">{p?.name}</p>
                 </div>
                 <div>
                   <p className="text-xs text-white/40">Type</p>
-                  <p className="capitalize text-white/80">{n.type}</p>
+                  <p className="text-white/80">{TYPE_FR[n.type]}</p>
                 </div>
                 <div>
                   <p className="text-xs text-white/40">Messages</p>
                   <p className="text-white/80">{n.messageCount}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-white/40">{n.status === 'expired' ? 'Expired' : 'Renews in'}</p>
+                  <p className="text-xs text-white/40">{n.status === 'expired' ? 'Expiré le' : 'Renouvellement dans'}</p>
                   <p className="text-white/80">{n.status === 'expired' ? formatDate(n.expiresAt) : timeLeft(n.expiresAt)}</p>
                 </div>
               </div>
@@ -195,20 +206,20 @@ export default function NumbersPage() {
                       className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${n.autoRenew ? 'translate-x-4' : 'translate-x-0.5'}`}
                     />
                   </span>
-                  <RefreshCw className="h-3.5 w-3.5" /> Auto-renew
+                  <RefreshCw className="h-3.5 w-3.5" /> Renouvellement auto
                 </button>
                 <div className="flex items-center gap-3">
                   <Link
                     href="/numbers/app/messages"
                     className="text-sm text-blue-400 transition-colors hover:text-blue-300"
                   >
-                    Inbox
+                    Messages
                   </Link>
                   <button
                     onClick={() => setConfirmRelease(n)}
                     className="flex items-center gap-1 text-sm text-white/50 transition-colors hover:text-red-400"
                   >
-                    <Trash2 className="h-3.5 w-3.5" /> Release
+                    <Trash2 className="h-3.5 w-3.5" /> Libérer
                   </button>
                 </div>
               </div>
@@ -220,12 +231,12 @@ export default function NumbersPage() {
       {owned.length === 0 && (
         <div className={`${card} flex flex-col items-center justify-center py-16 text-center`}>
           <PhoneIcon className="h-8 w-8 text-white/20" />
-          <p className="mt-3 text-white/60">You don&apos;t own any numbers yet</p>
+          <p className="mt-3 text-white/60">Vous ne possédez encore aucun numéro</p>
           <Link
             href="/numbers/app/marketplace"
             className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
           >
-            Browse marketplace
+            Parcourir les numéros
           </Link>
         </div>
       )}
@@ -243,17 +254,17 @@ export default function NumbersPage() {
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-500/15 text-red-400">
               <Trash2 className="h-5 w-5" />
             </div>
-            <h2 className="mt-4 text-lg font-semibold text-white">Release this number?</h2>
+            <h2 className="mt-4 text-lg font-semibold text-white">Libérer ce numéro ?</h2>
             <p className="mt-1 text-sm text-white/50">
-              <span className="font-mono text-white/80">{confirmRelease.e164}</span> will be permanently removed and
-              you&apos;ll stop receiving messages. This can&apos;t be undone.
+              <span className="font-mono text-white/80">{confirmRelease.e164}</span> sera définitivement supprimé et
+              vous ne recevrez plus de messages. Cette action est irréversible.
             </p>
             <div className="mt-5 flex gap-3">
               <button
                 onClick={() => setConfirmRelease(null)}
                 className="flex-1 rounded-lg border border-white/10 py-2 text-sm text-white/70 hover:bg-white/5"
               >
-                Cancel
+                Annuler
               </button>
               <button
                 onClick={() => {
@@ -262,7 +273,7 @@ export default function NumbersPage() {
                 }}
                 className="flex-1 rounded-lg bg-red-600 py-2 text-sm font-medium text-white hover:bg-red-500"
               >
-                Release
+                Libérer
               </button>
             </div>
           </div>

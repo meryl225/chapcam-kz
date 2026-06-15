@@ -11,15 +11,15 @@ import {
 } from 'lucide-react'
 
 const NAV = [
-  { href: '/numbers/app', label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { href: '/numbers/app/marketplace', label: 'Marketplace', icon: Store },
-  { href: '/numbers/app/numbers', label: 'Active Numbers', icon: SignalHigh },
+  { href: '/numbers/app', label: 'Tableau de bord', icon: LayoutDashboard, exact: true },
+  { href: '/numbers/app/marketplace', label: 'Acheter un numéro', icon: Store },
+  { href: '/numbers/app/numbers', label: 'Mes numéros', icon: SignalHigh },
   { href: '/numbers/app/messages', label: 'Messages', icon: MessageSquareText, badge: true },
-  { href: '/numbers/app/history', label: 'History', icon: History },
-  { href: '/numbers/app/wallet', label: 'Wallet', icon: Wallet },
-  { href: '/numbers/app/developers', label: 'API Access', icon: Code2 },
-  { href: '/numbers/app/support', label: 'Support', icon: LifeBuoy },
-  { href: '/numbers/app/settings', label: 'Settings', icon: Settings },
+  { href: '/numbers/app/history', label: 'Historique', icon: History },
+  { href: '/numbers/app/wallet', label: 'Portefeuille', icon: Wallet },
+  { href: '/numbers/app/developers', label: 'Accès API', icon: Code2 },
+  { href: '/numbers/app/support', label: 'Assistance', icon: LifeBuoy },
+  { href: '/numbers/app/settings', label: 'Paramètres', icon: Settings },
 ]
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
@@ -77,8 +77,8 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
         <div className="mt-2 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB]/20 text-xs font-bold text-[#60a5fa]">AD</span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">Ada Dev</p>
-            <p className="truncate text-xs text-slate-400">Growth plan</p>
+            <p className="truncate text-sm font-medium text-white">Mon compte</p>
+            <p className="truncate text-xs text-slate-400">Forfait Growth</p>
           </div>
         </div>
       </div>

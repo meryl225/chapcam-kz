@@ -19,12 +19,24 @@ const priorityStyle: Record<SupportTicket['priority'], string> = {
   high: 'text-red-400',
 }
 
-const CATEGORIES = ['Billing', 'Numbers', 'Delivery', 'API', 'Account', 'Other']
+const STATUS_FR: Record<SupportTicket['status'], string> = {
+  open: 'Ouvert',
+  pending: 'En attente',
+  resolved: 'Résolu',
+}
+
+const PRIORITY_FR: Record<SupportTicket['priority'], string> = {
+  low: 'faible',
+  normal: 'normale',
+  high: 'haute',
+}
+
+const CATEGORIES = ['Facturation', 'Numéros', 'Réception SMS', 'API', 'Compte', 'Autre']
 
 const FAQS = [
-  { q: 'How fast do messages arrive?', a: 'Inbound SMS typically arrive within 2–6 seconds depending on the carrier and destination country.' },
-  { q: 'Can I get a refund on a number?', a: 'Temporary numbers are non-refundable once a message is received. Long-term numbers can be cancelled before renewal.' },
-  { q: 'Which countries are supported?', a: 'We aggregate carriers across 150+ countries. Availability and pricing vary by region and provider.' },
+  { q: 'En combien de temps arrivent les messages ?', a: 'Les SMS entrants arrivent généralement en 2 à 6 secondes selon l’opérateur et le pays de destination.' },
+  { q: 'Puis-je être remboursé pour un numéro ?', a: 'Les numéros temporaires ne sont pas remboursables une fois un message reçu. Les numéros longue durée peuvent être annulés avant leur renouvellement.' },
+  { q: 'Quels pays sont pris en charge ?', a: 'Nous agrégeons des opérateurs dans plus de 150 pays. La disponibilité et les tarifs varient selon la région et le fournisseur.' },
 ]
 
 export default function SupportPage() {
@@ -48,23 +60,23 @@ export default function SupportPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">Support</h1>
-          <p className="text-sm text-white/50">Get help and track your tickets</p>
+          <h1 className="text-xl font-semibold text-white">Assistance</h1>
+          <p className="text-sm text-white/50">Obtenez de l&apos;aide et suivez vos demandes</p>
         </div>
         <button
           onClick={() => setOpen(true)}
           className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500"
         >
-          <Plus className="h-4 w-4" /> New ticket
+          <Plus className="h-4 w-4" /> Nouvelle demande
         </button>
       </div>
 
       {/* Quick channels */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[
-          { icon: MessageCircle, title: 'Live chat', desc: 'Avg. reply under 5 min' },
-          { icon: Mail, title: 'Email', desc: 'support@chapcam.io' },
-          { icon: BookOpen, title: 'Docs', desc: 'Guides & API reference' },
+          { icon: MessageCircle, title: 'Chat en direct', desc: 'Réponse moyenne en moins de 5 min' },
+          { icon: Mail, title: 'E-mail', desc: 'support@chapcam.io' },
+          { icon: BookOpen, title: 'Documentation', desc: 'Guides et référence API' },
         ].map((c) => (
           <div key={c.title} className={`${card} flex items-center gap-3 p-4`}>
             <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15 text-blue-400">
@@ -83,7 +95,7 @@ export default function SupportPage() {
         <div className={`${card} overflow-hidden`}>
           <div className="border-b border-white/5 p-5">
             <h2 className="flex items-center gap-2 font-semibold text-white">
-              <LifeBuoy className="h-4 w-4 text-blue-400" /> Your tickets
+              <LifeBuoy className="h-4 w-4 text-blue-400" /> Vos demandes
             </h2>
           </div>
           <ul className="divide-y divide-white/5">
@@ -96,12 +108,12 @@ export default function SupportPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate font-medium text-white">{t.subject}</p>
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${statusStyle[t.status]}`}>
-                        {t.status}
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${statusStyle[t.status]}`}>
+                        {STATUS_FR[t.status]}
                       </span>
                     </div>
                     <p className="mt-0.5 text-xs text-white/40">
-                      {t.category} · <span className={priorityStyle[t.priority]}>{t.priority} priority</span> · updated{' '}
+                      {t.category} · <span className={priorityStyle[t.priority]}>priorité {PRIORITY_FR[t.priority]}</span> · mis à jour{' '}
                       {timeAgo(t.lastReplyAt)}
                     </p>
                   </div>
@@ -110,14 +122,14 @@ export default function SupportPage() {
               </li>
             ))}
             {tickets.length === 0 && (
-              <li className="p-8 text-center text-sm text-white/50">No tickets yet.</li>
+              <li className="p-8 text-center text-sm text-white/50">Aucune demande pour le moment.</li>
             )}
           </ul>
         </div>
 
         {/* FAQ */}
         <div className={`${card} p-5`}>
-          <h2 className="mb-3 font-semibold text-white">Frequently asked</h2>
+          <h2 className="mb-3 font-semibold text-white">Questions fréquentes</h2>
           <div className="space-y-3">
             {FAQS.map((f) => (
               <details key={f.q} className="group rounded-xl border border-white/10 bg-white/[0.02] p-3">

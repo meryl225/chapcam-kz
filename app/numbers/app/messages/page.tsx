@@ -47,14 +47,14 @@ export default function MessagesPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold text-white">Messages</h1>
-          <p className="text-sm text-white/50">{unreadCount} unread across all numbers</p>
+          <p className="text-sm text-white/50">{unreadCount} non lus sur l&apos;ensemble des numéros</p>
         </div>
         {unreadCount > 0 && (
           <button
             onClick={markAllRead}
             className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-sm text-white/70 hover:bg-white/5"
           >
-            <MailOpen className="h-4 w-4" /> Mark all read
+            <MailOpen className="h-4 w-4" /> Tout marquer comme lu
           </button>
         )}
       </div>
@@ -67,7 +67,7 @@ export default function MessagesPage() {
             activeNumber === 'all' ? 'bg-blue-600 text-white' : 'border border-white/10 text-white/60 hover:text-white'
           }`}
         >
-          All numbers
+          Tous les numéros
         </button>
         {owned.map((n) => {
           const c = countryByCode(n.countryCode)
@@ -97,7 +97,7 @@ export default function MessagesPage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search messages..."
+                placeholder="Rechercher des messages..."
                 className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-500"
               />
             </div>
@@ -136,7 +136,7 @@ export default function MessagesPage() {
             {visible.length === 0 && (
               <li className="flex flex-col items-center justify-center py-16 text-center">
                 <Inbox className="h-8 w-8 text-white/20" />
-                <p className="mt-2 text-sm text-white/50">No messages</p>
+                <p className="mt-2 text-sm text-white/50">Aucun message</p>
               </li>
             )}
           </ul>
@@ -147,13 +147,13 @@ export default function MessagesPage() {
           {!current ? (
             <div className="flex h-full min-h-[300px] flex-col items-center justify-center text-center">
               <MailOpen className="h-10 w-10 text-white/15" />
-              <p className="mt-3 text-white/50">Select a message to read it</p>
+              <p className="mt-3 text-white/50">Sélectionnez un message pour le lire</p>
             </div>
           ) : (
             <div className="flex h-full flex-col">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-sm text-white/40">From</p>
+                  <p className="text-sm text-white/40">De</p>
                   <p className="text-lg font-semibold text-white">{current.sender}</p>
                 </div>
                 <button
@@ -163,7 +163,7 @@ export default function MessagesPage() {
                   }}
                   className="flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/60 hover:bg-white/5"
                 >
-                  <Archive className="h-3.5 w-3.5" /> Archive
+                  <Archive className="h-3.5 w-3.5" /> Archiver
                 </button>
               </div>
 
@@ -173,7 +173,7 @@ export default function MessagesPage() {
                 return (
                   <p className="mt-1 flex items-center gap-1.5 text-xs text-white/40">
                     <span>{c?.flag}</span>
-                    received on {num?.e164} · {timeAgo(current.receivedAt)}
+                    reçu sur {num?.e164} · {timeAgo(current.receivedAt)}
                   </p>
                 )
               })()}
@@ -181,7 +181,7 @@ export default function MessagesPage() {
               {extractCode(current.body) && (
                 <div className="mt-4 flex items-center justify-between rounded-xl border border-blue-500/30 bg-blue-500/10 p-4">
                   <div>
-                    <p className="text-xs uppercase tracking-wider text-blue-300/70">Verification code</p>
+                    <p className="text-xs uppercase tracking-wider text-blue-300/70">Code de vérification</p>
                     <p className="font-mono text-2xl font-semibold text-white">{extractCode(current.body)}</p>
                   </div>
                   <button
@@ -190,11 +190,11 @@ export default function MessagesPage() {
                   >
                     {copied === extractCode(current.body) ? (
                       <>
-                        <Check className="h-4 w-4" /> Copied
+                        <Check className="h-4 w-4" /> Copié
                       </>
                     ) : (
                       <>
-                        <Copy className="h-4 w-4" /> Copy
+                        <Copy className="h-4 w-4" /> Copier
                       </>
                     )}
                   </button>

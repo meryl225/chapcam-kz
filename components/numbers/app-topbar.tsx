@@ -8,21 +8,21 @@ import { formatUSD, timeAgo } from '@/lib/numbers/data'
 import { Bell, Wallet, Plus, ChevronDown, User, Settings, LogOut } from 'lucide-react'
 
 const TITLES: Record<string, string> = {
-  '/numbers/app': 'Dashboard',
-  '/numbers/app/marketplace': 'Marketplace',
-  '/numbers/app/numbers': 'Active Numbers',
+  '/numbers/app': 'Tableau de bord',
+  '/numbers/app/marketplace': 'Acheter un numéro',
+  '/numbers/app/numbers': 'Mes numéros',
   '/numbers/app/messages': 'Messages',
-  '/numbers/app/history': 'History',
-  '/numbers/app/wallet': 'Wallet',
-  '/numbers/app/developers': 'API Access',
-  '/numbers/app/support': 'Support',
-  '/numbers/app/settings': 'Settings',
-  '/numbers/app/admin': 'Admin Panel',
+  '/numbers/app/history': 'Historique',
+  '/numbers/app/wallet': 'Portefeuille',
+  '/numbers/app/developers': 'Accès API',
+  '/numbers/app/support': 'Assistance',
+  '/numbers/app/settings': 'Paramètres',
+  '/numbers/app/admin': "Panneau d'administration",
 }
 
 export function AppTopbar() {
   const pathname = usePathname()
-  const title = TITLES[pathname] ?? 'Dashboard'
+  const title = TITLES[pathname] ?? 'Tableau de bord'
   const { balance, messages } = useNumbers()
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -40,7 +40,7 @@ export function AppTopbar() {
         >
           <Wallet className="h-4 w-4 text-[#60a5fa]" />
           <span className="font-semibold text-white">{formatUSD(balance)}</span>
-          <span className="hidden text-slate-400 sm:inline">balance</span>
+          <span className="hidden text-slate-400 sm:inline">solde</span>
           <Plus className="h-3.5 w-3.5 text-slate-400" />
         </Link>
 
@@ -68,7 +68,7 @@ export function AppTopbar() {
                 ))}
               </ul>
               <Link href="/numbers/app/messages" onClick={() => setNotifOpen(false)} className="block border-t border-white/10 px-4 py-2.5 text-center text-sm font-medium text-[#60a5fa] hover:bg-white/5">
-                View all messages
+                Voir tous les messages
               </Link>
             </div>
           )}
@@ -85,13 +85,13 @@ export function AppTopbar() {
           {profileOpen && (
             <div className="absolute right-0 top-11 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#0c1322] shadow-2xl">
               <div className="border-b border-white/10 px-4 py-3">
-                <p className="text-sm font-medium text-white">Ada Dev</p>
-                <p className="text-xs text-slate-400">ada@chapcam.com</p>
+                <p className="text-sm font-medium text-white">Mon compte</p>
+                <p className="text-xs text-slate-400">ChapCam Numbers</p>
               </div>
               <div className="p-1.5">
-                <ProfileLink href="/numbers/app/settings" icon={User} label="Profile" onClick={() => setProfileOpen(false)} />
-                <ProfileLink href="/numbers/app/settings" icon={Settings} label="Settings" onClick={() => setProfileOpen(false)} />
-                <ProfileLink href="/numbers" icon={LogOut} label="Sign out" onClick={() => setProfileOpen(false)} />
+                <ProfileLink href="/numbers/app/settings" icon={User} label="Profil" onClick={() => setProfileOpen(false)} />
+                <ProfileLink href="/numbers/app/settings" icon={Settings} label="Paramètres" onClick={() => setProfileOpen(false)} />
+                <ProfileLink href="/dashboard" icon={LogOut} label="Retour à ChapCam" onClick={() => setProfileOpen(false)} />
               </div>
             </div>
           )}

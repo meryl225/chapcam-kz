@@ -1,15 +1,29 @@
 import type { Metadata } from 'next'
+import { redirect } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
 import { NumbersProvider } from '@/components/numbers/numbers-provider'
 import { AppSidebar } from '@/components/numbers/app-sidebar'
 import { AppTopbar } from '@/components/numbers/app-topbar'
 import { ToastHost } from '@/components/numbers/toast-host'
 
 export const metadata: Metadata = {
-  title: 'Dashboard — ChapCam Numbers',
-  description: 'Manage virtual numbers, receive SMS, and access developer APIs.',
+  title: 'Espace — ChapCam Numbers',
+  description: 'Gérez vos numéros virtuels, recevez vos SMS et accédez aux API développeur.',
 }
 
-export default function NumbersAppLayout({ children }: { children: React.ReactNode }) {
+export default async function NumbersAppLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient()
+
+  // Même session que chapcam.com : on réutilise les identifiants Supabase.
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user) {
+    redirect('/auth/login')
+  }
+
   return (
     <NumbersProvider>
       <div className="min-h-screen bg-[#0a0e1a] text-white">

@@ -20,6 +20,25 @@ const orderStatusStyle: Record<OrderStatus, string> = {
   failed: 'bg-red-500/15 text-red-400',
 }
 
+const ORDER_STATUS_FR: Record<OrderStatus, string> = {
+  completed: 'Terminée',
+  active: 'Active',
+  refunded: 'Remboursée',
+  failed: 'Échouée',
+}
+
+const TX_KIND_FR: Record<string, string> = {
+  deposit: 'Dépôt',
+  purchase: 'Achat',
+  refund: 'Remboursement',
+}
+
+const TX_STATUS_FR: Record<string, string> = {
+  completed: 'Terminée',
+  pending: 'En attente',
+  failed: 'Échouée',
+}
+
 type Tab = 'orders' | 'transactions'
 
 export default function HistoryPage() {
@@ -51,11 +70,11 @@ export default function HistoryPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold text-white">History</h1>
-          <p className="text-sm text-white/50">Your orders and wallet transactions</p>
+          <h1 className="text-xl font-semibold text-white">Historique</h1>
+          <p className="text-sm text-white/50">Vos commandes et transactions du portefeuille</p>
         </div>
         <button className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-sm text-white/70 hover:bg-white/5">
-          <Download className="h-4 w-4" /> Export CSV
+          <Download className="h-4 w-4" /> Exporter en CSV
         </button>
       </div>
 
@@ -64,11 +83,11 @@ export default function HistoryPage() {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium capitalize transition-colors ${
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
               tab === t ? 'bg-blue-600 text-white' : 'border border-white/10 text-white/60 hover:text-white'
             }`}
           >
-            {t}
+            {t === 'orders' ? 'Commandes' : 'Transactions'}
           </button>
         ))}
         <div className="relative ml-auto max-w-xs flex-1">
@@ -76,7 +95,7 @@ export default function HistoryPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search..."
+            placeholder="Rechercher..."
             className="w-full rounded-lg border border-white/10 bg-white/5 py-2 pl-9 pr-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-500"
           />
         </div>
@@ -88,11 +107,11 @@ export default function HistoryPage() {
             <table className="w-full text-left text-sm">
               <thead className="border-b border-white/5 text-xs uppercase tracking-wider text-white/40">
                 <tr>
-                  <th className="p-4 font-medium">Number</th>
-                  <th className="p-4 font-medium">Label</th>
-                  <th className="p-4 font-medium">Provider</th>
-                  <th className="p-4 font-medium">Amount</th>
-                  <th className="p-4 font-medium">Status</th>
+                  <th className="p-4 font-medium">Numéro</th>
+                  <th className="p-4 font-medium">Libellé</th>
+                  <th className="p-4 font-medium">Opérateur</th>
+                  <th className="p-4 font-medium">Montant</th>
+                  <th className="p-4 font-medium">Statut</th>
                   <th className="p-4 text-right font-medium">Date</th>
                 </tr>
               </thead>
@@ -112,8 +131,8 @@ export default function HistoryPage() {
                       <td className="p-4">{p?.name}</td>
                       <td className="p-4 text-white">{formatUSD(o.amount)}</td>
                       <td className="p-4">
-                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${orderStatusStyle[o.status]}`}>
-                          {o.status}
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${orderStatusStyle[o.status]}`}>
+                          {ORDER_STATUS_FR[o.status]}
                         </span>
                       </td>
                       <td className="p-4 text-right text-white/40">{formatDate(o.createdAt)}</td>
@@ -127,10 +146,10 @@ export default function HistoryPage() {
               <thead className="border-b border-white/5 text-xs uppercase tracking-wider text-white/40">
                 <tr>
                   <th className="p-4 font-medium">Type</th>
-                  <th className="p-4 font-medium">Method</th>
-                  <th className="p-4 font-medium">Reference</th>
-                  <th className="p-4 font-medium">Amount</th>
-                  <th className="p-4 font-medium">Status</th>
+                  <th className="p-4 font-medium">Moyen</th>
+                  <th className="p-4 font-medium">Référence</th>
+                  <th className="p-4 font-medium">Montant</th>
+                  <th className="p-4 font-medium">Statut</th>
                   <th className="p-4 text-right font-medium">Date</th>
                 </tr>
               </thead>
@@ -140,7 +159,7 @@ export default function HistoryPage() {
                   return (
                     <tr key={t.id} className="text-white/70">
                       <td className="p-4">
-                        <span className="flex items-center gap-2 capitalize">
+                        <span className="flex items-center gap-2">
                           <span
                             className={`flex h-7 w-7 items-center justify-center rounded-lg ${
                               positive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-500/15 text-blue-300'
@@ -148,7 +167,7 @@ export default function HistoryPage() {
                           >
                             {positive ? <ArrowDownLeft className="h-3.5 w-3.5" /> : <ArrowUpRight className="h-3.5 w-3.5" />}
                           </span>
-                          {t.kind}
+                          {TX_KIND_FR[t.kind] ?? t.kind}
                         </span>
                       </td>
                       <td className="p-4">{t.method}</td>
@@ -159,7 +178,7 @@ export default function HistoryPage() {
                       </td>
                       <td className="p-4">
                         <span
-                          className={`rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                             t.status === 'completed'
                               ? 'bg-emerald-500/15 text-emerald-400'
                               : t.status === 'pending'
@@ -167,7 +186,7 @@ export default function HistoryPage() {
                                 : 'bg-red-500/15 text-red-400'
                           }`}
                         >
-                          {t.status}
+                          {TX_STATUS_FR[t.status] ?? t.status}
                         </span>
                       </td>
                       <td className="p-4 text-right text-white/40">{formatDate(t.createdAt)}</td>

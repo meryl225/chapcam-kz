@@ -210,6 +210,13 @@ export async function middleware(request: NextRequest) {
     return addSecurityHeaders(NextResponse.redirect(url))
   }
 
+  // Protect ChapCam Numbers app routes (mêmes identifiants que chapcam.com)
+  if (pathname.startsWith('/numbers/app') && !user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/auth/login'
+    return addSecurityHeaders(NextResponse.redirect(url))
+  }
+
   // Protect admin routes - only admin can access
   if (pathname.startsWith('/admin')) {
     if (!user) {
