@@ -61,7 +61,7 @@ export default async function NumbersAdminPage() {
 
   const statCards = [
     { label: 'Utilisateurs', value: String(stats.users), icon: Users, tone: 'text-blue-300 bg-blue-500/15' },
-    { label: 'Solde total en circulation', value: formatXOF(stats.totalBalanceXof), icon: Wallet, tone: 'text-violet-300 bg-violet-500/15' },
+    { label: 'Solde total en circulation', value: formatXOF(stats.totalBalanceXof), icon: Wallet, tone: 'text-teal-300 bg-teal-500/15' },
     { label: 'Total rechargé', value: formatXOF(stats.depositsXof), icon: ArrowDownLeft, tone: 'text-emerald-300 bg-emerald-500/15' },
     { label: 'Total dépensé (achats)', value: formatXOF(stats.spendXof), icon: ArrowUpRight, tone: 'text-amber-300 bg-amber-500/15' },
   ]

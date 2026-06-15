@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useNumbers } from '@/components/numbers/numbers-provider'
-import { COUNTRIES, SERVICES, countryByCode, serviceBySlug } from '@/lib/numbers/catalog'
+import { COUNTRIES, SERVICES, RENTAL_PLANS, countryByCode, serviceBySlug } from '@/lib/numbers/catalog'
 import { formatXOF, type QuoteResponse } from '@/lib/numbers/types'
 import {
   Search,
@@ -20,17 +20,19 @@ const card = 'rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-x
 
 export default function MarketplacePage() {
   const router = useRouter()
-  const { balanceXof, buyActivation } = useNumbers()
+  const { balanceXof, buyActivation, quote: getQuote } = useNumbers()
   const [query, setQuery] = useState('')
   const [country, setCountry] = useState<string>('US')
   const [service, setService] = useState<string | null>(null)
-  const [quote, setQuoteState] = useState<QuoteResponse | null>(null)
-  const [quoteLoading, setQuoteLoading] = useState(false)
+  const [plan, setPlan] = useState<string>('verification')
+  // Devis par forfait : { [planKey]: QuoteResponse | null (en cours) }
+  const [quotes, setQuotes] = useState<Record<string, QuoteResponse | null>>({})
+  const [loadingQuotes, setLoadingQuotes] = useState(false)
   const [buying, setBuying] = useState(false)
-  const { quote: getQuote } = useNumbers()
 
   const selectedCountry = countryByCode(country)
   const selectedService = service ? serviceBySlug(service) : null
+  const quote = quotes[plan] ?? null
 
   const filteredServices = useMemo(() => {
     if (!query) return SERVICES
@@ -38,19 +40,26 @@ export default function MarketplacePage() {
     return SERVICES.filter((s) => s.label.toLowerCase().includes(q) || s.slug.includes(q))
   }, [query])
 
-  // Récupère un devis (fournisseur le moins cher) à chaque changement.
+  // À l'ouverture du modal (ou changement pays/service), on interroge la
+  // disponibilité + le prix de CHAQUE forfait en parallèle. Les forfaits
+  // indisponibles seront grisés. Le forfait actif retombe sur "verification".
   useEffect(() => {
     if (!service) {
-      setQuoteState(null)
+      setQuotes({})
       return
     }
     let cancelled = false
-    setQuoteLoading(true)
-    getQuote(country, service).then((q) => {
-      if (!cancelled) {
-        setQuoteState(q)
-        setQuoteLoading(false)
-      }
+    setLoadingQuotes(true)
+    setQuotes({})
+    setPlan('verification')
+    Promise.all(
+      RENTAL_PLANS.map((p) =>
+        getQuote(country, service, p.key).then((q) => [p.key, q] as const),
+      ),
+    ).then((entries) => {
+      if (cancelled) return
+      setQuotes(Object.fromEntries(entries))
+      setLoadingQuotes(false)
     })
     return () => {
       cancelled = true
@@ -60,7 +69,7 @@ export default function MarketplacePage() {
   async function confirmBuy() {
     if (!service || !quote?.available) return
     setBuying(true)
-    const res = await buyActivation(country, service)
+    const res = await buyActivation(country, service, plan)
     setBuying(false)
     if (res.ok) {
       setService(null)
@@ -175,8 +184,54 @@ export default function MarketplacePage() {
               </div>
             </div>
 
+            {/* Forfaits : vérification (SMS unique) ou location (numéro réutilisable) */}
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-white/40">Forfait</p>
+              <div className="grid grid-cols-2 gap-2">
+                {RENTAL_PLANS.map((p) => {
+                  const q = quotes[p.key]
+                  const pending = loadingQuotes && q === undefined
+                  const unavailable = !pending && (!q || !q.available)
+                  const active = plan === p.key
+                  return (
+                    <button
+                      key={p.key}
+                      disabled={unavailable || buying}
+                      onClick={() => setPlan(p.key)}
+                      className={`rounded-xl border p-3 text-left transition-colors ${
+                        active
+                          ? 'border-blue-500 bg-blue-500/10'
+                          : unavailable
+                            ? 'cursor-not-allowed border-white/5 bg-white/[0.01] opacity-40'
+                            : 'border-white/10 hover:border-blue-500/50'
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-white">{p.short}</p>
+                      <p className="mt-0.5 text-xs text-white/40">
+                        {pending ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" /> ...
+                          </span>
+                        ) : q?.available && q.priceXof != null ? (
+                          formatXOF(q.priceXof)
+                        ) : (
+                          'Indisponible'
+                        )}
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+              {plan !== 'verification' && (
+                <p className="mt-2 text-xs text-white/40">
+                  Location : numéro réutilisable pour recevoir plusieurs SMS. La durée réelle dépend de la
+                  disponibilité du fournisseur.
+                </p>
+              )}
+            </div>
+
             <div className="mt-4 space-y-2 rounded-xl bg-white/[0.02] p-4 text-sm">
-              {quoteLoading ? (
+              {loadingQuotes && quote === null ? (
                 <div className="flex items-center justify-center gap-2 py-4 text-white/50">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Recherche du meilleur prix...
@@ -202,7 +257,7 @@ export default function MarketplacePage() {
                 </>
               ) : (
                 <p className="py-4 text-center text-sm text-white/50">
-                  Aucun numéro disponible pour cette combinaison. Essayez un autre pays.
+                  Forfait indisponible pour cette combinaison. Essayez un autre forfait ou un autre pays.
                 </p>
               )}
             </div>
@@ -218,7 +273,7 @@ export default function MarketplacePage() {
             ) : (
               <button
                 onClick={confirmBuy}
-                disabled={!quote?.available || buying || quoteLoading}
+                disabled={!quote?.available || buying || loadingQuotes}
                 className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {buying ? (
