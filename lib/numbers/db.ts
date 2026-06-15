@@ -166,51 +166,80 @@ export type AdminStats = {
   activationsWaiting: number
 }
 
+const EMPTY_STATS: AdminStats = {
+  users: 0,
+  totalBalanceXof: 0,
+  depositsXof: 0,
+  spendXof: 0,
+  refundsXof: 0,
+  activationsTotal: 0,
+  activationsReceived: 0,
+  activationsWaiting: 0,
+}
+
+// Les requêtes admin sont défensives : en cas d'erreur DB (table absente,
+// connexion indisponible…), on renvoie des valeurs vides au lieu de jeter,
+// pour que la page d'administration s'affiche toujours pour l'admin.
 export async function adminStats(): Promise<AdminStats> {
-  const [wallets] = (await sql`
-    SELECT COUNT(*)::int AS users, COALESCE(SUM(balance_xof), 0)::bigint AS balance
-    FROM numbers_wallets
-  `) as { users: number; balance: string }[]
+  try {
+    const [wallets] = (await sql`
+      SELECT COUNT(*)::int AS users, COALESCE(SUM(balance_xof), 0)::bigint AS balance
+      FROM numbers_wallets
+    `) as { users: number; balance: string }[]
 
-  const tx = (await sql`
-    SELECT kind, COALESCE(SUM(amount_xof), 0)::bigint AS total
-    FROM numbers_wallet_tx
-    GROUP BY kind
-  `) as { kind: string; total: string }[]
+    const tx = (await sql`
+      SELECT kind, COALESCE(SUM(amount_xof), 0)::bigint AS total
+      FROM numbers_wallet_tx
+      GROUP BY kind
+    `) as { kind: string; total: string }[]
 
-  const acts = (await sql`
-    SELECT status, COUNT(*)::int AS n
-    FROM numbers_activations
-    GROUP BY status
-  `) as { status: string; n: number }[]
+    const acts = (await sql`
+      SELECT status, COUNT(*)::int AS n
+      FROM numbers_activations
+      GROUP BY status
+    `) as { status: string; n: number }[]
 
-  const byKind = (k: string) => Number(tx.find((t) => t.kind === k)?.total ?? 0)
-  const byStatus = (s: string) => Number(acts.find((a) => a.status === s)?.n ?? 0)
+    const byKind = (k: string) => Number(tx.find((t) => t.kind === k)?.total ?? 0)
+    const byStatus = (s: string) => Number(acts.find((a) => a.status === s)?.n ?? 0)
 
-  return {
-    users: Number(wallets?.users ?? 0),
-    totalBalanceXof: Number(wallets?.balance ?? 0),
-    depositsXof: byKind('deposit'),
-    spendXof: Math.abs(byKind('purchase')),
-    refundsXof: byKind('refund'),
-    activationsTotal: acts.reduce((s, a) => s + Number(a.n), 0),
-    activationsReceived: byStatus('received'),
-    activationsWaiting: byStatus('waiting'),
+    return {
+      users: Number(wallets?.users ?? 0),
+      totalBalanceXof: Number(wallets?.balance ?? 0),
+      depositsXof: byKind('deposit'),
+      spendXof: Math.abs(byKind('purchase')),
+      refundsXof: byKind('refund'),
+      activationsTotal: acts.reduce((s, a) => s + Number(a.n), 0),
+      activationsReceived: byStatus('received'),
+      activationsWaiting: byStatus('waiting'),
+    }
+  } catch (e) {
+    console.log('[v0] adminStats failed:', (e as Error)?.message)
+    return EMPTY_STATS
   }
 }
 
 export async function adminRecentActivations(limit = 60): Promise<ActivationRow[]> {
-  return (await sql`
-    SELECT * FROM numbers_activations
-    ORDER BY created_at DESC
-    LIMIT ${limit}
-  `) as ActivationRow[]
+  try {
+    return (await sql`
+      SELECT * FROM numbers_activations
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `) as ActivationRow[]
+  } catch (e) {
+    console.log('[v0] adminRecentActivations failed:', (e as Error)?.message)
+    return []
+  }
 }
 
 export async function adminRecentTransactions(limit = 60): Promise<TxRow[]> {
-  return (await sql`
-    SELECT * FROM numbers_wallet_tx
-    ORDER BY created_at DESC
-    LIMIT ${limit}
-  `) as TxRow[]
+  try {
+    return (await sql`
+      SELECT * FROM numbers_wallet_tx
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+    `) as TxRow[]
+  } catch (e) {
+    console.log('[v0] adminRecentTransactions failed:', (e as Error)?.message)
+    return []
+  }
 }
