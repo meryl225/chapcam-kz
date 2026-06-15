@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useMemo } from 'react'
 import { useNumbers } from '@/components/numbers/numbers-provider'
 import { ActivityChart, RevenueChart } from '@/components/numbers/charts'
 import {
@@ -9,9 +10,6 @@ import {
   formatUSD,
   timeAgo,
   timeLeft,
-  DAILY_ACTIVITY,
-  REVENUE_SERIES,
-  TOP_COUNTRIES,
 } from '@/lib/numbers/data'
 import {
   Phone,
@@ -19,7 +17,6 @@ import {
   Wallet,
   Globe2,
   ArrowUpRight,
-  TrendingUp,
   Plus,
   Inbox,
 } from 'lucide-react'
@@ -35,10 +32,68 @@ const ORDER_STATUS_FR: Record<string, string> = {
   pending: 'En attente',
 }
 
+const DAY = 86400_000
+const startOfDay = (ms: number) => {
+  const d = new Date(ms)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
 export default function DashboardPage() {
-  const { balance, owned, messages, orders, unreadCount } = useNumbers()
+  const { balance, owned, messages, orders, transactions, unreadCount } = useNumbers()
 
   const activeNumbers = owned.filter((n) => n.status !== 'expired')
+
+  // Activité réelle (messages + commandes) sur 14 jours.
+  const activityData = useMemo(() => {
+    const today = startOfDay(Date.now())
+    const buckets = Array.from({ length: 14 }, (_, i) => {
+      const dayMs = today - (13 - i) * DAY
+      return {
+        day: new Date(dayMs).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        messages: 0,
+        orders: 0,
+      }
+    })
+    const idxFor = (ms: number) => 13 - Math.floor((today - startOfDay(ms)) / DAY)
+    for (const m of messages) {
+      const i = idxFor(m.receivedAt)
+      if (i >= 0 && i < 14) buckets[i].messages++
+    }
+    for (const o of orders) {
+      const i = idxFor(o.createdAt)
+      if (i >= 0 && i < 14) buckets[i].orders++
+    }
+    return buckets
+  }, [messages, orders])
+
+  // Dépenses réelles par mois (achats) sur 12 mois.
+  const revenueData = useMemo(() => {
+    const base = new Date()
+    const buckets = Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(base.getFullYear(), base.getMonth() - (11 - i), 1)
+      return { key: `${d.getFullYear()}-${d.getMonth()}`, month: d.toLocaleDateString('en-US', { month: 'short' }), revenue: 0 }
+    })
+    for (const t of transactions) {
+      if (t.kind !== 'purchase') continue
+      const d = new Date(t.createdAt)
+      const b = buckets.find((x) => x.key === `${d.getFullYear()}-${d.getMonth()}`)
+      if (b) b.revenue += Math.abs(t.amount)
+    }
+    return buckets.map(({ month, revenue }) => ({ month, revenue: +revenue.toFixed(2) }))
+  }, [transactions])
+
+  // Répartition réelle par pays des numéros actifs.
+  const topCountries = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const n of activeNumbers) counts.set(n.countryCode, (counts.get(n.countryCode) ?? 0) + 1)
+    const total = Array.from(counts.values()).reduce((a, b) => a + b, 0)
+    if (total === 0) return [] as { code: string; share: number }[]
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([code, count]) => ({ code, share: Math.round((count / total) * 100) }))
+  }, [activeNumbers])
   const recentMessages = [...messages]
     .filter((m) => !m.archived)
     .sort((a, b) => b.receivedAt - a.receivedAt)
@@ -109,18 +164,15 @@ export default function DashboardPage() {
               <h2 className="font-semibold text-white">Activité</h2>
               <p className="text-sm text-white/50">Messages et commandes des 14 derniers jours</p>
             </div>
-            <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-400">
-              <TrendingUp className="h-3.5 w-3.5" /> +18%
-            </span>
           </div>
-          <ActivityChart data={DAILY_ACTIVITY} />
+          <ActivityChart data={activityData} />
         </div>
 
         <div className={`${card} p-5`}>
           <h2 className="font-semibold text-white">Dépenses</h2>
           <p className="text-sm text-white/50">12 derniers mois</p>
           <div className="mt-4">
-            <RevenueChart data={REVENUE_SERIES} />
+            <RevenueChart data={revenueData} />
           </div>
         </div>
       </div>
@@ -175,45 +227,62 @@ export default function DashboardPage() {
                 <Plus className="h-3.5 w-3.5" /> Acheter
               </Link>
             </div>
-            <ul className="space-y-3">
-              {activeNumbers.slice(0, 4).map((n) => {
-                const c = countryByCode(n.countryCode)
-                const p = providerById(n.providerId)
-                return (
-                  <li key={n.id} className="flex items-center gap-3">
-                    <span className="text-lg leading-none">{c?.flag}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-mono text-sm text-white">{n.e164}</p>
-                      <p className="truncate text-xs text-white/40">{p?.name}</p>
-                    </div>
-                    <span className="shrink-0 text-xs text-white/40">{timeLeft(n.expiresAt)}</span>
-                  </li>
-                )
-              })}
-            </ul>
+            {activeNumbers.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <Phone className="h-7 w-7 text-white/20" />
+                <p className="mt-2 text-sm text-white/50">Aucun numéro actif</p>
+                <Link href="/numbers/app/marketplace" className="mt-1 text-xs text-blue-400 hover:text-blue-300">
+                  Acheter votre premier numéro
+                </Link>
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {activeNumbers.slice(0, 4).map((n) => {
+                  const c = countryByCode(n.countryCode)
+                  const p = providerById(n.providerId)
+                  return (
+                    <li key={n.id} className="flex items-center gap-3">
+                      <span className="text-lg leading-none">{c?.flag}</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-mono text-sm text-white">{n.e164}</p>
+                        <p className="truncate text-xs text-white/40">{p?.name}</p>
+                      </div>
+                      <span className="shrink-0 text-xs text-white/40">{timeLeft(n.expiresAt)}</span>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </div>
 
           <div className={`${card} p-5`}>
             <h2 className="mb-3 font-semibold text-white">Pays principaux</h2>
-            <ul className="space-y-2.5">
-              {TOP_COUNTRIES.map((t) => {
-                const c = countryByCode(t.code)
-                return (
-                  <li key={t.code}>
-                    <div className="mb-1 flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 text-white/70">
-                        <span>{c?.flag}</span>
-                        {c?.name}
-                      </span>
-                      <span className="text-white/40">{t.share}%</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
-                      <div className="h-full rounded-full bg-blue-500" style={{ width: `${t.share}%` }} />
-                    </div>
-                  </li>
-                )
-              })}
-            </ul>
+            {topCountries.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-4 text-center">
+                <Globe2 className="h-6 w-6 text-white/20" />
+                <p className="mt-2 text-xs text-white/50">Aucune donnée pour le moment</p>
+              </div>
+            ) : (
+              <ul className="space-y-2.5">
+                {topCountries.map((t) => {
+                  const c = countryByCode(t.code)
+                  return (
+                    <li key={t.code}>
+                      <div className="mb-1 flex items-center justify-between text-sm">
+                        <span className="flex items-center gap-2 text-white/70">
+                          <span>{c?.flag}</span>
+                          {c?.name}
+                        </span>
+                        <span className="text-white/40">{t.share}%</span>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-white/5">
+                        <div className="h-full rounded-full bg-blue-500" style={{ width: `${t.share}%` }} />
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </div>
         </div>
       </div>
@@ -226,6 +295,15 @@ export default function DashboardPage() {
             Voir l&apos;historique
           </Link>
         </div>
+        {recentOrders.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <Inbox className="h-8 w-8 text-white/20" />
+            <p className="mt-2 text-sm text-white/50">Aucune commande pour le moment</p>
+            <Link href="/numbers/app/marketplace" className="mt-1 text-xs text-blue-400 hover:text-blue-300">
+              Parcourir les numéros disponibles
+            </Link>
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -269,6 +347,7 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </div>
   )

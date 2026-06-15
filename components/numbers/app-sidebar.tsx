@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useNumbers } from '@/components/numbers/numbers-provider'
+import { getInitials } from '@/lib/numbers/data'
 import {
   Phone, LayoutDashboard, Store, MessageSquareText, Code2, Settings, Menu, X,
   ArrowUpRight, Wallet, History, LifeBuoy, SignalHigh, ShieldAlert,
@@ -54,6 +55,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
+  const { user } = useNumbers()
   return (
     <div className="flex h-full flex-col gap-5 p-4">
       <Link href="/numbers/app" className="flex items-center gap-2 px-2 pt-2">
@@ -75,10 +77,12 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
           <ArrowUpRight className="h-[18px] w-[18px]" /> Retour à ChapCam
         </Link>
         <div className="mt-2 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB]/20 text-xs font-bold text-[#60a5fa]">AD</span>
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB]/20 text-xs font-bold text-[#60a5fa]">
+            {getInitials(user.name)}
+          </span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">Mon compte</p>
-            <p className="truncate text-xs text-slate-400">Forfait Growth</p>
+            <p className="truncate text-sm font-medium text-white">{user.name}</p>
+            <p className="truncate text-xs text-slate-400">{user.email}</p>
           </div>
         </div>
       </div>

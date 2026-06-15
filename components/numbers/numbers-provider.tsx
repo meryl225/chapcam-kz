@@ -1,15 +1,17 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 import {
-  INITIAL_OWNED, INITIAL_MESSAGES, INITIAL_TRANSACTIONS, INITIAL_API_KEYS, INITIAL_ORDERS, INITIAL_TICKETS,
   type OwnedNumber, type Message, type Transaction, type ApiKey, type Order, type SupportTicket, type Listing,
   countryByCode,
 } from '@/lib/numbers/data'
 
 type Toast = { id: number; title: string; desc?: string }
 
+export type AccountUser = { name: string; email: string }
+
 type Ctx = {
+  user: AccountUser
   balance: number
   owned: OwnedNumber[]
   messages: Message[]
@@ -44,14 +46,16 @@ export function useNumbers() {
 let idc = 1000
 const nextId = (p: string) => `${p}_${++idc}`
 
-export function NumbersProvider({ children }: { children: ReactNode }) {
-  const [balance, setBalance] = useState(132.5)
-  const [owned, setOwned] = useState<OwnedNumber[]>(INITIAL_OWNED)
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES)
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS)
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS)
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>(INITIAL_API_KEYS)
-  const [tickets, setTickets] = useState<SupportTicket[]>(INITIAL_TICKETS)
+export function NumbersProvider({ user, children }: { user: AccountUser; children: ReactNode }) {
+  // Compte neuf : aucun solde, numéro, message ou historique tant que rien n'a
+  // été acheté. Ces données seront alimentées par les API ChapCam.
+  const [balance, setBalance] = useState(0)
+  const [owned, setOwned] = useState<OwnedNumber[]>([])
+  const [messages, setMessages] = useState<Message[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [orders, setOrders] = useState<Order[]>([])
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+  const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [toasts, setToasts] = useState<Toast[]>([])
 
   const pushToast = (title: string, desc?: string) => {
@@ -59,30 +63,6 @@ export function NumbersProvider({ children }: { children: ReactNode }) {
     setToasts((t) => [...t, { id, title, desc }])
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4200)
   }
-
-  const ownedRef = useRef(owned)
-  ownedRef.current = owned
-
-  // Simulate live inbound SMS on active numbers.
-  useEffect(() => {
-    const SENDERS = ['STRIPE', 'GitHub', 'Discord', 'Uber', 'Amazon', 'OpenAI', 'Airbnb', 'Coinbase']
-    const interval = setInterval(() => {
-      const active = ownedRef.current.filter((n) => n.status !== 'expired')
-      if (active.length === 0) return
-      const target = active[Math.floor(Math.random() * active.length)]
-      const sender = SENDERS[Math.floor(Math.random() * SENDERS.length)]
-      const code = String(Math.floor(100000 + Math.random() * 899999))
-      const msg: Message = {
-        id: nextId('m'), numberId: target.id, sender,
-        body: `Votre code de vérification ${sender} est ${code}.`,
-        receivedAt: Date.now(), read: false, archived: false,
-      }
-      setMessages((m) => [msg, ...m])
-      setOwned((list) => list.map((n) => (n.id === target.id ? { ...n, messageCount: n.messageCount + 1 } : n)))
-      pushToast(`Nouveau SMS sur ${target.e164}`, `${sender} : code ${code}`)
-    }, 22000)
-    return () => clearInterval(interval)
-  }, [])
 
   const unreadCount = useMemo(() => messages.filter((m) => !m.read && !m.archived).length, [messages])
 
@@ -144,7 +124,7 @@ export function NumbersProvider({ children }: { children: ReactNode }) {
   }
 
   const value: Ctx = {
-    balance, owned, messages, transactions, orders, apiKeys, tickets, unreadCount,
+    user, balance, owned, messages, transactions, orders, apiKeys, tickets, unreadCount,
     buyNumber, releaseNumber, toggleAutoRenew, renameNumber, markRead, markAllRead, archiveMessage,
     deposit, createApiKey, revokeApiKey, createTicket, toasts, pushToast,
   }

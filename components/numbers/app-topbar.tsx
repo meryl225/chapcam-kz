@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { useNumbers } from '@/components/numbers/numbers-provider'
-import { formatUSD, timeAgo } from '@/lib/numbers/data'
+import { formatUSD, timeAgo, getInitials } from '@/lib/numbers/data'
 import { Bell, Wallet, Plus, ChevronDown, User, Settings, LogOut } from 'lucide-react'
 
 const TITLES: Record<string, string> = {
@@ -23,7 +23,7 @@ const TITLES: Record<string, string> = {
 export function AppTopbar() {
   const pathname = usePathname()
   const title = TITLES[pathname] ?? 'Tableau de bord'
-  const { balance, messages } = useNumbers()
+  const { balance, messages, user } = useNumbers()
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   const recent = messages.slice(0, 5)
@@ -79,14 +79,16 @@ export function AppTopbar() {
             onClick={() => { setProfileOpen((v) => !v); setNotifOpen(false) }}
             className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 py-1 pl-1 pr-2 transition-colors hover:bg-white/10"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#2563EB]/20 text-xs font-bold text-[#60a5fa]">AD</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#2563EB]/20 text-xs font-bold text-[#60a5fa]">
+              {getInitials(user.name)}
+            </span>
             <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
           </button>
           {profileOpen && (
             <div className="absolute right-0 top-11 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#0c1322] shadow-2xl">
               <div className="border-b border-white/10 px-4 py-3">
-                <p className="text-sm font-medium text-white">Mon compte</p>
-                <p className="text-xs text-slate-400">ChapCam Numbers</p>
+                <p className="truncate text-sm font-medium text-white">{user.name}</p>
+                <p className="truncate text-xs text-slate-400">{user.email}</p>
               </div>
               <div className="p-1.5">
                 <ProfileLink href="/numbers/app/settings" icon={User} label="Profil" onClick={() => setProfileOpen(false)} />

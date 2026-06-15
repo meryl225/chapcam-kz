@@ -24,8 +24,18 @@ export default async function NumbersAppLayout({ children }: { children: React.R
     redirect('/auth/login')
   }
 
+  // Identité issue de la session chapcam.com (mêmes identifiants).
+  const accountUser = {
+    name:
+      (user.user_metadata?.full_name as string | undefined) ||
+      (user.user_metadata?.name as string | undefined) ||
+      user.email?.split('@')[0] ||
+      'Mon compte',
+    email: user.email ?? '',
+  }
+
   return (
-    <NumbersProvider>
+    <NumbersProvider user={accountUser}>
       <div className="min-h-screen bg-[#0a0e1a] text-white">
         <AppSidebar />
         <div className="flex min-h-screen flex-col pt-14 md:ml-[248px] md:pt-0">
