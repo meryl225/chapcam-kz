@@ -76,3 +76,19 @@ export function tierPriceXof(costUsd: number, usdToXof: number): number {
   const raw = costUsd * usdToXof * PRICE_TIERS.highMultiplier
   return Math.max(PRICE_TIERS.midPriceXof, Math.ceil(raw / 5) * 5)
 }
+
+/**
+ * Coût fournisseur MAXIMUM (en USD) que l'on accepte de payer pour pouvoir
+ * vendre au `displayedPriceXof` affiché au client tout en restant rentable.
+ * Envoyé comme plafond (`max_price`) au fournisseur à l'achat : il ne nous
+ * assignera jamais un numéro plus cher, ce qui évite de perdre de l'argent
+ * quand le fournisseur tente d'attribuer un pool "premium".
+ *   - palier 2000 FCFA -> coût max 0,10 $
+ *   - palier 5000 FCFA -> coût max 3 $
+ *   - palier > 5000 FCFA -> coût qui a généré ce prix (prix / (taux × 4))
+ */
+export function tierMaxCostUsd(displayedPriceXof: number, usdToXof: number): number {
+  if (displayedPriceXof <= PRICE_TIERS.lowPriceXof) return PRICE_TIERS.lowMaxUsd
+  if (displayedPriceXof <= PRICE_TIERS.midPriceXof) return PRICE_TIERS.midMaxUsd
+  return displayedPriceXof / (usdToXof * PRICE_TIERS.highMultiplier)
+}
