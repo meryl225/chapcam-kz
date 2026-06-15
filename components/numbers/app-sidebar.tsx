@@ -56,7 +56,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col gap-5 p-4">
-      <Link href="/numbers" className="flex items-center gap-2 px-2 pt-2">
+      <Link href="/numbers/app" className="flex items-center gap-2 px-2 pt-2">
         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
           <Phone className="h-4 w-4 text-white" />
         </span>
@@ -71,8 +71,8 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
         <Link href="/numbers/app/admin" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-300">
           <ShieldAlert className="h-[18px] w-[18px]" /> Admin
         </Link>
-        <Link href="/numbers" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white">
-          <ArrowUpRight className="h-[18px] w-[18px]" /> Back to site
+        <Link href="/dashboard" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white">
+          <ArrowUpRight className="h-[18px] w-[18px]" /> Retour à ChapCam
         </Link>
         <div className="mt-2 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB]/20 text-xs font-bold text-[#60a5fa]">AD</span>
