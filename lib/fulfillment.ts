@@ -511,7 +511,56 @@ async function fulfillConfirmedInvoice(params: {
     credited: false,
   })
   if (claimErr) {
-    // 23505 = unique_violation : ce token a deja ete pris en charge.
+    // 23505 = unique_violation : une ligne existe deja pour ce token. MAIS elle
+    // ne signifie "deja credite" que si credited=true. Une ligne credited=false
+    // est une RESERVATION ORPHELINE laissee par une tentative precedente qui a
+    // plante avant de crediter (ex: erreur Neon transitoire). Dans ce cas, il NE
+    // faut SURTOUT PAS conclure "deja fait" (sinon le client paie sans jamais
+    // etre credite) : on retente le credit ci-dessous, la reservation servant de verrou.
+    const { data: existingClaim } = await admin
+      .from('processed_payments')
+      .select('credited')
+      .eq('token', token)
+      .maybeSingle()
+    if (existingClaim?.credited) {
+      await logPaymentEvent(admin, {
+        source,
+        token,
+        transactionId,
+        email,
+        productId,
+        amount: totalAmount,
+        status: 'completed',
+        credited: true,
+        alreadyDone: true,
+        userLinked: true,
+        raw: customData,
+      })
+      return { status: 'completed', alreadyDone: true }
+    }
+    // Reservation orpheline (credited=false) : on poursuit pour rattraper le credit.
+  }
+
+  // Recharge de portefeuille ChapCam Numbers : pas un produit du catalogue,
+  // on credite directement le solde Neon (en FCFA = montant de la facture).
+  const isNumbersWallet = productId === 'numbers_wallet' || cd.kind === 'numbers_wallet'
+  let result: PurchaseResult
+  try {
+    result = isNumbersWallet
+      ? await creditNumbersWallet({
+          userId,
+          email,
+          amountXof: totalAmount || Number(reqRow?.amount || cd.amount_xof || 0),
+          token,
+        })
+      : await creditPurchase(admin, { productId, email, fullName, userId })
+  } catch (e) {
+    // Le credit a JETE une exception (ex: Neon indisponible). Sans ce catch, la
+    // reservation processed_payments resterait orpheline (credited=false) et
+    // bloquerait DEFINITIVEMENT toute nouvelle tentative. On libere donc le
+    // verrou pour que le cron de reconciliation puisse reessayer plus tard.
+    await admin.from('processed_payments').delete().eq('token', token)
+    const reason = (e as Error)?.message || 'Exception pendant le credit'
     await logPaymentEvent(admin, {
       source,
       token,
@@ -520,25 +569,13 @@ async function fulfillConfirmedInvoice(params: {
       productId,
       amount: totalAmount,
       status: 'completed',
-      credited: true,
-      alreadyDone: true,
-      userLinked: true,
+      credited: false,
+      userLinked: !!userId,
+      failureReason: `Credit echoue (exception) : ${reason}`,
       raw: customData,
     })
-    return { status: 'completed', alreadyDone: true }
+    return { status: 'error', alreadyDone: false }
   }
-
-  // Recharge de portefeuille ChapCam Numbers : pas un produit du catalogue,
-  // on credite directement le solde Neon (en FCFA = montant de la facture).
-  const isNumbersWallet = productId === 'numbers_wallet' || cd.kind === 'numbers_wallet'
-  const result = isNumbersWallet
-    ? await creditNumbersWallet({
-        userId,
-        email,
-        amountXof: totalAmount || Number(reqRow?.amount || cd.amount_xof || 0),
-        token,
-      })
-    : await creditPurchase(admin, { productId, email, fullName, userId })
 
   // Marquer le token comme effectivement credite (pour audit).
   if (result.ok) {
