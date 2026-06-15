@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { SecurityProvider } from '@/components/security-provider'
 import { ThemeProvider } from '@/components/theme-provider'
-import { ResponsibleUsePopup } from '@/components/responsible-use-popup'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -30,7 +29,6 @@ export default function RootLayout({
         >
           <SecurityProvider>
             {children}
-            <ResponsibleUsePopup />
           </SecurityProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
