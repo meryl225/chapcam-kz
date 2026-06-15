@@ -63,6 +63,13 @@ export async function purchaseCheapest(country: CanonCountry, service: CanonServ
   const { quotes, usdToXof } = await getBestQuote(country, service)
   if (quotes.length === 0) throw new Error('Aucun fournisseur ne propose ce pays/service actuellement.')
 
+  // Prix client AFFICHÉ = palier du devis le moins cher (= ce que voit l'utilisateur
+  // dans le popup de confirmation). On le fige ici pour ne JAMAIS facturer plus que
+  // le prix annoncé, même si le coût réel renvoyé par le fournisseur à l'achat
+  // franchit un palier supérieur (ex: devis 0,08 $ -> 2000 FCFA, mais achat
+  // facturé 0,15 $ qui tomberait sinon dans le palier 5000 FCFA).
+  const displayedPriceXof = tierPriceXof(quotes[0].costUsd, usdToXof)
+
   let lastErr: Error | null = null
   for (const q of quotes) {
     const adapter = adapters[q.provider]
@@ -71,7 +78,9 @@ export async function purchaseCheapest(country: CanonCountry, service: CanonServ
       // Certains fournisseurs (sms-man) ne renvoient pas le coût à l'achat :
       // on retombe sur le coût du devis.
       const costUsd = result.costUsd > 0 ? result.costUsd : q.costUsd
-      const priceXof = tierPriceXof(costUsd, usdToXof)
+      // On facture le prix affiché au client (jamais davantage). Si un fournisseur
+      // de repli plus cher est utilisé, on plafonne malgré tout au prix annoncé.
+      const priceXof = Math.min(displayedPriceXof, tierPriceXof(costUsd, usdToXof))
       return { result: { ...result, costUsd }, priceXof, costUsd, usdToXof }
     } catch (e) {
       lastErr = e as Error
@@ -120,6 +129,9 @@ export async function rentCheapest(
   const { quotes, usdToXof } = await getRentQuote(country, service, minHours)
   if (quotes.length === 0) throw new Error('Aucun fournisseur ne propose la location pour ce pays/service.')
 
+  // Prix affiché = palier du devis le moins cher : on ne facture jamais plus.
+  const displayedPriceXof = tierPriceXof(quotes[0].costUsd, usdToXof)
+
   let lastErr: Error | null = null
   for (const q of quotes) {
     const adapter = adapters[q.provider]
@@ -127,7 +139,7 @@ export async function rentCheapest(
     try {
       const result = await adapter.rent(country, service, minHours)
       const costUsd = result.costUsd > 0 ? result.costUsd : q.costUsd
-      const priceXof = tierPriceXof(costUsd, usdToXof)
+      const priceXof = Math.min(displayedPriceXof, tierPriceXof(costUsd, usdToXof))
       return { result: { ...result, costUsd }, priceXof, costUsd, usdToXof }
     } catch (e) {
       lastErr = e as Error
