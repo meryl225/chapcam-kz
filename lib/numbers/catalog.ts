@@ -7,6 +7,8 @@ export type CanonService = {
   slug: string
   label: string
   icon: string // nom lucide (résolu côté UI)
+  logo: string // slug theSVG.org pour le vrai logo de marque
+  logoVariant?: string // variante theSVG (défaut: 'default'). 'dark' pour les logos blancs (Uber, Apple)
   fivesim: string // product 5sim
   match: string[] // mots-clés pour matcher les catalogues sms-man / smspool
 }
@@ -47,18 +49,18 @@ export function rentalPlanByKey(key: string): RentalPlan | undefined {
 }
 
 export const SERVICES: CanonService[] = [
-  { slug: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', fivesim: 'whatsapp', match: ['whatsapp'] },
-  { slug: 'telegram', label: 'Telegram', icon: 'Send', fivesim: 'telegram', match: ['telegram'] },
-  { slug: 'google', label: 'Google / Gmail', icon: 'Mail', fivesim: 'google', match: ['google', 'gmail', 'youtube'] },
-  { slug: 'facebook', label: 'Facebook', icon: 'Facebook', fivesim: 'facebook', match: ['facebook'] },
-  { slug: 'instagram', label: 'Instagram', icon: 'Instagram', fivesim: 'instagram', match: ['instagram'] },
-  { slug: 'tiktok', label: 'TikTok', icon: 'Music2', fivesim: 'tiktok', match: ['tiktok', 'douyin'] },
-  { slug: 'twitter', label: 'X (Twitter)', icon: 'Twitter', fivesim: 'twitter', match: ['twitter', 'x.com', ' x '] },
-  { slug: 'discord', label: 'Discord', icon: 'MessageSquare', fivesim: 'discord', match: ['discord'] },
-  { slug: 'amazon', label: 'Amazon', icon: 'ShoppingCart', fivesim: 'amazon', match: ['amazon'] },
-  { slug: 'uber', label: 'Uber', icon: 'Car', fivesim: 'uber', match: ['uber'] },
-  { slug: 'microsoft', label: 'Microsoft', icon: 'Grid2x2', fivesim: 'microsoft', match: ['microsoft', 'outlook', 'hotmail'] },
-  { slug: 'apple', label: 'Apple', icon: 'Apple', fivesim: 'apple', match: ['apple', 'icloud'] },
+  { slug: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', logo: 'whatsapp', fivesim: 'whatsapp', match: ['whatsapp'] },
+  { slug: 'telegram', label: 'Telegram', icon: 'Send', logo: 'telegram', fivesim: 'telegram', match: ['telegram'] },
+  { slug: 'google', label: 'Google / Gmail', icon: 'Mail', logo: 'gmail', fivesim: 'google', match: ['google', 'gmail', 'youtube'] },
+  { slug: 'facebook', label: 'Facebook', icon: 'Facebook', logo: 'facebook', fivesim: 'facebook', match: ['facebook'] },
+  { slug: 'instagram', label: 'Instagram', icon: 'Instagram', logo: 'instagram', fivesim: 'instagram', match: ['instagram'] },
+  { slug: 'tiktok', label: 'TikTok', icon: 'Music2', logo: 'tiktok', fivesim: 'tiktok', match: ['tiktok', 'douyin'] },
+  { slug: 'twitter', label: 'X (Twitter)', icon: 'Twitter', logo: 'x', fivesim: 'twitter', match: ['twitter', 'x.com', ' x '] },
+  { slug: 'discord', label: 'Discord', icon: 'MessageSquare', logo: 'discord', fivesim: 'discord', match: ['discord'] },
+  { slug: 'amazon', label: 'Amazon', icon: 'ShoppingCart', logo: 'amazon', fivesim: 'amazon', match: ['amazon'] },
+  { slug: 'uber', label: 'Uber', icon: 'Car', logo: 'uber', logoVariant: 'mono', fivesim: 'uber', match: ['uber'] },
+  { slug: 'microsoft', label: 'Microsoft', icon: 'Grid2x2', logo: 'microsoft', fivesim: 'microsoft', match: ['microsoft', 'outlook', 'hotmail'] },
+  { slug: 'apple', label: 'Apple', icon: 'Apple', logo: 'apple', logoVariant: 'mono', fivesim: 'apple', match: ['apple', 'icloud'] },
 ]
 
 export const COUNTRIES: CanonCountry[] = [
