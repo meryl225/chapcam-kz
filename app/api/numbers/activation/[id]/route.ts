@@ -1,17 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireUserId, UnauthorizedError } from '@/lib/numbers/auth'
-import { adjustWallet, getActivation, updateActivation } from '@/lib/numbers/db'
+import { getActivation, refundActivationOnce, updateActivation } from '@/lib/numbers/db'
 import { cancelFor, finishFor, getCodeFor } from '@/lib/numbers/providers'
 import { serializeActivation } from '@/lib/numbers/serialize'
 import type { ProviderId } from '@/lib/numbers/providers/types'
 import type { ActivationRow } from '@/lib/numbers/db'
 
 async function refund(userId: string, row: ActivationRow) {
-  await adjustWallet(userId, Number(row.price_xof), {
-    kind: 'refund',
-    method: 'wallet',
-    reference: `${row.provider}:${row.provider_order}`,
-  })
+  // Idempotent : ne rembourse qu'une fois, même si le polling front et le cron
+  // de réconciliation traitent la même activation.
+  await refundActivationOnce(userId, row.provider, row.provider_order, Number(row.price_xof))
 }
 
 // Interroge le fournisseur et met à jour le statut / code de l'activation.

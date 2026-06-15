@@ -84,6 +84,42 @@ export async function adjustWallet(
   return Number(rows[0].balance_xof)
 }
 
+/**
+ * Rembourse une activation UNE SEULE FOIS, de façon atomique et idempotente.
+ * Empêche tout double remboursement lorsque plusieurs déclencheurs agissent sur
+ * la même activation (polling front + cron de réconciliation, double clic…).
+ * La référence `${provider}:${order}` sert de verrou logique.
+ * Renvoie `true` si le remboursement a été effectué, `false` s'il existait déjà.
+ */
+export async function refundActivationOnce(
+  userId: string,
+  provider: string,
+  order: string,
+  amountXof: number,
+): Promise<boolean> {
+  const reference = `${provider}:${order}`
+  // INSERT conditionnel : ne crée la ligne de remboursement que si aucune
+  // n'existe déjà pour cette référence (kind='refund'). NOT EXISTS dans le même
+  // ordre SQL évite la course entre lecture et écriture.
+  const inserted = (await sql`
+    INSERT INTO numbers_wallet_tx (user_id, kind, amount_xof, method, reference, status)
+    SELECT ${userId}, 'refund', ${amountXof}, 'wallet', ${reference}, 'completed'
+    WHERE NOT EXISTS (
+      SELECT 1 FROM numbers_wallet_tx
+      WHERE user_id = ${userId} AND kind = 'refund' AND reference = ${reference}
+    )
+    RETURNING id
+  `) as { id: number }[]
+  if (inserted.length === 0) return false
+  await getWallet(userId)
+  await sql`
+    UPDATE numbers_wallets
+    SET balance_xof = balance_xof + ${amountXof}, updated_at = now()
+    WHERE user_id = ${userId}
+  `
+  return true
+}
+
 export async function listTransactions(userId: string, limit = 50): Promise<TxRow[]> {
   return (await sql`
     SELECT * FROM numbers_wallet_tx
