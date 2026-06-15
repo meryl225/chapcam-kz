@@ -49,6 +49,7 @@ export function Header() {
             { name: "Comment ca marche", href: "#comment-ca-marche" },
             { name: "Roadmap", href: "#roadmap" },
             { name: "Tarifs", href: "#tarifs" },
+            { name: "ESIM ChapCam", href: "/numbers" },
             { name: "FAQ", href: "#faq" },
             { name: "Telecharger", href: "/download" },
             { name: "Founder", href: "#founder" }
@@ -56,7 +57,7 @@ export function Header() {
             <Link 
               key={item.name}
               href={item.href} 
-              className={`text-white/70 hover:text-white transition-colors text-sm font-medium relative group ${item.name === "Telecharger" ? "text-[#00ff88]" : ""} ${item.name === "Roadmap" ? "text-[#00d4ff]" : ""}`}
+              className={`text-white/70 hover:text-white transition-colors text-sm font-medium relative group ${item.name === "Telecharger" ? "text-[#00ff88]" : ""} ${item.name === "Roadmap" ? "text-[#00d4ff]" : ""} ${item.name === "ESIM ChapCam" ? "text-[#2563EB]" : ""}`}
             >
               {item.name}
               <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-[#e91e8c] group-hover:w-full transition-all duration-300" />
