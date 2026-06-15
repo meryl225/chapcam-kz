@@ -73,6 +73,9 @@ export const smspool: ProviderAdapter = {
   name: 'SMSPool',
 
   async quote(country: CanonCountry, service: CanonService): Promise<Quote | null> {
+    // Sans cle API, SMSPool ne peut pas vendre : on ne le propose pas du tout
+    // (sinon il apparait "disponible" via l'endpoint prix public puis echoue a l'achat).
+    if (!key()) return null
     const { countryId, serviceId } = await resolveIds(country, service)
     if (!countryId || !serviceId) return null
     const { ok, json } = await post('/request/price', { country: countryId, service: serviceId })
@@ -85,6 +88,7 @@ export const smspool: ProviderAdapter = {
   },
 
   async purchase(country: CanonCountry, service: CanonService): Promise<PurchaseResult> {
+    if (!key()) throw new Error('SMSPool: clé API non configurée (SMSPOOL_API_KEY)')
     const { countryId, serviceId } = await resolveIds(country, service)
     if (!countryId || !serviceId) throw new Error('SMSPool: pays/service non disponible')
     const { ok, json, text } = await post('/purchase/sms', { country: countryId, service: serviceId })
