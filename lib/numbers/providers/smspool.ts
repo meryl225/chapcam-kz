@@ -87,11 +87,19 @@ export const smspool: ProviderAdapter = {
     return { provider: 'smspool', costUsd: cost, count: 1 }
   },
 
-  async purchase(country: CanonCountry, service: CanonService): Promise<PurchaseResult> {
+  async purchase(country: CanonCountry, service: CanonService, maxCostUsd?: number): Promise<PurchaseResult> {
     if (!key()) throw new Error('SMSPool: clé API non configurée (SMSPOOL_API_KEY)')
     const { countryId, serviceId } = await resolveIds(country, service)
     if (!countryId || !serviceId) throw new Error('SMSPool: pays/service non disponible')
-    const { ok, json, text } = await post('/purchase/sms', { country: countryId, service: serviceId })
+    const fields: Record<string, string> = { country: countryId, service: serviceId }
+    // Plafond anti-perte : SMSPool n'assignera jamais un numéro dont le coût
+    // dépasse `max_price` (USD), évitant qu'un pool "premium" coûte plus que le
+    // prix affiché au client. Si rien n'est dispo sous ce plafond, l'achat échoue
+    // (le client est alors invité à réessayer / changer de pays).
+    if (typeof maxCostUsd === 'number' && maxCostUsd > 0) {
+      fields.max_price = maxCostUsd.toFixed(2)
+    }
+    const { ok, json, text } = await post('/purchase/sms', fields)
     const data = (json ?? {}) as {
       success?: number
       number?: string
