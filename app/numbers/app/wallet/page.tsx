@@ -33,7 +33,7 @@ function fmtDate(ms: number) {
 }
 
 export default function WalletPage() {
-  const { balanceXof, transactions, pushToast, refreshState } = useNumbers()
+  const { balanceXof, transactions, pushToast, refreshState, isAdmin } = useNumbers()
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState(2500)
   const [loading, setLoading] = useState(false)
@@ -199,7 +199,9 @@ export default function WalletPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="hidden p-4 font-mono text-xs text-white/40 sm:table-cell">{t.reference}</td>
+                        {isAdmin && (
+                          <td className="hidden p-4 font-mono text-xs text-white/40 sm:table-cell">{t.reference}</td>
+                        )}
                         <td className="p-4 text-right">
                           <p className={`font-medium ${positive ? 'text-emerald-400' : 'text-white'}`}>
                             {positive ? '+' : '−'}

@@ -41,7 +41,7 @@ function fmtDate(ms: number) {
 type Tab = 'orders' | 'transactions'
 
 export default function HistoryPage() {
-  const { activations, transactions } = useNumbers()
+  const { activations, transactions, isAdmin } = useNumbers()
   const [tab, setTab] = useState<Tab>('orders')
   const [query, setQuery] = useState('')
 
@@ -105,7 +105,7 @@ export default function HistoryPage() {
                 <tr>
                   <th className="p-4 font-medium">Numéro</th>
                   <th className="p-4 font-medium">Service</th>
-                  <th className="p-4 font-medium">Fournisseur</th>
+                  {isAdmin && <th className="p-4 font-medium">Fournisseur</th>}
                   <th className="p-4 font-medium">Montant</th>
                   <th className="p-4 font-medium">Statut</th>
                   <th className="p-4 text-right font-medium">Date</th>
@@ -124,7 +124,7 @@ export default function HistoryPage() {
                         </span>
                       </td>
                       <td className="p-4">{svc?.label ?? o.serviceLabel}</td>
-                      <td className="p-4 capitalize">{o.provider}</td>
+                      {isAdmin && <td className="p-4 capitalize">{o.provider}</td>}
                       <td className="p-4 text-white">{formatXOF(o.priceXof)}</td>
                       <td className="p-4">
                         <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${orderStatusStyle[o.status]}`}>
@@ -137,7 +137,7 @@ export default function HistoryPage() {
                 })}
                 {filteredOrders.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="p-10 text-center text-white/40">
+                    <td colSpan={isAdmin ? 6 : 5} className="p-10 text-center text-white/40">
                       Aucune activation pour le moment
                     </td>
                   </tr>
@@ -150,7 +150,7 @@ export default function HistoryPage() {
                 <tr>
                   <th className="p-4 font-medium">Type</th>
                   <th className="p-4 font-medium">Moyen</th>
-                  <th className="p-4 font-medium">Référence</th>
+                  {isAdmin && <th className="p-4 font-medium">Référence</th>}
                   <th className="p-4 font-medium">Montant</th>
                   <th className="p-4 font-medium">Statut</th>
                   <th className="p-4 text-right font-medium">Date</th>
@@ -174,7 +174,7 @@ export default function HistoryPage() {
                         </span>
                       </td>
                       <td className="p-4">{t.method}</td>
-                      <td className="p-4 font-mono text-xs text-white/50">{t.reference}</td>
+                      {isAdmin && <td className="p-4 font-mono text-xs text-white/50">{t.reference}</td>}
                       <td className={`p-4 font-medium ${positive ? 'text-emerald-400' : 'text-white'}`}>
                         {positive ? '+' : '−'}
                         {formatXOF(Math.abs(t.amountXof))}
@@ -198,7 +198,7 @@ export default function HistoryPage() {
                 })}
                 {filteredTx.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="p-10 text-center text-white/40">
+                    <td colSpan={isAdmin ? 6 : 5} className="p-10 text-center text-white/40">
                       Aucune transaction pour le moment
                     </td>
                   </tr>

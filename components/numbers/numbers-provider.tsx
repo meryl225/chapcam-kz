@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Activation, NumbersState, QuoteResponse, Tx } from '@/lib/numbers/types'
 import type { ApiKey, SupportTicket } from '@/lib/numbers/data'
+import { isAdminEmail } from '@/lib/admin-email'
 
 type Toast = { id: number; title: string; desc?: string }
 
@@ -12,6 +13,9 @@ type BuyResult = { ok: boolean; activation?: Activation; error?: string }
 
 type Ctx = {
   user: AccountUser
+  // Vrai uniquement pour l'administrateur : conditionne l'affichage des infos
+  // techniques (fournisseurs, références) masquées aux clients.
+  isAdmin: boolean
   // Données réelles (FCFA)
   balanceXof: number
   activations: Activation[]
@@ -205,7 +209,7 @@ export function NumbersProvider({ user, children }: { user: AccountUser; childre
         scopes: ['numbers:read', 'numbers:write', 'messages:read'],
       }
       setApiKeys((k) => [key, ...k])
-      pushToast('Clé API créée', 'Copiez-la maintenant — elle ne sera plus affichée.')
+      pushToast('Clé API créée', 'Copiez-la maintenant ��� elle ne sera plus affichée.')
       return key
     },
     [pushToast],
@@ -233,6 +237,7 @@ export function NumbersProvider({ user, children }: { user: AccountUser; childre
 
   const value: Ctx = {
     user,
+    isAdmin: isAdminEmail(user.email),
     balanceXof: state.balanceXof,
     activations: state.activations,
     transactions: state.transactions,

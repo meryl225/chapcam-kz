@@ -3,10 +3,22 @@ import type { CanonCountry, CanonService } from '@/lib/numbers/catalog'
 
 export type ProviderId = 'fivesim' | 'smsman' | 'smspool'
 
+/**
+ * Seuil minimum de taux de réussite (en %) visé pour la sélection des numéros.
+ * On privilégie toujours les offres dont le taux annoncé atteint ce seuil.
+ */
+export const MIN_SUCCESS_RATE = 70
+/**
+ * Taux supposé quand un fournisseur ne renvoie pas l'information (ex: sms-man).
+ * Fixé au seuil pour ne pas exclure ces offres par défaut, sans les surclasser.
+ */
+export const DEFAULT_SUCCESS_RATE = 70
+
 export type Quote = {
   provider: ProviderId
   costUsd: number
   count: number // disponibilité approximative
+  successRate?: number // taux de réussite annoncé par le fournisseur (0-100), si connu
 }
 
 export type PurchaseResult = {
