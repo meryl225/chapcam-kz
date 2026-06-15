@@ -1,24 +1,17 @@
 import Image from 'next/image'
-import { Mic, Play, Radio, ArrowRight, Monitor, Cpu, Zap, MessageSquareText } from 'lucide-react'
+import { Mic, Play, Radio, ArrowRight, Monitor, Cpu, Zap } from 'lucide-react'
 
-/* ---------- ESIM ChapCam : chip SIM + indicatifs pays + SMS entrant ---------- */
+/* ---------- ESIM ChapCam : 1000+ apps au-dessus d'un téléphone ---------- */
 export function EsimPreview() {
   return (
-    <div className="flex items-center justify-center gap-3 rounded-xl border border-hairline bg-black/30 p-3">
-      <div className="cc-pulse relative h-16 w-16 shrink-0">
-        <Image src="/images/esim-chip.png" alt="Carte eSIM" fill sizes="64px" className="object-contain" />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-1.5">
-          <span className="rounded-md bg-[#2563eb]/15 px-2 py-0.5 text-[10px] font-bold text-[#60a5fa]">+225</span>
-          <span className="rounded-md bg-[#2563eb]/15 px-2 py-0.5 text-[10px] font-bold text-[#60a5fa]">+33</span>
-          <span className="rounded-md bg-[#2563eb]/15 px-2 py-0.5 text-[10px] font-bold text-[#60a5fa]">+1</span>
-        </div>
-        <span className="flex items-center gap-1.5 rounded-md bg-[#2563eb]/10 px-2 py-1 text-[10px] font-semibold text-[#93c5fd]">
-          <MessageSquareText className="h-3 w-3" />
-          SMS reçu · code 4821
-        </span>
-      </div>
+    <div className="relative aspect-[785/346] w-full overflow-hidden rounded-xl border border-hairline bg-[#1d4ed8]">
+      <Image
+        src="/images/esim-apps.png"
+        alt="Plus de 1000 applications supportées par les numéros eSIM ChapCam"
+        fill
+        sizes="260px"
+        className="object-cover object-top"
+      />
     </div>
   )
 }
