@@ -74,12 +74,12 @@ export function NumbersProvider({ children }: { children: ReactNode }) {
       const code = String(Math.floor(100000 + Math.random() * 899999))
       const msg: Message = {
         id: nextId('m'), numberId: target.id, sender,
-        body: `Your ${sender} verification code is ${code}.`,
+        body: `Votre code de vérification ${sender} est ${code}.`,
         receivedAt: Date.now(), read: false, archived: false,
       }
       setMessages((m) => [msg, ...m])
       setOwned((list) => list.map((n) => (n.id === target.id ? { ...n, messageCount: n.messageCount + 1 } : n)))
-      pushToast(`New SMS on ${target.e164}`, `${sender}: code ${code}`)
+      pushToast(`Nouveau SMS sur ${target.e164}`, `${sender} : code ${code}`)
     }, 22000)
     return () => clearInterval(interval)
   }, [])
@@ -88,7 +88,7 @@ export function NumbersProvider({ children }: { children: ReactNode }) {
 
   const buyNumber: Ctx['buyNumber'] = (listing, label) => {
     if (balance < listing.price) {
-      pushToast('Insufficient balance', 'Add funds in your wallet to continue.')
+      pushToast('Solde insuffisant', 'Ajoutez des fonds à votre portefeuille pour continuer.')
       return false
     }
     const country = countryByCode(listing.countryCode)
@@ -97,20 +97,20 @@ export function NumbersProvider({ children }: { children: ReactNode }) {
     const duration = listing.type === 'temporary' ? 24 * 3600_000 : 30 * 24 * 3600_000
     const num: OwnedNumber = {
       id, e164, countryCode: listing.countryCode, providerId: listing.providerId, type: listing.type,
-      label: label || `${country?.name} number`, status: 'active', purchasedAt: Date.now(),
+      label: label || `Numéro ${country?.name}`, status: 'active', purchasedAt: Date.now(),
       expiresAt: Date.now() + duration, autoRenew: listing.type === 'long-term', messageCount: 0,
     }
     setOwned((l) => [num, ...l])
     setBalance((b) => +(b - listing.price).toFixed(2))
     setTransactions((t) => [{ id: nextId('tx'), kind: 'purchase', method: 'Wallet', amount: -listing.price, status: 'completed', createdAt: Date.now(), reference: id }, ...t])
     setOrders((o) => [{ id: nextId('ord'), numberLabel: num.label, e164, countryCode: listing.countryCode, providerId: listing.providerId, amount: listing.price, status: 'active', createdAt: Date.now() }, ...o])
-    pushToast('Number purchased', `${e164} is now active.`)
+    pushToast('Numéro acheté', `${e164} est maintenant actif.`)
     return true
   }
 
   const releaseNumber = (id: string) => {
     setOwned((l) => l.map((n) => (n.id === id ? { ...n, status: 'expired' as const, autoRenew: false } : n)))
-    pushToast('Number released')
+    pushToast('Numéro libéré')
   }
   const toggleAutoRenew = (id: string) => setOwned((l) => l.map((n) => (n.id === id ? { ...n, autoRenew: !n.autoRenew } : n)))
   const renameNumber = (id: string, label: string) => setOwned((l) => l.map((n) => (n.id === id ? { ...n, label } : n)))
@@ -122,25 +122,25 @@ export function NumbersProvider({ children }: { children: ReactNode }) {
   const deposit = (amount: number, method: string) => {
     setBalance((b) => +(b + amount).toFixed(2))
     setTransactions((t) => [{ id: nextId('tx'), kind: 'deposit', method, amount, status: 'completed', createdAt: Date.now(), reference: `${method.slice(0, 4).toUpperCase()}-${Math.floor(1000 + Math.random() * 8999)}` }, ...t])
-    pushToast('Funds added', `${method}: +$${amount.toFixed(2)}`)
+    pushToast('Fonds ajoutés', `${method} : +$${amount.toFixed(2)}`)
   }
 
   const createApiKey: Ctx['createApiKey'] = (name) => {
     const rand = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
     const key: ApiKey = { id: nextId('key'), name, prefix: `cck_live_${rand.slice(0, 4)}`, secret: `cck_live_${rand.slice(0, 32)}`, createdAt: Date.now(), lastUsedAt: null, scopes: ['numbers:read', 'numbers:write', 'messages:read'] }
     setApiKeys((k) => [key, ...k])
-    pushToast('API key created', 'Copy it now — it will not be shown again.')
+    pushToast('Clé API créée', 'Copiez-la maintenant — elle ne sera plus affichée.')
     return key
   }
   const revokeApiKey = (id: string) => {
     setApiKeys((k) => k.filter((x) => x.id !== id))
-    pushToast('API key revoked')
+    pushToast('Clé API révoquée')
   }
 
   const createTicket: Ctx['createTicket'] = (subject, category, priority, body) => {
     const t: SupportTicket = { id: nextId('tkt'), subject, category, status: 'open', priority, createdAt: Date.now(), lastReplyAt: Date.now(), messages: [{ from: 'user', body, at: Date.now() }] }
     setTickets((list) => [t, ...list])
-    pushToast('Ticket submitted', 'Our team will reply shortly.')
+    pushToast('Demande envoyée', 'Notre équipe vous répondra sous peu.')
   }
 
   const value: Ctx = {

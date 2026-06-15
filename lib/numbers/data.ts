@@ -165,26 +165,26 @@ export const LISTINGS: Listing[] = (() => {
 })()
 
 export const INITIAL_OWNED: OwnedNumber[] = [
-  { id: 'num_1', e164: '+1 415 555 0142', countryCode: 'US', providerId: 'nexa', type: 'long-term', label: 'Onboarding — US line', status: 'active', purchasedAt: now - 12 * DAY, expiresAt: now + 18 * DAY, autoRenew: true, messageCount: 3 },
-  { id: 'num_2', e164: '+44 20 7946 0958', countryCode: 'GB', providerId: 'pulse', type: 'temporary', label: 'QA verification', status: 'expiring', purchasedAt: now - 20 * HOUR, expiresAt: now + 4 * HOUR, autoRenew: false, messageCount: 2 },
-  { id: 'num_3', e164: '+225 07 12 34 56', countryCode: 'CI', providerId: 'orbit', type: 'long-term', label: 'Support hotline — Abidjan', status: 'active', purchasedAt: now - 40 * DAY, expiresAt: now + 50 * DAY, autoRenew: true, messageCount: 1 },
+  { id: 'num_1', e164: '+1 415 555 0142', countryCode: 'US', providerId: 'nexa', type: 'long-term', label: 'Inscription — ligne US', status: 'active', purchasedAt: now - 12 * DAY, expiresAt: now + 18 * DAY, autoRenew: true, messageCount: 3 },
+  { id: 'num_2', e164: '+44 20 7946 0958', countryCode: 'GB', providerId: 'pulse', type: 'temporary', label: 'Vérification QA', status: 'expiring', purchasedAt: now - 20 * HOUR, expiresAt: now + 4 * HOUR, autoRenew: false, messageCount: 2 },
+  { id: 'num_3', e164: '+225 07 12 34 56', countryCode: 'CI', providerId: 'orbit', type: 'long-term', label: 'Ligne support — Abidjan', status: 'active', purchasedAt: now - 40 * DAY, expiresAt: now + 50 * DAY, autoRenew: true, messageCount: 1 },
 ]
 
 export const INITIAL_MESSAGES: Message[] = [
-  { id: 'm1', numberId: 'num_1', sender: 'STRIPE', body: 'Your Stripe verification code is 482913.', receivedAt: now - 2 * HOUR, read: false, archived: false },
-  { id: 'm2', numberId: 'num_1', sender: '+1 202 555 0173', body: 'Hi! Confirming our 3pm call tomorrow.', receivedAt: now - 6 * HOUR, read: true, archived: false },
-  { id: 'm3', numberId: 'num_1', sender: 'GITHUB', body: 'Your GitHub authentication code: 771204', receivedAt: now - 26 * HOUR, read: true, archived: false },
-  { id: 'm4', numberId: 'num_2', sender: 'WhatsApp', body: 'WhatsApp code 901-233. Do not share it.', receivedAt: now - 3 * HOUR, read: false, archived: false },
-  { id: 'm5', numberId: 'num_2', sender: 'Telegram', body: 'Telegram code: 55012', receivedAt: now - 9 * HOUR, read: true, archived: false },
+  { id: 'm1', numberId: 'num_1', sender: 'STRIPE', body: 'Votre code de vérification Stripe est 482913.', receivedAt: now - 2 * HOUR, read: false, archived: false },
+  { id: 'm2', numberId: 'num_1', sender: '+1 202 555 0173', body: 'Bonjour ! Je confirme notre appel de 15 h demain.', receivedAt: now - 6 * HOUR, read: true, archived: false },
+  { id: 'm3', numberId: 'num_1', sender: 'GITHUB', body: "Votre code d'authentification GitHub : 771204", receivedAt: now - 26 * HOUR, read: true, archived: false },
+  { id: 'm4', numberId: 'num_2', sender: 'WhatsApp', body: 'Code WhatsApp 901-233. Ne le partagez pas.', receivedAt: now - 3 * HOUR, read: false, archived: false },
+  { id: 'm5', numberId: 'num_2', sender: 'Telegram', body: 'Code Telegram : 55012', receivedAt: now - 9 * HOUR, read: true, archived: false },
   { id: 'm6', numberId: 'num_3', sender: 'Orange CI', body: 'Bienvenue. Votre code est 6620.', receivedAt: now - 30 * HOUR, read: true, archived: false },
 ]
 
 export const INITIAL_ORDERS: Order[] = [
-  { id: 'ord_1041', numberLabel: 'Onboarding — US line', e164: '+1 415 555 0142', countryCode: 'US', providerId: 'nexa', amount: 8.0, status: 'active', createdAt: now - 12 * DAY },
-  { id: 'ord_1040', numberLabel: 'QA verification', e164: '+44 20 7946 0958', countryCode: 'GB', providerId: 'pulse', amount: 1.2, status: 'active', createdAt: now - 20 * HOUR },
-  { id: 'ord_1039', numberLabel: 'Support hotline — Abidjan', e164: '+225 07 12 34 56', countryCode: 'CI', providerId: 'orbit', amount: 9.5, status: 'active', createdAt: now - 40 * DAY },
-  { id: 'ord_1038', numberLabel: 'Marketing test DE', e164: '+49 30 5550 8841', countryCode: 'DE', providerId: 'vela', amount: 0.9, status: 'completed', createdAt: now - 6 * DAY },
-  { id: 'ord_1037', numberLabel: 'Temp signup FR', e164: '+33 1 7550 1190', countryCode: 'FR', providerId: 'meridian', amount: 0.7, status: 'refunded', createdAt: now - 9 * DAY },
+  { id: 'ord_1041', numberLabel: 'Inscription — ligne US', e164: '+1 415 555 0142', countryCode: 'US', providerId: 'nexa', amount: 8.0, status: 'active', createdAt: now - 12 * DAY },
+  { id: 'ord_1040', numberLabel: 'Vérification QA', e164: '+44 20 7946 0958', countryCode: 'GB', providerId: 'pulse', amount: 1.2, status: 'active', createdAt: now - 20 * HOUR },
+  { id: 'ord_1039', numberLabel: 'Ligne support — Abidjan', e164: '+225 07 12 34 56', countryCode: 'CI', providerId: 'orbit', amount: 9.5, status: 'active', createdAt: now - 40 * DAY },
+  { id: 'ord_1038', numberLabel: 'Test marketing DE', e164: '+49 30 5550 8841', countryCode: 'DE', providerId: 'vela', amount: 0.9, status: 'completed', createdAt: now - 6 * DAY },
+  { id: 'ord_1037', numberLabel: 'Inscription temp. FR', e164: '+33 1 7550 1190', countryCode: 'FR', providerId: 'meridian', amount: 0.7, status: 'refunded', createdAt: now - 9 * DAY },
 ]
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [
@@ -202,8 +202,8 @@ export const INITIAL_API_KEYS: ApiKey[] = [
 ]
 
 export const INITIAL_TICKETS: SupportTicket[] = [
-  { id: 'tkt_3021', subject: 'SMS not arriving on UK number', category: 'Delivery', status: 'pending', priority: 'high', createdAt: now - 5 * HOUR, lastReplyAt: now - 2 * HOUR, messages: [ { from: 'user', body: 'My UK number is not receiving verification codes.', at: now - 5 * HOUR }, { from: 'agent', body: 'Thanks for reaching out — we are checking the route with the provider now.', at: now - 2 * HOUR } ] },
-  { id: 'tkt_3020', subject: 'Invoice for October', category: 'Billing', status: 'resolved', priority: 'normal', createdAt: now - 8 * DAY, lastReplyAt: now - 7 * DAY, messages: [{ from: 'user', body: 'Can I get a PDF invoice for October?', at: now - 8 * DAY }] },
+  { id: 'tkt_3021', subject: 'SMS non reçus sur le numéro britannique', category: 'Réception SMS', status: 'pending', priority: 'high', createdAt: now - 5 * HOUR, lastReplyAt: now - 2 * HOUR, messages: [ { from: 'user', body: 'Mon numéro britannique ne reçoit pas les codes de vérification.', at: now - 5 * HOUR }, { from: 'agent', body: "Merci de nous avoir contactés — nous vérifions la route avec l'opérateur.", at: now - 2 * HOUR } ] },
+  { id: 'tkt_3020', subject: "Facture d'octobre", category: 'Facturation', status: 'resolved', priority: 'normal', createdAt: now - 8 * DAY, lastReplyAt: now - 7 * DAY, messages: [{ from: 'user', body: "Puis-je obtenir une facture PDF pour octobre ?", at: now - 8 * DAY }] },
 ]
 
 export const DAILY_ACTIVITY = Array.from({ length: 14 }, (_, i) => {
@@ -250,15 +250,15 @@ export const ADMIN_USERS = [
 ]
 
 export const ADMIN_RISK_EVENTS = [
-  { id: 're_1', user: 'marco@quickship.eu', type: 'Velocity', detail: '40 temporary numbers purchased in 5 min', severity: 'high', at: now - 3 * HOUR },
-  { id: 're_2', user: 'priya@finlytics.in', type: 'Geo mismatch', detail: 'Login from 3 countries in 1 hour', severity: 'medium', at: now - 9 * HOUR },
-  { id: 're_3', user: 'unknown@temp.io', type: 'Disposable email', detail: 'Signup blocked at registration', severity: 'low', at: now - 26 * HOUR },
+  { id: 're_1', user: 'marco@quickship.eu', type: 'Vélocité', detail: '40 numéros temporaires achetés en 5 min', severity: 'high', at: now - 3 * HOUR },
+  { id: 're_2', user: 'priya@finlytics.in', type: 'Incohérence géo.', detail: 'Connexion depuis 3 pays en 1 heure', severity: 'medium', at: now - 9 * HOUR },
+  { id: 're_3', user: 'unknown@temp.io', type: 'E-mail jetable', detail: "Inscription bloquée à l'enregistrement", severity: 'low', at: now - 26 * HOUR },
 ]
 
 export const ADMIN_LOGS = [
-  { id: 'log_1', actor: 'admin@chapcam.com', action: 'Suspended user marco@quickship.eu', at: now - 2 * HOUR },
-  { id: 'log_2', actor: 'admin@chapcam.com', action: 'Refunded order ord_1037 ($0.70)', at: now - 9 * DAY },
-  { id: 'log_3', actor: 'system', action: 'Provider Vela Mobile marked degraded', at: now - 14 * HOUR },
+  { id: 'log_1', actor: 'admin@chapcam.com', action: 'Utilisateur marco@quickship.eu suspendu', at: now - 2 * HOUR },
+  { id: 'log_2', actor: 'admin@chapcam.com', action: 'Commande ord_1037 remboursée (0,70 $)', at: now - 9 * DAY },
+  { id: 'log_3', actor: 'system', action: 'Opérateur Vela Mobile signalé dégradé', at: now - 14 * HOUR },
 ]
 
 // ---- helpers ----
@@ -272,23 +272,23 @@ export function formatUSD(n: number) {
 export function timeAgo(ms: number) {
   const diff = Date.now() - ms
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
+  if (mins < 1) return "à l'instant"
+  if (mins < 60) return `il y a ${mins} min`
   const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
+  if (hrs < 24) return `il y a ${hrs} h`
   const days = Math.floor(hrs / 24)
-  return `${days}d ago`
+  return `il y a ${days} j`
 }
 
 export function timeLeft(expiresAt: number) {
   const diff = expiresAt - Date.now()
-  if (diff <= 0) return 'expired'
+  if (diff <= 0) return 'expiré'
   const hrs = Math.floor(diff / HOUR)
-  if (hrs < 24) return `${hrs}h left`
+  if (hrs < 24) return `${hrs} h restantes`
   const days = Math.floor(hrs / 24)
-  return `${days}d left`
+  return `${days} j restants`
 }
 
 export function formatDate(ms: number) {
-  return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return new Date(ms).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric', year: 'numeric' })
 }

@@ -31,25 +31,25 @@ export default function SettingsPage() {
   const [notif, setNotif] = useState({ sms: true, billing: true, product: false, security: true })
 
   function save() {
-    pushToast('Settings saved', 'Your profile has been updated.')
+    pushToast('Paramètres enregistrés', 'Votre profil a été mis à jour.')
   }
 
   return (
     <div className="max-w-3xl space-y-6">
       <div>
-        <h1 className="text-xl font-semibold text-white">Settings</h1>
-        <p className="text-sm text-white/50">Manage your profile, notifications and security</p>
+        <h1 className="text-xl font-semibold text-white">Paramètres</h1>
+        <p className="text-sm text-white/50">Gérez votre profil, vos notifications et votre sécurité</p>
       </div>
 
       {/* Profile */}
       <section className={`${card} p-5`}>
         <h2 className="mb-4 flex items-center gap-2 font-semibold text-white">
-          <User className="h-4 w-4 text-blue-400" /> Profile
+          <User className="h-4 w-4 text-blue-400" /> Profil
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
-              Full name
+              Nom complet
             </label>
             <input
               value={name}
@@ -59,7 +59,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
-              Email
+              E-mail
             </label>
             <input
               value={email}
@@ -69,7 +69,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
-              Company
+              Entreprise
             </label>
             <input
               value={company}
@@ -79,7 +79,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
-              Country
+              Pays
             </label>
             <div className="flex items-center rounded-lg border border-white/10 bg-white/5 px-3">
               <Globe2 className="h-4 w-4 text-white/40" />
@@ -95,7 +95,7 @@ export default function SettingsPage() {
           onClick={save}
           className="mt-5 flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500"
         >
-          <Check className="h-4 w-4" /> Save changes
+          <Check className="h-4 w-4" /> Enregistrer
         </button>
       </section>
 
@@ -106,10 +106,10 @@ export default function SettingsPage() {
         </h2>
         <div className="divide-y divide-white/5">
           {[
-            { key: 'sms', label: 'Inbound SMS alerts', desc: 'Notify me when a new message arrives' },
-            { key: 'billing', label: 'Billing & renewals', desc: 'Receipts and upcoming number renewals' },
-            { key: 'product', label: 'Product updates', desc: 'New features and announcements' },
-            { key: 'security', label: 'Security alerts', desc: 'Login and key activity notifications' },
+            { key: 'sms', label: 'Alertes SMS entrants', desc: 'Me prévenir à la réception d’un nouveau message' },
+            { key: 'billing', label: 'Facturation et renouvellements', desc: 'Reçus et renouvellements de numéros à venir' },
+            { key: 'product', label: 'Mises à jour produit', desc: 'Nouvelles fonctionnalités et annonces' },
+            { key: 'security', label: 'Alertes de sécurité', desc: 'Notifications de connexion et d’activité des clés' },
           ].map((n) => (
             <div key={n.key} className="flex items-center justify-between py-3">
               <div>
@@ -128,29 +128,29 @@ export default function SettingsPage() {
       {/* Security */}
       <section className={`${card} p-5`}>
         <h2 className="mb-4 flex items-center gap-2 font-semibold text-white">
-          <Shield className="h-4 w-4 text-blue-400" /> Security
+          <Shield className="h-4 w-4 text-blue-400" /> Sécurité
         </h2>
         <div className="space-y-3">
           <button
-            onClick={() => pushToast('Password reset sent', 'Check your email for a reset link.')}
+            onClick={() => pushToast('E-mail de réinitialisation envoyé', 'Consultez votre boîte mail pour le lien de réinitialisation.')}
             className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] p-4 text-left transition-colors hover:bg-white/5"
           >
             <div>
-              <p className="text-sm font-medium text-white">Change password</p>
-              <p className="text-xs text-white/40">Last changed 3 months ago</p>
+              <p className="text-sm font-medium text-white">Changer le mot de passe</p>
+              <p className="text-xs text-white/40">Modifié il y a 3 mois</p>
             </div>
-            <span className="text-sm text-blue-400">Update</span>
+            <span className="text-sm text-blue-400">Modifier</span>
           </button>
           <button
-            onClick={() => pushToast('2FA enabled', 'Two-factor authentication is now active.')}
+            onClick={() => pushToast('2FA activée', 'L’authentification à deux facteurs est désormais active.')}
             className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.02] p-4 text-left transition-colors hover:bg-white/5"
           >
             <div>
-              <p className="text-sm font-medium text-white">Two-factor authentication</p>
-              <p className="text-xs text-white/40">Add an extra layer of security</p>
+              <p className="text-sm font-medium text-white">Authentification à deux facteurs</p>
+              <p className="text-xs text-white/40">Ajoutez une couche de sécurité supplémentaire</p>
             </div>
             <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-400">
-              Off
+              Désactivée
             </span>
           </button>
         </div>
@@ -159,14 +159,14 @@ export default function SettingsPage() {
       {/* Danger zone */}
       <section className="rounded-2xl border border-red-500/20 bg-red-500/[0.03] p-5">
         <h2 className="mb-1 flex items-center gap-2 font-semibold text-red-400">
-          <Trash2 className="h-4 w-4" /> Danger zone
+          <Trash2 className="h-4 w-4" /> Zone sensible
         </h2>
-        <p className="mb-4 text-sm text-white/50">Permanently delete your account and all associated data.</p>
+        <p className="mb-4 text-sm text-white/50">Supprimez définitivement votre compte et toutes les données associées.</p>
         <button
-          onClick={() => pushToast('Request received', 'Account deletion requires email confirmation.')}
+          onClick={() => pushToast('Demande reçue', 'La suppression du compte nécessite une confirmation par e-mail.')}
           className="rounded-lg border border-red-500/40 px-4 py-2 text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10"
         >
-          Delete account
+          Supprimer le compte
         </button>
       </section>
     </div>

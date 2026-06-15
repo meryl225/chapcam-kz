@@ -152,26 +152,26 @@ export default function SupportPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between">
-              <h2 className="text-lg font-semibold text-white">New support ticket</h2>
+              <h2 className="text-lg font-semibold text-white">Nouvelle demande d&apos;assistance</h2>
               <button onClick={() => setOpen(false)} className="text-white/40 hover:text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
 
             <label className="mb-1.5 mt-4 block text-xs font-medium uppercase tracking-wider text-white/40">
-              Subject
+              Objet
             </label>
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              placeholder="Brief summary of your issue"
+              placeholder="Bref résumé de votre problème"
               className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-500"
             />
 
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div>
                 <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
-                  Category
+                  Catégorie
                 </label>
                 <select
                   value={category}
@@ -187,7 +187,7 @@ export default function SupportPage() {
               </div>
               <div>
                 <label className="mb-1.5 block text-xs font-medium uppercase tracking-wider text-white/40">
-                  Priority
+                  Priorité
                 </label>
                 <select
                   value={priority}
@@ -195,8 +195,8 @@ export default function SupportPage() {
                   className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-blue-500"
                 >
                   {(['low', 'normal', 'high'] as const).map((p) => (
-                    <option key={p} value={p} className="bg-[#0b1220] capitalize">
-                      {p}
+                    <option key={p} value={p} className="bg-[#0b1220]">
+                      {PRIORITY_FR[p]}
                     </option>
                   ))}
                 </select>
@@ -210,7 +210,7 @@ export default function SupportPage() {
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={4}
-              placeholder="Describe your issue in detail..."
+              placeholder="Décrivez votre problème en détail..."
               className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 outline-none focus:border-blue-500"
             />
 
@@ -218,7 +218,7 @@ export default function SupportPage() {
               onClick={submit}
               className="mt-5 w-full rounded-lg bg-blue-600 py-2.5 font-medium text-white transition-colors hover:bg-blue-500"
             >
-              Submit ticket
+              Envoyer la demande
             </button>
           </div>
         </div>
@@ -239,8 +239,8 @@ export default function SupportPage() {
                 <h2 className="text-lg font-semibold text-white">{selected.subject}</h2>
                 <p className="mt-0.5 text-xs text-white/40">
                   {selected.category} ·{' '}
-                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium capitalize ${statusStyle[selected.status]}`}>
-                    {selected.status}
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${statusStyle[selected.status]}`}>
+                    {STATUS_FR[selected.status]}
                   </span>
                 </p>
               </div>
@@ -261,7 +261,7 @@ export default function SupportPage() {
                 >
                   <p className="leading-relaxed">{m.body}</p>
                   <p className={`mt-1 text-[11px] ${m.from === 'user' ? 'text-blue-100/70' : 'text-white/40'}`}>
-                    {m.from === 'user' ? 'You' : 'Support'} · {timeAgo(m.at)}
+                    {m.from === 'user' ? 'Vous' : 'Assistance'} · {timeAgo(m.at)}
                   </p>
                 </div>
               ))}
