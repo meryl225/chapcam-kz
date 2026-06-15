@@ -1,341 +1,294 @@
-// ChapCam Numbers — data layer
-// Realistic mock data for the virtual phone number marketplace.
-// No real telecom backend is wired; this models providers, countries,
-// available inventory, owned numbers, inbound SMS, and API keys.
+// ChapCam Numbers — domain types and realistic in-session sample data.
+// NOTE: Demo data for a polished UI scaffold. No live telecom backend is wired.
 
 export type NumberType = 'temporary' | 'long-term'
 export type Capability = 'sms' | 'voice' | 'mms'
-export type NumberStatus = 'active' | 'expiring' | 'released'
+export type NumberStatus = 'active' | 'expiring' | 'expired'
 
-export interface Country {
-  code: string // ISO 3166-1 alpha-2
+export type Country = {
+  code: string // ISO-2
   name: string
+  dial: string // E.164 prefix
   flag: string // emoji
-  dialCode: string
 }
 
-export interface Provider {
+export type Provider = {
   id: string
   name: string
   reliability: number // 0-100
-  latencyMs: number
+  avgDeliverySec: number
+  hue: number
 }
 
-export interface AvailableNumber {
+export type Listing = {
   id: string
-  number: string // E.164
   countryCode: string
-  region: string
   providerId: string
   type: NumberType
+  price: number // USD
+  stock: number
+  availability: number // 0-100
   capabilities: Capability[]
-  monthlyPrice: number // USD
-  setupPrice: number // USD, one-time
 }
 
-export interface OwnedNumber {
+export type OwnedNumber = {
   id: string
-  number: string
+  e164: string
   countryCode: string
-  region: string
   providerId: string
   type: NumberType
-  capabilities: Capability[]
-  status: NumberStatus
   label: string
-  monthlyPrice: number
-  purchasedAt: string // ISO
-  renewsAt: string // ISO
+  status: NumberStatus
+  purchasedAt: number
+  expiresAt: number
   autoRenew: boolean
+  messageCount: number
 }
 
-export type MessageKind = 'otp' | 'verification' | 'general'
-
-export interface SmsMessage {
+export type Message = {
   id: string
   numberId: string
   sender: string
   body: string
-  receivedAt: string // ISO
+  receivedAt: number
   read: boolean
-  kind: MessageKind
+  archived: boolean
 }
 
-export interface ApiKey {
+export type OrderStatus = 'completed' | 'active' | 'refunded' | 'failed'
+export type Order = {
+  id: string
+  numberLabel: string
+  e164: string
+  countryCode: string
+  providerId: string
+  amount: number
+  status: OrderStatus
+  createdAt: number
+}
+
+export type TxKind = 'deposit' | 'purchase' | 'refund'
+export type Transaction = {
+  id: string
+  kind: TxKind
+  method: string
+  amount: number // + deposit, - spend
+  status: 'completed' | 'pending' | 'failed'
+  createdAt: number
+  reference: string
+}
+
+export type ApiKey = {
   id: string
   name: string
-  token: string
-  scope: 'read' | 'read-write' | 'full'
-  createdAt: string
-  lastUsedAt: string | null
-  live: boolean
+  prefix: string
+  secret: string
+  createdAt: number
+  lastUsedAt: number | null
+  scopes: string[]
 }
 
+export type SupportTicket = {
+  id: string
+  subject: string
+  category: string
+  status: 'open' | 'pending' | 'resolved'
+  priority: 'low' | 'normal' | 'high'
+  createdAt: number
+  lastReplyAt: number
+  messages: { from: 'user' | 'agent'; body: string; at: number }[]
+}
+
+const now = Date.now()
+const HOUR = 3600_000
+const DAY = 24 * HOUR
+
 export const COUNTRIES: Country[] = [
-  { code: 'US', name: 'United States', flag: '🇺🇸', dialCode: '+1' },
-  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', dialCode: '+44' },
-  { code: 'CA', name: 'Canada', flag: '🇨🇦', dialCode: '+1' },
-  { code: 'FR', name: 'France', flag: '🇫🇷', dialCode: '+33' },
-  { code: 'DE', name: 'Germany', flag: '🇩🇪', dialCode: '+49' },
-  { code: 'NL', name: 'Netherlands', flag: '🇳🇱', dialCode: '+31' },
-  { code: 'ES', name: 'Spain', flag: '🇪🇸', dialCode: '+34' },
-  { code: 'SE', name: 'Sweden', flag: '🇸🇪', dialCode: '+46' },
-  { code: 'PL', name: 'Poland', flag: '🇵🇱', dialCode: '+48' },
-  { code: 'AU', name: 'Australia', flag: '🇦🇺', dialCode: '+61' },
-  { code: 'BR', name: 'Brazil', flag: '🇧🇷', dialCode: '+55' },
-  { code: 'IN', name: 'India', flag: '🇮🇳', dialCode: '+91' },
+  { code: 'US', name: 'United States', dial: '+1', flag: '🇺🇸' },
+  { code: 'GB', name: 'United Kingdom', dial: '+44', flag: '🇬🇧' },
+  { code: 'FR', name: 'France', dial: '+33', flag: '🇫🇷' },
+  { code: 'DE', name: 'Germany', dial: '+49', flag: '🇩🇪' },
+  { code: 'CA', name: 'Canada', dial: '+1', flag: '🇨🇦' },
+  { code: 'NL', name: 'Netherlands', dial: '+31', flag: '🇳🇱' },
+  { code: 'ES', name: 'Spain', dial: '+34', flag: '🇪🇸' },
+  { code: 'CI', name: "Côte d'Ivoire", dial: '+225', flag: '🇨🇮' },
+  { code: 'NG', name: 'Nigeria', dial: '+234', flag: '🇳🇬' },
+  { code: 'ZA', name: 'South Africa', dial: '+27', flag: '🇿🇦' },
+  { code: 'IN', name: 'India', dial: '+91', flag: '🇮🇳' },
+  { code: 'BR', name: 'Brazil', dial: '+55', flag: '🇧🇷' },
+  { code: 'AU', name: 'Australia', dial: '+61', flag: '🇦🇺' },
+  { code: 'SG', name: 'Singapore', dial: '+65', flag: '🇸🇬' },
+  { code: 'AE', name: 'United Arab Emirates', dial: '+971', flag: '🇦🇪' },
+  { code: 'JP', name: 'Japan', dial: '+81', flag: '🇯🇵' },
 ]
 
 export const PROVIDERS: Provider[] = [
-  { id: 'aerial', name: 'Aerial Telecom', reliability: 99.95, latencyMs: 120 },
-  { id: 'nimbus', name: 'Nimbus Mobile', reliability: 99.9, latencyMs: 180 },
-  { id: 'orbit', name: 'Orbit Carrier', reliability: 99.8, latencyMs: 210 },
-  { id: 'vertex', name: 'Vertex Networks', reliability: 99.99, latencyMs: 90 },
-  { id: 'relay', name: 'Relay Comms', reliability: 99.7, latencyMs: 240 },
+  { id: 'nexa', name: 'Nexa Telecom', reliability: 99, avgDeliverySec: 3, hue: 217 },
+  { id: 'orbit', name: 'Orbit Connect', reliability: 97, avgDeliverySec: 5, hue: 199 },
+  { id: 'vela', name: 'Vela Mobile', reliability: 95, avgDeliverySec: 8, hue: 245 },
+  { id: 'pulse', name: 'Pulse Networks', reliability: 98, avgDeliverySec: 4, hue: 188 },
+  { id: 'meridian', name: 'Meridian SMS', reliability: 94, avgDeliverySec: 11, hue: 230 },
 ]
 
-export function getCountry(code: string): Country | undefined {
-  return COUNTRIES.find((c) => c.code === code)
+function rng(seed: number) {
+  let s = seed
+  return () => {
+    s = (s * 1664525 + 1013904223) % 4294967296
+    return s / 4294967296
+  }
 }
 
-export function getProvider(id: string): Provider | undefined {
-  return PROVIDERS.find((p) => p.id === id)
-}
-
-// Deterministic pseudo-number generator so SSR and client match.
-function buildNumber(dialCode: string, seed: number): string {
-  const base = (seed * 7919) % 9000000 + 1000000
-  const area = 200 + (seed % 799)
-  return `${dialCode} ${area} ${String(base).slice(0, 3)} ${String(base).slice(3)}`
-}
-
-const REGIONS: Record<string, string[]> = {
-  US: ['New York, NY', 'San Francisco, CA', 'Austin, TX', 'Miami, FL'],
-  GB: ['London', 'Manchester', 'Bristol'],
-  CA: ['Toronto, ON', 'Vancouver, BC'],
-  FR: ['Paris', 'Lyon', 'Marseille'],
-  DE: ['Berlin', 'Munich', 'Hamburg'],
-  NL: ['Amsterdam', 'Rotterdam'],
-  ES: ['Madrid', 'Barcelona'],
-  SE: ['Stockholm', 'Gothenburg'],
-  PL: ['Warsaw', 'Kraków'],
-  AU: ['Sydney, NSW', 'Melbourne, VIC'],
-  BR: ['São Paulo', 'Rio de Janeiro'],
-  IN: ['Mumbai', 'Bengaluru', 'Delhi'],
-}
-
-const CAP_SETS: Capability[][] = [
-  ['sms'],
-  ['sms', 'voice'],
-  ['sms', 'voice', 'mms'],
-  ['sms', 'mms'],
-]
-
-// Build a deterministic inventory of available numbers.
-export const AVAILABLE_NUMBERS: AvailableNumber[] = (() => {
-  const out: AvailableNumber[] = []
-  let seed = 17
-  for (const country of COUNTRIES) {
-    const count = 4
-    for (let i = 0; i < count; i++) {
-      seed += 13
-      const provider = PROVIDERS[seed % PROVIDERS.length]
-      const type: NumberType = i % 3 === 0 ? 'temporary' : 'long-term'
-      const caps = CAP_SETS[seed % CAP_SETS.length]
-      const regions = REGIONS[country.code] ?? [country.name]
-      const monthly = type === 'temporary'
-        ? Number((0.5 + (seed % 5) * 0.25).toFixed(2))
-        : Number((2 + (seed % 8) * 0.5).toFixed(2))
+export const LISTINGS: Listing[] = (() => {
+  const rand = rng(42)
+  const out: Listing[] = []
+  let i = 0
+  for (const c of COUNTRIES) {
+    const providerCount = 2 + Math.floor(rand() * 3)
+    const shuffled = [...PROVIDERS].sort(() => rand() - 0.5).slice(0, providerCount)
+    for (const p of shuffled) {
+      const type: NumberType = rand() > 0.5 ? 'temporary' : 'long-term'
+      const base = type === 'temporary' ? 0.4 : 4
+      const price = +(base + rand() * (type === 'temporary' ? 2 : 12)).toFixed(2)
       out.push({
-        id: `av_${country.code}_${i}`,
-        number: buildNumber(country.dialCode, seed),
-        countryCode: country.code,
-        region: regions[i % regions.length],
-        providerId: provider.id,
+        id: `lst_${i++}`,
+        countryCode: c.code,
+        providerId: p.id,
         type,
-        capabilities: caps,
-        monthlyPrice: monthly,
-        setupPrice: type === 'temporary' ? 0 : Number((0.5 + (seed % 3) * 0.5).toFixed(2)),
+        price,
+        stock: 5 + Math.floor(rand() * 480),
+        availability: 60 + Math.floor(rand() * 40),
+        capabilities: rand() > 0.4 ? ['sms', 'voice'] : ['sms'],
       })
     }
   }
   return out
 })()
 
-const now = Date.now()
-const days = (n: number) => 1000 * 60 * 60 * 24 * n
-const hours = (n: number) => 1000 * 60 * 60 * n
-const mins = (n: number) => 1000 * 60 * n
-
-export const SEED_OWNED: OwnedNumber[] = [
-  {
-    id: 'own_1',
-    number: '+1 415 555 0192',
-    countryCode: 'US',
-    region: 'San Francisco, CA',
-    providerId: 'vertex',
-    type: 'long-term',
-    capabilities: ['sms', 'voice', 'mms'],
-    status: 'active',
-    label: 'Production — Auth OTP',
-    monthlyPrice: 4.5,
-    purchasedAt: new Date(now - days(64)).toISOString(),
-    renewsAt: new Date(now + days(26)).toISOString(),
-    autoRenew: true,
-  },
-  {
-    id: 'own_2',
-    number: '+44 207 946 0813',
-    countryCode: 'GB',
-    region: 'London',
-    providerId: 'aerial',
-    type: 'long-term',
-    capabilities: ['sms', 'voice'],
-    status: 'active',
-    label: 'EU Support Line',
-    monthlyPrice: 3.0,
-    purchasedAt: new Date(now - days(120)).toISOString(),
-    renewsAt: new Date(now + days(11)).toISOString(),
-    autoRenew: true,
-  },
-  {
-    id: 'own_3',
-    number: '+49 30 901820',
-    countryCode: 'DE',
-    region: 'Berlin',
-    providerId: 'nimbus',
-    type: 'temporary',
-    capabilities: ['sms'],
-    status: 'expiring',
-    label: 'QA — Staging verifications',
-    monthlyPrice: 0.75,
-    purchasedAt: new Date(now - days(6)).toISOString(),
-    renewsAt: new Date(now + days(1)).toISOString(),
-    autoRenew: false,
-  },
+export const INITIAL_OWNED: OwnedNumber[] = [
+  { id: 'num_1', e164: '+1 415 555 0142', countryCode: 'US', providerId: 'nexa', type: 'long-term', label: 'Onboarding — US line', status: 'active', purchasedAt: now - 12 * DAY, expiresAt: now + 18 * DAY, autoRenew: true, messageCount: 3 },
+  { id: 'num_2', e164: '+44 20 7946 0958', countryCode: 'GB', providerId: 'pulse', type: 'temporary', label: 'QA verification', status: 'expiring', purchasedAt: now - 20 * HOUR, expiresAt: now + 4 * HOUR, autoRenew: false, messageCount: 2 },
+  { id: 'num_3', e164: '+225 07 12 34 56', countryCode: 'CI', providerId: 'orbit', type: 'long-term', label: 'Support hotline — Abidjan', status: 'active', purchasedAt: now - 40 * DAY, expiresAt: now + 50 * DAY, autoRenew: true, messageCount: 1 },
 ]
 
-export const SEED_MESSAGES: SmsMessage[] = [
-  {
-    id: 'msg_1',
-    numberId: 'own_1',
-    sender: 'Stripe',
-    body: 'Your Stripe verification code is 729104. It expires in 10 minutes.',
-    receivedAt: new Date(now - mins(4)).toISOString(),
-    read: false,
-    kind: 'otp',
-  },
-  {
-    id: 'msg_2',
-    numberId: 'own_1',
-    sender: 'WhatsApp',
-    body: 'WhatsApp code 481-205. Don\u2019t share this code with others.',
-    receivedAt: new Date(now - mins(38)).toISOString(),
-    read: false,
-    kind: 'verification',
-  },
-  {
-    id: 'msg_3',
-    numberId: 'own_2',
-    sender: 'Telegram',
-    body: 'Telegram code: 53914. You can also tap this link to log in: t.me/login/53914',
-    receivedAt: new Date(now - hours(2)).toISOString(),
-    read: true,
-    kind: 'otp',
-  },
-  {
-    id: 'msg_4',
-    numberId: 'own_2',
-    sender: '+44 7700 900441',
-    body: 'Hi, following up on the support ticket #4821 — is the line still active?',
-    receivedAt: new Date(now - hours(5)).toISOString(),
-    read: true,
-    kind: 'general',
-  },
-  {
-    id: 'msg_5',
-    numberId: 'own_3',
-    sender: 'Google',
-    body: 'G-558210 is your Google verification code.',
-    receivedAt: new Date(now - hours(9)).toISOString(),
-    read: true,
-    kind: 'otp',
-  },
-  {
-    id: 'msg_6',
-    numberId: 'own_1',
-    sender: 'Coinbase',
-    body: 'Coinbase: Your authentication code is 094412. Never share it.',
-    receivedAt: new Date(now - hours(26)).toISOString(),
-    read: true,
-    kind: 'otp',
-  },
+export const INITIAL_MESSAGES: Message[] = [
+  { id: 'm1', numberId: 'num_1', sender: 'STRIPE', body: 'Your Stripe verification code is 482913.', receivedAt: now - 2 * HOUR, read: false, archived: false },
+  { id: 'm2', numberId: 'num_1', sender: '+1 202 555 0173', body: 'Hi! Confirming our 3pm call tomorrow.', receivedAt: now - 6 * HOUR, read: true, archived: false },
+  { id: 'm3', numberId: 'num_1', sender: 'GITHUB', body: 'Your GitHub authentication code: 771204', receivedAt: now - 26 * HOUR, read: true, archived: false },
+  { id: 'm4', numberId: 'num_2', sender: 'WhatsApp', body: 'WhatsApp code 901-233. Do not share it.', receivedAt: now - 3 * HOUR, read: false, archived: false },
+  { id: 'm5', numberId: 'num_2', sender: 'Telegram', body: 'Telegram code: 55012', receivedAt: now - 9 * HOUR, read: true, archived: false },
+  { id: 'm6', numberId: 'num_3', sender: 'Orange CI', body: 'Bienvenue. Votre code est 6620.', receivedAt: now - 30 * HOUR, read: true, archived: false },
 ]
 
-export const SEED_API_KEYS: ApiKey[] = [
-  {
-    id: 'key_1',
-    name: 'Production server',
-    token: 'cck_live_8Kd92Hf0aLp4Rn7xQv31Bz',
-    scope: 'full',
-    createdAt: new Date(now - days(210)).toISOString(),
-    lastUsedAt: new Date(now - mins(12)).toISOString(),
-    live: true,
-  },
-  {
-    id: 'key_2',
-    name: 'Staging worker',
-    token: 'cck_test_2Pm51Wq8cVt0Yh6jLs94Df',
-    scope: 'read-write',
-    createdAt: new Date(now - days(54)).toISOString(),
-    lastUsedAt: new Date(now - hours(3)).toISOString(),
-    live: false,
-  },
+export const INITIAL_ORDERS: Order[] = [
+  { id: 'ord_1041', numberLabel: 'Onboarding — US line', e164: '+1 415 555 0142', countryCode: 'US', providerId: 'nexa', amount: 8.0, status: 'active', createdAt: now - 12 * DAY },
+  { id: 'ord_1040', numberLabel: 'QA verification', e164: '+44 20 7946 0958', countryCode: 'GB', providerId: 'pulse', amount: 1.2, status: 'active', createdAt: now - 20 * HOUR },
+  { id: 'ord_1039', numberLabel: 'Support hotline — Abidjan', e164: '+225 07 12 34 56', countryCode: 'CI', providerId: 'orbit', amount: 9.5, status: 'active', createdAt: now - 40 * DAY },
+  { id: 'ord_1038', numberLabel: 'Marketing test DE', e164: '+49 30 5550 8841', countryCode: 'DE', providerId: 'vela', amount: 0.9, status: 'completed', createdAt: now - 6 * DAY },
+  { id: 'ord_1037', numberLabel: 'Temp signup FR', e164: '+33 1 7550 1190', countryCode: 'FR', providerId: 'meridian', amount: 0.7, status: 'refunded', createdAt: now - 9 * DAY },
 ]
 
-// Inbound senders used to simulate live SMS arriving.
-export const SIMULATED_SENDERS: { sender: string; body: (code: string) => string; kind: MessageKind }[] = [
-  { sender: 'Stripe', body: (c) => `Your Stripe verification code is ${c}.`, kind: 'otp' },
-  { sender: 'Discord', body: (c) => `Your Discord verification code is ${c}.`, kind: 'verification' },
-  { sender: 'Uber', body: (c) => `${c} is your Uber code. Reply STOP to unsubscribe.`, kind: 'otp' },
-  { sender: 'Amazon', body: (c) => `${c} is your Amazon OTP. Do not share it with anyone.`, kind: 'otp' },
-  { sender: 'OpenAI', body: (c) => `Your OpenAI verification code is ${c}.`, kind: 'verification' },
-  { sender: 'Airbnb', body: (c) => `Your Airbnb code is ${c}. We will never ask for it.`, kind: 'otp' },
+export const INITIAL_TRANSACTIONS: Transaction[] = [
+  { id: 'tx_5012', kind: 'deposit', method: 'Wave', amount: 50, status: 'completed', createdAt: now - 13 * DAY, reference: 'WAVE-8841' },
+  { id: 'tx_5011', kind: 'purchase', method: 'Wallet', amount: -8, status: 'completed', createdAt: now - 12 * DAY, reference: 'ord_1041' },
+  { id: 'tx_5010', kind: 'deposit', method: 'USDT (TRC20)', amount: 100, status: 'completed', createdAt: now - 10 * DAY, reference: 'USDT-3a9f' },
+  { id: 'tx_5009', kind: 'purchase', method: 'Wallet', amount: -9.5, status: 'completed', createdAt: now - 40 * DAY, reference: 'ord_1039' },
+  { id: 'tx_5008', kind: 'refund', method: 'Wallet', amount: 0.7, status: 'completed', createdAt: now - 9 * DAY, reference: 'ord_1037' },
+  { id: 'tx_5007', kind: 'deposit', method: 'Orange Money', amount: 25, status: 'pending', createdAt: now - 2 * HOUR, reference: 'OM-1029' },
 ]
 
-export function genCode(): string {
-  return String(Math.floor(100000 + Math.random() * 899999))
+export const INITIAL_API_KEYS: ApiKey[] = [
+  { id: 'key_1', name: 'Production', prefix: 'cck_live_8f2a', secret: 'cck_live_8f2a9d3b71c64e02ab5f4729de10', createdAt: now - 30 * DAY, lastUsedAt: now - 2 * HOUR, scopes: ['numbers:read', 'numbers:write', 'messages:read'] },
+  { id: 'key_2', name: 'Staging', prefix: 'cck_test_2b71', secret: 'cck_test_2b71c64e02ab5f4729de108f2a9d', createdAt: now - 14 * DAY, lastUsedAt: now - 4 * DAY, scopes: ['numbers:read', 'messages:read'] },
+]
+
+export const INITIAL_TICKETS: SupportTicket[] = [
+  { id: 'tkt_3021', subject: 'SMS not arriving on UK number', category: 'Delivery', status: 'pending', priority: 'high', createdAt: now - 5 * HOUR, lastReplyAt: now - 2 * HOUR, messages: [ { from: 'user', body: 'My UK number is not receiving verification codes.', at: now - 5 * HOUR }, { from: 'agent', body: 'Thanks for reaching out — we are checking the route with the provider now.', at: now - 2 * HOUR } ] },
+  { id: 'tkt_3020', subject: 'Invoice for October', category: 'Billing', status: 'resolved', priority: 'normal', createdAt: now - 8 * DAY, lastReplyAt: now - 7 * DAY, messages: [{ from: 'user', body: 'Can I get a PDF invoice for October?', at: now - 8 * DAY }] },
+]
+
+export const DAILY_ACTIVITY = Array.from({ length: 14 }, (_, i) => {
+  const r = rng(100 + i)()
+  return { day: new Date(now - (13 - i) * DAY).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), messages: 20 + Math.floor(r * 80), orders: 1 + Math.floor(r * 9) }
+})
+
+export const REVENUE_SERIES = Array.from({ length: 12 }, (_, i) => {
+  const r = rng(200 + i)()
+  return { month: new Date(now - (11 - i) * 30 * DAY).toLocaleDateString('en-US', { month: 'short' }), revenue: 400 + Math.floor(r * 2600) }
+})
+
+export const TOP_COUNTRIES = [
+  { code: 'US', name: 'United States', flag: '🇺🇸', share: 34 },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', share: 22 },
+  { code: 'CI', name: "Côte d'Ivoire", flag: '🇨🇮', share: 18 },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪', share: 14 },
+  { code: 'IN', name: 'India', flag: '🇮🇳', share: 12 },
+]
+
+export const POPULAR_TYPES = [
+  { label: 'Temporary — SMS', share: 46 },
+  { label: 'Long-term — SMS + Voice', share: 33 },
+  { label: 'Long-term — SMS', share: 21 },
+]
+
+export const FUNDING_METHODS = [
+  { id: 'orange', name: 'Orange Money', kind: 'Mobile Money', hue: 28 },
+  { id: 'mtn', name: 'MTN Money', kind: 'Mobile Money', hue: 48 },
+  { id: 'moov', name: 'Moov Money', kind: 'Mobile Money', hue: 211 },
+  { id: 'wave', name: 'Wave', kind: 'Mobile Money', hue: 199 },
+  { id: 'visa', name: 'Visa', kind: 'Card', hue: 222 },
+  { id: 'mastercard', name: 'Mastercard', kind: 'Card', hue: 18 },
+  { id: 'usdt', name: 'USDT (TRC20)', kind: 'Crypto', hue: 152 },
+]
+
+// ---- Admin sample data ----
+export const ADMIN_USERS = [
+  { id: 'usr_8841', name: 'Aïcha Koné', email: 'aicha@acme.io', plan: 'Scale', balance: 248.5, numbers: 12, status: 'active', risk: 'low', joinedAt: now - 120 * DAY },
+  { id: 'usr_8840', name: 'James Carter', email: 'james@northwind.dev', plan: 'Growth', balance: 64.0, numbers: 5, status: 'active', risk: 'low', joinedAt: now - 80 * DAY },
+  { id: 'usr_8839', name: 'Priya Nair', email: 'priya@finlytics.in', plan: 'Starter', balance: 9.25, numbers: 2, status: 'active', risk: 'medium', joinedAt: now - 40 * DAY },
+  { id: 'usr_8838', name: 'Marco Rossi', email: 'marco@quickship.eu', plan: 'Growth', balance: 0.0, numbers: 0, status: 'suspended', risk: 'high', joinedAt: now - 20 * DAY },
+  { id: 'usr_8837', name: 'Fatou Diallo', email: 'fatou@paygo.ci', plan: 'Scale', balance: 512.75, numbers: 23, status: 'active', risk: 'low', joinedAt: now - 200 * DAY },
+]
+
+export const ADMIN_RISK_EVENTS = [
+  { id: 're_1', user: 'marco@quickship.eu', type: 'Velocity', detail: '40 temporary numbers purchased in 5 min', severity: 'high', at: now - 3 * HOUR },
+  { id: 're_2', user: 'priya@finlytics.in', type: 'Geo mismatch', detail: 'Login from 3 countries in 1 hour', severity: 'medium', at: now - 9 * HOUR },
+  { id: 're_3', user: 'unknown@temp.io', type: 'Disposable email', detail: 'Signup blocked at registration', severity: 'low', at: now - 26 * HOUR },
+]
+
+export const ADMIN_LOGS = [
+  { id: 'log_1', actor: 'admin@chapcam.com', action: 'Suspended user marco@quickship.eu', at: now - 2 * HOUR },
+  { id: 'log_2', actor: 'admin@chapcam.com', action: 'Refunded order ord_1037 ($0.70)', at: now - 9 * DAY },
+  { id: 'log_3', actor: 'system', action: 'Provider Vela Mobile marked degraded', at: now - 14 * HOUR },
+]
+
+// ---- helpers ----
+export const countryByCode = (code: string) => COUNTRIES.find((c) => c.code === code)
+export const providerById = (id: string) => PROVIDERS.find((p) => p.id === id)
+
+export function formatUSD(n: number) {
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n)
 }
 
-export const USAGE_7D: { day: string; received: number; sent: number }[] = [
-  { day: 'Mon', received: 142, sent: 38 },
-  { day: 'Tue', received: 189, sent: 51 },
-  { day: 'Wed', received: 164, sent: 44 },
-  { day: 'Thu', received: 221, sent: 60 },
-  { day: 'Fri', received: 276, sent: 72 },
-  { day: 'Sat', received: 198, sent: 41 },
-  { day: 'Sun', received: 167, sent: 35 },
-]
-
-export function capabilityLabel(c: Capability): string {
-  return c === 'sms' ? 'SMS' : c === 'voice' ? 'Voice' : 'MMS'
+export function timeAgo(ms: number) {
+  const diff = Date.now() - ms
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return `${days}d ago`
 }
 
-export function formatPrice(n: number): string {
-  return `$${n.toFixed(2)}`
+export function timeLeft(expiresAt: number) {
+  const diff = expiresAt - Date.now()
+  if (diff <= 0) return 'expired'
+  const hrs = Math.floor(diff / HOUR)
+  if (hrs < 24) return `${hrs}h left`
+  const days = Math.floor(hrs / 24)
+  return `${days}d left`
 }
 
-export function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 1) return 'just now'
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  const d = Math.floor(h / 24)
-  return `${d}d ago`
-}
-
-export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+export function formatDate(ms: number) {
+  return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }

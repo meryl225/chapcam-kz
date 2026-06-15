@@ -1,181 +1,153 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, useEffect, useMemo } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
-  SEED_OWNED,
-  SEED_MESSAGES,
-  SEED_API_KEYS,
-  SIMULATED_SENDERS,
-  genCode,
-  type OwnedNumber,
-  type SmsMessage,
-  type ApiKey,
-  type AvailableNumber,
+  INITIAL_OWNED, INITIAL_MESSAGES, INITIAL_TRANSACTIONS, INITIAL_API_KEYS, INITIAL_ORDERS, INITIAL_TICKETS,
+  type OwnedNumber, type Message, type Transaction, type ApiKey, type Order, type SupportTicket, type Listing,
+  countryByCode,
 } from '@/lib/numbers/data'
 
-interface NumbersState {
-  ownedNumbers: OwnedNumber[]
-  messages: SmsMessage[]
+type Toast = { id: number; title: string; desc?: string }
+
+type Ctx = {
+  balance: number
+  owned: OwnedNumber[]
+  messages: Message[]
+  transactions: Transaction[]
+  orders: Order[]
   apiKeys: ApiKey[]
-  buyNumber: (n: AvailableNumber, label?: string) => OwnedNumber
+  tickets: SupportTicket[]
+  unreadCount: number
+  buyNumber: (listing: Listing, label: string) => boolean
   releaseNumber: (id: string) => void
   toggleAutoRenew: (id: string) => void
-  relabel: (id: string, label: string) => void
+  renameNumber: (id: string, label: string) => void
   markRead: (id: string) => void
-  markAllRead: (numberId?: string) => void
-  deleteMessage: (id: string) => void
-  createApiKey: (name: string, scope: ApiKey['scope'], live: boolean) => ApiKey
+  markAllRead: () => void
+  archiveMessage: (id: string) => void
+  deposit: (amount: number, method: string) => void
+  createApiKey: (name: string) => ApiKey
   revokeApiKey: (id: string) => void
-  unreadCount: number
+  createTicket: (subject: string, category: string, priority: SupportTicket['priority'], body: string) => void
+  toasts: Toast[]
+  pushToast: (title: string, desc?: string) => void
 }
 
-const Ctx = createContext<NumbersState | null>(null)
+const NumbersContext = createContext<Ctx | null>(null)
 
-function uid(prefix: string) {
-  return `${prefix}_${Math.random().toString(36).slice(2, 10)}`
-}
-
-export function NumbersProvider({ children }: { children: React.ReactNode }) {
-  const [ownedNumbers, setOwnedNumbers] = useState<OwnedNumber[]>(SEED_OWNED)
-  const [messages, setMessages] = useState<SmsMessage[]>(SEED_MESSAGES)
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>(SEED_API_KEYS)
-
-  const buyNumber = useCallback<NumbersState['buyNumber']>((n, label) => {
-    const now = Date.now()
-    const owned: OwnedNumber = {
-      id: uid('own'),
-      number: n.number,
-      countryCode: n.countryCode,
-      region: n.region,
-      providerId: n.providerId,
-      type: n.type,
-      capabilities: n.capabilities,
-      status: 'active',
-      label: label?.trim() || (n.type === 'temporary' ? 'Temporary number' : 'New number'),
-      monthlyPrice: n.monthlyPrice,
-      purchasedAt: new Date(now).toISOString(),
-      renewsAt: new Date(now + 1000 * 60 * 60 * 24 * (n.type === 'temporary' ? 7 : 30)).toISOString(),
-      autoRenew: n.type !== 'temporary',
-    }
-    setOwnedNumbers((prev) => [owned, ...prev])
-    return owned
-  }, [])
-
-  const releaseNumber = useCallback((id: string) => {
-    setOwnedNumbers((prev) => prev.filter((n) => n.id !== id))
-    setMessages((prev) => prev.filter((m) => m.numberId !== id))
-  }, [])
-
-  const toggleAutoRenew = useCallback((id: string) => {
-    setOwnedNumbers((prev) => prev.map((n) => (n.id === id ? { ...n, autoRenew: !n.autoRenew } : n)))
-  }, [])
-
-  const relabel = useCallback((id: string, label: string) => {
-    setOwnedNumbers((prev) => prev.map((n) => (n.id === id ? { ...n, label } : n)))
-  }, [])
-
-  const markRead = useCallback((id: string) => {
-    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, read: true } : m)))
-  }, [])
-
-  const markAllRead = useCallback((numberId?: string) => {
-    setMessages((prev) =>
-      prev.map((m) => (!numberId || m.numberId === numberId ? { ...m, read: true } : m)),
-    )
-  }, [])
-
-  const deleteMessage = useCallback((id: string) => {
-    setMessages((prev) => prev.filter((m) => m.id !== id))
-  }, [])
-
-  const createApiKey = useCallback<NumbersState['createApiKey']>((name, scope, live) => {
-    const key: ApiKey = {
-      id: uid('key'),
-      name: name.trim() || 'Untitled key',
-      token: `cck_${live ? 'live' : 'test'}_${Math.random().toString(36).slice(2, 12)}${Math.random()
-        .toString(36)
-        .slice(2, 12)}`,
-      scope,
-      createdAt: new Date().toISOString(),
-      lastUsedAt: null,
-      live,
-    }
-    setApiKeys((prev) => [key, ...prev])
-    return key
-  }, [])
-
-  const revokeApiKey = useCallback((id: string) => {
-    setApiKeys((prev) => prev.filter((k) => k.id !== id))
-  }, [])
-
-  // Simulate live inbound SMS to active numbers.
-  useEffect(() => {
-    if (ownedNumbers.length === 0) return
-    const interval = setInterval(() => {
-      setOwnedNumbers((currentOwned) => {
-        const active = currentOwned.filter((n) => n.status !== 'released')
-        if (active.length === 0) return currentOwned
-        const target = active[Math.floor(Math.random() * active.length)]
-        const tpl = SIMULATED_SENDERS[Math.floor(Math.random() * SIMULATED_SENDERS.length)]
-        const code = genCode()
-        setMessages((prev) => [
-          {
-            id: uid('msg'),
-            numberId: target.id,
-            sender: tpl.sender,
-            body: tpl.body(code),
-            receivedAt: new Date().toISOString(),
-            read: false,
-            kind: tpl.kind,
-          },
-          ...prev,
-        ])
-        return currentOwned
-      })
-    }, 22000)
-    return () => clearInterval(interval)
-  }, [ownedNumbers.length])
-
-  const unreadCount = useMemo(() => messages.filter((m) => !m.read).length, [messages])
-
-  const value = useMemo<NumbersState>(
-    () => ({
-      ownedNumbers,
-      messages,
-      apiKeys,
-      buyNumber,
-      releaseNumber,
-      toggleAutoRenew,
-      relabel,
-      markRead,
-      markAllRead,
-      deleteMessage,
-      createApiKey,
-      revokeApiKey,
-      unreadCount,
-    }),
-    [
-      ownedNumbers,
-      messages,
-      apiKeys,
-      buyNumber,
-      releaseNumber,
-      toggleAutoRenew,
-      relabel,
-      markRead,
-      markAllRead,
-      deleteMessage,
-      createApiKey,
-      revokeApiKey,
-      unreadCount,
-    ],
-  )
-
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>
-}
-
-export function useNumbers(): NumbersState {
-  const ctx = useContext(Ctx)
+export function useNumbers() {
+  const ctx = useContext(NumbersContext)
   if (!ctx) throw new Error('useNumbers must be used within NumbersProvider')
   return ctx
+}
+
+let idc = 1000
+const nextId = (p: string) => `${p}_${++idc}`
+
+export function NumbersProvider({ children }: { children: ReactNode }) {
+  const [balance, setBalance] = useState(132.5)
+  const [owned, setOwned] = useState<OwnedNumber[]>(INITIAL_OWNED)
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES)
+  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS)
+  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS)
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>(INITIAL_API_KEYS)
+  const [tickets, setTickets] = useState<SupportTicket[]>(INITIAL_TICKETS)
+  const [toasts, setToasts] = useState<Toast[]>([])
+
+  const pushToast = (title: string, desc?: string) => {
+    const id = Date.now() + Math.random()
+    setToasts((t) => [...t, { id, title, desc }])
+    setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4200)
+  }
+
+  const ownedRef = useRef(owned)
+  ownedRef.current = owned
+
+  // Simulate live inbound SMS on active numbers.
+  useEffect(() => {
+    const SENDERS = ['STRIPE', 'GitHub', 'Discord', 'Uber', 'Amazon', 'OpenAI', 'Airbnb', 'Coinbase']
+    const interval = setInterval(() => {
+      const active = ownedRef.current.filter((n) => n.status !== 'expired')
+      if (active.length === 0) return
+      const target = active[Math.floor(Math.random() * active.length)]
+      const sender = SENDERS[Math.floor(Math.random() * SENDERS.length)]
+      const code = String(Math.floor(100000 + Math.random() * 899999))
+      const msg: Message = {
+        id: nextId('m'), numberId: target.id, sender,
+        body: `Your ${sender} verification code is ${code}.`,
+        receivedAt: Date.now(), read: false, archived: false,
+      }
+      setMessages((m) => [msg, ...m])
+      setOwned((list) => list.map((n) => (n.id === target.id ? { ...n, messageCount: n.messageCount + 1 } : n)))
+      pushToast(`New SMS on ${target.e164}`, `${sender}: code ${code}`)
+    }, 22000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const unreadCount = useMemo(() => messages.filter((m) => !m.read && !m.archived).length, [messages])
+
+  const buyNumber: Ctx['buyNumber'] = (listing, label) => {
+    if (balance < listing.price) {
+      pushToast('Insufficient balance', 'Add funds in your wallet to continue.')
+      return false
+    }
+    const country = countryByCode(listing.countryCode)
+    const e164 = `${country?.dial ?? '+1'} ${Math.floor(100 + Math.random() * 899)} ${Math.floor(1000 + Math.random() * 8999)}`
+    const id = nextId('num')
+    const duration = listing.type === 'temporary' ? 24 * 3600_000 : 30 * 24 * 3600_000
+    const num: OwnedNumber = {
+      id, e164, countryCode: listing.countryCode, providerId: listing.providerId, type: listing.type,
+      label: label || `${country?.name} number`, status: 'active', purchasedAt: Date.now(),
+      expiresAt: Date.now() + duration, autoRenew: listing.type === 'long-term', messageCount: 0,
+    }
+    setOwned((l) => [num, ...l])
+    setBalance((b) => +(b - listing.price).toFixed(2))
+    setTransactions((t) => [{ id: nextId('tx'), kind: 'purchase', method: 'Wallet', amount: -listing.price, status: 'completed', createdAt: Date.now(), reference: id }, ...t])
+    setOrders((o) => [{ id: nextId('ord'), numberLabel: num.label, e164, countryCode: listing.countryCode, providerId: listing.providerId, amount: listing.price, status: 'active', createdAt: Date.now() }, ...o])
+    pushToast('Number purchased', `${e164} is now active.`)
+    return true
+  }
+
+  const releaseNumber = (id: string) => {
+    setOwned((l) => l.map((n) => (n.id === id ? { ...n, status: 'expired' as const, autoRenew: false } : n)))
+    pushToast('Number released')
+  }
+  const toggleAutoRenew = (id: string) => setOwned((l) => l.map((n) => (n.id === id ? { ...n, autoRenew: !n.autoRenew } : n)))
+  const renameNumber = (id: string, label: string) => setOwned((l) => l.map((n) => (n.id === id ? { ...n, label } : n)))
+
+  const markRead = (id: string) => setMessages((m) => m.map((x) => (x.id === id ? { ...x, read: true } : x)))
+  const markAllRead = () => setMessages((m) => m.map((x) => ({ ...x, read: true })))
+  const archiveMessage = (id: string) => setMessages((m) => m.map((x) => (x.id === id ? { ...x, archived: true, read: true } : x)))
+
+  const deposit = (amount: number, method: string) => {
+    setBalance((b) => +(b + amount).toFixed(2))
+    setTransactions((t) => [{ id: nextId('tx'), kind: 'deposit', method, amount, status: 'completed', createdAt: Date.now(), reference: `${method.slice(0, 4).toUpperCase()}-${Math.floor(1000 + Math.random() * 8999)}` }, ...t])
+    pushToast('Funds added', `${method}: +$${amount.toFixed(2)}`)
+  }
+
+  const createApiKey: Ctx['createApiKey'] = (name) => {
+    const rand = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+    const key: ApiKey = { id: nextId('key'), name, prefix: `cck_live_${rand.slice(0, 4)}`, secret: `cck_live_${rand.slice(0, 32)}`, createdAt: Date.now(), lastUsedAt: null, scopes: ['numbers:read', 'numbers:write', 'messages:read'] }
+    setApiKeys((k) => [key, ...k])
+    pushToast('API key created', 'Copy it now — it will not be shown again.')
+    return key
+  }
+  const revokeApiKey = (id: string) => {
+    setApiKeys((k) => k.filter((x) => x.id !== id))
+    pushToast('API key revoked')
+  }
+
+  const createTicket: Ctx['createTicket'] = (subject, category, priority, body) => {
+    const t: SupportTicket = { id: nextId('tkt'), subject, category, status: 'open', priority, createdAt: Date.now(), lastReplyAt: Date.now(), messages: [{ from: 'user', body, at: Date.now() }] }
+    setTickets((list) => [t, ...list])
+    pushToast('Ticket submitted', 'Our team will reply shortly.')
+  }
+
+  const value: Ctx = {
+    balance, owned, messages, transactions, orders, apiKeys, tickets, unreadCount,
+    buyNumber, releaseNumber, toggleAutoRenew, renameNumber, markRead, markAllRead, archiveMessage,
+    deposit, createApiKey, revokeApiKey, createTicket, toasts, pushToast,
+  }
+
+  return <NumbersContext.Provider value={value}>{children}</NumbersContext.Provider>
 }

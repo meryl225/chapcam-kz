@@ -1,4 +1,4 @@
-import { Hash, Check, Signal } from 'lucide-react'
+import { Phone, Check, Signal } from 'lucide-react'
 
 const ROWS = [
   { sender: 'Stripe', code: '729104', body: 'Your Stripe verification code is 729104.', time: 'now', accent: true },
@@ -9,55 +9,47 @@ const ROWS = [
 
 export function InboxPreview() {
   return (
-    <div className="w-full overflow-hidden rounded-2xl border border-hairline bg-card shadow-2xl">
-      {/* window chrome */}
-      <div className="flex items-center justify-between border-b border-hairline bg-background/40 px-4 py-3">
+    <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-white/5 shadow-2xl backdrop-blur-xl">
+      <div className="flex items-center justify-between border-b border-white/10 bg-white/[0.03] px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
-            <Hash className="h-3.5 w-3.5" strokeWidth={2.5} />
+          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-[#2563EB] text-white">
+            <Phone className="h-3.5 w-3.5" />
           </span>
-          <span className="font-mono text-sm font-medium text-foreground">+1 415 555 0192</span>
-          <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+          <span className="font-mono text-sm font-medium text-white">+1 415 555 0192</span>
+          <span className="flex items-center gap-1 rounded-full bg-[#2563EB]/15 px-2 py-0.5 text-[11px] font-semibold text-[#60a5fa]">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#60a5fa]" />
             Live
           </span>
         </div>
-        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+        <span className="flex items-center gap-1 text-[11px] text-slate-400">
           <Signal className="h-3.5 w-3.5" />
-          Vertex Networks
+          Nexa Telecom
         </span>
       </div>
 
-      {/* messages */}
-      <ul className="divide-y divide-hairline">
+      <ul className="divide-y divide-white/5">
         {ROWS.map((r) => (
-          <li
-            key={r.sender}
-            className={`flex items-start gap-3 px-4 py-3.5 transition-colors ${
-              r.accent ? 'bg-primary/[0.04]' : ''
-            }`}
-          >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-bold text-foreground">
+          <li key={r.sender} className={`flex items-start gap-3 px-4 py-3.5 ${r.accent ? 'bg-[#2563EB]/[0.08]' : ''}`}>
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">
               {r.sender.slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-sm font-semibold text-foreground">{r.sender}</span>
-                <span className="shrink-0 text-[11px] text-muted-foreground">{r.time}</span>
+                <span className="truncate text-sm font-semibold text-white">{r.sender}</span>
+                <span className="shrink-0 text-[11px] text-slate-400">{r.time}</span>
               </div>
-              <p className="mt-0.5 truncate text-[13px] text-muted-foreground">{r.body}</p>
+              <p className="mt-0.5 truncate text-[13px] text-slate-400">{r.body}</p>
             </div>
-            <div className="shrink-0 self-center rounded-md border border-hairline bg-background px-2 py-1 font-mono text-sm font-semibold tracking-widest text-primary">
+            <div className="shrink-0 self-center rounded-md border border-white/10 bg-[#0a0e1a] px-2 py-1 font-mono text-sm font-semibold tracking-widest text-[#60a5fa]">
               {r.code}
             </div>
           </li>
         ))}
       </ul>
 
-      {/* footer */}
-      <div className="flex items-center justify-between border-t border-hairline bg-background/40 px-4 py-2.5 text-[11px] text-muted-foreground">
+      <div className="flex items-center justify-between border-t border-white/10 bg-white/[0.03] px-4 py-2.5 text-[11px] text-slate-400">
         <span className="flex items-center gap-1.5">
-          <Check className="h-3.5 w-3.5 text-primary" />
+          <Check className="h-3.5 w-3.5 text-[#60a5fa]" />
           Auto-extracted codes
         </span>
         <span>Webhook delivered in 120ms</span>

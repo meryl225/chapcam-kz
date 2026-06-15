@@ -6,32 +6,27 @@ import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { useNumbers } from '@/components/numbers/numbers-provider'
 import {
-  Hash,
-  LayoutDashboard,
-  Store,
-  Phone,
-  MessageSquareText,
-  Code2,
-  Settings,
-  Menu,
-  X,
-  ArrowUpRight,
+  Phone, LayoutDashboard, Store, MessageSquareText, Code2, Settings, Menu, X,
+  ArrowUpRight, Wallet, History, LifeBuoy, SignalHigh, ShieldAlert,
 } from 'lucide-react'
 
 const NAV = [
-  { href: '/numbers/app', label: 'Overview', icon: LayoutDashboard, exact: true },
+  { href: '/numbers/app', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/numbers/app/marketplace', label: 'Marketplace', icon: Store },
-  { href: '/numbers/app/numbers', label: 'My Numbers', icon: Phone },
+  { href: '/numbers/app/numbers', label: 'Active Numbers', icon: SignalHigh },
   { href: '/numbers/app/messages', label: 'Messages', icon: MessageSquareText, badge: true },
-  { href: '/numbers/app/developers', label: 'Developers', icon: Code2 },
+  { href: '/numbers/app/history', label: 'History', icon: History },
+  { href: '/numbers/app/wallet', label: 'Wallet', icon: Wallet },
+  { href: '/numbers/app/developers', label: 'API Access', icon: Code2 },
+  { href: '/numbers/app/support', label: 'Support', icon: LifeBuoy },
+  { href: '/numbers/app/settings', label: 'Settings', icon: Settings },
 ]
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname()
   const { unreadCount } = useNumbers()
-
   return (
-    <nav className="flex flex-1 flex-col gap-1">
+    <nav className="flex flex-1 flex-col gap-1 overflow-y-auto">
       {NAV.map((item) => {
         const active = item.exact ? pathname === item.href : pathname.startsWith(item.href)
         return (
@@ -41,15 +36,13 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
             onClick={onNavigate}
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
-              active
-                ? 'bg-secondary text-foreground'
-                : 'text-muted-foreground hover:bg-secondary/60 hover:text-foreground',
+              active ? 'bg-[#2563EB]/15 text-white' : 'text-slate-400 hover:bg-white/5 hover:text-white',
             )}
           >
-            <item.icon className={cn('h-[18px] w-[18px]', active && 'text-primary')} />
+            <item.icon className={cn('h-[18px] w-[18px]', active && 'text-[#60a5fa]')} />
             <span className="flex-1">{item.label}</span>
             {item.badge && unreadCount > 0 && (
-              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2563EB] px-1.5 text-[11px] font-bold text-white">
                 {unreadCount}
               </span>
             )}
@@ -62,43 +55,30 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
 
 function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
   return (
-    <div className="flex h-full flex-col gap-6 p-4">
+    <div className="flex h-full flex-col gap-5 p-4">
       <Link href="/numbers" className="flex items-center gap-2 px-2 pt-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <Hash className="h-5 w-5" strokeWidth={2.5} />
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#2563EB]">
+          <Phone className="h-4 w-4 text-white" />
         </span>
-        <span className="text-[15px] font-semibold tracking-tight">
-          ChapCam <span className="text-muted-foreground">Numbers</span>
+        <span className="text-[15px] font-semibold tracking-tight text-white">
+          ChapCam <span className="text-slate-400">Numbers</span>
         </span>
       </Link>
 
       <NavList onNavigate={onNavigate} />
 
-      <div className="flex flex-col gap-1 border-t border-hairline pt-3">
-        <Link
-          href="/numbers/app/settings"
-          onClick={onNavigate}
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
-        >
-          <Settings className="h-[18px] w-[18px]" />
-          Settings
+      <div className="flex flex-col gap-1 border-t border-white/10 pt-3">
+        <Link href="/numbers/app/admin" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-300">
+          <ShieldAlert className="h-[18px] w-[18px]" /> Admin
         </Link>
-        <Link
-          href="/numbers"
-          onClick={onNavigate}
-          className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/60 hover:text-foreground"
-        >
-          <ArrowUpRight className="h-[18px] w-[18px]" />
-          Back to site
+        <Link href="/numbers" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white">
+          <ArrowUpRight className="h-[18px] w-[18px]" /> Back to site
         </Link>
-
-        <div className="mt-2 flex items-center gap-3 rounded-xl border border-hairline bg-card px-3 py-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-bold text-foreground">
-            AD
-          </span>
+        <div className="mt-2 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB]/20 text-xs font-bold text-[#60a5fa]">AD</span>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-foreground">Ada Dev</p>
-            <p className="truncate text-xs text-muted-foreground">Growth plan</p>
+            <p className="truncate text-sm font-medium text-white">Ada Dev</p>
+            <p className="truncate text-xs text-slate-400">Growth plan</p>
           </div>
         </div>
       </div>
@@ -108,41 +88,27 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
 
 export function AppSidebar() {
   const [open, setOpen] = useState(false)
-
   return (
     <>
-      {/* Mobile top bar */}
-      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-hairline bg-background/90 px-4 backdrop-blur md:hidden">
+      <div className="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-white/10 bg-[#0a0e1a]/90 px-4 backdrop-blur md:hidden">
         <Link href="/numbers/app" className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <Hash className="h-4 w-4" strokeWidth={2.5} />
-          </span>
-          <span className="text-sm font-semibold">ChapCam Numbers</span>
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#2563EB]"><Phone className="h-4 w-4 text-white" /></span>
+          <span className="text-sm font-semibold text-white">ChapCam Numbers</span>
         </Link>
-        <button
-          onClick={() => setOpen(true)}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-hairline"
-          aria-label="Open menu"
-        >
+        <button onClick={() => setOpen(true)} className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-white" aria-label="Open menu">
           <Menu className="h-5 w-5" />
         </button>
       </div>
 
-      {/* Desktop sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] border-r border-hairline bg-card/30 md:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[248px] border-r border-white/10 bg-[#0c1322] md:block">
         <SidebarInner />
       </aside>
 
-      {/* Mobile drawer */}
       {open && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-[260px] border-r border-hairline bg-background">
-            <button
-              onClick={() => setOpen(false)}
-              className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-lg border border-hairline"
-              aria-label="Close menu"
-            >
+          <div className="absolute inset-y-0 left-0 w-[260px] border-r border-white/10 bg-[#0c1322]">
+            <button onClick={() => setOpen(false)} className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 text-white" aria-label="Close menu">
               <X className="h-5 w-5" />
             </button>
             <SidebarInner onNavigate={() => setOpen(false)} />
