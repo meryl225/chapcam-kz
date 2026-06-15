@@ -90,4 +90,43 @@ export const fivesim: ProviderAdapter = {
   async finish(providerOrder: string): Promise<void> {
     await api(`/user/finish/${providerOrder}`)
   },
+
+  // --- Location (hosting 5sim) ---
+  // 5sim expose les numéros "hosting" via /guest/products/{country}/any
+  // (Category === "hosting"). La durée est imposée par 5sim : on tente, et on
+  // remonte la durée réelle (champ expires). Indisponible => null/erreur.
+  async rentQuote(country: CanonCountry, service: CanonService): Promise<Quote | null> {
+    const { ok, json } = await api(`/guest/products/${country.fivesim}/any`)
+    if (!ok || !json || typeof json !== 'object') return null
+    const products = json as Record<string, { Category?: string; Qty?: number; Price?: number }>
+    let best: { cost: number; count: number } | null = null
+    for (const [name, p] of Object.entries(products)) {
+      if (!p || p.Category !== 'hosting') continue
+      if (!name.toLowerCase().includes(service.fivesim.toLowerCase())) continue
+      const count = Number(p.Qty ?? 0)
+      const cost = Number(p.Price ?? 0)
+      if (count <= 0 || cost <= 0) continue
+      if (!best || cost < best.cost) best = { cost, count }
+    }
+    if (!best) return null
+    const costUsd = await nativeToUsd(best.cost, 'RUB')
+    return { provider: 'fivesim', costUsd, count: best.count }
+  },
+
+  async rent(country: CanonCountry, service: CanonService): Promise<PurchaseResult> {
+    const { ok, json, text } = await api(`/user/buy/hosting/${country.fivesim}/any/${service.fivesim}`)
+    if (!ok || !json || typeof json !== 'object') {
+      throw new Error(`5sim: location indisponible (${text || 'erreur'})`)
+    }
+    const data = json as { id?: number | string; phone?: string; price?: number; expires?: string }
+    if (!data.id || !data.phone) throw new Error(`5sim: réponse location invalide (${text})`)
+    const costUsd = await nativeToUsd(Number(data.price ?? 0), 'RUB')
+    return {
+      provider: 'fivesim',
+      providerOrder: String(data.id),
+      phone: normalizePhone(data.phone),
+      costUsd,
+      expiresAt: data.expires ? new Date(data.expires) : null,
+    }
+  },
 }
