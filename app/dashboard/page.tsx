@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
 import { HeaderActions } from '@/components/dashboard/hub/header-actions'
+import { EsimPromo } from '@/components/dashboard/esim-promo'
 import { ConsentCard } from '@/components/dashboard/consent-card'
 import { Sparkles, Crown, Check, Zap, Timer, Users, Hourglass, ArrowRight, Clock } from 'lucide-react'
 
@@ -125,7 +126,8 @@ export default async function DashboardHubPage() {
             </div>
           </div>
 
-          <div className="shrink-0">
+          <div className="flex shrink-0 flex-col items-stretch gap-4 lg:items-end">
+            <EsimPromo />
             <HeaderActions />
           </div>
         </div>
