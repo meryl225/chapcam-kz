@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNumbers } from '@/components/numbers/numbers-provider'
 import { FUNDING_METHODS } from '@/lib/numbers/data'
 import { formatXOF } from '@/lib/numbers/types'
-import { Wallet, Plus, X, Check, ArrowDownLeft, ArrowUpRight, Smartphone, CreditCard, Coins } from 'lucide-react'
+import { Wallet, Plus, X, ArrowDownLeft, ArrowUpRight, Smartphone, CreditCard, Coins, Loader2 } from 'lucide-react'
 
 const card = 'rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl'
 
@@ -33,18 +33,65 @@ function fmtDate(ms: number) {
 }
 
 export default function WalletPage() {
-  const { balanceXof, transactions, deposit } = useNumbers()
+  const { balanceXof, transactions, pushToast, refreshState } = useNumbers()
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState(2500)
-  const [method, setMethod] = useState(FUNDING_METHODS[0].name)
+  const [loading, setLoading] = useState(false)
 
   const deposits = transactions.filter((t) => t.kind === 'deposit').reduce((s, t) => s + t.amountXof, 0)
   const spend = transactions.filter((t) => t.kind === 'purchase').reduce((s, t) => s + Math.abs(t.amountXof), 0)
 
-  function confirm() {
-    if (amount <= 0) return
-    deposit(amount, method)
-    setOpen(false)
+  // Au retour de PayDunya (?topup=success), on rafraichit le solde : le credit
+  // reel arrive via l'IPN, donc on relance quelques rafraichissements.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const topup = params.get('topup')
+    if (!topup) return
+    if (topup === 'success') {
+      pushToast('Paiement reçu', 'Votre solde sera crédité dans quelques instants.')
+      refreshState()
+      const t1 = setTimeout(refreshState, 4000)
+      const t2 = setTimeout(refreshState, 10000)
+      window.history.replaceState({}, '', '/numbers/app/wallet')
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+      }
+    }
+    if (topup === 'cancel') {
+      pushToast('Recharge annulée', 'Aucun montant n’a été débité.')
+      window.history.replaceState({}, '', '/numbers/app/wallet')
+    }
+  }, [pushToast, refreshState])
+
+  async function confirm() {
+    if (amount < 500 || loading) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/numbers/wallet/topup', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ amountXof: amount }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data.success || !data.invoice_url) {
+        pushToast('Recharge impossible', data?.error ?? 'Réessayez plus tard.')
+        setLoading(false)
+        return
+      }
+      // En iframe (preview), on ouvre PayDunya dans un nouvel onglet ;
+      // sinon on redirige l'onglet courant vers la page de paiement.
+      if (window.self !== window.top) {
+        window.open(data.invoice_url, '_blank', 'noopener,noreferrer')
+        setOpen(false)
+        setLoading(false)
+      } else {
+        window.location.href = data.invoice_url
+      }
+    } catch {
+      pushToast('Erreur réseau', 'Vérifiez votre connexion et réessayez.')
+      setLoading(false)
+    }
   }
 
   return (
@@ -112,8 +159,8 @@ export default function WalletPage() {
           })}
         </div>
         <p className="mt-3 text-xs text-white/40">
-          Le paiement automatique (Mobile Money, carte, crypto) sera activé prochainement via API. Pour l&apos;instant,
-          les recharges sont enregistrées manuellement.
+          Les recharges sont traitées en ligne et sécurisées via PayDunya (Mobile Money, carte bancaire).
+          Votre solde est crédité automatiquement dès la confirmation du paiement.
         </p>
       </div>
 
@@ -216,42 +263,32 @@ export default function WalletPage() {
               ))}
             </div>
 
-            <label className="mb-2 mt-4 block text-xs font-medium uppercase tracking-wider text-white/40">
-              Moyen de paiement
-            </label>
-            <div className="grid max-h-44 grid-cols-1 gap-2 overflow-y-auto">
-              {FUNDING_METHODS.map((m) => {
-                const Icon = kindIcon[m.kind] ?? CreditCard
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => setMethod(m.name)}
-                    className={`flex items-center gap-3 rounded-lg border p-2.5 text-left transition-colors ${
-                      method === m.name ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 hover:bg-white/5'
-                    }`}
-                  >
-                    <span
-                      className="flex h-8 w-8 items-center justify-center rounded-lg"
-                      style={{ background: `hsl(${m.hue} 70% 50% / 0.15)`, color: `hsl(${m.hue} 80% 65%)` }}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-white">{m.name}</p>
-                      <p className="text-xs text-white/40">{KIND_LABEL[m.kind] ?? m.kind}</p>
-                    </div>
-                    {method === m.name && <Check className="h-4 w-4 text-blue-400" />}
-                  </button>
-                )
-              })}
+            <div className="mt-4 flex items-center gap-3 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/15 text-blue-300">
+                <Smartphone className="h-4 w-4" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-white">Paiement sécurisé via PayDunya</p>
+                <p className="text-xs text-white/40">Mobile Money (Orange, MTN, Moov, Wave) et carte bancaire</p>
+              </div>
             </div>
 
             <button
               onClick={confirm}
-              className="mt-5 w-full rounded-lg bg-blue-600 py-2.5 font-medium text-white transition-colors hover:bg-blue-500"
+              disabled={loading || amount < 500}
+              className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 py-2.5 font-medium text-white transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Ajouter {formatXOF(amount)}
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Redirection vers PayDunya...
+                </>
+              ) : (
+                <>Payer {formatXOF(amount)} avec PayDunya</>
+              )}
             </button>
+            <p className="mt-2 text-center text-xs text-white/40">
+              Vous serez redirigé vers PayDunya pour finaliser le paiement en toute sécurité.
+            </p>
           </div>
         </div>
       )}

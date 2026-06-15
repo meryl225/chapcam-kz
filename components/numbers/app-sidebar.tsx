@@ -54,8 +54,12 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
   )
 }
 
+// Email de l'administratrice : seul ce compte voit l'accès Admin.
+const ADMIN_EMAIL = 'fanny.guck@gmail.com'
+
 function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useNumbers()
+  const isAdmin = user.email?.toLowerCase() === ADMIN_EMAIL
   return (
     <div className="flex h-full flex-col gap-5 p-4">
       <Link href="/numbers/app" className="flex items-center gap-2 px-2 pt-2">
@@ -70,9 +74,11 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
       <NavList onNavigate={onNavigate} />
 
       <div className="flex flex-col gap-1 border-t border-white/10 pt-3">
-        <Link href="/numbers/app/admin" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-300">
-          <ShieldAlert className="h-[18px] w-[18px]" /> Admin
-        </Link>
+        {isAdmin && (
+          <Link href="/numbers/app/admin" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-white/5 hover:text-slate-300">
+            <ShieldAlert className="h-[18px] w-[18px]" /> Admin
+          </Link>
+        )}
         <Link href="/dashboard" onClick={onNavigate} className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white">
           <ArrowUpRight className="h-[18px] w-[18px]" /> Retour à ChapCam
         </Link>

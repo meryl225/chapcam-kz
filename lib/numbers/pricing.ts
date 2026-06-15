@@ -49,3 +49,30 @@ export function toClientXof(costUsd: number, usdToXof: number): number {
   // Arrondi au multiple de 5 XOF supérieur, prix plancher 50 XOF.
   return Math.max(50, Math.ceil(raw / 5) * 5)
 }
+
+// ------------------------------------------------------------
+// Tarification par paliers (source de vérité du prix client).
+// Basée sur le COÛT fournisseur en USD (toujours le moins cher) :
+//   - 0 à 0,1 $        -> 2000 FCFA (fixe)
+//   - > 0,1 à 3 $      -> 5000 FCFA (fixe)
+//   - > 3 $            -> coût converti en FCFA × 4 (marge proportionnelle)
+// On priorise toujours le fournisseur au tarif le plus bas en amont
+// (cf. getBestQuote qui trie par costUsd croissant), donc ce palier
+// s'applique au coût le plus avantageux disponible.
+// ------------------------------------------------------------
+export const PRICE_TIERS = {
+  lowMaxUsd: 0.1,
+  lowPriceXof: 2000,
+  midMaxUsd: 3,
+  midPriceXof: 5000,
+  highMultiplier: 4,
+} as const
+
+/** Prix client XOF par paliers à partir du coût fournisseur en USD. */
+export function tierPriceXof(costUsd: number, usdToXof: number): number {
+  if (costUsd <= PRICE_TIERS.lowMaxUsd) return PRICE_TIERS.lowPriceXof
+  if (costUsd <= PRICE_TIERS.midMaxUsd) return PRICE_TIERS.midPriceXof
+  // Au-delà de 3 $ : coût réel converti en FCFA × 4, arrondi au multiple de 5.
+  const raw = costUsd * usdToXof * PRICE_TIERS.highMultiplier
+  return Math.max(PRICE_TIERS.midPriceXof, Math.ceil(raw / 5) * 5)
+}
