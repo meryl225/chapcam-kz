@@ -20,6 +20,32 @@ export type CanonCountry = {
   match: string[] // mots-clés pour matcher (sms-man / smspool name)
 }
 
+// Forfaits proposés. "verification" = SMS unique (activation, fiable).
+// Les autres sont des LOCATIONS (numéro réutilisable, multi-SMS) via 5sim
+// hosting. La durée réelle est imposée par le fournisseur : on tente la
+// location et on grise le forfait s'il n'est pas disponible.
+export type RentalPlanKey = 'verification' | 'rent_3d' | 'rent_1w' | 'rent_1m'
+
+export type RentalPlan = {
+  key: RentalPlanKey
+  label: string
+  short: string
+  mode: 'verification' | 'rental'
+  /** Durée minimale souhaitée (heures). 0 = activation ponctuelle. */
+  minHours: number
+}
+
+export const RENTAL_PLANS: RentalPlan[] = [
+  { key: 'verification', label: 'Vérification (SMS unique)', short: 'Quelques minutes', mode: 'verification', minHours: 0 },
+  { key: 'rent_3d', label: 'Location 3 jours', short: '3 jours', mode: 'rental', minHours: 72 },
+  { key: 'rent_1w', label: 'Location 1 semaine', short: '1 semaine', mode: 'rental', minHours: 168 },
+  { key: 'rent_1m', label: 'Location 1 mois', short: '1 mois', mode: 'rental', minHours: 720 },
+]
+
+export function rentalPlanByKey(key: string): RentalPlan | undefined {
+  return RENTAL_PLANS.find((p) => p.key === key)
+}
+
 export const SERVICES: CanonService[] = [
   { slug: 'whatsapp', label: 'WhatsApp', icon: 'MessageCircle', fivesim: 'whatsapp', match: ['whatsapp'] },
   { slug: 'telegram', label: 'Telegram', icon: 'Send', fivesim: 'telegram', match: ['telegram'] },
