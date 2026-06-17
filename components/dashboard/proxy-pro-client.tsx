@@ -1,19 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import Link from 'next/link'
 import {
   Home,
   Smartphone,
   Wifi,
   Check,
-  Copy,
-  Loader2,
-  Lock,
-  Zap,
+  Clock,
   ShieldCheck,
+  Rocket,
 } from 'lucide-react'
-import type { ProxyProductPriced, ProxyProductId } from '@/lib/proxy/products'
+import type { ProxyProduct } from '@/lib/proxy/products'
 
 const ICONS = {
   home: Home,
@@ -21,60 +17,11 @@ const ICONS = {
   wifi: Wifi,
 } as const
 
-type Credentials = {
-  product: string
-  host: string | null
-  port: string | null
-  username: string | null
-  password: string | null
-  quotaGb: number
-  usedGb: number
-  status: string
-}
-
 type Props = {
-  products: ProxyProductPriced[]
-  hasPlan: boolean
-  planLabel: string
+  products: ProxyProduct[]
 }
 
-const fmt = new Intl.NumberFormat('fr-FR')
-
-export function ProxyProClient({ products, hasPlan, planLabel }: Props) {
-  const [loading, setLoading] = useState<ProxyProductId | null>(null)
-  const [creds, setCreds] = useState<Record<string, Credentials>>({})
-  const [error, setError] = useState<string | null>(null)
-  const [copied, setCopied] = useState<string | null>(null)
-
-  async function activate(product: ProxyProductId) {
-    setError(null)
-    setLoading(product)
-    try {
-      const res = await fetch('/api/proxy/activate-pro', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setError(data?.error ?? "Activation impossible")
-        return
-      }
-      setCreds((c) => ({ ...c, [product]: data.credentials }))
-    } catch {
-      setError('Erreur réseau. Réessayez.')
-    } finally {
-      setLoading(null)
-    }
-  }
-
-  function copy(key: string, value: string | null) {
-    if (!value) return
-    navigator.clipboard.writeText(value)
-    setCopied(key)
-    setTimeout(() => setCopied((k) => (k === key ? null : k)), 1500)
-  }
-
+export function ProxyProClient({ products }: Props) {
   return (
     <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
@@ -91,48 +38,28 @@ export function ProxyProClient({ products, hasPlan, planLabel }: Props) {
               </p>
             </div>
           </div>
-          <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-hairline bg-card/60 px-3 py-1 text-xs font-medium text-muted-foreground">
-            <Zap className="h-3.5 w-3.5 text-primary" />
-            {planLabel}
-          </p>
         </header>
 
-        {/* Bandeau aucun forfait */}
-        {!hasPlan && (
-          <div className="mb-8 flex flex-col gap-4 rounded-3xl border border-amber-500/30 bg-amber-500/10 p-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20">
-                <Lock className="h-5 w-5 text-amber-400" />
-              </div>
-              <div>
-                <p className="font-bold text-foreground">Aucun forfait actif</p>
-                <p className="text-sm text-muted-foreground">
-                  ChapCam Proxy Pro nécessite un forfait actif. Souscrivez pour activer une offre.
-                </p>
-              </div>
+        {/* Bandeau lancement à venir */}
+        <div className="mb-8 flex flex-col gap-4 rounded-3xl border border-primary/30 bg-primary/10 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/20">
+              <Rocket className="h-5 w-5 text-primary" />
             </div>
-            <Link
-              href="/dashboard/plans"
-              className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-primary/90"
-            >
-              <Zap className="h-4 w-4" />
-              Voir les forfaits
-            </Link>
+            <div>
+              <p className="font-bold text-foreground">Bientôt disponible</p>
+              <p className="text-sm text-muted-foreground text-pretty">
+                Nous finalisons la sélection de notre fournisseur de proxies. Les tarifs et
+                l&apos;activation seront ouverts très prochainement.
+              </p>
+            </div>
           </div>
-        )}
+        </div>
 
-        {error && (
-          <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-            {error}
-          </div>
-        )}
-
-        {/* Offres */}
+        {/* Offres (vitrine) */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {products.map((p) => {
             const Icon = ICONS[p.icon]
-            const active = creds[p.id]
-            const isLoading = loading === p.id
             return (
               <article
                 key={p.id}
@@ -163,68 +90,18 @@ export function ProxyProClient({ products, hasPlan, planLabel }: Props) {
                 </ul>
 
                 <div className="mt-auto">
-                  <p className="text-xs text-muted-foreground">À partir de</p>
-                  <p className="mb-4 text-2xl font-bold text-foreground">
-                    {fmt.format(p.priceXof)}
-                    <span className="text-sm font-medium text-muted-foreground"> FCFA/{p.unit}</span>
+                  <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-hairline bg-background/60 px-3 py-1 text-sm font-medium text-muted-foreground">
+                    <Clock className="h-4 w-4 text-primary" />
+                    Tarif bientôt disponible
                   </p>
 
-                  {active ? (
-                    <div className="rounded-2xl border border-primary/30 bg-primary/5 p-4">
-                      <p className="mb-3 flex items-center gap-2 text-sm font-bold text-primary">
-                        <Check className="h-4 w-4" /> Offre activée
-                      </p>
-                      <div className="flex flex-col gap-2">
-                        {(
-                          [
-                            ['Hôte', active.host, `${p.id}-host`],
-                            ['Port', active.port, `${p.id}-port`],
-                            ['Utilisateur', active.username, `${p.id}-user`],
-                            ['Mot de passe', active.password, `${p.id}-pass`],
-                          ] as const
-                        ).map(([label, value, key]) => (
-                          <div
-                            key={key}
-                            className="flex items-center justify-between gap-2 rounded-lg bg-background/60 px-3 py-2"
-                          >
-                            <div className="min-w-0">
-                              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                                {label}
-                              </p>
-                              <p className="truncate font-mono text-xs text-foreground">{value}</p>
-                            </div>
-                            <button
-                              onClick={() => copy(key, value)}
-                              className="shrink-0 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
-                              aria-label={`Copier ${label}`}
-                            >
-                              {copied === key ? (
-                                <Check className="h-3.5 w-3.5 text-primary" />
-                              ) : (
-                                <Copy className="h-3.5 w-3.5" />
-                              )}
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => activate(p.id)}
-                      disabled={!hasPlan || isLoading}
-                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-black transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" /> Activation...
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="h-4 w-4" /> Activer
-                        </>
-                      )}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    disabled
+                    className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-hairline bg-card px-4 py-3 text-sm font-bold text-muted-foreground"
+                  >
+                    Bientôt disponible
+                  </button>
                 </div>
               </article>
             )
