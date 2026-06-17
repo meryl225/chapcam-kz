@@ -14,52 +14,40 @@ import {
   AlertTriangle,
 } from 'lucide-react'
 
-const DEFAULT_SUBJECT = 'Installation complete de ChapCam a domicile - 8 500 FCFA'
+const DEFAULT_SUBJECT = 'Votre installation ChapCam PC - Choisissez votre option (50 000 FCFA)'
 
 const DEFAULT_MESSAGE = `Bonjour {nom},
 
-Merci pour votre interet pour l'installation de ChapCam.
+Merci pour votre demande d'installation de ChapCam PC.
 
-Notre equipe propose une installation complete a domicile afin de vous permettre d'utiliser ChapCam dans les meilleures conditions, notamment sur WhatsApp et les autres plateformes compatibles.
+Pour vous accompagner au mieux, nous vous proposons 3 options d'installation. Il vous suffit de choisir celle qui vous convient et de nous contacter directement sur WhatsApp.
 
-Conditions requises
+OPTION 1 - Installation dans nos bureaux
+Vous venez directement dans les locaux de ChapCam. Tout se fait sur place, y compris le paiement, l'installation, la configuration et les tests. Vous repartez avec un ChapCam PC pret a l'emploi.
 
-Disposer d'un abonnement ChapCam actif.
+OPTION 2 - Installation a domicile
+Notre equipe se deplace directement chez vous ou sur votre lieu de travail pour realiser l'installation complete, la configuration et les tests.
 
-L'installation seule ne donne pas acces au service. Un abonnement ChapCam en cours de validite est obligatoire.
+OPTION 3 - Installation a distance (AnyDesk)
+Ou que vous soyez, notre equipe prend la main sur votre ordinateur via AnyDesk et installe ChapCam PC a distance, en direct avec vous.
 
 Ce que comprend l'installation
-
-- Installation complete de ChapCam sur votre ordinateur
+- Installation complete de ChapCam PC sur votre ordinateur
 - Configuration de votre compte
-- Configuration de WhatsApp
-- Configuration des autres reseaux sociaux et plateformes compatibles
-- Verification du bon fonctionnement
-- Tests en direct avec notre equipe
+- Configuration de WhatsApp et des autres plateformes compatibles
+- Verification du bon fonctionnement et tests en direct
 - Assistance a la prise en main
 
-Deroulement de l'installation
-
-1. Vous souscrivez a un abonnement ChapCam actif.
-2. Vous confirmez votre demande d'installation.
-3. Vous effectuez le paiement des frais d'installation de 8 500 FCFA via PayDunya.
-4. Un membre de l'equipe ChapCam vous contacte pour fixer un rendez-vous.
-5. Notre equipe se deplace directement chez vous ou sur votre lieu de travail.
-6. Nous realisons l'installation, la configuration et les tests necessaires.
-
 Tarif
+ChapCam PC : 50 000 FCFA (licence a vie)
 
-Installation complete : 8 500 FCFA
+Comment proceder ?
+Cliquez sur le bouton ci-dessous pour nous ecrire directement sur WhatsApp. Indiquez-nous l'option choisie (bureaux, domicile ou a distance) et notre equipe s'occupe du reste.
 
-Ce montant couvre le deplacement, la configuration, les tests et l'assistance a la prise en main.
+Nos locaux
+Yopougon Niangon Texaco, Pharmacie Lea, Abidjan, Cote d'Ivoire.
 
-Comment confirmer votre demande ?
-
-Connectez-vous simplement sur ChapCam.com et effectuez le paiement des frais d'installation de 8 500 FCFA via PayDunya.
-
-Des reception du paiement, notre equipe prendra contact avec vous pour organiser votre installation.
-
-Les demandes sont traitees par ordre de paiement et selon les disponibilites de notre equipe.
+WhatsApp : +225 05 55 56 01 89
 
 Merci pour votre confiance.
 
@@ -75,8 +63,13 @@ interface Result {
 export default function AdminEmailPage() {
   const [subject, setSubject] = useState(DEFAULT_SUBJECT)
   const [message, setMessage] = useState(DEFAULT_MESSAGE)
-  const [ctaLabel, setCtaLabel] = useState("Confirmer ma demande d'installation")
-  const [ctaUrl, setCtaUrl] = useState('https://chapcam.com')
+  const [ctaLabel, setCtaLabel] = useState('Nous contacter sur WhatsApp')
+  const [ctaUrl, setCtaUrl] = useState(
+    'https://wa.me/2250555560189?text=' +
+      encodeURIComponent(
+        "Bonjour, je souhaite installer ChapCam PC (50 000 FCFA). Mon option d'installation : (1) Bureaux ChapCam, (2) A domicile, ou (3) A distance via AnyDesk.",
+      ),
+  )
   const [audience, setAudience] = useState<'all' | 'installers'>('installers')
   const [sending, setSending] = useState(false)
   const [confirming, setConfirming] = useState(false)
