@@ -99,7 +99,7 @@ export function ChapCamPcCountdown({ compact = false }: { compact?: boolean }) {
           compact ? 'text-[10px]' : 'text-xs'
         }`}
       >
-        50 000 FCFA a vie maintenant, puis 50 000 FCFA/mois des le 14 juin
+        50 000 FCFA a vie jusqu&apos;a dimanche 23h, puis 100 000 FCFA
       </p>
     </div>
   )
