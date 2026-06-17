@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Shield, Copy, Check, Loader2, Globe, Zap, RefreshCw } from 'lucide-react'
+import { Shield, Copy, Check, Loader2, Globe, Zap, RefreshCw, Lock } from 'lucide-react'
 import { CountryFlag } from '@/components/numbers/country-flag'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -31,9 +31,10 @@ type Props = {
   planLabel: string
   quotaGb: number
   usedGb: number
+  hasPlan: boolean
 }
 
-export function ProxyClient({ planLabel, quotaGb, usedGb }: Props) {
+export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
   const [creds, setCreds] = useState<Credentials | null>(null)
@@ -94,6 +95,31 @@ export function ProxyClient({ planLabel, quotaGb, usedGb }: Props) {
           </div>
         </div>
 
+        {/* Aucun forfait actif : le proxy nécessite un forfait pour son quota */}
+        {!hasPlan && (
+          <div className="mb-8 flex flex-col gap-4 rounded-3xl border border-amber-500/30 bg-amber-500/10 p-6 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500/20">
+                <Lock className="h-5 w-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="font-bold text-foreground">Aucun forfait actif</p>
+                <p className="text-sm text-muted-foreground">
+                  La navigation sécurisée nécessite un forfait actif. Souscrivez pour débloquer
+                  votre quota de données proxy.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard/plans"
+              className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-primary/90"
+            >
+              <Zap className="h-4 w-4" />
+              Voir les forfaits
+            </Link>
+          </div>
+        )}
+
         {/* Choisir un pays */}
         <section className="mb-8 rounded-3xl border border-hairline bg-card/60 p-6 backdrop-blur-sm">
           <h2 className="mb-4 text-lg font-bold text-foreground">Choisir un pays</h2>
@@ -105,8 +131,8 @@ export function ProxyClient({ planLabel, quotaGb, usedGb }: Props) {
                 <button
                   key={c.code}
                   onClick={() => activate(c.code)}
-                  disabled={!!loading}
-                  className={`flex flex-col items-center gap-2 rounded-2xl border p-4 transition-all disabled:opacity-60 ${
+                  disabled={!!loading || !hasPlan}
+                  className={`flex flex-col items-center gap-2 rounded-2xl border p-4 transition-all disabled:cursor-not-allowed disabled:opacity-50 ${
                     isActive
                       ? 'border-primary bg-primary/10 ring-1 ring-primary/40'
                       : 'border-hairline bg-background hover:border-primary/50'

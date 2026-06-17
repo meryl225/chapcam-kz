@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { createClient } from '@/lib/supabase/server'
+import { proxyQuotaForPlan } from '@/lib/plans'
 
 // Pays proposés pour le proxy résidentiel. Garder synchronisé avec la page.
 const SUPPORTED = new Set(['FR', 'US', 'CI', 'GB', 'CA'])
@@ -39,6 +40,29 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Pays non disponible' }, { status: 400 })
   }
 
+  // Le proxy n'est accessible qu'avec un forfait actif : le quota (pool unique
+  // partagé entre tous les pays) est dimensionné par ce forfait. Sans forfait
+  // actif, on refuse l'activation — c'est ce qui rend le service rentable.
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('plan, is_active, expires_at')
+    .eq('user_id', user.id)
+    .order('expires_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const planActive =
+    !!subscription?.is_active &&
+    (!subscription?.expires_at || new Date(subscription.expires_at) > new Date())
+  const quotaGb = planActive ? proxyQuotaForPlan(subscription?.plan) : 0
+
+  if (quotaGb <= 0) {
+    return NextResponse.json(
+      { error: 'Aucun forfait actif. Souscrivez un forfait pour activer le proxy.' },
+      { status: 403 },
+    )
+  }
+
   // Identifiants déjà générés pour ce pays ? On les renvoie tels quels.
   const { data: existing } = await supabase
     .from('proxy_subscriptions')
@@ -48,7 +72,7 @@ export async function POST(req: Request) {
     .maybeSingle()
 
   if (existing) {
-    return NextResponse.json({ credentials: serialize(existing) })
+    return NextResponse.json({ credentials: serialize(existing, quotaGb) })
   }
 
   // Génère des identifiants factices mais stables pour ce pays.
@@ -62,7 +86,8 @@ export async function POST(req: Request) {
     port: '8080',
     username,
     password_encrypted: password,
-    quota_gb: 10,
+    // Pool de quota global du forfait (le quota n'est PAS multiplié par pays).
+    quota_gb: quotaGb,
     used_gb: 0,
     status: 'active' as const,
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
@@ -78,7 +103,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Activation impossible' }, { status: 500 })
   }
 
-  return NextResponse.json({ credentials: serialize(inserted) })
+  return NextResponse.json({ credentials: serialize(inserted, quotaGb) })
 }
 
 type Row = {
@@ -93,14 +118,15 @@ type Row = {
 }
 
 // On expose le mot de passe au client (champ "encrypted" = factice pour l'instant).
-function serialize(r: Row) {
+// quotaGb = quota courant du forfait (pool global), pas la valeur figée en base.
+function serialize(r: Row, quotaGb: number) {
   return {
     country: r.country,
     host: r.host,
     port: r.port,
     username: r.username,
     password: r.password_encrypted,
-    quotaGb: Number(r.quota_gb),
+    quotaGb,
     usedGb: Number(r.used_gb),
     status: r.status,
   }

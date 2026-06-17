@@ -80,3 +80,20 @@ export const PLANS: PlanConfig[] = [
 export function getPlan(id: string): PlanConfig | undefined {
   return PLANS.find((p) => p.id === id)
 }
+
+// --- Quota du service proxy "Navigation Sécurisée" ---
+// Choix rentable : le quota de données proxy est un POOL UNIQUE partagé entre
+// tous les pays, dimensionné selon le forfait payé. Sans forfait actif = 0 Go.
+// (Évite l'abus du "10 Go par pays activé".)
+export const PROXY_QUOTA_GB: Record<PlanId, number> = {
+  starter: 2,
+  standard: 15,
+  premium: 50,
+  ultimate: 120,
+}
+
+/** Quota proxy (Go) accordé par un forfait. Retourne 0 si forfait inconnu/absent. */
+export function proxyQuotaForPlan(planId: string | null | undefined): number {
+  if (!planId) return 0
+  return PROXY_QUOTA_GB[planId as PlanId] ?? 0
+}
