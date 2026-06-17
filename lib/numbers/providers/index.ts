@@ -100,6 +100,19 @@ export async function purchaseCheapest(country: CanonCountry, service: CanonServ
   let lastErr: Error | null = null
   for (const q of quotes) {
     const adapter = adapters[q.provider]
+    // PRÉ-CONTRÔLE anti-perte (le plus important) : on n'achète JAMAIS chez un
+    // fournisseur dont le coût de DEVIS dépasse déjà le plafond rentable. Sans ce
+    // filtre, lors d'une bascule auto, on pouvait acheter un numéro à 4,27 $ tout
+    // en ne facturant que le prix affiché (2000 FCFA) basé sur le devis le moins
+    // cher — donc à perte. Indispensable pour sms-man, qui masque son coût réel
+    // à l'achat (costUsd: 0) : seul le coût du devis permet de se protéger.
+    if (q.costUsd > maxCostUsd) {
+      lastErr = new Error(
+        `Coût devis ${q.provider} ${q.costUsd}$ > plafond ${maxCostUsd.toFixed(2)}$ — ignoré (anti-perte)`,
+      )
+      console.log(`[v0] skip ${q.provider}:`, lastErr.message)
+      continue
+    }
     try {
       const result = await adapter.purchase(country, service, maxCostUsd)
       // Certains fournisseurs (sms-man) ne renvoient pas le coût à l'achat :
@@ -169,6 +182,14 @@ export async function rentCheapest(
   for (const q of quotes) {
     const adapter = adapters[q.provider]
     if (!adapter.rent) continue
+    // Même pré-contrôle anti-perte qu'à l'achat (cf. purchaseCheapest).
+    if (q.costUsd > maxCostUsd) {
+      lastErr = new Error(
+        `Coût devis ${q.provider} ${q.costUsd}$ > plafond ${maxCostUsd.toFixed(2)}$ — ignoré (anti-perte)`,
+      )
+      console.log(`[v0] skip rent ${q.provider}:`, lastErr.message)
+      continue
+    }
     try {
       const result = await adapter.rent(country, service, minHours, maxCostUsd)
       const costUsd = result.costUsd > 0 ? result.costUsd : q.costUsd

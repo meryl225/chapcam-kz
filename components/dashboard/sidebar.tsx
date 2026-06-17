@@ -52,6 +52,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard/voice-translator', icon: Languages, label: 'VOICE TRADUCTEUR', badge: 'NEW' },
   { href: '/dashboard/photo-video', icon: ImageIcon, label: 'PHOTOS EN VIDEO', badge: 'NEW' },
   { href: '/dashboard/video-translation', icon: Film, label: 'TRADUCTION VIDEO', badge: 'NEW' },
+  { href: '/dashboard/proxy', icon: Shield, label: 'NAVIGATION SECURISEE', badge: 'NEW' },
   { href: '/dashboard/avatars', icon: Users, label: 'MES AVATARS' },
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES' },
   { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGER' },
