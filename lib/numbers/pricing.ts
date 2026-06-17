@@ -1,7 +1,7 @@
 import 'server-only'
 
-// Marge ChapCam : +1000% de bénéfice => prix client = coût × 11.
-export const MARKUP_MULTIPLIER = 11
+// Marge ChapCam : prix client = coût fournisseur × 3 (200% de bénéfice garanti).
+export const MARKUP_MULTIPLIER = 3
 
 // Taux de secours si l'API de change est indisponible (unités par 1 USD).
 const FALLBACK = { XOF: 600, RUB: 90 }
@@ -51,44 +51,37 @@ export function toClientXof(costUsd: number, usdToXof: number): number {
 }
 
 // ------------------------------------------------------------
-// Tarification par paliers (source de vérité du prix client).
-// Basée sur le COÛT fournisseur en USD (toujours le moins cher) :
-//   - 0 à 0,1 $        -> 2000 FCFA (fixe)
-//   - > 0,1 à 3 $      -> 5000 FCFA (fixe)
-//   - > 3 $            -> coût converti en FCFA × 4 (marge proportionnelle)
-// On priorise toujours le fournisseur au tarif le plus bas en amont
-// (cf. getBestQuote qui trie par costUsd croissant), donc ce palier
-// s'applique au coût le plus avantageux disponible.
+// Tarification ChapCam (source de vérité du prix client).
+// Modèle simple et rentable : MULTIPLICATEUR UNIQUE sur le coût fournisseur.
+//   prix client (FCFA) = coût fournisseur (USD) × taux USD→FCFA × 3
+//   ... jamais en dessous d'un plancher de 2000 FCFA.
+// Le coût fournisseur retenu est toujours le moins cher disponible
+// (cf. getBestQuote qui trie par costUsd croissant), donc la marge ×3
+// s'applique au meilleur coût d'achat possible.
 // ------------------------------------------------------------
 export const PRICE_TIERS = {
-  lowMaxUsd: 0.1,
-  lowPriceXof: 2000,
-  midMaxUsd: 3,
-  midPriceXof: 5000,
-  highMultiplier: 4,
+  // Marge appliquée à TOUS les numéros (chers comme bon marché).
+  multiplier: MARKUP_MULTIPLIER,
+  // Prix client minimum affiché, même quand le coût fournisseur est quasi nul.
+  floorXof: 2000,
 } as const
 
-/** Prix client XOF par paliers à partir du coût fournisseur en USD. */
+/** Prix client XOF = coût fournisseur USD × taux × marge, plancher 2000 FCFA. */
 export function tierPriceXof(costUsd: number, usdToXof: number): number {
-  if (costUsd <= PRICE_TIERS.lowMaxUsd) return PRICE_TIERS.lowPriceXof
-  if (costUsd <= PRICE_TIERS.midMaxUsd) return PRICE_TIERS.midPriceXof
-  // Au-delà de 3 $ : coût réel converti en FCFA × 4, arrondi au multiple de 5.
-  const raw = costUsd * usdToXof * PRICE_TIERS.highMultiplier
-  return Math.max(PRICE_TIERS.midPriceXof, Math.ceil(raw / 5) * 5)
+  const raw = costUsd * usdToXof * PRICE_TIERS.multiplier
+  // Arrondi au multiple de 5 FCFA supérieur, plancher 2000 FCFA.
+  return Math.max(PRICE_TIERS.floorXof, Math.ceil(raw / 5) * 5)
 }
 
 /**
- * Coût fournisseur MAXIMUM (en USD) que l'on accepte de payer pour pouvoir
- * vendre au `displayedPriceXof` affiché au client tout en restant rentable.
- * Envoyé comme plafond (`max_price`) au fournisseur à l'achat : il ne nous
- * assignera jamais un numéro plus cher, ce qui évite de perdre de l'argent
- * quand le fournisseur tente d'attribuer un pool "premium".
- *   - palier 2000 FCFA -> coût max 0,10 $
- *   - palier 5000 FCFA -> coût max 3 $
- *   - palier > 5000 FCFA -> coût qui a généré ce prix (prix / (taux × 4))
+ * Coût fournisseur MAXIMUM (en USD) que l'on accepte de payer pour rester
+ * rentable au `displayedPriceXof` affiché. Envoyé comme plafond (`max_price`)
+ * au fournisseur à l'achat : il ne nous assignera jamais un numéro plus cher,
+ * ce qui évite de perdre de l'argent sur un pool "premium".
+ *   coût max = prix affiché / (taux × marge)
+ * (au plancher 2000 FCFA, le coût correspondant peut dépasser le coût réel :
+ *  c'est voulu, on accepte jusqu'à ce que la marge ×3 soit atteinte.)
  */
 export function tierMaxCostUsd(displayedPriceXof: number, usdToXof: number): number {
-  if (displayedPriceXof <= PRICE_TIERS.lowPriceXof) return PRICE_TIERS.lowMaxUsd
-  if (displayedPriceXof <= PRICE_TIERS.midPriceXof) return PRICE_TIERS.midMaxUsd
-  return displayedPriceXof / (usdToXof * PRICE_TIERS.highMultiplier)
+  return displayedPriceXof / (usdToXof * PRICE_TIERS.multiplier)
 }
