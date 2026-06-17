@@ -1,6 +1,5 @@
 import 'server-only'
 import type { CanonCountry, CanonService } from '@/lib/numbers/catalog'
-import { nativeToUsd } from '@/lib/numbers/pricing'
 import type { CodeResult, ProviderAdapter, PurchaseResult, Quote } from './types'
 import { normalizePhone } from './types'
 
@@ -50,7 +49,10 @@ export const fivesim: ProviderAdapter = {
       if (!best || op.cost < best.cost) best = { cost: op.cost, count: op.count }
     }
     if (!best) return null
-    const costUsd = await nativeToUsd(best.cost, 'RUB')
+    // 5sim renvoie déjà les prix en USD : aucune conversion (le diviser par le
+    // taux RUB sous-évaluait le coût d'un facteur ~72, d'où des numéros à 2,3 $
+    // affichés comme quasi gratuits puis vendus à perte).
+    const costUsd = best.cost
     return { provider: 'fivesim', costUsd, count: best.count }
   },
 
@@ -61,7 +63,7 @@ export const fivesim: ProviderAdapter = {
     }
     const data = json as { id?: number | string; phone?: string; price?: number; expires?: string }
     if (!data.id || !data.phone) throw new Error(`5sim: réponse invalide (${text})`)
-    const costUsd = await nativeToUsd(Number(data.price ?? 0), 'RUB')
+    const costUsd = Number(data.price ?? 0) // 5sim facture en USD
     return {
       provider: 'fivesim',
       providerOrder: String(data.id),
@@ -114,7 +116,7 @@ export const fivesim: ProviderAdapter = {
       if (!best || cost < best.cost) best = { cost, count }
     }
     if (!best) return null
-    const costUsd = await nativeToUsd(best.cost, 'RUB')
+    const costUsd = best.cost // USD
     return { provider: 'fivesim', costUsd, count: best.count }
   },
 
@@ -125,7 +127,7 @@ export const fivesim: ProviderAdapter = {
     }
     const data = json as { id?: number | string; phone?: string; price?: number; expires?: string }
     if (!data.id || !data.phone) throw new Error(`5sim: réponse location invalide (${text})`)
-    const costUsd = await nativeToUsd(Number(data.price ?? 0), 'RUB')
+    const costUsd = Number(data.price ?? 0) // USD
     return {
       provider: 'fivesim',
       providerOrder: String(data.id),
