@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines, Smartphone } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, ShieldCheck, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines, Smartphone } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -53,6 +53,7 @@ const navItems: NavItem[] = [
   { href: '/dashboard/photo-video', icon: ImageIcon, label: 'PHOTOS EN VIDEO', badge: 'NEW' },
   { href: '/dashboard/video-translation', icon: Film, label: 'TRADUCTION VIDEO', badge: 'NEW' },
   { href: '/dashboard/proxy', icon: Shield, label: 'NAVIGATION SECURISEE', badge: 'NEW' },
+  { href: '/dashboard/proxy-pro', icon: ShieldCheck, label: 'CHAPCAM PROXY PRO', badge: 'PRO' },
   { href: '/dashboard/avatars', icon: Users, label: 'MES AVATARS' },
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES' },
   { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGER' },
