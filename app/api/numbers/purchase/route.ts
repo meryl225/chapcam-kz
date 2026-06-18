@@ -72,7 +72,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ activation: serializeActivation(row), balanceXof: newBalance })
   } catch (e) {
     if (e instanceof UnauthorizedError) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // On journalise le détail technique réel côté serveur uniquement (fournisseur,
+    // coûts, plafond anti-perte...) mais on ne l'expose JAMAIS au client : il ne
+    // voit qu'un message clair "indisponible". Vous n'avez pas été débité.
     console.log('[v0] purchase route error:', (e as Error)?.message)
-    return NextResponse.json({ error: (e as Error)?.message || 'Achat impossible' }, { status: 500 })
+    return NextResponse.json(
+      { error: "Ce numéro est temporairement indisponible. Vous n'avez pas été débité, réessayez plus tard." },
+      { status: 409 },
+    )
   }
 }

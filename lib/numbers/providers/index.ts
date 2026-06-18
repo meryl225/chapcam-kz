@@ -133,7 +133,10 @@ export async function purchaseCheapest(country: CanonCountry, service: CanonServ
       console.log(`[v0] purchase ${q.provider} failed:`, lastErr?.message)
     }
   }
-  throw lastErr ?? new Error("L'achat a échoué chez tous les fournisseurs.")
+  // Détail technique (fournisseur, coûts, plafond) en logs serveur seulement ;
+  // on lance une erreur générique, jamais exposée telle quelle au client.
+  if (lastErr) console.log('[v0] purchase: tous les fournisseurs ont échoué:', lastErr.message)
+  throw new Error('NUMBER_UNAVAILABLE')
 }
 
 /** Devis de LOCATION : interroge les fournisseurs supportant la location. */
@@ -204,7 +207,8 @@ export async function rentCheapest(
       console.log(`[v0] rent ${q.provider} failed:`, lastErr?.message)
     }
   }
-  throw lastErr ?? new Error('La location a échoué chez tous les fournisseurs.')
+  if (lastErr) console.log('[v0] location: tous les fournisseurs ont échoué:', lastErr.message)
+  throw new Error('NUMBER_UNAVAILABLE')
 }
 
 export async function getCodeFor(provider: ProviderId, order: string): Promise<CodeResult> {
