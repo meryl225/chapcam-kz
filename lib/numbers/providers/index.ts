@@ -1,6 +1,6 @@
 import 'server-only'
 import type { CanonCountry, CanonService } from '@/lib/numbers/catalog'
-import { getUsdToXof, tierMaxCostUsd, tierPriceXof } from '@/lib/numbers/pricing'
+import { getUsdToXof, tierPriceXof } from '@/lib/numbers/pricing'
 import { fivesim } from './fivesim'
 import { smsman } from './smsman'
 import { smspool } from './smspool'
@@ -88,45 +88,23 @@ export async function purchaseCheapest(country: CanonCountry, service: CanonServ
   const { quotes, usdToXof } = await getBestQuote(country, service)
   if (quotes.length === 0) throw new Error('Aucun fournisseur ne propose ce pays/service actuellement.')
 
-  // Prix client AFFICHÉ = palier du devis le moins cher (= ce que voit l'utilisateur
-  // dans le popup de confirmation). On le fige ici pour ne JAMAIS facturer plus que
-  // le prix annoncé, même si le coût réel renvoyé par le fournisseur à l'achat
-  // franchit un palier supérieur (ex: devis 0,08 $ -> 2000 FCFA, mais achat
-  // facturé 0,15 $ qui tomberait sinon dans le palier 5000 FCFA).
-  const displayedPriceXof = tierPriceXof(quotes[0].costUsd, usdToXof)
-  // Coût fournisseur max accepté pour rester rentable au prix affiché.
-  const maxCostUsd = tierMaxCostUsd(displayedPriceXof, usdToXof)
-
   let lastErr: Error | null = null
   for (const q of quotes) {
     const adapter = adapters[q.provider]
-    // PRÉ-CONTRÔLE anti-perte (le plus important) : on n'achète JAMAIS chez un
-    // fournisseur dont le coût de DEVIS dépasse déjà le plafond rentable. Sans ce
-    // filtre, lors d'une bascule auto, on pouvait acheter un numéro à 4,27 $ tout
-    // en ne facturant que le prix affiché (2000 FCFA) basé sur le devis le moins
-    // cher — donc à perte. Indispensable pour sms-man, qui masque son coût réel
-    // à l'achat (costUsd: 0) : seul le coût du devis permet de se protéger.
-    if (q.costUsd > maxCostUsd) {
-      lastErr = new Error(
-        `Coût devis ${q.provider} ${q.costUsd}$ > plafond ${maxCostUsd.toFixed(2)}$ — ignoré (anti-perte)`,
-      )
-      console.log(`[v0] skip ${q.provider}:`, lastErr.message)
-      continue
-    }
+    // PLUS DE PLAFOND ANTI-PERTE : peu importe le coût du fournisseur, ChapCam
+    // facture toujours coût réel × 3 (cf. tierPriceXof). On ne peut donc jamais
+    // vendre à perte, et on n'a plus besoin d'écarter un fournisseur plus cher.
+    // On passe simplement le coût du DEVIS de CE fournisseur comme repère
+    // `max_price` (avec une petite tolérance) pour ne pas se voir attribuer un
+    // pool "premium" sans rapport avec le tarif annoncé.
+    const providerMaxUsd = q.costUsd > 0 ? q.costUsd * 1.2 : undefined
     try {
-      const result = await adapter.purchase(country, service, maxCostUsd)
+      const result = await adapter.purchase(country, service, providerMaxUsd)
       // Certains fournisseurs (sms-man) ne renvoient pas le coût à l'achat :
       // on retombe sur le coût du devis.
       const costUsd = result.costUsd > 0 ? result.costUsd : q.costUsd
-      // Garde-fou final : si malgré le plafond le coût réel dépasse ce qu'on
-      // accepte (fournisseur ne respectant pas max_price), on annule pour ne pas
-      // vendre à perte, puis on tente le fournisseur suivant.
-      if (costUsd > maxCostUsd * 1.05) {
-        await adapter.cancel(result.providerOrder).catch(() => {})
-        throw new Error(`Coût réel ${costUsd}$ > plafond ${maxCostUsd}$ — achat annulé`)
-      }
-      // On facture le prix affiché au client (jamais davantage).
-      const priceXof = Math.min(displayedPriceXof, tierPriceXof(costUsd, usdToXof))
+      // Prix client = coût réel payé × 3 (plancher 2000 FCFA).
+      const priceXof = tierPriceXof(costUsd, usdToXof)
       return { result: { ...result, costUsd }, priceXof, costUsd, usdToXof }
     } catch (e) {
       lastErr = e as Error
@@ -177,30 +155,16 @@ export async function rentCheapest(
   const { quotes, usdToXof } = await getRentQuote(country, service, minHours)
   if (quotes.length === 0) throw new Error('Aucun fournisseur ne propose la location pour ce pays/service.')
 
-  // Prix affiché = palier du devis le moins cher : on ne facture jamais plus.
-  const displayedPriceXof = tierPriceXof(quotes[0].costUsd, usdToXof)
-  const maxCostUsd = tierMaxCostUsd(displayedPriceXof, usdToXof)
-
   let lastErr: Error | null = null
   for (const q of quotes) {
     const adapter = adapters[q.provider]
     if (!adapter.rent) continue
-    // Même pré-contrôle anti-perte qu'à l'achat (cf. purchaseCheapest).
-    if (q.costUsd > maxCostUsd) {
-      lastErr = new Error(
-        `Coût devis ${q.provider} ${q.costUsd}$ > plafond ${maxCostUsd.toFixed(2)}$ — ignoré (anti-perte)`,
-      )
-      console.log(`[v0] skip rent ${q.provider}:`, lastErr.message)
-      continue
-    }
+    // Plus de plafond : on facture coût réel × 3 (cf. purchaseCheapest).
+    const providerMaxUsd = q.costUsd > 0 ? q.costUsd * 1.2 : undefined
     try {
-      const result = await adapter.rent(country, service, minHours, maxCostUsd)
+      const result = await adapter.rent(country, service, minHours, providerMaxUsd)
       const costUsd = result.costUsd > 0 ? result.costUsd : q.costUsd
-      if (costUsd > maxCostUsd * 1.05) {
-        await adapter.cancel(result.providerOrder).catch(() => {})
-        throw new Error(`Coût réel ${costUsd}$ > plafond ${maxCostUsd}$ — location annulée`)
-      }
-      const priceXof = Math.min(displayedPriceXof, tierPriceXof(costUsd, usdToXof))
+      const priceXof = tierPriceXof(costUsd, usdToXof)
       return { result: { ...result, costUsd }, priceXof, costUsd, usdToXof }
     } catch (e) {
       lastErr = e as Error
