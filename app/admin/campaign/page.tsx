@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Mail, Send, Users, Calendar, Clock, CheckCircle, XCircle, Loader2, Rocket, Bell, CalendarDays, Gift, Eye, Monitor } from "lucide-react"
+import { Mail, Send, Users, Calendar, Clock, CheckCircle, XCircle, Loader2, Rocket, Bell, CalendarDays, Gift, Eye, Monitor, Video } from "lucide-react"
 import Link from "next/link"
 
 export default function AdminCampaignPage() {
@@ -70,8 +70,9 @@ export default function AdminCampaignPage() {
     }
   }
 
-  const sendCampaign = async (type: "D2" | "D1" | "DJ" | "PC") => {
+  const sendCampaign = async (type: "D2" | "D1" | "DJ" | "PC" | "VIDEO") => {
     if (type === "PC" && !confirm("Envoyer la campagne 'ChapCam PC a vie - 50 000 FCFA' a TOUS les utilisateurs inscrits ?")) return
+    if (type === "VIDEO" && !confirm("Envoyer la campagne 'Appels video' a TOUS les utilisateurs inscrits ?")) return
     setSending(type)
 
     try {
@@ -285,6 +286,58 @@ export default function AdminCampaignPage() {
                 <>
                   <Send className="w-5 h-5" />
                   Envoyer la campagne ChapCam PC a vie
+                </>
+              )}
+            </button>
+          </div>
+        </motion.div>
+
+        {/* Campagne Appels video */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-6xl mx-auto mb-10"
+        >
+          <div className="bg-gradient-to-br from-[#0f2a1f] to-[#0f1420] border border-[#00ff88]/30 rounded-2xl p-6">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-12 h-12 rounded-xl bg-[#00ff88]/15 flex items-center justify-center flex-shrink-0">
+                <Video className="w-6 h-6 text-[#00ff88]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-1">Campagne Appels video</h3>
+                <p className="text-gray-400 text-sm">
+                  Annonce a tous les inscrits : change ton apparence <strong className="text-[#00ff88]">en direct</strong> pendant
+                  tes appels video (WhatsApp, Zoom, TikTok Live...). Installation sur place a Yopougon Niangon (Texaco) ou
+                  assistance a distance.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 mb-5 text-sm">
+              <span className="inline-flex items-center gap-1.5 text-gray-300">
+                <Users className="w-4 h-4 text-[#00ff88]" />
+                Tous les utilisateurs inscrits
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-gray-300">
+                <Clock className="w-4 h-4 text-[#00ff88]" />
+                Sujet : &quot;Change ton apparence pendant tes appels video&quot;
+              </span>
+            </div>
+
+            <button
+              onClick={() => sendCampaign("VIDEO")}
+              disabled={sending !== null}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {sending === "VIDEO" ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Envoi en cours...
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5" />
+                  Envoyer la campagne Appels video
                 </>
               )}
             </button>
