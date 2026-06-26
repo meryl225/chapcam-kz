@@ -14,98 +14,30 @@ export function useLucy21() {
   const [isConnecting, setIsConnecting] = useState(false)
   const [connectionState, setConnectionState] = useState('disconnected')
   const [error, setError] = useState<string | null>(null)
-  const [pointsUsed, setPointsUsed] = useState(0)
-  const [sessionDuration, setSessionDuration] = useState(0)
 
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const realtimeClientRef = useRef<any>(null)
   const streamRef = useRef<MediaStream | null>(null)
-  const sessionStartRef = useRef<number | null>(null)
-  const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Deduire les points toutes les secondes pendant le swap
-  const startPointsDeduction = useCallback(() => {
-    if (pointsIntervalRef.current) {
-      clearInterval(pointsIntervalRef.current)
-    }
-
-    sessionStartRef.current = Date.now()
-    setPointsUsed(0)
-    setSessionDuration(0)
-
-    // Deduire 2 points par seconde (affichage local chaque seconde)
-    pointsIntervalRef.current = setInterval(async () => {
-      const elapsed = Math.floor((Date.now() - (sessionStartRef.current || Date.now())) / 1000)
-      const points = elapsed * POINTS_PER_SECOND
-      setSessionDuration(elapsed)
-      setPointsUsed(points)
-
-      // Envoyer la deduction au serveur a chaque palier (toutes les 5s)
-      if (elapsed > 0 && elapsed % DEDUCTION_INTERVAL === 0) {
-        try {
-          const res = await fetch('/api/points', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              pointsToDeduct: DEDUCTION_INTERVAL * POINTS_PER_SECOND,
-              sessionDuration: DEDUCTION_INTERVAL,
-            }),
-          })
-          const data = await res.json().catch(() => null)
-
-          // Plus de points OU solde epuise par cette deduction -> couper le swap.
-          // Si la reponse est illisible/undefined, on coupe aussi par securite.
-          if (!data?.success || data?.depleted) {
-            disconnect()
-          }
-        } catch (err) {
-          console.error('[Lucy 2.1] Points deduction error:', err)
-        }
-      }
-    }, 1000)
-  }, [])
-
-  const stopPointsDeduction = useCallback(async () => {
-    if (pointsIntervalRef.current) {
-      clearInterval(pointsIntervalRef.current)
-      pointsIntervalRef.current = null
-    }
-
-    // Deduire les secondes restantes non encore facturees (< 1 palier)
-    if (sessionStartRef.current) {
-      const totalSeconds = Math.floor((Date.now() - sessionStartRef.current) / 1000)
-      const remainingSeconds = totalSeconds % DEDUCTION_INTERVAL // Secondes non encore deduites
-
-      if (remainingSeconds > 0) {
-        try {
-          await fetch('/api/points', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              pointsToDeduct: remainingSeconds * POINTS_PER_SECOND,
-              sessionDuration: remainingSeconds
-            })
-          })
-        } catch (err) {
-          console.error('[Lucy 2.1] Final points deduction error:', err)
-        }
-      }
-    }
-
-    sessionStartRef.current = null
-  }, [])
+  // Garde-fou : la session n'est consideree "active" (et donc facturee cote
+  // page) qu'a la 1ere vraie image transformee recue, JAMAIS pendant la chauffe
+  // du modele (ecran noir). Evite de debiter le client pour rien.
+  const firstFrameRef = useRef(false)
+  const connectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     return () => {
       disconnect()
-      stopPointsDeduction()
     }
   }, [])
 
   const disconnect = useCallback(() => {
-    // Arreter la deduction de points
-    stopPointsDeduction()
+    // Annuler le garde-fou de demarrage et reinitialiser l'etat 1ere image.
+    if (connectTimeoutRef.current) {
+      clearTimeout(connectTimeoutRef.current)
+      connectTimeoutRef.current = null
+    }
+    firstFrameRef.current = false
 
     // 1. Fermer la session Decart (arrete la facturation cote serveur)
     if (realtimeClientRef.current) {
@@ -149,7 +81,7 @@ export function useLucy21() {
     setIsConnecting(false)
     setConnectionState('disconnected')
     setError(null)
-  }, [stopPointsDeduction])
+  }, [])
 
   const connect = useCallback(async (avatarImageUrl: string) => {
     disconnect()
@@ -201,6 +133,22 @@ export function useLucy21() {
 
       const client = createDecartClient({ apiKey: clientToken })
 
+      // Marque la session reellement active : appele UNIQUEMENT a la 1ere vraie
+      // image transformee. C'est ce qui declenche la facturation cote page
+      // (l'effet de facturation est cale sur isConnected). Tant qu'on est en
+      // chauffe (ecran noir), on reste "isConnecting" => aucun debit.
+      const markLive = () => {
+        if (firstFrameRef.current) return
+        firstFrameRef.current = true
+        if (connectTimeoutRef.current) {
+          clearTimeout(connectTimeoutRef.current)
+          connectTimeoutRef.current = null
+        }
+        setIsConnected(true)
+        setIsConnecting(false)
+        setConnectionState('connected')
+      }
+
       const realtimeClient = await client.realtime.connect(stream, {
         model: models.realtime('lucy-2.1'),
         mirror: 'auto',
@@ -210,8 +158,20 @@ export function useLucy21() {
         // traitement intermediaire. Le badge natif "AI Generated" de Decart
         // reste visible, c'est normal et attendu.
         onRemoteStream: (transformedStream: MediaStream) => {
-          if (remoteVideoRef.current) {
-            remoteVideoRef.current.srcObject = transformedStream
+          const el = remoteVideoRef.current
+          if (!el) return
+          el.srcObject = transformedStream
+          // Forcer la lecture (corrige l'ecran noir si l'autoplay ne demarre pas).
+          el.play().catch(() => {})
+
+          // Detecter la 1ere image reellement peinte avant de facturer.
+          const elAny = el as HTMLVideoElement & {
+            requestVideoFrameCallback?: (cb: () => void) => number
+          }
+          if (typeof elAny.requestVideoFrameCallback === 'function') {
+            elAny.requestVideoFrameCallback(() => markLive())
+          } else {
+            el.onplaying = () => markLive()
           }
         },
       })
@@ -224,18 +184,21 @@ export function useLucy21() {
         enhance: true,
       })
 
+      // On NE facture PAS sur 'connected'/'generating' : ces etats signifient que
+      // la connexion WebRTC est etablie, pas que l'image transformee est affichee.
+      // La facturation demarre via markLive() (1ere vraie image).
       realtimeClient.on('connectionChange', (state: string) => {
         setConnectionState(state)
-        if (state === 'connected' || state === 'generating') {
-          setIsConnected(true)
-          setIsConnecting(false)
-          // Demarrer la deduction de points quand connecte
-          startPointsDeduction()
-        }
       })
 
-      setIsConnected(true)
-      setIsConnecting(false)
+      // Garde-fou : si aucune image transformee n'arrive en 20s, on coupe et on
+      // previent l'utilisateur, sans jamais l'avoir facture pour l'ecran noir.
+      connectTimeoutRef.current = setTimeout(() => {
+        if (!firstFrameRef.current) {
+          setError("La transformation n'a pas demarre. Reessaie dans un instant.")
+          disconnect()
+        }
+      }, 20000)
 
     } catch (err: any) {
       console.error('[Lucy 2.1]', err)
@@ -258,13 +221,17 @@ export function useLucy21() {
         localVideoRef.current.pause()
         localVideoRef.current.srcObject = null
       }
-      stopPointsDeduction()
+      if (connectTimeoutRef.current) {
+        clearTimeout(connectTimeoutRef.current)
+        connectTimeoutRef.current = null
+      }
+      firstFrameRef.current = false
       setIsConnected(false)
       setConnectionState('error')
       setError(err.message || 'Erreur de connexion')
       setIsConnecting(false)
     }
-  }, [disconnect, startPointsDeduction, stopPointsDeduction])
+  }, [disconnect])
 
   // Changer d'avatar a chaud, sans couper la session Decart en cours.
   const updateAvatar = useCallback(async (avatarImageUrl: string) => {
@@ -292,7 +259,5 @@ export function useLucy21() {
     connect,
     disconnect,
     updateAvatar,
-    pointsUsed,
-    sessionDuration,
   }
 }
