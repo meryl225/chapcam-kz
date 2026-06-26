@@ -551,9 +551,14 @@ export default function DashboardPage() {
                 </button>
 
                 {!isConnected && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background text-text-faint">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background px-4 text-center text-text-faint">
                     <Zap className="mb-2 h-12 w-12 opacity-50" />
-                    <p className="text-sm">{isConnecting ? 'Connexion en cours...' : 'Swap inactif'}</p>
+                    <p className="text-sm">{isConnecting ? 'Preparation de la transformation...' : 'Swap inactif'}</p>
+                    {isConnecting && (
+                      <p className="mt-1 text-xs text-text-faint/70">
+                        Aucun credit n&apos;est debite tant que l&apos;image n&apos;est pas prete.
+                      </p>
+                    )}
                   </div>
                 )}
 
