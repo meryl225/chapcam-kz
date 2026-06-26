@@ -2,27 +2,25 @@
 
 import { useEffect, useState } from 'react'
 import { Clock } from 'lucide-react'
-import { getPcLaunchOfferEnd } from '@/lib/pc-offer'
 
 interface TimeLeft {
-  days: number
   hours: number
   minutes: number
   seconds: number
-  expired: boolean
 }
 
-function computeTimeLeft(endIso: string): TimeLeft {
-  const diff = new Date(endIso).getTime() - Date.now()
-  if (diff <= 0) {
-    return { days: 0, hours: 0, minutes: 0, seconds: 0, expired: true }
-  }
+// Cycle perpetuel de 3h : le compte a rebours descend de 3h00 a 0, puis se
+// relance seul a 3h00. On l'ancre sur une grille globale (Date.now() % CYCLE)
+// pour que tous les visiteurs voient exactement la meme valeur et qu'un simple
+// rechargement de page ne remette pas le minuteur a 3h00.
+const CYCLE_MS = 3 * 60 * 60 * 1000
+
+function computeTimeLeft(): TimeLeft {
+  const diff = CYCLE_MS - (Date.now() % CYCLE_MS)
   return {
-    days: Math.floor(diff / (1000 * 60 * 60 * 24)),
     hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
     minutes: Math.floor((diff / (1000 * 60)) % 60),
     seconds: Math.floor((diff / 1000) % 60),
-    expired: false,
   }
 }
 
@@ -31,27 +29,23 @@ function pad(n: number): string {
 }
 
 // Compte a rebours de l'offre de lancement ChapCam PC.
-// Affiche un contour + un decompte jusqu'a la fin de la promo (50 000 -> 100 000).
+// Affiche un contour + un decompte de 3h qui se relance en boucle.
 // `compact` = version plus petite pour les bandeaux.
 export function ChapCamPcCountdown({ compact = false }: { compact?: boolean }) {
-  const end = getPcLaunchOfferEnd()
   // null tant que le composant n'est pas monte cote client (evite le mismatch SSR)
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null)
 
   useEffect(() => {
-    setTimeLeft(computeTimeLeft(end))
-    const id = setInterval(() => setTimeLeft(computeTimeLeft(end)), 1000)
+    setTimeLeft(computeTimeLeft())
+    const id = setInterval(() => setTimeLeft(computeTimeLeft()), 1000)
     return () => clearInterval(id)
-  }, [end])
+  }, [])
 
   const units = [
-    { label: 'J', value: timeLeft?.days ?? 0 },
     { label: 'H', value: timeLeft?.hours ?? 0 },
     { label: 'M', value: timeLeft?.minutes ?? 0 },
     { label: 'S', value: timeLeft?.seconds ?? 0 },
   ]
-
-  if (timeLeft?.expired) return null
 
   return (
     <div
@@ -99,7 +93,7 @@ export function ChapCamPcCountdown({ compact = false }: { compact?: boolean }) {
           compact ? 'text-[10px]' : 'text-xs'
         }`}
       >
-        50 000 FCFA a vie maintenant, puis 50 000 FCFA/mois des le 14 juin
+        50 000 FCFA a vie pendant l&apos;offre, puis 100 000 FCFA
       </p>
     </div>
   )

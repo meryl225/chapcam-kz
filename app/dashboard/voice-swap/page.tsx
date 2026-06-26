@@ -19,6 +19,7 @@ import {
 import { useVoiceSwap } from '@/hooks/use-voice-swap'
 import { useVoiceSubscription } from '@/hooks/use-voice-subscription'
 import { VoiceOffersSection } from '@/components/voice-swap/voice-offers-section'
+import { SwapConsent, GenerateNotice } from '@/components/dashboard/swap-consent'
 import { type VoiceSwapPhase } from '@/lib/voice-swap'
 
 const PHASE_LABELS: Record<VoiceSwapPhase, string> = {
@@ -45,6 +46,8 @@ export default function VoiceSwapPage() {
   const [voiceMenuOpen, setVoiceMenuOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [busy, setBusy] = useState(false)
+  // Certification d'usage responsable, requise avant chaque demarrage.
+  const [swapConsent, setSwapConsent] = useState(false)
 
   const selectedVoiceProfile = useMemo(
     () => voices.find((v) => v.id === selectedVoice) || null,
@@ -76,6 +79,13 @@ export default function VoiceSwapPage() {
       if (isRunning) {
         await stop()
       } else {
+        if (!swapConsent) return
+        // Journalisation de l'acceptation de la certification d'usage responsable.
+        console.log('[v0] swap-consent accepted', {
+          type: 'voice-swap',
+          voiceId: selectedVoice,
+          acceptedAt: new Date().toISOString(),
+        })
         await start({
           conversion: { voiceId: selectedVoice },
           inputDeviceId: inputDeviceId || null,
@@ -358,10 +368,15 @@ export default function VoiceSwapPage() {
         </div>
       )}
 
+      {/* Certification d'usage responsable (avant demarrage) */}
+      {!isRunning && (
+        <SwapConsent checked={swapConsent} onChange={setSwapConsent} className="mb-3" />
+      )}
+
       {/* Bouton activation */}
       <button
         onClick={handleToggle}
-        disabled={!available || busy || isTransitioning || (!isRunning && (!selectedVoice || !hasMinutes))}
+        disabled={!available || busy || isTransitioning || (!isRunning && (!selectedVoice || !hasMinutes || !swapConsent))}
         className="mb-2 flex w-full flex-col items-center justify-center rounded-2xl bg-gradient-to-r from-[#7c3aed] via-[#8b5cf6] to-[#a855f7] py-5 text-center transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
         style={{ boxShadow: '0 8px 30px rgba(124,58,237,0.4)' }}
       >
@@ -381,6 +396,8 @@ export default function VoiceSwapPage() {
             : 'Streaming temps reel vers le micro virtuel'}
         </span>
       </button>
+
+      {!isRunning && <GenerateNotice className="mb-3 mt-2" />}
 
       {/* Aide contextuelle quand le demarrage est bloque */}
       {!isRunning && available && !voiceSub.loading && (

@@ -130,6 +130,108 @@ function getPcLifetimeEmail(userName: string) {
   return { subject, html }
 }
 
+// Template email pour la campagne "Appels video" (face swap en temps reel
+// pendant les appels video sur les reseaux sociaux). Installation sur place a
+// Yopougon Niangon (station Texaco) ou assistance a distance. CTA: telecharger.
+function getVideoCallEmail(userName: string) {
+  const subject = "Change ton apparence pendant tes appels video - ChapCam"
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0e1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0e1a; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%); border-radius: 24px; border: 1px solid rgba(0, 255, 136, 0.3); overflow: hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(90deg, #00ff88, #00d4ff); padding: 20px; text-align: center;">
+              <h1 style="margin: 0; color: #001b12; font-size: 24px; font-weight: 800;">ChapCam - Face Swap en temps reel</h1>
+            </td>
+          </tr>
+
+          <!-- Hero text (lisible meme si images bloquees) -->
+          <tr>
+            <td style="padding: 36px 38px 8px;">
+              <p style="color: #ffffff; font-size: 17px; margin: 0 0 14px;">Salut ${userName || 'toi'},</p>
+              <h2 style="color: #ffffff; font-size: 26px; line-height: 1.25; font-weight: 800; margin: 0 0 14px;">
+                Tu veux changer ton apparence pendant tes
+                <span style="color: #00ff88;">appels video</span> sur les reseaux sociaux ?
+              </h2>
+              <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6; margin: 0;">
+                Avec ChapCam, transforme ton visage <strong style="color:#ffffff;">en direct</strong> sur WhatsApp,
+                Messenger, Zoom, TikTok Live et plus encore. Simple, rapide, et bluffant de realisme.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Testimonial image -->
+          <tr>
+            <td style="padding: 22px 38px;">
+              <a href="https://chapcam.com/download" style="text-decoration: none;">
+                <img src="https://chapcam.com/campagne/temoignage-chapcam.jpg" alt="Temoignage client ChapCam" width="524" style="width: 100%; max-width: 524px; border-radius: 16px; display: block; border: 1px solid rgba(255,255,255,0.1);">
+              </a>
+            </td>
+          </tr>
+
+          <!-- Installation box -->
+          <tr>
+            <td style="padding: 4px 38px 8px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="background: rgba(0, 212, 255, 0.08); border: 1px solid rgba(0, 212, 255, 0.3); border-radius: 16px;">
+                <tr>
+                  <td style="padding: 22px;">
+                    <p style="color: #00d4ff; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 10px;">On s'occupe de tout</p>
+                    <p style="color: #ffffff; font-size: 15px; margin: 0 0 6px;">&#10003; Installation sur place a <strong>Yopougon Niangon</strong> (station Texaco)</p>
+                    <p style="color: #ffffff; font-size: 15px; margin: 0;">&#10003; Ou assistance <strong>a distance</strong>, ou que tu sois</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- CTA -->
+          <tr>
+            <td align="center" style="padding: 26px 38px 10px;">
+              <a href="https://chapcam.com/download" style="display: inline-block; background: linear-gradient(90deg, #00ff88, #00d4ff); color: #000000; font-size: 16px; font-weight: bold; text-decoration: none; padding: 16px 44px; border-radius: 12px;">
+                Telecharger ChapCam maintenant
+              </a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding: 0 38px 30px;">
+              <p style="color: #888888; font-size: 13px; margin: 8px 0 0;">
+                Besoin d'aide ? Ecris-nous sur WhatsApp au <strong style="color:#e5e5e5;">+225 05 55 56 01 89</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 38px; border-top: 1px solid rgba(255,255,255,0.1);">
+              <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+                Tu recois cet email car tu es inscrit sur ChapCam.<br>
+                <a href="https://chapcam.com" style="color: #00ff88;">chapcam.com</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`
+
+  return { subject, html }
+}
+
 // Template email pour le rappel de lancement
 function getLaunchReminderEmail(userName: string, type: 'D2' | 'D1' | 'DJ') {
   const subjects = {
@@ -231,10 +333,10 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json()
-    const { type } = body // 'D2', 'D1', 'DJ' ou 'PC'
+    const { type } = body // 'D2', 'D1', 'DJ', 'PC' ou 'VIDEO'
 
-    if (!type || !['D2', 'D1', 'DJ', 'PC'].includes(type)) {
-      return NextResponse.json({ error: 'Type invalide. Utilise D2, D1, DJ ou PC' }, { status: 400 })
+    if (!type || !['D2', 'D1', 'DJ', 'PC', 'VIDEO'].includes(type)) {
+      return NextResponse.json({ error: 'Type invalide. Utilise D2, D1, DJ, PC ou VIDEO' }, { status: 400 })
     }
     
     // Recuperer TOUS les utilisateurs via le client admin (service_role)
@@ -307,7 +409,9 @@ export async function POST(request: NextRequest) {
           const { subject, html } =
             type === 'PC'
               ? getPcLifetimeEmail(user.name || '')
-              : getLaunchReminderEmail(user.name || '', type as 'D2' | 'D1' | 'DJ')
+              : type === 'VIDEO'
+                ? getVideoCallEmail(user.name || '')
+                : getLaunchReminderEmail(user.name || '', type as 'D2' | 'D1' | 'DJ')
           return {
             from: 'ChapCam <noreply@chapcam.com>',
             to: user.email,

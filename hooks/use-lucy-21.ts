@@ -55,9 +55,9 @@ export function useLucy21() {
       streamRef.current = null
     }
 
-    // 3. Couper egalement les tracks attaches aux elements video
-    //    (flux local ET flux transforme renvoye par Decart) pour eteindre
-    //    le voyant camera et liberer la ressource dans tous les cas.
+    // 3. Couper egalement les tracks attaches aux elements video (flux local
+    //    et flux affiche) pour eteindre le voyant camera et liberer la
+    //    ressource dans tous les cas.
     const localStream = localVideoRef.current?.srcObject as MediaStream | null
     if (localStream) {
       localStream.getTracks().forEach((track) => track.stop())
@@ -124,7 +124,7 @@ export function useLucy21() {
           throw new Error('Impossible de demarrer la camera: ' + camError.message)
         }
       }
-      
+
       streamRef.current = stream
       if (localVideoRef.current) localVideoRef.current.srcObject = stream
 
@@ -154,6 +154,9 @@ export function useLucy21() {
         mirror: 'auto',
         resolution: '720p',
 
+        // Affichage direct du flux transforme renvoye par Decart, sans aucun
+        // traitement intermediaire. Le badge natif "AI Generated" de Decart
+        // reste visible, c'est normal et attendu.
         onRemoteStream: (transformedStream: MediaStream) => {
           const el = remoteVideoRef.current
           if (!el) return

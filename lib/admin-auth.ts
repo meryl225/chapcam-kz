@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
+import { ADMIN_EMAIL } from '@/lib/admin-email'
 
-export const ADMIN_EMAIL = 'fanny.guck@gmail.com'
+export { ADMIN_EMAIL }
 
 // Verifie que la requete provient bien de l'admin connecte.
 // Le middleware ne protege PAS les routes /api/admin (il retourne tot

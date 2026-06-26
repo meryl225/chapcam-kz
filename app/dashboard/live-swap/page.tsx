@@ -7,6 +7,7 @@ import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, W
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
+import { SwapConsent, GenerateNotice } from '@/components/dashboard/swap-consent'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
@@ -30,8 +31,10 @@ export default function DashboardPage() {
   const [duration, setDuration] = useState(0)
   const [pointsUsed, setPointsUsed] = useState(0)
   const [isSyncingPoints, setIsSyncingPoints] = useState(false)
+  // Certification d'usage responsable, requise avant chaque demarrage de swap.
+  const [swapConsent, setSwapConsent] = useState(false)
 
-  // Nouveau: Detection hardware et mode de traitement
+  // Detection hardware et mode de traitement
   const [hardware, setHardware] = useState<HardwareCapabilities | null>(null)
   // IMPORTANT : on initialise avec les MEMES valeurs par defaut que le rendu
   // serveur. Lire localStorage ici (pendant le rendu) provoquait un mismatch
@@ -103,7 +106,7 @@ export default function DashboardPage() {
     async function detectHardware() {
       const caps = await detectHardwareCapabilities()
       setHardware(caps)
-      
+
       // Si PC gamer detecte, forcer le mode local obligatoirement
       if (caps.isGamingPC) {
         setProcessingMode('local')
@@ -196,7 +199,7 @@ export default function DashboardPage() {
   // Fonction pour arreter le swap et sauvegarder les points
   const handleStopSwapAndSave = async () => {
     disconnect()
-    
+
     // Sauvegarder les points utilises dans Supabase
     if (pointsUsed > 0 && !isSyncingPoints) {
       setIsSyncingPoints(true)
@@ -204,9 +207,9 @@ export default function DashboardPage() {
         const res = await fetch('/api/points', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             pointsToDeduct: pointsUsed,
-            sessionDuration: duration 
+            sessionDuration: duration
           })
         })
         const data = await res.json().catch(() => null)
@@ -220,7 +223,7 @@ export default function DashboardPage() {
         setIsSyncingPoints(false)
       }
     }
-    
+
     // Reset les compteurs
     setPointsUsed(0)
     setDuration(0)
@@ -262,7 +265,14 @@ export default function DashboardPage() {
   }, [])
 
   const handleStartSwap = async () => {
-    if (!selectedAvatar || userPoints < POINTS_PER_SECOND) return
+    if (!selectedAvatar || userPoints < POINTS_PER_SECOND || !swapConsent) return
+    // Journalisation de l'acceptation de la certification d'usage responsable.
+    console.log('[v0] swap-consent accepted', {
+      type: 'live-face-swap',
+      userId,
+      avatarId: selectedAvatar.id,
+      acceptedAt: new Date().toISOString(),
+    })
     setDuration(0)
     setPointsUsed(0)
     await connect(selectedAvatar.url)
@@ -293,11 +303,11 @@ export default function DashboardPage() {
     if (hardware?.isGamingPC) {
       return
     }
-    
+
     const newPrefs = { ...preferences, mode }
     setPreferences(newPrefs)
     saveProcessingPreferences(newPrefs)
-    
+
     if (hardware) {
       const result = determineProcessingMode(hardware, newPrefs, networkQuality)
       setProcessingMode(result.mode)
@@ -311,7 +321,7 @@ export default function DashboardPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND
+  const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND && swapConsent
 
   const quickTools = [
     { href: '/dashboard/voice-swap', label: 'Voice Swap', icon: AudioLines, color: '#8b5cf6' },
@@ -514,6 +524,11 @@ export default function DashboardPage() {
                       <span className="font-semibold text-primary">{stats.fps} FPS</span>
                       <span className="text-foreground/30">|</span>
                       <span className="text-foreground/60">{stats.resolution}</span>
+                      <span className="text-foreground/30">|</span>
+                      <span className="flex items-center gap-1 text-foreground/60">
+                        <Clock className="h-3 w-3" />
+                        {formatDuration(duration)}
+                      </span>
                     </>
                   )}
                   <button
@@ -536,74 +551,19 @@ export default function DashboardPage() {
                   className="h-full w-full object-cover"
                 />
 
-                <div className="absolute right-3 top-3 z-20 flex items-center gap-1.5 rounded-md bg-black/60 px-3 py-1 text-xs text-foreground backdrop-blur-md">
-                  <span className="h-2 w-2 animate-pulse rounded-full bg-green-400" />
-                  ChapCam • {processingMode === 'local' ? 'Local' : 'Cloud'}
-                </div>
-
-                <button
-                  onClick={toggleCamFullscreen}
-                  aria-label={isCamFullscreen ? 'Réduire la caméra' : 'Agrandir la caméra'}
-                  title={isCamFullscreen ? 'Réduire' : 'Agrandir en plein écran'}
-                  className="absolute left-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-lg border border-hairline bg-black/50 text-foreground/80 backdrop-blur-md transition-colors hover:bg-black/70"
-                >
-                  {isCamFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                </button>
-
-                {!isConnected && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-background px-4 text-center text-text-faint">
-                    <Zap className="mb-2 h-12 w-12 opacity-50" />
-                    <p className="text-sm">{isConnecting ? 'Preparation de la transformation...' : 'Swap inactif'}</p>
-                    {isConnecting && (
-                      <p className="mt-1 text-xs text-text-faint/70">
-                        Aucun credit n&apos;est debite tant que l&apos;image n&apos;est pas prete.
-                      </p>
-                    )}
-                  </div>
-                )}
-
+                {/* Spinner de connexion uniquement (transient, sans texte) pour
+                    garder la scene parfaitement vierge cote OBS. */}
                 {isConnecting && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 )}
-
-                {/* Controles camera */}
-                <div className="absolute inset-x-3 bottom-3 z-20 flex items-center justify-between">
-                  <div className="flex h-9 items-end gap-0.5 rounded-lg border border-hairline bg-black/50 px-2 py-2 backdrop-blur-md">
-                    {[0, 1, 2, 3, 4, 5].map(i => (
-                      <span
-                        key={i}
-                        className="cc-wave-bar w-0.5 rounded-full bg-primary"
-                        style={{ height: '100%', animationDelay: `${i * 0.1}s` }}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex items-center gap-2 rounded-lg border border-hairline bg-black/50 px-3 py-2 text-xs text-foreground/70 backdrop-blur-md">
-                    <Clock className="h-3.5 w-3.5" />
-                    {formatDuration(duration)}
-                  </div>
-                </div>
               </div>
 
               {/* Indicateur d'etat de la camera virtuelle ChapCam (app de bureau uniquement) */}
               <VirtualCameraIndicator className="m-3" />
             </div>
 
-            {/* Cercle IA anime au centre */}
-            <div className="pointer-events-none absolute left-1/2 top-1/2 z-30 hidden -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-2 md:flex">
-              <div className="relative">
-                <div className="absolute inset-0 rounded-full bg-primary/30 blur-xl cc-pulse" />
-                <div className="relative flex h-14 w-14 items-center justify-center rounded-full border-2 border-primary bg-background shadow-[0_0_30px_rgba(0,255,136,0.5)]">
-                  <Zap className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-              <span className="rounded-md bg-black/60 px-2 py-1 text-center text-[10px] leading-tight text-foreground/70 backdrop-blur-md">
-                Transformation
-                <br />
-                en temps réel
-              </span>
-            </div>
           </div>
 
           {/* Outils rapides ChapCam */}
@@ -708,6 +668,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Certification d'usage responsable (avant demarrage) */}
+          {!isConnected && (
+            <SwapConsent checked={swapConsent} onChange={setSwapConsent} className="mb-3" />
+          )}
+
           {/* Bouton Demarrer (degrade vert -> violet) */}
           <button
             onClick={isConnected ? handleStopSwap : handleStartSwap}
@@ -746,6 +711,8 @@ export default function DashboardPage() {
               )}
             </span>
           </button>
+
+          {!isConnected && <GenerateNotice className="mt-3" />}
         </div>
 
         {/* Panneau de reglages */}
