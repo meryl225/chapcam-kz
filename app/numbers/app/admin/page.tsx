@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ADMIN_EMAIL } from '@/lib/admin-auth'
-import { adminStats, adminRecentActivations, adminRecentTransactions } from '@/lib/numbers/db'
+import { adminStats, adminRecentActivations, adminRecentTransactions, getProviderHealth } from '@/lib/numbers/db'
 import { formatXOF } from '@/lib/numbers/types'
-import { Users, Wallet, ArrowDownLeft, ArrowUpRight, SignalHigh, ShieldAlert } from 'lucide-react'
+import { Users, Wallet, ArrowDownLeft, ArrowUpRight, SignalHigh, ShieldAlert, Activity } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,11 +53,22 @@ export default async function NumbersAdminPage() {
     redirect('/numbers/app')
   }
 
-  const [stats, activations, transactions] = await Promise.all([
+  const [stats, activations, transactions, health] = await Promise.all([
     adminStats(),
     adminRecentActivations(60),
     adminRecentTransactions(60),
+    // Santé observée sur 48h, sans seuil d'échantillon ici (minSample=1) pour
+    // tout afficher à l'admin, même les fournisseurs peu utilisés.
+    getProviderHealth(48, 1),
   ])
+
+  // Libellés des fournisseurs connus (pour un affichage propre dans le tableau).
+  const PROVIDER_LABELS: Record<string, string> = { fivesim: '5sim', smsman: 'SMS-Man', smspool: 'SMSPool' }
+  const healthRows = ['fivesim', 'smsman', 'smspool'].map((id) => ({
+    id,
+    label: PROVIDER_LABELS[id] ?? id,
+    data: health[id] ?? null,
+  }))
 
   const statCards = [
     { label: 'Utilisateurs', value: String(stats.users), icon: Users, tone: 'text-blue-300 bg-blue-500/15' },
@@ -105,6 +116,53 @@ export default async function NumbersAdminPage() {
         <div className={`${card} p-5`}>
           <p className="text-2xl font-semibold text-white">{formatXOF(stats.refundsXof)}</p>
           <p className="text-sm text-white/50">Total remboursé</p>
+        </div>
+      </div>
+
+      {/* Santé des fournisseurs (taux de réussite réel sur 48h) */}
+      <div className={`${card} overflow-hidden`}>
+        <div className="flex items-center gap-2 border-b border-white/5 p-5">
+          <Activity className="h-4 w-4 text-blue-300" />
+          <h2 className="font-semibold text-white">Santé des fournisseurs (48h)</h2>
+          <span className="ml-auto text-xs text-white/40">
+            La sélection privilégie automatiquement le plus fiable
+          </span>
+        </div>
+        <div className="grid grid-cols-1 gap-4 p-5 sm:grid-cols-3">
+          {healthRows.map((row) => {
+            const rate = row.data?.rate ?? null
+            const sample = row.data?.sample ?? 0
+            const healthy = rate != null && rate >= 70
+            const weak = rate != null && rate < 70
+            const tone = healthy
+              ? 'text-emerald-300'
+              : weak
+                ? 'text-rose-300'
+                : 'text-white/50'
+            return (
+              <div key={row.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-4">
+                <div className="flex items-center justify-between">
+                  <p className="font-medium text-white">{row.label}</p>
+                  {weak && (
+                    <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-xs text-rose-300">
+                      Rétrogradé
+                    </span>
+                  )}
+                  {healthy && (
+                    <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">
+                      Prioritaire
+                    </span>
+                  )}
+                </div>
+                <p className={`mt-3 text-2xl font-semibold ${tone}`}>
+                  {rate != null ? `${rate}%` : '—'}
+                </p>
+                <p className="text-xs text-white/40">
+                  {sample > 0 ? `${sample} commande${sample > 1 ? 's' : ''} terminée${sample > 1 ? 's' : ''}` : 'Aucune donnée récente'}
+                </p>
+              </div>
+            )
+          })}
         </div>
       </div>
 
