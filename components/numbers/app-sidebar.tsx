@@ -8,11 +8,12 @@ import { useNumbers } from '@/components/numbers/numbers-provider'
 import { getInitials } from '@/lib/numbers/data'
 import {
   Phone, LayoutDashboard, Store, MessageSquareText, Settings, Menu, X,
-  ArrowUpRight, Wallet, History, LifeBuoy, SignalHigh, ShieldAlert,
+  ArrowUpRight, Wallet, History, LifeBuoy, SignalHigh, ShieldAlert, Infinity as InfinityIcon,
 } from 'lucide-react'
 
 const NAV = [
   { href: '/numbers/app', label: 'Tableau de bord', icon: LayoutDashboard, exact: true },
+  { href: '/numbers/app/durable', label: 'Numéro illimité', icon: InfinityIcon },
   { href: '/numbers/app/marketplace', label: 'Acheter un numéro', icon: Store },
   { href: '/numbers/app/numbers', label: 'Mes numéros', icon: SignalHigh },
   { href: '/numbers/app/messages', label: 'Messages', icon: MessageSquareText, badge: true },

@@ -1,6 +1,7 @@
 import 'server-only'
 import type { CanonCountry, CanonService } from '@/lib/numbers/catalog'
 import { getUsdToXof, tierPriceXof } from '@/lib/numbers/pricing'
+import { getProviderHealth, type ProviderHealth } from '@/lib/numbers/db'
 import { fivesim } from './fivesim'
 import { smsman } from './smsman'
 import { smspool } from './smspool'
@@ -15,8 +16,28 @@ export const adapters: Record<ProviderId, ProviderAdapter> = {
 
 const ALL = [fivesim, smsman, smspool]
 
-/** Taux de réussite effectif d'un devis (valeur par défaut si non communiquée). */
-function effectiveRate(q: Quote): number {
+// Cache court de la santé fournisseurs : évite une requête DB à chaque devis,
+// tout en restant réactif (un fournisseur qui se met à échouer est rétrogradé
+// en moins d'une minute).
+let _healthCache: { at: number; data: ProviderHealth } | null = null
+const HEALTH_TTL_MS = 60_000
+
+async function loadProviderHealth(): Promise<ProviderHealth> {
+  if (_healthCache && Date.now() - _healthCache.at < HEALTH_TTL_MS) return _healthCache.data
+  const data = await getProviderHealth(48, 6).catch(() => ({} as ProviderHealth))
+  _healthCache = { at: Date.now(), data }
+  return data
+}
+
+/**
+ * Taux de réussite effectif d'un devis. PRIORITÉ au taux RÉEL observé en base
+ * (sur les dernières 48h, si l'échantillon est suffisant) : c'est lui qui rend
+ * la sélection auto-apprenante et rétrograde un fournisseur défaillant. À défaut
+ * de données fiables, on retombe sur le taux annoncé puis la valeur par défaut.
+ */
+function effectiveRate(q: Quote, health?: ProviderHealth): number {
+  const observed = health?.[q.provider]
+  if (observed) return observed.rate
   return typeof q.successRate === 'number' && q.successRate > 0 ? q.successRate : DEFAULT_SUCCESS_RATE
 }
 
@@ -30,13 +51,13 @@ function effectiveRate(q: Quote): number {
  *     égal, on prend le plus fiable), puis par coût fournisseur croissant.
  * L'ordre obtenu sert au prix affiché ET à l'ordre d'achat (bascule auto).
  */
-export function rankQuotes(quotes: Quote[], usdToXof: number): Quote[] {
+export function rankQuotes(quotes: Quote[], usdToXof: number, health?: ProviderHealth): Quote[] {
   const cmp = (a: Quote, b: Quote) =>
     tierPriceXof(a.costUsd, usdToXof) - tierPriceXof(b.costUsd, usdToXof) ||
-    effectiveRate(b) - effectiveRate(a) ||
+    effectiveRate(b, health) - effectiveRate(a, health) ||
     a.costUsd - b.costUsd
-  const eligible = quotes.filter((q) => effectiveRate(q) >= MIN_SUCCESS_RATE).sort(cmp)
-  const fallback = quotes.filter((q) => effectiveRate(q) < MIN_SUCCESS_RATE).sort(cmp)
+  const eligible = quotes.filter((q) => effectiveRate(q, health) >= MIN_SUCCESS_RATE).sort(cmp)
+  const fallback = quotes.filter((q) => effectiveRate(q, health) < MIN_SUCCESS_RATE).sort(cmp)
   return [...eligible, ...fallback]
 }
 
@@ -50,8 +71,9 @@ export type BestQuote = {
 
 /** Interroge tous les fournisseurs et renvoie le moins cher, prix client en XOF. */
 export async function getBestQuote(country: CanonCountry, service: CanonService): Promise<BestQuote> {
-  const [usdToXof, results] = await Promise.all([
+  const [usdToXof, health, results] = await Promise.all([
     getUsdToXof(),
+    loadProviderHealth(),
     Promise.all(
       ALL.map((a) =>
         a.quote(country, service).catch((e) => {
@@ -61,7 +83,7 @@ export async function getBestQuote(country: CanonCountry, service: CanonService)
       ),
     ),
   ])
-  const quotes = rankQuotes(results.filter((q): q is Quote => !!q && q.costUsd > 0), usdToXof)
+  const quotes = rankQuotes(results.filter((q): q is Quote => !!q && q.costUsd > 0), usdToXof, health)
   const best = quotes[0] ?? null
   return {
     available: !!best,
@@ -124,8 +146,9 @@ export async function getRentQuote(
   minHours: number,
 ): Promise<BestQuote> {
   const renters = ALL.filter((a) => typeof a.rentQuote === 'function' && typeof a.rent === 'function')
-  const [usdToXof, results] = await Promise.all([
+  const [usdToXof, health, results] = await Promise.all([
     getUsdToXof(),
+    loadProviderHealth(),
     Promise.all(
       renters.map((a) =>
         a.rentQuote!(country, service, minHours).catch((e) => {
@@ -135,7 +158,7 @@ export async function getRentQuote(
       ),
     ),
   ])
-  const quotes = rankQuotes(results.filter((q): q is Quote => !!q && q.costUsd > 0), usdToXof)
+  const quotes = rankQuotes(results.filter((q): q is Quote => !!q && q.costUsd > 0), usdToXof, health)
   const best = quotes[0] ?? null
   return {
     available: !!best,

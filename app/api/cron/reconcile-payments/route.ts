@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { reconcilePendingPaydunya } from '@/lib/fulfillment'
 import { reconcileWaitingActivations } from '@/lib/numbers/reconcile'
+import { processDueSubscriptions } from '@/lib/numbers/subscriptions-billing'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,6 +27,11 @@ export async function GET(request: NextRequest) {
     console.log('[cron/reconcile-payments] activations error:', (e as Error)?.message)
     return null
   })
-  console.log('[cron/reconcile-payments]', JSON.stringify({ payments, activations }))
-  return NextResponse.json({ ok: true, payments, activations, at: new Date().toISOString() })
+  // Renouvellement/expiration des numéros durables (onoff) arrivés à échéance.
+  const subscriptions = await processDueSubscriptions(200).catch((e) => {
+    console.log('[cron/reconcile-payments] subscriptions error:', (e as Error)?.message)
+    return null
+  })
+  console.log('[cron/reconcile-payments]', JSON.stringify({ payments, activations, subscriptions }))
+  return NextResponse.json({ ok: true, payments, activations, subscriptions, at: new Date().toISOString() })
 }

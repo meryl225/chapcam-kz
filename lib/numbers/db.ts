@@ -279,3 +279,51 @@ export async function adminRecentTransactions(limit = 60): Promise<TxRow[]> {
     return []
   }
 }
+
+// ------------------------------------------------------------
+// Santé des fournisseurs (taux de réussite RÉEL observé).
+// Sert à la sélection auto-apprenante : un fournisseur qui livre peu de SMS
+// (beaucoup d'« expiré »/« cancelled ») est automatiquement rétrogradé, sans
+// jamais surfacturer le client. On ne compte QUE les commandes terminées
+// (reçu / expiré / annulé) ; les « waiting » en cours sont ignorées.
+// ------------------------------------------------------------
+
+export type ProviderHealthRow = { rate: number; sample: number; received: number }
+export type ProviderHealth = Record<string, ProviderHealthRow>
+
+/**
+ * Taux de réussite par fournisseur sur une fenêtre glissante.
+ * @param windowHours fenêtre d'observation (par défaut 48h)
+ * @param minSample nombre minimum de commandes terminées pour faire confiance
+ *   à la mesure (en dessous, le fournisseur n'est PAS rétrogradé sur la base de
+ *   trop peu de données — on laisse le taux par défaut s'appliquer).
+ * Renvoie uniquement les fournisseurs ayant atteint `minSample`.
+ */
+export async function getProviderHealth(windowHours = 48, minSample = 6): Promise<ProviderHealth> {
+  try {
+    const rows = (await sql`
+      SELECT
+        provider,
+        COUNT(*) FILTER (WHERE status = 'received')::int AS received,
+        COUNT(*) FILTER (WHERE status IN ('received', 'expired', 'cancelled'))::int AS finished
+      FROM numbers_activations
+      WHERE created_at > now() - make_interval(hours => ${windowHours})
+      GROUP BY provider
+    `) as { provider: string; received: number; finished: number }[]
+    const health: ProviderHealth = {}
+    for (const r of rows) {
+      const finished = Number(r.finished)
+      if (finished < minSample) continue
+      const received = Number(r.received)
+      health[r.provider] = {
+        received,
+        sample: finished,
+        rate: Math.round((received / finished) * 100),
+      }
+    }
+    return health
+  } catch (e) {
+    console.log('[v0] getProviderHealth failed:', (e as Error)?.message)
+    return {}
+  }
+}
