@@ -180,51 +180,49 @@ export default function MarketplacePage() {
               {selectedCountry && <CountryFlag code={selectedCountry.code} size={28} />}
             </div>
 
-            {/* Forfaits : vérification (SMS unique) ou location (numéro réutilisable) */}
-            <div className="mt-4">
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-white/40">Forfait</p>
-              <div className="grid grid-cols-2 gap-2">
-                {RENTAL_PLANS.map((p) => {
-                  const q = quotes[p.key]
-                  const pending = loadingQuotes && q === undefined
-                  const unavailable = !pending && (!q || !q.available)
-                  const active = plan === p.key
-                  return (
-                    <button
-                      key={p.key}
-                      disabled={unavailable || buying}
-                      onClick={() => setPlan(p.key)}
-                      className={`rounded-xl border p-3 text-left transition-colors ${
-                        active
-                          ? 'border-blue-500 bg-blue-500/10'
-                          : unavailable
-                            ? 'cursor-not-allowed border-white/5 bg-white/[0.01] opacity-40'
-                            : 'border-white/10 hover:border-blue-500/50'
-                      }`}
-                    >
-                      <p className="text-sm font-medium text-white">{p.short}</p>
-                      <p className="mt-0.5 text-xs text-white/40">
-                        {pending ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Loader2 className="h-3 w-3 animate-spin" /> ...
-                          </span>
-                        ) : q?.available && q.priceXof != null ? (
-                          formatXOF(q.priceXof)
-                        ) : (
-                          'Indisponible'
-                        )}
-                      </p>
-                    </button>
-                  )
-                })}
+            {/* Sélecteur de forfait affiché uniquement s'il existe plusieurs
+                forfaits. Avec sms-man, seul le forfait "vérification" existe :
+                on masque la sélection pour aller droit au but. */}
+            {RENTAL_PLANS.length > 1 && (
+              <div className="mt-4">
+                <p className="mb-2 text-xs font-medium uppercase tracking-wider text-white/40">Forfait</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {RENTAL_PLANS.map((p) => {
+                    const q = quotes[p.key]
+                    const pending = loadingQuotes && q === undefined
+                    const unavailable = !pending && (!q || !q.available)
+                    const active = plan === p.key
+                    return (
+                      <button
+                        key={p.key}
+                        disabled={unavailable || buying}
+                        onClick={() => setPlan(p.key)}
+                        className={`rounded-xl border p-3 text-left transition-colors ${
+                          active
+                            ? 'border-blue-500 bg-blue-500/10'
+                            : unavailable
+                              ? 'cursor-not-allowed border-white/5 bg-white/[0.01] opacity-40'
+                              : 'border-white/10 hover:border-blue-500/50'
+                        }`}
+                      >
+                        <p className="text-sm font-medium text-white">{p.short}</p>
+                        <p className="mt-0.5 text-xs text-white/40">
+                          {pending ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Loader2 className="h-3 w-3 animate-spin" /> ...
+                            </span>
+                          ) : q?.available && q.priceXof != null ? (
+                            formatXOF(q.priceXof)
+                          ) : (
+                            'Indisponible'
+                          )}
+                        </p>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-              {plan !== 'verification' && (
-                <p className="mt-2 text-xs text-white/40">
-                  Location : numéro réutilisable pour recevoir plusieurs SMS. La durée réelle dépend de la
-                  disponibilité du fournisseur.
-                </p>
-              )}
-            </div>
+            )}
 
             <div className="mt-4 space-y-2 rounded-xl bg-white/[0.02] p-4 text-sm">
               {loadingQuotes && quote === null ? (

@@ -23,9 +23,10 @@ export type CanonCountry = {
 }
 
 // Forfaits proposés. "verification" = SMS unique (activation, fiable).
-// Les autres sont des LOCATIONS (numéro réutilisable, multi-SMS) via 5sim
-// hosting. La durée réelle est imposée par le fournisseur : on tente la
-// location et on grise le forfait s'il n'est pas disponible.
+// La LOCATION (numéro réutilisable, multi-SMS) n'est plus proposée : le seul
+// fournisseur actif (sms-man) ne gère que la vérification par SMS unique. Les
+// clés de location restent typées pour compatibilité, mais ne sont plus
+// exposées dans RENTAL_PLANS.
 export type RentalPlanKey = 'verification' | 'rent_3d' | 'rent_1w' | 'rent_1m'
 
 export type RentalPlan = {
@@ -39,9 +40,6 @@ export type RentalPlan = {
 
 export const RENTAL_PLANS: RentalPlan[] = [
   { key: 'verification', label: 'Vérification (SMS unique)', short: 'Quelques minutes', mode: 'verification', minHours: 0 },
-  { key: 'rent_3d', label: 'Location 3 jours', short: '3 jours', mode: 'rental', minHours: 72 },
-  { key: 'rent_1w', label: 'Location 1 semaine', short: '1 semaine', mode: 'rental', minHours: 168 },
-  { key: 'rent_1m', label: 'Location 1 mois', short: '1 mois', mode: 'rental', minHours: 720 },
 ]
 
 export function rentalPlanByKey(key: string): RentalPlan | undefined {
