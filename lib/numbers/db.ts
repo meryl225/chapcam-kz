@@ -186,6 +186,22 @@ export async function updateActivation(
   return rows[0] ?? null
 }
 
+/**
+ * Supprime définitivement une activation. Utilisé lorsqu'un numéro n'a reçu
+ * AUCUN code SMS (expiration ou annulation) : le client est remboursé et le
+ * numéro ne doit laisser aucune trace dans l'historique des activations.
+ * Sûr : on ne supprime jamais une activation ayant reçu un code (garde-fou
+ * `code IS NULL` en plus du cloisonnement par utilisateur).
+ */
+export async function deleteActivation(userId: string, id: number): Promise<boolean> {
+  const rows = (await sql`
+    DELETE FROM numbers_activations
+    WHERE user_id = ${userId} AND id = ${id} AND code IS NULL
+    RETURNING id
+  `) as { id: number }[]
+  return rows.length > 0
+}
+
 // ------------------------------------------------------------
 // Requêtes ADMIN (non cloisonnées par utilisateur).
 // À n'appeler QUE depuis un contexte vérifié admin (fanny.guck@gmail.com).
