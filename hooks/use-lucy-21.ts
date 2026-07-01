@@ -154,6 +154,20 @@ export function useLucy21() {
         mirror: 'auto',
         resolution: '720p',
 
+        // IMPORTANT : on passe l'avatar (image + prompt) via `initialState`.
+        // Ainsi le SDK applique l'etat initial pendant le handshake de
+        // connexion, une fois la WebSocket de signalisation reellement ouverte.
+        // Appeler `set()` juste apres `connect()` provoquait l'erreur
+        // "WebSocket is not open" (l'etat LiveKit est "connected" mais la
+        // WebSocket de signalisation ne l'est pas encore).
+        initialState: {
+          image: avatarBlob,
+          prompt: {
+            text: 'Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.',
+            enhance: true,
+          },
+        },
+
         // Affichage direct du flux transforme renvoye par Decart, sans aucun
         // traitement intermediaire. Le badge natif "AI Generated" de Decart
         // reste visible, c'est normal et attendu.
@@ -178,11 +192,9 @@ export function useLucy21() {
 
       realtimeClientRef.current = realtimeClient
 
-      await realtimeClient.set({
-        image: avatarBlob,
-        prompt: "Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.",
-        enhance: true,
-      })
+      // L'avatar de reference est deja transmis via `initialState` ci-dessus :
+      // aucun appel `set()` immediat ici (cela declenchait "WebSocket is not
+      // open" car la WebSocket de signalisation n'etait pas encore ouverte).
 
       // On NE facture PAS sur 'connected'/'generating' : ces etats signifient que
       // la connexion WebRTC est etablie, pas que l'image transformee est affichee.
