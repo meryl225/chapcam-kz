@@ -40,6 +40,8 @@ export type QuoteResponse = {
   priceXof: number | null
   cheapestProvider: string | null
   providerCount: number
+  /** Taux de réussite SMS estimé (0-100) pour cette combinaison pays/service. */
+  successRate: number | null
 }
 
 export function formatXOF(n: number): string {

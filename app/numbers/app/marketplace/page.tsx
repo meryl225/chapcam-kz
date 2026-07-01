@@ -17,6 +17,7 @@ import {
   Loader2,
   Wallet,
   ArrowRight,
+  TrendingUp,
 } from 'lucide-react'
 
 const card = 'rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl'
@@ -239,6 +240,15 @@ export default function MarketplacePage() {
                       <Zap className="h-3.5 w-3.5" /> Auto — le moins cher
                     </span>
                   </div>
+                  {quote.successRate != null && (
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="flex items-center gap-1.5 text-white/50">
+                        <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+                        Taux de réussite SMS estimé
+                      </span>
+                      <span className="font-semibold text-emerald-400">{quote.successRate}%</span>
+                    </div>
+                  )}
                   <div className="flex justify-between border-t border-white/10 pt-2 text-lg font-semibold text-white">
                     <span>Total</span>
                     <span>{formatXOF(quote.priceXof ?? 0)}</span>

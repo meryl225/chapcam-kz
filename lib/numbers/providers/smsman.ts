@@ -23,7 +23,7 @@ async function api(path: string, params: Record<string, string | number> = {}) {
   return { ok: res.ok, json, text }
 }
 
-type RefItem = { id: number | string; name?: string; title?: string }
+type RefItem = { id: number | string; name?: string; title?: string; code?: string }
 type RefCache = { countries: RefItem[]; applications: RefItem[]; at: number } | null
 let refCache: RefCache = null
 const REF_TTL = 12 * 60 * 60 * 1000
@@ -41,7 +41,7 @@ async function refs() {
   return refCache
 }
 
-function findId(items: RefItem[], keywords: string[]): string | null {
+function findByKeywords(items: RefItem[], keywords: string[]): string | null {
   for (const it of items) {
     const name = normalize(String(it.name ?? it.title ?? ''))
     if (keywords.some((k) => name.includes(normalize(k)))) return String(it.id)
@@ -51,9 +51,32 @@ function findId(items: RefItem[], keywords: string[]): string | null {
 
 async function resolveIds(country: CanonCountry, service: CanonService) {
   const r = await refs()
-  const countryId = findId(r.countries, country.match)
-  const appId = findId(r.applications, service.match)
+  // Pays : résolution par CODE ISO exact (sms-man fournit `code`), bien plus
+  // fiable que le matching par nom (ex: "Niger" ⊂ "Nigeria", "Oman" ⊂ "Romania").
+  // Repli sur les mots-clés `match` si le code n'est pas trouvé.
+  const byCode = r.countries.find((c) => String(c.code ?? '').toUpperCase() === country.code.toUpperCase())
+  const countryId = byCode ? String(byCode.id) : findByKeywords(r.countries, country.match)
+  const appId = findByKeywords(r.applications, service.match)
   return { countryId, appId }
+}
+
+/**
+ * sms-man ne renvoie PAS de taux de réussite. On l'estime à partir de la
+ * disponibilité (`count` = nombre de numéros en stock) : plus il y a de
+ * numéros, plus la probabilité de recevoir le SMS est élevée. Échelle bornée
+ * 80–95 % pour rester honnête (jamais 100 %).
+ */
+function estimateSuccessRate(count: number): number {
+  if (!(count > 0)) return 0
+  const rate = 80 + Math.floor(Math.log10(count)) * 3
+  return Math.max(80, Math.min(95, rate))
+}
+
+/** Extrait la première entrée d'une réponse sms-man indexée par id (ou tableau). */
+function firstEntry(json: unknown): { cost?: number | string; count?: number | string } | undefined {
+  if (Array.isArray(json)) return json[0]
+  if (json && typeof json === 'object') return Object.values(json as Record<string, unknown>)[0] as never
+  return undefined
 }
 
 export const smsman: ProviderAdapter = {
@@ -63,16 +86,16 @@ export const smsman: ProviderAdapter = {
   async quote(country: CanonCountry, service: CanonService): Promise<Quote | null> {
     const { countryId, appId } = await resolveIds(country, service)
     if (!countryId || !appId) return null
-    const { ok, json } = await api('/limits', { country_id: countryId, application_id: appId })
+    // /get-prices renvoie { "<appId>": { cost, count, ... } } (coût en RUB).
+    const { ok, json } = await api('/get-prices', { country_id: countryId, application_id: appId })
     if (!ok || !json) return null
-    const list = Array.isArray(json) ? json : [json]
-    const entry = list[0] as { cost?: number | string; count?: number | string } | undefined
+    const entry = firstEntry(json)
     if (!entry) return null
     const cost = Number(entry.cost ?? 0)
     const count = Number(entry.count ?? 0)
     if (!(cost > 0) || count <= 0) return null
     const costUsd = await nativeToUsd(cost, 'RUB')
-    return { provider: 'smsman', costUsd, count }
+    return { provider: 'smsman', costUsd, count, successRate: estimateSuccessRate(count) }
   },
 
   async purchase(country: CanonCountry, service: CanonService): Promise<PurchaseResult> {

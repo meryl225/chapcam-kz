@@ -102,7 +102,7 @@ export function NumbersProvider({ user, children }: { user: AccountUser; childre
       `/api/numbers/quote?country=${countryCode}&service=${serviceSlug}&plan=${plan}`,
       { cache: 'no-store' },
     )
-    if (!res.ok) return { available: false, priceXof: null, cheapestProvider: null, providerCount: 0 }
+    if (!res.ok) return { available: false, priceXof: null, cheapestProvider: null, providerCount: 0, successRate: null }
     return (await res.json()) as QuoteResponse
   }, [])
 

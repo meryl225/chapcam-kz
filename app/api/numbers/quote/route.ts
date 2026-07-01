@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
       priceXof: q.priceXof,
       cheapestProvider: q.best?.provider ?? null,
       providerCount: q.quotes.length,
+      successRate: q.best?.successRate ?? null,
     }
     return NextResponse.json(body)
   } catch (e) {
