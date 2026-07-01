@@ -1,19 +1,15 @@
 import 'server-only'
 import type { CanonCountry, CanonService } from '@/lib/numbers/catalog'
 import { getUsdToXof, tierPriceXof } from '@/lib/numbers/pricing'
-import { fivesim } from './fivesim'
 import { smsman } from './smsman'
-import { smspool } from './smspool'
 import { DEFAULT_SUCCESS_RATE, MIN_SUCCESS_RATE } from './types'
 import type { CodeResult, ProviderAdapter, ProviderId, PurchaseResult, Quote } from './types'
 
 export const adapters: Record<ProviderId, ProviderAdapter> = {
-  fivesim,
   smsman,
-  smspool,
 }
 
-const ALL = [fivesim, smsman, smspool]
+const ALL = [smsman]
 
 /** Taux de réussite effectif d'un devis (valeur par défaut si non communiquée). */
 function effectiveRate(q: Quote): number {
