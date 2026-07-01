@@ -135,10 +135,16 @@ export function NumbersProvider({ user, children }: { user: AccountUser; childre
       try {
         const res = await fetch(`/api/numbers/activation/${id}`, { cache: 'no-store' })
         if (!res.ok) return null
-        const data = (await res.json()) as { activation: Activation }
+        const data = (await res.json()) as { activation: Activation | null; deleted?: boolean }
+        // Numéro sans SMS supprimé côté serveur -> on le retire de l'état local
+        // pour qu'il disparaisse immédiatement de l'historique.
+        if (data.deleted || !data.activation) {
+          setState((s) => ({ ...s, activations: s.activations.filter((a) => a.id !== id) }))
+          return null
+        }
         setState((s) => ({
           ...s,
-          activations: s.activations.map((a) => (a.id === id ? data.activation : a)),
+          activations: s.activations.map((a) => (a.id === id ? data.activation! : a)),
         }))
         return data.activation
       } catch {

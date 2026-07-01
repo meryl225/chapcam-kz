@@ -61,10 +61,12 @@ export async function reconcileWaitingActivations(limit = 200): Promise<Reconcil
           row.provider_order,
           Number(row.price_xof),
         )
+        // Aucun SMS reçu -> on supprime l'activation pour ne laisser aucune
+        // trace dans l'historique. Garde-fou `code IS NULL` : on ne supprime
+        // jamais un numéro qui aurait reçu un code entre-temps.
         await sql`
-          UPDATE numbers_activations
-          SET status = 'expired', updated_at = now()
-          WHERE id = ${row.id} AND status = 'waiting'
+          DELETE FROM numbers_activations
+          WHERE id = ${row.id} AND status = 'waiting' AND code IS NULL
         `
         if (didRefund) res.refunded++
         continue

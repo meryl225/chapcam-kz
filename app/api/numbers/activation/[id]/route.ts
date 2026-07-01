@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireUserId, UnauthorizedError } from '@/lib/numbers/auth'
-import { getActivation, refundActivationOnce, updateActivation } from '@/lib/numbers/db'
+import { deleteActivation, getActivation, refundActivationOnce, updateActivation } from '@/lib/numbers/db'
 import { cancelFor, finishFor, getCodeFor } from '@/lib/numbers/providers'
 import { serializeActivation } from '@/lib/numbers/serialize'
 import type { ProviderId } from '@/lib/numbers/providers/types'
@@ -37,13 +37,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ activation: serializeActivation(updated ?? row) })
     }
 
-    // Expiration : on annule chez le fournisseur et on rembourse le client.
+    // Expiration : aucun SMS reçu. On annule chez le fournisseur, on rembourse
+    // le client, puis on SUPPRIME l'activation (aucune trace dans l'historique).
     const expired = row.expires_at ? new Date(row.expires_at).getTime() < Date.now() : false
     if (res.status === 'cancelled' || expired) {
       await cancelFor(provider, row.provider_order).catch(() => {})
       await refund(userId, row)
-      const updated = await updateActivation(userId, row.id, { status: 'expired' })
-      return NextResponse.json({ activation: serializeActivation(updated ?? row) })
+      await deleteActivation(userId, row.id)
+      return NextResponse.json({ deleted: true, activation: null })
     }
 
     return NextResponse.json({ activation: serializeActivation(row) })
@@ -54,23 +55,26 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   }
 }
 
-// Annulation manuelle par l'utilisateur (remboursement si aucun code reçu).
-export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+// Annulation manuelle par l'utilisateur. Aucun code reçu -> remboursement puis
+// SUPPRESSION de l'activation (le numéro ne doit pas apparaître dans l'historique).
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const userId = await requireUserId()
     const { id } = await params
     const row = await getActivation(userId, Number(id))
     if (!row) return NextResponse.json({ error: 'Introuvable' }, { status: 404 })
+    // Si un code a déjà été reçu, on ne supprime rien : l'activation reste dans
+    // l'historique (numéro réellement utilisé).
     if (row.status !== 'waiting') {
       return NextResponse.json({ activation: serializeActivation(row) })
     }
     await cancelFor(row.provider as ProviderId, row.provider_order).catch(() => {})
     await refund(userId, row)
-    const updated = await updateActivation(userId, row.id, { status: 'cancelled' })
-    return NextResponse.json({ activation: serializeActivation(updated ?? row) })
+    await deleteActivation(userId, row.id)
+    return NextResponse.json({ deleted: true, activation: null })
   } catch (e) {
     if (e instanceof UnauthorizedError) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    console.log('[v0] activation POST error:', (e as Error)?.message)
+    console.log('[v0] activation DELETE error:', (e as Error)?.message)
     return NextResponse.json({ error: 'Erreur interne' }, { status: 500 })
   }
 }
