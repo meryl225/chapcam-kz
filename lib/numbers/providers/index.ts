@@ -108,8 +108,10 @@ export async function purchaseCheapest(country: CanonCountry, service: CanonServ
     }
   }
   // Détail technique (fournisseur, coûts, plafond) en logs serveur seulement ;
-  // on lance une erreur générique, jamais exposée telle quelle au client.
+  // on lance une erreur classifiée pour un message client précis.
   if (lastErr) console.log('[v0] purchase: tous les fournisseurs ont échoué:', lastErr.message)
+  if (lastErr?.message.includes('SMSMAN_NO_NUMBERS')) throw new Error('NO_NUMBERS')
+  if (lastErr?.message.includes('SMSMAN_BALANCE')) throw new Error('PROVIDER_BALANCE')
   throw new Error('NUMBER_UNAVAILABLE')
 }
 
