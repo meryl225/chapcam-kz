@@ -100,19 +100,35 @@ export const smsman: ProviderAdapter = {
 
   async purchase(country: CanonCountry, service: CanonService): Promise<PurchaseResult> {
     const { countryId, appId } = await resolveIds(country, service)
-    if (!countryId || !appId) throw new Error('sms-man: pays/service non disponible')
-    const { ok, json, text } = await api('/get-number', { country_id: countryId, application_id: appId })
-    const data = (json ?? {}) as { request_id?: number | string; number?: string; error_code?: string; error_msg?: string }
-    if (!ok || data.error_code || !data.request_id || !data.number) {
-      throw new Error(`sms-man: ${data.error_msg || data.error_code || text || 'achat impossible'}`)
+    if (!countryId || !appId) throw new Error('SMSMAN_UNSUPPORTED: pays/service non disponible')
+
+    // sms-man renvoie souvent "no_numbers, try again" alors que le stock affiché
+    // (count de /get-prices) est théorique et pas toujours réel. On réessaie
+    // quelques fois pour absorber les indisponibilités transitoires.
+    let last: { error_code?: string; error_msg?: string; text?: string } = {}
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const { ok, json, text } = await api('/get-number', { country_id: countryId, application_id: appId })
+      const data = (json ?? {}) as { request_id?: number | string; number?: string; error_code?: string; error_msg?: string }
+      if (ok && !data.error_code && data.request_id && data.number) {
+        return {
+          provider: 'smsman',
+          providerOrder: String(data.request_id),
+          phone: normalizePhone(data.number),
+          costUsd: 0, // facturé via le devis (quote) — coût réel non renvoyé ici
+          expiresAt: new Date(Date.now() + 20 * 60 * 1000),
+        }
+      }
+      last = { error_code: data.error_code, error_msg: data.error_msg, text }
+      // Solde fournisseur insuffisant : inutile de réessayer.
+      if (data.error_code === 'balance') break
+      // Stock vide : on retente après un court délai (sauf au dernier tour).
+      if (attempt < 3) await new Promise((r) => setTimeout(r, 700))
     }
-    return {
-      provider: 'smsman',
-      providerOrder: String(data.request_id),
-      phone: normalizePhone(data.number),
-      costUsd: 0, // facturé via le devis (quote) — coût réel non renvoyé ici
-      expiresAt: new Date(Date.now() + 20 * 60 * 1000),
-    }
+
+    // Erreurs typées pour un message client précis (voir route /purchase).
+    if (last.error_code === 'balance') throw new Error('SMSMAN_BALANCE: solde fournisseur insuffisant')
+    if (last.error_code === 'no_numbers') throw new Error('SMSMAN_NO_NUMBERS: aucun numéro disponible actuellement')
+    throw new Error(`sms-man: ${last.error_msg || last.error_code || last.text || 'achat impossible'}`)
   },
 
   async getCode(providerOrder: string): Promise<CodeResult> {

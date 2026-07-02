@@ -73,9 +73,24 @@ export async function POST(req: NextRequest) {
   } catch (e) {
     if (e instanceof UnauthorizedError) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     // On journalise le détail technique réel côté serveur uniquement (fournisseur,
-    // coûts, plafond anti-perte...) mais on ne l'expose JAMAIS au client : il ne
-    // voit qu'un message clair "indisponible". Vous n'avez pas été débité.
-    console.log('[v0] purchase route error:', (e as Error)?.message)
+    // coûts...) mais on n'expose au client qu'un message clair et non technique.
+    // Dans tous les cas d'échec ici, le client n'a PAS été débité.
+    const msg = (e as Error)?.message ?? ''
+    console.log('[v0] purchase route error:', msg)
+    // Stock réellement vide pour ce pays/service : on invite à changer de pays.
+    if (msg.includes('NO_NUMBERS')) {
+      return NextResponse.json(
+        { error: "Aucun numéro disponible pour ce pays/service en ce moment. Essayez un autre pays. Vous n'avez pas été débité." },
+        { status: 409 },
+      )
+    }
+    // Problème côté fournisseur (solde opérateur) : rien à faire pour le client.
+    if (msg.includes('PROVIDER_BALANCE')) {
+      return NextResponse.json(
+        { error: "Service momentanément indisponible côté opérateur. Vous n'avez pas été débité, réessayez plus tard." },
+        { status: 503 },
+      )
+    }
     return NextResponse.json(
       { error: "Ce numéro est temporairement indisponible. Vous n'avez pas été débité, réessayez plus tard." },
       { status: 409 },
