@@ -78,6 +78,50 @@ export function HeroSection() {
           </motion.div>
 
           <FeatureList />
+
+          {/* Promo ChapSim - numeros virtuels, SMS OTP & proxies premium */}
+          <Link href="/chapsim" className="block w-full">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.7 }}
+              whileHover={{ scale: 1.02 }}
+              className="group relative w-full overflow-hidden rounded-2xl border border-[#7c3aed]/40 bg-[#0d0a24]/80 backdrop-blur-sm transition-all hover:border-[#a78bfa]/70 hover:shadow-[0_0_40px_rgba(124,58,237,0.5)]"
+            >
+              {/* halo violet */}
+              <motion.div
+                aria-hidden
+                className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[#7c3aed]/40 blur-3xl"
+                animate={{ opacity: [0.4, 0.7, 0.4] }}
+                transition={{ duration: 3, repeat: Infinity }}
+              />
+
+              <div className="relative">
+                <Image
+                  src="/chapsim/presentation.jpg"
+                  alt="ChapSim - Numeros virtuels, SMS OTP et proxies premium"
+                  width={1280}
+                  height={640}
+                  className="h-auto w-full"
+                />
+              </div>
+
+              <div className="relative flex items-center justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <span className="inline-flex items-center rounded-full bg-[#7c3aed]/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#c4b5fd]">
+                    Nouveau
+                  </span>
+                  <p className="mt-1.5 text-sm font-bold leading-tight text-white text-balance">
+                    ChapSim - Numeros virtuels & proxies
+                  </p>
+                </div>
+                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7c3aed] to-[#4f46e5] px-4 py-2 text-xs font-bold text-white transition-all group-hover:brightness-110">
+                  Obtenir
+                  <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
+                </span>
+              </div>
+            </motion.div>
+          </Link>
         </motion.div>
 
         {/* Center - Phone Mockup */}
