@@ -6,9 +6,7 @@ import {
   Smartphone,
   Wifi,
   Check,
-  Clock,
   ShieldCheck,
-  Rocket,
   ArrowRight,
 } from 'lucide-react'
 import type { ProxyProduct } from '@/lib/proxy/products'
@@ -41,22 +39,6 @@ export function ProxyProClient({ products }: Props) {
             </div>
           </div>
         </header>
-
-        {/* Bandeau lancement à venir */}
-        <div className="mb-8 flex flex-col gap-4 rounded-3xl border border-primary/30 bg-primary/10 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/20">
-              <Rocket className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="font-bold text-foreground">Bientôt disponible</p>
-              <p className="text-sm text-muted-foreground text-pretty">
-                Nous finalisons la sélection de notre fournisseur de proxies. Les tarifs et
-                l&apos;activation seront ouverts très prochainement.
-              </p>
-            </div>
-          </div>
-        </div>
 
         {/* ChapSim — proxies disponibles maintenant */}
         <div className="mb-8 overflow-hidden rounded-3xl border border-[#7c3aed]/40 bg-[#0b0a1a]">
@@ -162,18 +144,15 @@ export function ProxyProClient({ products }: Props) {
                 </ul>
 
                 <div className="mt-auto">
-                  <p className="mb-4 inline-flex items-center gap-2 rounded-full border border-hairline bg-background/60 px-3 py-1 text-sm font-medium text-muted-foreground">
-                    <Clock className="h-4 w-4 text-primary" />
-                    Tarif bientôt disponible
-                  </p>
-
-                  <button
-                    type="button"
-                    disabled
-                    className="flex w-full cursor-not-allowed items-center justify-center gap-2 rounded-xl border border-hairline bg-card px-4 py-3 text-sm font-bold text-muted-foreground"
+                  <a
+                    href="https://chapsim.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
                   >
-                    Bientôt disponible
-                  </button>
+                    Obtenir sur ChapSim
+                    <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                  </a>
                 </div>
               </article>
             )
