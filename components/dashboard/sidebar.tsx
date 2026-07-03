@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, ShieldCheck, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines, Smartphone } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, ShieldCheck, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines, Smartphone, Globe } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -137,6 +137,20 @@ function SidebarContent({
                   <span className="flex-1 truncate leading-tight">ESIM ChapCam</span>
                   <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-extrabold tracking-wide">
                     NEW
+                  </span>
+                </Link>
+              )}
+              {/* Bouton vedette ChapSim — violet, numeros virtuels & proxies */}
+              {item.href === '/dashboard/live-swap' && (
+                <Link
+                  href="/chapsim"
+                  className="group relative mb-2 flex items-center gap-3 overflow-hidden rounded-lg bg-gradient-to-r from-[#7c3aed] to-[#4f46e5] px-3 py-3 text-[13px] font-bold uppercase tracking-tight text-white shadow-lg shadow-[#7c3aed]/40 transition-all duration-200 hover:brightness-110"
+                >
+                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+                  <Globe className="h-[18px] w-[18px] shrink-0" />
+                  <span className="flex-1 truncate leading-tight">ChapSim</span>
+                  <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-extrabold tracking-wide">
+                    OTP
                   </span>
                 </Link>
               )}
