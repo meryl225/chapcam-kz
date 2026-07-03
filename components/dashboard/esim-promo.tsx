@@ -18,11 +18,11 @@ export function EsimPromo() {
       <div className="relative flex items-center gap-4">
         <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl transition-transform duration-300 group-hover:scale-105">
           <Image
-            src="/chapsim/presentation.jpg"
-            alt="ChapSim — numéros virtuels, SMS OTP et proxies premium"
+            src="/chapsim/logo.jpg"
+            alt="Logo ChapSim"
             fill
             sizes="80px"
-            className="object-cover object-left drop-shadow-[0_6px_18px_rgba(124,58,237,0.5)]"
+            className="object-contain drop-shadow-[0_6px_18px_rgba(124,58,237,0.5)]"
           />
         </div>
 
