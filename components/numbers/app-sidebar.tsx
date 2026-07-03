@@ -72,6 +72,20 @@ function SidebarInner({ onNavigate }: { onNavigate?: () => void }) {
 
       <NavList onNavigate={onNavigate} />
 
+      {/* Visuel ChapSim cliquable — image exacte de la presentation */}
+      <Link
+        href="/chapsim"
+        onClick={onNavigate}
+        className="group block overflow-hidden rounded-xl border border-white/10 shadow-lg shadow-[#7c3aed]/20 transition-transform duration-200 hover:scale-[1.02]"
+        aria-label="Découvrir ChapSim"
+      >
+        <img
+          src="/chapsim/presentation.jpg"
+          alt="ChapSim — Numéros virtuels, SMS OTP et proxies premium"
+          className="h-auto w-full"
+        />
+      </Link>
+
       {/* Bouton vedette ChapSim — numeros virtuels, SMS OTP & proxies premium */}
       <Link
         href="/chapsim"
