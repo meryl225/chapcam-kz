@@ -519,7 +519,7 @@ async function fulfillConfirmedInvoice(params: {
     // etre credite) : on retente le credit ci-dessous, la reservation servant de verrou.
     const { data: existingClaim } = await admin
       .from('processed_payments')
-      .select('credited')
+      .select('credited, created_at')
       .eq('token', token)
       .maybeSingle()
     if (existingClaim?.credited) {
@@ -538,7 +538,41 @@ async function fulfillConfirmedInvoice(params: {
       })
       return { status: 'completed', alreadyDone: true }
     }
-    // Reservation orpheline (credited=false) : on poursuit pour rattraper le credit.
+    // Reservation existante mais credited=false. DEUX cas possibles :
+    //  1) Une AUTRE source concurrente (callback / status / reconcile) est EN TRAIN
+    //     de crediter a l'instant meme : sa reservation vient d'etre creee et le
+    //     credit n'est pas encore marque. Si on "rattrapait" ici, on crediterait
+    //     une SECONDE fois le meme paiement (bug du double credit : 500 -> 1000).
+    //  2) Une tentative precedente a reellement plante avant de crediter, laissant
+    //     une reservation ORPHELINE : la il FAUT retenter, sinon le client paie
+    //     sans jamais etre credite.
+    // On distingue les deux par l'AGE de la reservation : recente => requete en vol
+    // (on renvoie pending, un autre process finira le credit) ; ancienne => orpheline
+    // (on retente le credit ci-dessous, la reservation servant de verrou).
+    const IN_FLIGHT_GRACE_MS = 3 * 60 * 1000 // 3 min
+    const claimAgeMs = existingClaim?.created_at
+      ? Date.now() - new Date(existingClaim.created_at).getTime()
+      : Number.POSITIVE_INFINITY
+    if (claimAgeMs < IN_FLIGHT_GRACE_MS) {
+      // Un autre traitement concurrent est en cours : ne PAS re-crediter.
+      if (source !== 'reconcile') {
+        await logPaymentEvent(admin, {
+          source,
+          token,
+          transactionId,
+          email,
+          productId,
+          amount: totalAmount,
+          status: 'pending',
+          credited: false,
+          failureReason:
+            'Credit deja en cours par une autre source (anti double-credit) : on attend',
+          raw: customData,
+        })
+      }
+      return { status: 'pending', alreadyDone: false }
+    }
+    // Reservation orpheline ancienne (credited=false) : on poursuit pour rattraper le credit.
   }
 
   // Recharge de portefeuille ChapCam Numbers : pas un produit du catalogue,
