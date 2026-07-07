@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { normalizeLicenseKey } from '@/lib/pc-license'
-import { getDesktopDownloadUrl, getDesktopDownloadUrlMac } from '@/lib/pc-offer'
+import { createDownloadToken } from '@/lib/download-token'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -46,14 +46,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Le(s) lien(s) de telechargement ne sont renvoyes QU'ICI, apres validation
-    // serveur de la cle de licence. Ils ne doivent jamais etre exposes dans le
-    // HTML/props de la page a un visiteur non authentifie.
+    // On ne renvoie PAS le lien reel : on remet des liens signes vers
+    // /api/desktop/download qui expirent en 5 min et sont lies a cette cle.
+    // Le lien Drive/Blob reel n'est jamais expose au navigateur.
     return NextResponse.json({
       valid: true,
       message: 'Licence valide.',
-      downloadUrl: getDesktopDownloadUrl(),
-      macDownloadUrl: getDesktopDownloadUrlMac(),
+      downloadUrl: `/api/desktop/download?token=${encodeURIComponent(createDownloadToken('win', licenseKey))}`,
+      macDownloadUrl: `/api/desktop/download?token=${encodeURIComponent(createDownloadToken('mac', licenseKey))}`,
     })
   } catch (err) {
     console.error('[desktop/license-status] Erreur:', err)
