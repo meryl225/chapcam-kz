@@ -3,19 +3,18 @@
 import { useState } from 'react'
 import { Download, KeyRound, Loader2, CheckCircle2, AlertCircle, Apple, Monitor } from 'lucide-react'
 
-export function DesktopDownloadSection({
-  downloadUrl,
-  macDownloadUrl,
-}: {
-  downloadUrl: string
-  macDownloadUrl?: string
-}) {
+export function DesktopDownloadSection() {
   const [licenseKey, setLicenseKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [verified, setVerified] = useState(false)
+  // Les liens de telechargement ne sont connus du navigateur QU'APRES une
+  // validation serveur reussie de la cle de licence (reponse de l'API). Ils ne
+  // sont jamais rendus dans le HTML de la page pour un visiteur non paye.
+  const [downloadUrl, setDownloadUrl] = useState('')
+  const [macDownloadUrl, setMacDownloadUrl] = useState('')
 
-  const openDownload = (url: string = downloadUrl) => {
+  const openDownload = (url: string) => {
     if (!url) {
       setError('Le lien de telechargement est momentanement indisponible. Reessaie plus tard ou contacte le support sur chapcam.com.')
       return
@@ -38,9 +37,13 @@ export function DesktopDownloadSection({
       })
       const data = await res.json()
       if (res.ok && data.valid) {
+        const win = String(data.downloadUrl || '')
+        const mac = String(data.macDownloadUrl || '')
+        setDownloadUrl(win)
+        setMacDownloadUrl(mac)
         setVerified(true)
         // Si une seule plateforme est disponible, on lance directement.
-        if (!macDownloadUrl) openDownload()
+        if (!mac) openDownload(win)
       } else {
         setError(data.message || 'Cle de licence invalide.')
       }
@@ -72,6 +75,8 @@ export function DesktopDownloadSection({
             setLicenseKey(e.target.value)
             setVerified(false)
             setError(null)
+            setDownloadUrl('')
+            setMacDownloadUrl('')
           }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') verifyAndDownload()
