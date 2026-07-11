@@ -57,6 +57,14 @@ const navItems: NavItem[] = [
   { href: '/dashboard/settings', icon: Settings, label: 'PARAMETRES' },
 ]
 
+// Formatage deterministe (identique serveur/client) pour eviter les erreurs
+// d'hydratation liees a la locale du runtime (toLocaleString varie SSR vs navigateur).
+function formatPoints(value: number): string {
+  return Math.round(value)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f') // espace fine insecable comme separateur de milliers
+}
+
 type FeaturedTone = 'green' | 'blue' | 'purple'
 
 const FEATURED_TONES: Record<
@@ -305,7 +313,7 @@ function SidebarContent({
               <span className="text-xs font-medium text-foreground">Points restants</span>
             </div>
             <span className="text-sm font-bold text-foreground">
-              {pointsRemaining.toLocaleString()}/{pointsTotal.toLocaleString()}
+              {formatPoints(pointsRemaining)}/{formatPoints(pointsTotal)}
             </span>
           </div>
           <Progress value={pointsPercentage} className="h-2 bg-secondary" />
