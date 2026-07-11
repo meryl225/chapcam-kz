@@ -4,7 +4,15 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    // Optimisation reactivee : Next redimensionne, convertit en WebP/AVIF et
+    // applique le lazy-load. C'est le principal levier pour la vitesse cote client
+    // (le dossier public pesait ~17 Mo d'images pleine resolution servies brutes).
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 31536000,
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
+      { protocol: 'https', hostname: '*.supabase.co' },
+    ],
   },
   
   // Security headers

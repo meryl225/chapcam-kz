@@ -3,7 +3,6 @@ import { HeroSection } from "@/components/hero-section"
 import { InActionSection } from "@/components/in-action-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
 import { RoadmapSection } from "@/components/roadmap-section"
-import { EngineDifferenceSection } from "@/components/engine-difference-section"
 import { PricingSection } from "@/components/pricing-section"
 import { AvailableCountriesSection } from "@/components/available-countries-section"
 import { FAQSection } from "@/components/faq-section"
@@ -30,7 +29,6 @@ export default function Home() {
         <InActionSection />
         <RoadmapSection />
         <HowItWorksSection />
-        <EngineDifferenceSection />
         <AvailableCountriesSection />
         <PricingSection />
         <FAQSection />

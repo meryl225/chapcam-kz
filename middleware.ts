@@ -73,7 +73,10 @@ function checkRateLimit(ip: string, endpoint: string): { allowed: boolean; remai
   return { allowed: true, remaining: limit.requests - record.count }
 }
 
-function addSecurityHeaders(response: NextResponse): NextResponse {
+function addSecurityHeaders(
+  response: NextResponse,
+  options: { allowCache?: boolean } = {},
+): NextResponse {
   // Prevent clickjacking
   response.headers.set('X-Frame-Options', 'DENY')
   
@@ -110,8 +113,16 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   // HSTS (Strict Transport Security)
   response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload')
   
-  // Prevent caching of sensitive pages
-  if (response.headers.get('x-middleware-cache') !== 'public') {
+  // Pages publiques (marketing/landing) : on autorise le cache CDN + navigateur
+  // avec revalidation en arriere-plan (stale-while-revalidate). Cela evite de
+  // regenerer la page a chaque visite et accelere fortement le chargement.
+  if (options.allowCache) {
+    response.headers.set(
+      'Cache-Control',
+      'public, max-age=0, s-maxage=60, stale-while-revalidate=300',
+    )
+  } else if (response.headers.get('x-middleware-cache') !== 'public') {
+    // Pages sensibles (dashboard, auth, API) : jamais de cache.
     response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
     response.headers.set('Pragma', 'no-cache')
     response.headers.set('Expires', '0')
@@ -183,6 +194,22 @@ export async function middleware(request: NextRequest) {
     }
   }
   
+  // 3bis. Court-circuit pour les pages PUBLIQUES.
+  // Seules les routes protegees / d'authentification ont besoin de connaitre la
+  // session. Pour tout le reste (page d'accueil, pages marketing, etc.) on evite
+  // l'appel reseau `supabase.auth.getUser()` — qui ajoutait des centaines de ms
+  // de latence a CHAQUE navigation — et on autorise la mise en cache.
+  const needsAuth =
+    pathname.startsWith('/api/') ||
+    pathname.startsWith('/dashboard') ||
+    pathname.startsWith('/numbers/app') ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/auth')
+
+  if (!needsAuth) {
+    return addSecurityHeaders(NextResponse.next({ request }), { allowCache: true })
+  }
+
   // 4. Supabase auth for protected routes
   let supabaseResponse = NextResponse.next({ request })
 
