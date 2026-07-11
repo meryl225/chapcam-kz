@@ -232,6 +232,97 @@ function getVideoCallEmail(userName: string) {
   return { subject, html }
 }
 
+// Template email pour la campagne "Assistance / Support".
+// Objectif : savoir si le client arrive a utiliser le logiciel IA et lui proposer
+// une aide immediate via WhatsApp ou un appel telephonique.
+function getSupportEmail(userName: string) {
+  const subject = 'Rencontres-tu un problème avec ChapCam ? On t\'aide'
+  const WHATSAPP_URL =
+    'https://wa.me/2250555560189?text=' +
+    encodeURIComponent(
+      'Bonjour ChapCam, je rencontre un problème pour utiliser le logiciel et j’ai besoin d’aide.',
+    )
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0e1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0e1a; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%); border-radius: 24px; border: 1px solid rgba(0, 255, 136, 0.3); overflow: hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(90deg, #00ff88, #00d4ff); padding: 22px; text-align: center;">
+              <h1 style="margin: 0; color: #001b12; font-size: 24px; font-weight: 800;">Besoin d'aide avec ChapCam ?</h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 38px;">
+              <p style="color: #ffffff; font-size: 18px; margin: 0 0 18px;">Salut ${userName || 'toi'},</p>
+
+              <h2 style="color: #ffffff; font-size: 24px; line-height: 1.3; font-weight: 800; margin: 0 0 16px;">
+                Rencontres-tu un <span style="color: #00ff88;">problème</span> pour utiliser le logiciel ?
+              </h2>
+
+              <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6; margin: 0 0 24px;">
+                On veut s'assurer que tu profites pleinement de ChapCam. Si tu bloques quelque part
+                (installation, face swap, camera virtuelle, connexion...), notre équipe est là pour
+                t'aider <strong style="color:#ffffff;">en direct</strong>.
+              </p>
+
+              <!-- CTA WhatsApp -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding: 4px 0 12px;">
+                    <a href="${WHATSAPP_URL}" style="display: inline-block; width: 80%; background: linear-gradient(90deg, #25D366, #128C7E); color: #ffffff; font-size: 16px; font-weight: bold; text-decoration: none; padding: 16px 24px; border-radius: 12px; text-align: center;">
+                      Nous écrire sur WhatsApp
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding: 0 0 4px;">
+                    <a href="tel:+2250555560189" style="display: inline-block; width: 80%; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2); color: #ffffff; font-size: 16px; font-weight: bold; text-decoration: none; padding: 16px 24px; border-radius: 12px; text-align: center;">
+                      Nous appeler : +225 05 55 56 01 89
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="color: #888888; font-size: 13px; text-align: center; margin: 18px 0 0;">
+                Réponse rapide du lundi au dimanche. On règle ton problème ensemble.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 38px; border-top: 1px solid rgba(255,255,255,0.1);">
+              <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+                Tu recois cet email car tu es inscrit sur ChapCam.<br>
+                <a href="https://chapcam.com" style="color: #00ff88;">chapcam.com</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`
+
+  return { subject, html }
+}
+
 // Template email pour le rappel de lancement
 function getLaunchReminderEmail(userName: string, type: 'D2' | 'D1' | 'DJ') {
   const subjects = {
@@ -333,10 +424,10 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json()
-    const { type } = body // 'D2', 'D1', 'DJ', 'PC' ou 'VIDEO'
+    const { type } = body // 'D2', 'D1', 'DJ', 'PC', 'VIDEO' ou 'SUPPORT'
 
-    if (!type || !['D2', 'D1', 'DJ', 'PC', 'VIDEO'].includes(type)) {
-      return NextResponse.json({ error: 'Type invalide. Utilise D2, D1, DJ, PC ou VIDEO' }, { status: 400 })
+    if (!type || !['D2', 'D1', 'DJ', 'PC', 'VIDEO', 'SUPPORT'].includes(type)) {
+      return NextResponse.json({ error: 'Type invalide. Utilise D2, D1, DJ, PC, VIDEO ou SUPPORT' }, { status: 400 })
     }
     
     // Recuperer TOUS les utilisateurs via le client admin (service_role)
@@ -411,7 +502,9 @@ export async function POST(request: NextRequest) {
               ? getPcLifetimeEmail(user.name || '')
               : type === 'VIDEO'
                 ? getVideoCallEmail(user.name || '')
-                : getLaunchReminderEmail(user.name || '', type as 'D2' | 'D1' | 'DJ')
+                : type === 'SUPPORT'
+                  ? getSupportEmail(user.name || '')
+                  : getLaunchReminderEmail(user.name || '', type as 'D2' | 'D1' | 'DJ')
           return {
             from: 'ChapCam <noreply@chapcam.com>',
             to: user.email,
