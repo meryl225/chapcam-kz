@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, ShieldCheck, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines, Smartphone, Globe } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, ShieldCheck, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines, Smartphone, Globe, ChevronRight } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -60,6 +60,85 @@ const navItems: NavItem[] = [
   { href: '/dashboard/settings', icon: Settings, label: 'PARAMETRES' },
 ]
 
+type FeaturedTone = 'green' | 'blue' | 'purple'
+
+const FEATURED_TONES: Record<
+  FeaturedTone,
+  { bg: string; border: string; shadow: string; tile: string; badge: string; sub: string }
+> = {
+  green: {
+    bg: 'bg-gradient-to-br from-primary to-emerald-400 text-black',
+    border: 'border-primary/40',
+    shadow: 'shadow-primary/30',
+    tile: 'bg-black/15',
+    badge: 'bg-black/20 text-black',
+    sub: 'text-black/70',
+  },
+  blue: {
+    bg: 'bg-gradient-to-br from-[#2563EB] to-[#3b82f6] text-white',
+    border: 'border-[#3b82f6]/40',
+    shadow: 'shadow-[#2563EB]/40',
+    tile: 'bg-white/15',
+    badge: 'bg-white/20 text-white',
+    sub: 'text-white/75',
+  },
+  purple: {
+    bg: 'bg-gradient-to-br from-[#7c3aed] to-[#4f46e5] text-white',
+    border: 'border-[#7c3aed]/40',
+    shadow: 'shadow-[#7c3aed]/40',
+    tile: 'bg-white/15',
+    badge: 'bg-white/20 text-white',
+    sub: 'text-white/75',
+  },
+}
+
+function FeaturedLink({
+  href,
+  icon: Icon,
+  title,
+  subtitle,
+  badge,
+  tone,
+  active,
+}: {
+  href: string
+  icon: React.ElementType
+  title: string
+  subtitle: string
+  badge: string
+  tone: FeaturedTone
+  active?: boolean
+}) {
+  const t = FEATURED_TONES[tone]
+  return (
+    <Link
+      href={href}
+      className={`group relative mb-2 flex items-center gap-3 overflow-hidden rounded-xl border ${t.border} ${t.bg} p-2.5 shadow-lg ${t.shadow} transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110 ${active ? 'ring-2 ring-white/50' : ''}`}
+    >
+      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${t.tile}`}>
+        <Icon className="h-[18px] w-[18px]" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5">
+          <span className="truncate text-[13px] font-bold uppercase leading-tight tracking-tight">
+            {title}
+          </span>
+          <span
+            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${t.badge}`}
+          >
+            {badge}
+          </span>
+        </span>
+        <span className={`mt-0.5 block truncate text-[10px] font-medium normal-case ${t.sub}`}>
+          {subtitle}
+        </span>
+      </span>
+      <ChevronRight className="h-4 w-4 shrink-0 opacity-60 transition-transform duration-200 group-hover:translate-x-0.5" />
+    </Link>
+  )
+}
+
 interface SidebarContentProps {
   email: string | undefined
   plan: string
@@ -108,51 +187,38 @@ function SidebarContent({
           const isActivePath = pathname === item.href
           return (
             <div key={item.href}>
-              {/* Bouton vedette ChapCam PC, place juste au-dessus de LIVE SWAP */}
+              {/* Boutons vedette premium (ChapCam PC / ESIM / ChapSim) */}
               {item.href === '/dashboard/live-swap' && (
-                <Link
-                  href="/dashboard/chapcam-pc"
-                  className={`group relative mb-2 flex items-center gap-3 overflow-hidden rounded-lg px-3 py-3 text-[13px] font-bold uppercase tracking-tight shadow-lg shadow-primary/30 transition-all duration-200 ${
-                    pathname === '/dashboard/chapcam-pc'
-                      ? 'bg-primary text-black ring-2 ring-primary/50'
-                      : 'bg-primary text-black hover:brightness-110'
-                  }`}
-                >
-                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-                  <Monitor className="h-[18px] w-[18px] shrink-0" />
-                  <span className="flex-1 truncate leading-tight">ChapCam PC</span>
-                  <span className="rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-extrabold tracking-wide">
-                    A VIE
-                  </span>
-                </Link>
-              )}
-              {/* Bouton vedette ESIM ChapCam — bleu, place juste sous ChapCam PC */}
-              {item.href === '/dashboard/live-swap' && (
-                <Link
-                  href="/numbers"
-                  className="group relative mb-2 flex items-center gap-3 overflow-hidden rounded-lg bg-[#2563EB] px-3 py-3 text-[13px] font-bold uppercase tracking-tight text-white shadow-lg shadow-[#2563EB]/40 transition-all duration-200 hover:bg-[#1d4ed8] hover:brightness-110"
-                >
-                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-                  <Smartphone className="h-[18px] w-[18px] shrink-0" />
-                  <span className="flex-1 truncate leading-tight">ESIM ChapCam</span>
-                  <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-extrabold tracking-wide">
-                    NEW
-                  </span>
-                </Link>
-              )}
-              {/* Bouton vedette ChapSim — violet, numeros virtuels & proxies */}
-              {item.href === '/dashboard/live-swap' && (
-                <Link
-                  href="/chapsim"
-                  className="group relative mb-2 flex items-center gap-3 overflow-hidden rounded-lg bg-gradient-to-r from-[#7c3aed] to-[#4f46e5] px-3 py-3 text-[13px] font-bold uppercase tracking-tight text-white shadow-lg shadow-[#7c3aed]/40 transition-all duration-200 hover:brightness-110"
-                >
-                  <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-                  <Globe className="h-[18px] w-[18px] shrink-0" />
-                  <span className="flex-1 truncate leading-tight">ChapSim</span>
-                  <span className="rounded-full bg-white/25 px-2 py-0.5 text-[10px] font-extrabold tracking-wide">
-                    OTP
-                  </span>
-                </Link>
+                <div className="mb-3 mt-1">
+                  <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-text-faint">
+                    Premium
+                  </p>
+                  <FeaturedLink
+                    href="/dashboard/chapcam-pc"
+                    icon={Monitor}
+                    title="ChapCam PC"
+                    subtitle="Windows · licence à vie"
+                    badge="À vie"
+                    tone="green"
+                    active={pathname === '/dashboard/chapcam-pc'}
+                  />
+                  <FeaturedLink
+                    href="/numbers"
+                    icon={Smartphone}
+                    title="ESIM ChapCam"
+                    subtitle="Numéros virtuels · 150+ pays"
+                    badge="New"
+                    tone="blue"
+                  />
+                  <FeaturedLink
+                    href="/chapsim"
+                    icon={Globe}
+                    title="ChapSim"
+                    subtitle="SMS OTP & proxies premium"
+                    badge="OTP"
+                    tone="purple"
+                  />
+                </div>
               )}
             <Link
               href={item.href}
