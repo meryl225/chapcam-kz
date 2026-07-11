@@ -4,6 +4,7 @@ import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
 import { HeaderActions } from '@/components/dashboard/hub/header-actions'
 import { EsimPromo } from '@/components/dashboard/esim-promo'
 import { ConsentCard } from '@/components/dashboard/consent-card'
+import { SupportBanner } from '@/components/dashboard/support-banner'
 import { Sparkles, Crown, Check, Zap, Timer, Users, Hourglass, ArrowRight, Clock } from 'lucide-react'
 
 const POINTS_PER_SECOND = 2
@@ -132,6 +133,9 @@ export default async function DashboardHubPage() {
           </div>
         </div>
       </header>
+
+      {/* ===== Bannière assistance / support ===== */}
+      <SupportBanner />
 
       {/* ===== Bannière utilisation responsable (compacte) ===== */}
       <ConsentCard initiallyAccepted={consentAccepted} />

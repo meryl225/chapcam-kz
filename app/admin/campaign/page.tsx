@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion } from "framer-motion"
-import { Mail, Send, Users, Calendar, Clock, CheckCircle, XCircle, Loader2, Rocket, Bell, CalendarDays, Gift, Eye, Monitor, Video } from "lucide-react"
+import { Mail, Send, Users, Calendar, Clock, CheckCircle, XCircle, Loader2, Rocket, Bell, CalendarDays, Gift, Eye, Monitor, Video, LifeBuoy, MessageCircle, Phone } from "lucide-react"
 import Link from "next/link"
 
 export default function AdminCampaignPage() {
@@ -70,9 +70,10 @@ export default function AdminCampaignPage() {
     }
   }
 
-  const sendCampaign = async (type: "D2" | "D1" | "DJ" | "PC" | "VIDEO") => {
+  const sendCampaign = async (type: "D2" | "D1" | "DJ" | "PC" | "VIDEO" | "SUPPORT") => {
     if (type === "PC" && !confirm("Envoyer la campagne 'ChapCam PC a vie - 50 000 FCFA' a TOUS les utilisateurs inscrits ?")) return
     if (type === "VIDEO" && !confirm("Envoyer la campagne 'Appels video' a TOUS les utilisateurs inscrits ?")) return
+    if (type === "SUPPORT" && !confirm("Envoyer la campagne 'Assistance / Besoin d'aide ?' a TOUS les utilisateurs inscrits ?")) return
     setSending(type)
 
     try {
@@ -237,6 +238,63 @@ export default function AdminCampaignPage() {
                 )}
               </button>
             </div>
+          </div>
+        </motion.div>
+
+        {/* Campagne Assistance / Support */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-6xl mx-auto mb-10"
+        >
+          <div className="bg-gradient-to-br from-[#0f2a1f] to-[#0f1420] border border-[#00ff88]/30 rounded-2xl p-6">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-12 h-12 rounded-xl bg-[#00ff88]/15 flex items-center justify-center flex-shrink-0">
+                <LifeBuoy className="w-6 h-6 text-[#00ff88]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-1">Campagne Assistance - Besoin d&apos;aide ?</h3>
+                <p className="text-gray-400 text-sm">
+                  Demande a tous les inscrits s&apos;ils <strong className="text-white">rencontrent un probleme</strong> pour
+                  utiliser le logiciel IA. L&apos;email contient un bouton
+                  <strong className="text-[#25D366]"> WhatsApp</strong> et un bouton
+                  <strong className="text-white"> appel</strong> vers le +225 05 55 56 01 89.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 mb-5 text-sm">
+              <span className="inline-flex items-center gap-1.5 text-gray-300">
+                <Users className="w-4 h-4 text-[#00ff88]" />
+                Tous les utilisateurs inscrits
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-gray-300">
+                <MessageCircle className="w-4 h-4 text-[#25D366]" />
+                Contact WhatsApp
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-gray-300">
+                <Phone className="w-4 h-4 text-[#00d4ff]" />
+                Appel direct
+              </span>
+            </div>
+
+            <button
+              onClick={() => sendCampaign("SUPPORT")}
+              disabled={sending !== null}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#00ff88] to-[#00d4ff] text-black font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {sending === "SUPPORT" ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Envoi en cours...
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5" />
+                  Envoyer la campagne Assistance
+                </>
+              )}
+            </button>
           </div>
         </motion.div>
 
@@ -529,7 +587,7 @@ export default function AdminCampaignPage() {
                     )}
                     <div>
                       <span className="text-white font-medium">
-                        {result.type === "D2" ? "Rappel J-2" : result.type === "D1" ? "Rappel J-1" : result.type === "PC" ? "ChapCam PC a vie" : "Lancement Jour J"}
+                        {result.type === "D2" ? "Rappel J-2" : result.type === "D1" ? "Rappel J-1" : result.type === "PC" ? "ChapCam PC a vie" : result.type === "VIDEO" ? "Appels video" : result.type === "SUPPORT" ? "Assistance / Support" : "Lancement Jour J"}
                       </span>
                       <span className="text-gray-400 mx-2">-</span>
                       <span className={result.success ? "text-[#00ff88]" : "text-red-400"}>
