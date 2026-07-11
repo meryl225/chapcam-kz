@@ -168,15 +168,36 @@ function SidebarContent({
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="p-6">
-        <h1 className="text-2xl font-bold">
-          <span className="text-foreground">Chap</span>
-          <span className="text-primary">Cam</span>
-        </h1>
-        <p className="mt-1 text-xs uppercase tracking-wider text-text-faint">
-          SWAP EN TEMPS REEL
-        </p>
+      <div className="px-5 pb-4 pt-6">
+        <Link href="/dashboard" className="group flex items-center gap-3">
+          {/* Tuile de marque */}
+          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-emerald-400 shadow-lg shadow-primary/30 transition-transform duration-200 group-hover:scale-105">
+            <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+              <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+            </span>
+            <Zap className="h-6 w-6 text-black" strokeWidth={2.5} />
+          </span>
+
+          <span className="min-w-0">
+            <span className="block text-2xl font-extrabold leading-none tracking-tight">
+              <span className="text-foreground">Chap</span>
+              <span className="text-primary">Cam</span>
+            </span>
+            <span className="mt-1.5 flex items-center gap-1.5">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+              </span>
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-faint">
+                Swap en temps réel
+              </span>
+            </span>
+          </span>
+        </Link>
       </div>
+
+      {/* Separateur */}
+      <div className="mx-5 mb-2 h-px bg-gradient-to-r from-transparent via-hairline to-transparent" />
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-1">
