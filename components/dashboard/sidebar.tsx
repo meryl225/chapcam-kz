@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, ShieldCheck, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines, Smartphone, Globe, ChevronRight } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines, Globe, ChevronRight } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -47,13 +47,10 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'DASHBOARD' },
-  { href: '/dashboard/live-swap', icon: Zap, label: 'LIVE SWAP' },
   { href: '/dashboard/voice-swap', icon: AudioLines, label: 'VOICE SWAP', badge: 'PRO' },
   { href: '/dashboard/voice-translator', icon: Languages, label: 'VOICE TRADUCTEUR', badge: 'NEW' },
   { href: '/dashboard/photo-video', icon: ImageIcon, label: 'PHOTOS EN VIDEO', badge: 'NEW' },
   { href: '/dashboard/video-translation', icon: Film, label: 'TRADUCTION VIDEO', badge: 'NEW' },
-  { href: '/dashboard/proxy', icon: Shield, label: 'NAVIGATION SECURISEE', badge: 'NEW' },
-  { href: '/dashboard/proxy-pro', icon: ShieldCheck, label: 'CHAPCAM PROXY PRO', badge: 'PRO' },
   { href: '/dashboard/avatars', icon: Users, label: 'MES AVATARS' },
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES' },
   { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGER' },
@@ -187,12 +184,21 @@ function SidebarContent({
           const isActivePath = pathname === item.href
           return (
             <div key={item.href}>
-              {/* Boutons vedette premium (ChapCam PC / ESIM / ChapSim) */}
-              {item.href === '/dashboard/live-swap' && (
+              {/* Boutons vedette premium (Live Swap / ChapCam PC / ChapSim) */}
+              {item.href === '/dashboard/voice-swap' && (
                 <div className="mb-3 mt-1">
                   <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-text-faint">
                     Premium
                   </p>
+                  <FeaturedLink
+                    href="/dashboard/live-swap"
+                    icon={Zap}
+                    title="Live Swap"
+                    subtitle="Change de visage en temps réel"
+                    badge="Live"
+                    tone="blue"
+                    active={pathname === '/dashboard/live-swap'}
+                  />
                   <FeaturedLink
                     href="/dashboard/chapcam-pc"
                     icon={Monitor}
@@ -201,14 +207,6 @@ function SidebarContent({
                     badge="À vie"
                     tone="green"
                     active={pathname === '/dashboard/chapcam-pc'}
-                  />
-                  <FeaturedLink
-                    href="/numbers"
-                    icon={Smartphone}
-                    title="ESIM ChapCam"
-                    subtitle="Numéros virtuels · 150+ pays"
-                    badge="New"
-                    tone="blue"
                   />
                   <FeaturedLink
                     href="/chapsim"
