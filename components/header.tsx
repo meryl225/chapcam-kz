@@ -45,18 +45,20 @@ export function Header() {
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-8">
           {[
+            { name: "Produit", href: "#comment-ca-marche", caret: true },
             { name: "Fonctionnalités", href: "#comment-ca-marche" },
             { name: "Tarifs", href: "#tarifs" },
-            { name: "ESIM ChapCam", href: "/numbers" },
-            { name: "FAQ", href: "#faq" },
-            { name: "Télécharger", href: "/download" },
+            { name: "Ressources", href: "#faq", caret: true },
+            { name: "API", href: "/download" },
+            { name: "Entreprise", href: "#founder" },
           ].map((item) => (
             <Link
               key={item.name}
               href={item.href}
-              className="text-white/70 hover:text-white transition-colors text-sm font-medium relative group"
+              className="text-white/70 hover:text-white transition-colors text-sm font-medium relative group inline-flex items-center gap-1"
             >
               {item.name}
+              {item.caret && <ChevronDown className="w-3.5 h-3.5 opacity-60" />}
               <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] group-hover:w-full transition-all duration-300" />
             </Link>
           ))}
