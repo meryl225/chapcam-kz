@@ -5,6 +5,7 @@ import Image from "next/image"
 import { ArrowRight, Play, Check, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StreamStudio } from "@/components/stream-studio"
+import { MonitorFrame } from "@/components/monitor-frame"
 import { motion } from "framer-motion"
 
 const FLAGS = [
@@ -155,7 +156,9 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 0.15 }}
           className="order-1 flex justify-center lg:order-2 lg:justify-end"
         >
-          <StreamStudio />
+          <MonitorFrame>
+            <StreamStudio />
+          </MonitorFrame>
         </motion.div>
       </div>
     </section>
