@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Globe, ChevronDown, MessageCircle } from "lucide-react"
+import { ChevronDown, MessageCircle } from "lucide-react"
 
 export function Header() {
   return (
@@ -137,16 +137,6 @@ export function Header() {
               WhatsApp
             </motion.span>
           </a>
-
-          {/* Selecteur de langue FR */}
-          <button
-            type="button"
-            className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
-          >
-            <Globe className="w-4 h-4" />
-            FR
-            <ChevronDown className="w-3.5 h-3.5 opacity-60" />
-          </button>
 
           {/* Se connecter - contour */}
           <Link href="/auth/login">
