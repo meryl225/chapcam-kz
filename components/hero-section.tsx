@@ -18,13 +18,13 @@ const FLAGS = [
 const BADGES = ["Temps réel", "30 FPS fluide", "Ultra HD 4K", "Faible latence", "Sécurisé"]
 
 const PLATFORMS = [
-  { name: "WhatsApp", color: "#25D366" },
-  { name: "Discord", color: "#5865F2" },
-  { name: "Twitch", color: "#9146FF" },
-  { name: "TikTok Live", color: "#ffffff" },
-  { name: "YouTube", color: "#ff4d4d" },
-  { name: "OBS", color: "#a78bfa" },
-  { name: "Zoom", color: "#2D8CFF" },
+  { name: "WhatsApp", color: "#25D366", logo: "/logos/whatsapp.svg" },
+  { name: "Discord", color: "#5865F2", logo: "/logos/discord.svg" },
+  { name: "Twitch", color: "#9146FF", logo: "/logos/twitch.svg" },
+  { name: "TikTok Live", color: "#ffffff", logo: "/logos/tiktok.svg" },
+  { name: "YouTube", color: "#ff4d4d", logo: "/logos/youtube.svg" },
+  { name: "OBS", color: "#a78bfa", logo: "/logos/obs.svg" },
+  { name: "Zoom", color: "#2D8CFF", logo: "/logos/zoom.svg" },
 ]
 
 export function HeroSection() {
@@ -121,10 +121,23 @@ export function HeroSection() {
               {PLATFORMS.map((p) => (
                 <span
                   key={p.name}
-                  className="inline-block cursor-default text-sm font-bold tracking-tight opacity-75 transition-all duration-300 hover:-translate-y-0.5 hover:opacity-100 hover:[text-shadow:0_0_16px_currentColor]"
-                  style={{ color: p.color }}
+                  className="group inline-flex cursor-default items-center gap-2 text-sm font-bold tracking-tight opacity-80 transition-all duration-300 hover:-translate-y-0.5 hover:opacity-100"
                 >
-                  {p.name}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.logo || "/placeholder.svg"}
+                    alt={`Logo ${p.name}`}
+                    width={20}
+                    height={20}
+                    loading="lazy"
+                    className="h-5 w-5 object-contain transition-transform duration-300 group-hover:scale-110"
+                  />
+                  <span
+                    className="transition-[text-shadow] duration-300 group-hover:[text-shadow:0_0_16px_currentColor]"
+                    style={{ color: p.color }}
+                  >
+                    {p.name}
+                  </span>
                 </span>
               ))}
             </div>
