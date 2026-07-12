@@ -45,8 +45,6 @@ export function Header() {
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-8">
           {[
-            { name: "Produit", href: "#comment-ca-marche", caret: true },
-            { name: "Fonctionnalités", href: "#comment-ca-marche" },
             { name: "Comment ça marche", href: "#comment-ca-marche" },
             { name: "Roadmap", href: "#roadmap" },
             { name: "Tarifs", href: "#tarifs" },
