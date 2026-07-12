@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Play, Check, TrendingUp } from "lucide-react"
+import { ArrowRight, Play, Check, TrendingUp, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StreamStudio } from "@/components/stream-studio"
 import { MonitorFrame } from "@/components/monitor-frame"
@@ -110,6 +110,33 @@ export function HeroSection() {
                 Voir la démo
               </Button>
             </Link>
+          </div>
+
+          {/* Preuve sociale */}
+          <div className="flex items-center gap-3 pt-1">
+            <div className="flex -space-x-3">
+              {["a3", "a2", "a6", "a1", "a5"].map((a) => (
+                <img
+                  key={a}
+                  src={`/images/hero/avatars/${a}.png`}
+                  alt="Créateur inscrit"
+                  width={36}
+                  height={36}
+                  loading="lazy"
+                  className="h-9 w-9 rounded-full border-2 border-[#0a0e1a] object-cover"
+                />
+              ))}
+            </div>
+            <div>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} className="h-3.5 w-3.5 fill-[#facc15] text-[#facc15]" />
+                ))}
+              </div>
+              <p className="text-sm text-gray-400">
+                <span className="font-bold text-white">+10 000 créateurs</span> déjà inscrits
+              </p>
+            </div>
           </div>
 
           {/* Fonctionne avec */}
