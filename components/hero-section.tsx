@@ -210,11 +210,43 @@ export function HeroSection() {
           initial={{ opacity: 0, scale: 0.94 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.15 }}
-          className="order-1 flex justify-center lg:order-2 lg:justify-end"
+          className="order-1 flex flex-col items-center gap-6 lg:order-2 lg:items-end"
         >
           <MonitorFrame>
             <StreamStudio />
           </MonitorFrame>
+
+          {/* Bannière partenaire ChapSim */}
+          <motion.a
+            href="https://chapsim.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            initial={{ opacity: 0, y: 24 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
+            className="group relative block w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-[#0b1020] shadow-[0_20px_60px_-20px_rgba(99,102,241,0.5)] transition-all duration-300 hover:-translate-y-1 hover:border-[#6366f1]/50 hover:shadow-[0_28px_70px_-20px_rgba(99,102,241,0.7)]"
+          >
+            <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/80 backdrop-blur-sm">
+              <Sparkles className="h-3 w-3 text-[#8b5cf6]" />
+              Partenaire
+            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/chapsim/banner.png"
+              alt="ChapSim - Numéros virtuels, SMS OTP et proxies premium"
+              className="h-auto w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+            />
+            <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-[#0b1020]/90 px-4 py-3 backdrop-blur-sm">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-white">ChapSim</p>
+                <p className="truncate text-xs text-gray-400">Numéros virtuels, SMS OTP &amp; proxies premium</p>
+              </div>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_-4px_rgba(139,92,246,0.7)] transition-all duration-300 group-hover:brightness-110">
+                Obtenir
+                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+              </span>
+            </div>
+          </motion.a>
         </motion.div>
       </div>
     </section>
