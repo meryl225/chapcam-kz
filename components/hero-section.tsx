@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Zap, Shield, Monitor, MessageCircle, Gamepad2, ChevronRight } from "lucide-react"
+import { ArrowRight, Play, Check, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StreamStudio } from "@/components/stream-studio"
 import { motion } from "framer-motion"
@@ -14,17 +14,21 @@ const FLAGS = [
   { src: "/images/flag-cameroun.png", alt: "Cameroun" },
 ]
 
-const PLATFORMS = ["Twitch", "YouTube", "TikTok", "OBS", "Discord", "Zoom"]
+const BADGES = ["Temps réel", "30 FPS fluide", "Ultra HD 4K", "Faible latence", "Sécurisé"]
 
-const TRUST = [
-  { icon: Zap, label: "Temps reel", color: "#fbbf24" },
-  { icon: Shield, label: "100% anonyme", color: "#00ff88" },
-  { icon: Monitor, label: "1080p / 4K", color: "#00d4ff" },
+const PLATFORMS = [
+  { name: "WhatsApp", color: "#25D366" },
+  { name: "Discord", color: "#5865F2" },
+  { name: "Twitch", color: "#9146FF" },
+  { name: "TikTok Live", color: "#ffffff" },
+  { name: "YouTube", color: "#ff4d4d" },
+  { name: "OBS", color: "#a78bfa" },
+  { name: "Zoom", color: "#2D8CFF" },
 ]
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-screen overflow-hidden px-6 pt-28 pb-16">
+    <section className="relative min-h-screen overflow-hidden px-6 pt-28 pb-20">
       {/* Grille de fond subtile */}
       <div
         aria-hidden
@@ -33,111 +37,115 @@ export function HeroSection() {
           backgroundImage:
             "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
           backgroundSize: "56px 56px",
-          maskImage: "radial-gradient(ellipse 80% 60% at 50% 40%, black, transparent)",
-          WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 40%, black, transparent)",
+          maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black, transparent)",
+          WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black, transparent)",
         }}
       />
 
-      <div className="relative mx-auto grid min-h-[calc(100vh-11rem)] max-w-7xl items-center gap-12 lg:grid-cols-2">
+      <div className="relative mx-auto grid min-h-[calc(100vh-12rem)] max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.12fr)] lg:gap-8">
         {/* ===== Colonne copy ===== */}
         <motion.div
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
-          className="order-2 flex flex-col gap-7 lg:order-1"
+          className="order-2 flex flex-col gap-6 lg:order-1"
         >
           {/* Eyebrow */}
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-primary">
-              <Gamepad2 className="h-4 w-4" />
-              La cam des createurs &amp; streamers
-            </span>
-            {/* Drapeaux disponibilite */}
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
-              {FLAGS.map((f) => (
-                <Image
-                  key={f.alt}
-                  src={f.src || "/placeholder.svg"}
-                  alt={`Drapeau ${f.alt}`}
-                  width={22}
-                  height={15}
-                  style={{ height: "auto" }}
-                  className="w-[22px] rounded-[3px] object-cover ring-1 ring-white/15"
-                />
-              ))}
-            </span>
-          </div>
+          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-300 backdrop-blur-sm">
+            <TrendingUp className="h-3.5 w-3.5 text-[#00d4ff]" />
+            N°1 des outils de transformation en direct
+          </span>
 
           {/* Titre */}
-          <h1 className="text-balance text-5xl font-black leading-[0.98] tracking-tight text-white lg:text-6xl xl:text-7xl">
-            Change de visage
+          <h1 className="text-balance text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl xl:text-7xl">
+            La caméra IA
             <br />
-            et de corps,{" "}
-            <span className="bg-gradient-to-r from-[#00ff88] via-[#00d4ff] to-[#8b5cf6] bg-clip-text text-transparent">
-              en temps reel.
+            des{" "}
+            <span className="bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] bg-clip-text text-transparent">
+              créateurs
+            </span>
+            <br />
+            &amp;{" "}
+            <span className="bg-gradient-to-r from-[#8b5cf6] to-[#e91e8c] bg-clip-text text-transparent">
+              gamers.
             </span>
           </h1>
 
           {/* Sous-titre */}
           <p className="max-w-xl text-pretty text-lg leading-relaxed text-gray-400">
-            L&apos;IA qui transforme ton apparence en direct pour tes streams gaming, tes videos
-            TikTok &amp; YouTube, tes lives et tes appels. Cree du contenu sans jamais montrer ton
-            vrai visage.
+            Change de visage et de corps en temps réel pour tes streams, vidéos, appels et réseaux
+            sociaux. Garde tes mouvements. Reste toi, deviens quelqu&apos;un d&apos;autre.
           </p>
 
-          {/* Plateformes compatibles */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Compatible</span>
-            {PLATFORMS.map((p) => (
+          {/* Badges */}
+          <div className="flex flex-wrap gap-2">
+            {BADGES.map((b) => (
               <span
-                key={p}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-gray-300"
+                key={b}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-300"
               >
-                {p}
+                <Check className="h-3.5 w-3.5 text-[#00ff88]" />
+                {b}
               </span>
             ))}
           </div>
 
           {/* CTA */}
-          <div className="flex flex-wrap items-center gap-4">
+          <div className="flex flex-wrap items-center gap-3 pt-1">
             <Link href="/auth/sign-up">
-              <Button className="group h-14 rounded-full bg-primary px-8 text-base font-bold text-black transition-all hover:brightness-110 hover:shadow-[0_0_40px_rgba(0,255,136,0.5)]">
-                Commencer maintenant
+              <Button className="group h-14 rounded-2xl bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] px-8 text-base font-bold text-white transition-all hover:brightness-110 hover:shadow-[0_0_40px_rgba(0,212,255,0.4)]">
+                Commencer gratuitement
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
-            <a href="https://wa.me/2250555560189" target="_blank" rel="noopener noreferrer">
+            <Link href="#in-action">
               <Button
                 variant="outline"
-                className="h-14 rounded-full border-white/15 bg-white/5 px-6 text-base font-semibold text-white hover:bg-white/10"
+                className="h-14 rounded-2xl border-white/15 bg-white/5 px-6 text-base font-semibold text-white hover:bg-white/10"
               >
-                <MessageCircle className="mr-2 h-5 w-5 text-[#25D366]" />
-                Parler a un expert
+                <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/10">
+                  <Play className="h-3.5 w-3.5 fill-current" />
+                </span>
+                Voir la démo
               </Button>
-            </a>
+            </Link>
           </div>
 
-          {/* Trust row */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3 pt-1">
-            {TRUST.map((t) => (
-              <div key={t.label} className="flex items-center gap-2 text-sm font-medium text-gray-400">
-                <t.icon className="h-4 w-4" style={{ color: t.color }} />
-                {t.label}
-              </div>
-            ))}
+          {/* Fonctionne avec */}
+          <div className="pt-2">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Fonctionne avec
+            </p>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5">
+              {PLATFORMS.map((p) => (
+                <span
+                  key={p.name}
+                  className="text-sm font-bold tracking-tight transition-opacity hover:opacity-100"
+                  style={{ color: p.color, opacity: 0.75 }}
+                >
+                  {p.name}
+                </span>
+              ))}
+            </div>
           </div>
 
-          {/* Lien ChapSim compact */}
-          <Link
-            href="/chapsim"
-            className="group inline-flex w-fit items-center gap-2 rounded-full border border-[#7c3aed]/40 bg-[#7c3aed]/10 px-3 py-1.5 text-xs font-semibold text-[#c4b5fd] transition-all hover:border-[#a78bfa]/70"
-          >
-            <span className="rounded-full bg-[#7c3aed]/30 px-2 py-0.5 text-[10px] font-bold uppercase text-white">
-              Nouveau
+          {/* Disponibilite (drapeaux) */}
+          <div className="flex items-center gap-2 pt-1 text-xs text-gray-500">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-1">
+              {FLAGS.map((f) => (
+                <Image
+                  key={f.alt}
+                  src={f.src || "/placeholder.svg"}
+                  alt={`Drapeau ${f.alt}`}
+                  width={20}
+                  height={14}
+                  style={{ height: "auto" }}
+                  className="w-5 rounded-[3px] object-cover ring-1 ring-white/15"
+                />
+              ))}
             </span>
-            ChapSim — numeros virtuels, SMS OTP &amp; proxies
-            <ChevronRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-          </Link>
+            Disponible en Afrique de l&apos;Ouest &amp; Centrale
+          </div>
         </motion.div>
 
         {/* ===== Colonne studio ===== */}

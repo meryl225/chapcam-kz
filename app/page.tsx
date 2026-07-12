@@ -1,5 +1,6 @@
 import { Header } from "@/components/header"
 import { HeroSection } from "@/components/hero-section"
+import { CreatorsSection } from "@/components/creators-section"
 import { InActionSection } from "@/components/in-action-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
 import { RoadmapSection } from "@/components/roadmap-section"
@@ -26,6 +27,7 @@ export default function Home() {
       <div className="relative z-10">
         <Header />
         <HeroSection />
+        <CreatorsSection />
         <InActionSection />
         <RoadmapSection />
         <HowItWorksSection />

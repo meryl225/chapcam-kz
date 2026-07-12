@@ -3,259 +3,324 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
-import { Mic, Video, Radio, MessageSquare, Sparkles, Users } from "lucide-react"
+import { Mic, Video, Monitor, Camera, Circle, Settings, Sliders, Volume2, TrendingUp } from "lucide-react"
 
-// Onglets de plateformes : l'axe "gaming + creation de contenu"
-const PLATFORMS = [
-  { id: "gaming", label: "Gaming", accent: "#00ff88" },
-  { id: "tiktok", label: "TikTok", accent: "#e91e8c" },
-  { id: "youtube", label: "YouTube Live", accent: "#ff4d4d" },
-  { id: "discord", label: "Discord", accent: "#8b5cf6" },
+const AVATARS = [
+  { type: "img", src: "/images/hero/studio-after.png" },
+  { type: "grad", from: "#00d4ff", to: "#8b5cf6" },
+  { type: "img", src: "/images/hero/creator-swapped.png" },
+  { type: "grad", from: "#00ff88", to: "#00d4ff" },
+  { type: "grad", from: "#e91e8c", to: "#8b5cf6" },
+  { type: "grad", from: "#f97316", to: "#e91e8c" },
 ]
 
-// Messages de chat qui defilent pour donner vie au live
-const CHAT_MESSAGES = [
-  { user: "Nova_TV", msg: "ce swap est incroyable 🔥", color: "#00d4ff" },
-  { user: "KZ_Gamer", msg: "on voit meme pas la difference", color: "#00ff88" },
-  { user: "Lena.stream", msg: "quel filtre tu utilises ??", color: "#e91e8c" },
-  { user: "ProZeus", msg: "temps reel de fou", color: "#f97316" },
-  { user: "MissPixel", msg: "je reste anonyme grace a ca", color: "#8b5cf6" },
+const SLIDERS = [
+  { label: "Similarité", value: 85 },
+  { label: "Expression", value: 90 },
+  { label: "Éclairage", value: 80 },
+  { label: "Netteté", value: 70 },
+]
+
+const CHAT = [
+  { user: "LilaStream", msg: "Incroyable !!", color: "#00d4ff" },
+  { user: "NeoKiller", msg: "Wshh c'est trop réel", color: "#00ff88" },
+  { user: "GameMaster", msg: "La qualité est insane !", color: "#e91e8c" },
+  { user: "ShadowZ", msg: "Tu utilises quel setup ?", color: "#f97316" },
+  { user: "CyberVibes", msg: "ChapCam best tool", color: "#8b5cf6" },
+  { user: "PixelQueen", msg: "on dirait un vrai jeu", color: "#00d4ff" },
 ]
 
 export function StreamStudio() {
-  const [platform, setPlatform] = useState(0)
-  const [swapped, setSwapped] = useState(false)
-  const [isSwapping, setIsSwapping] = useState(false)
+  const [viewers, setViewers] = useState(2543)
+  const [divider, setDivider] = useState(52)
+  const [tab, setTab] = useState<"visage" | "corps">("visage")
   const [chatIndex, setChatIndex] = useState(0)
-  const [viewers, setViewers] = useState(2847)
 
-  const accent = PLATFORMS[platform].accent
-
-  // Cycle du swap (real <-> avatar) avec courte phase de transition
+  // Compteur de spectateurs qui fluctue
   useEffect(() => {
-    const interval = setInterval(() => {
-      setIsSwapping(true)
-      setTimeout(() => {
-        setSwapped((s) => !s)
-        setIsSwapping(false)
-      }, 900)
-    }, 3600)
-    return () => clearInterval(interval)
+    const t = setInterval(() => setViewers((v) => Math.max(2400, v + Math.floor(Math.random() * 25) - 10)), 2200)
+    return () => clearInterval(t)
   }, [])
 
-  // Rotation des plateformes
+  // Balayage lent du separateur avant/apres (transform-based, leger)
   useEffect(() => {
-    const t = setInterval(() => setPlatform((p) => (p + 1) % PLATFORMS.length), 4800)
+    const positions = [52, 40, 58, 46, 62, 50]
+    let i = 0
+    const t = setInterval(() => {
+      i = (i + 1) % positions.length
+      setDivider(positions[i])
+    }, 2600)
     return () => clearInterval(t)
   }, [])
 
   // Chat qui defile
   useEffect(() => {
-    const t = setInterval(() => setChatIndex((i) => (i + 1) % CHAT_MESSAGES.length), 2200)
+    const t = setInterval(() => setChatIndex((i) => (i + 1) % CHAT.length), 2400)
     return () => clearInterval(t)
   }, [])
 
-  // Compteur de viewers qui fluctue
-  useEffect(() => {
-    const t = setInterval(() => setViewers((v) => v + Math.floor(Math.random() * 21) - 8), 2000)
-    return () => clearInterval(t)
-  }, [])
-
-  const visibleChat = [0, 1, 2].map((offset) => CHAT_MESSAGES[(chatIndex + offset) % CHAT_MESSAGES.length])
+  const visibleChat = [0, 1, 2, 3, 4].map((o) => CHAT[(chatIndex + o) % CHAT.length])
 
   return (
-    <div className="relative w-full max-w-[640px]">
-      {/* Halo statique (perf : pas d'animation de blur) */}
+    <div className="relative w-full max-w-[720px]">
+      {/* Halo statique */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -inset-8 rounded-[40px] opacity-40 blur-3xl"
-        style={{ background: `radial-gradient(circle at 50% 40%, ${accent}55, transparent 70%)` }}
+        className="pointer-events-none absolute -inset-10 rounded-[48px] opacity-40 blur-3xl"
+        style={{ background: "radial-gradient(circle at 60% 40%, rgba(0,212,255,0.35), rgba(139,92,246,0.25) 45%, transparent 72%)" }}
       />
 
-      {/* Fenetre du studio */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f16] shadow-2xl">
-        {/* Barre de titre facon OBS / navigateur */}
-        <div className="flex items-center gap-2 border-b border-white/10 bg-[#0d1119] px-4 py-2.5">
-          <div className="flex gap-1.5">
-            <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
-            <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
-            <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+      <div className="relative flex gap-3">
+        {/* ===== Fenetre principale du studio ===== */}
+        <div className="relative min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f16] shadow-2xl">
+          {/* Barre de titre */}
+          <div className="flex items-center gap-2 border-b border-white/[0.08] bg-[#0d1220] px-3 py-2.5">
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-[#00d4ff] to-[#8b5cf6]">
+              <span className="h-2 w-2 rounded-full bg-white" />
+            </span>
+            <span className="text-xs font-bold text-white">
+              ChapCam <span className="font-medium text-gray-400">Studio</span>
+            </span>
+            <span className="cc-blink ml-1.5 flex items-center gap-1 rounded bg-[#ff2d2d] px-1.5 py-0.5 text-[9px] font-bold text-white">
+              LIVE
+            </span>
+            <span className="flex items-center gap-1 text-[10px] font-semibold text-gray-300">
+              <span className="h-1 w-1 rounded-full bg-gray-500" />
+              {viewers.toLocaleString("en-US")}
+            </span>
+
+            <div className="ml-auto flex items-center gap-1.5">
+              <span className="hidden rounded bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-gray-400 sm:inline">
+                1080P
+              </span>
+              <span className="hidden rounded bg-white/5 px-1.5 py-0.5 text-[9px] font-medium text-gray-400 sm:inline">
+                30 FPS
+              </span>
+              <Settings className="h-3.5 w-3.5 text-gray-500" />
+              <Sliders className="h-3.5 w-3.5 text-gray-500" />
+              <span className="cc-blink h-2.5 w-2.5 rounded-full bg-[#ff2d2d]" />
+            </div>
           </div>
-          <div className="ml-3 flex items-center gap-2 text-xs font-medium text-gray-400">
-            <Sparkles className="h-3.5 w-3.5" style={{ color: accent }} />
-            ChapCam Studio
-          </div>
-          {/* Onglets plateformes */}
-          <div className="ml-auto hidden items-center gap-1 sm:flex">
-            {PLATFORMS.map((p, i) => (
-              <button
-                key={p.id}
-                onClick={() => setPlatform(i)}
-                className="rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all"
-                style={
-                  i === platform
-                    ? { background: `${p.accent}20`, color: p.accent, boxShadow: `inset 0 0 0 1px ${p.accent}60` }
-                    : { color: "#6b7280" }
-                }
-              >
-                {p.label}
+
+          {/* Corps : video split + panneau controle */}
+          <div className="flex">
+            {/* Zone video AVANT / APRES */}
+            <div className="relative min-w-0 flex-1">
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-black">
+                {/* APRES (fond, pleine largeur) */}
+                <Image
+                  src="/images/hero/studio-after.png"
+                  alt="Apres transformation ChapCam"
+                  fill
+                  className="object-cover"
+                  sizes="480px"
+                  priority
+                />
+                {/* AVANT (par-dessus, clippe a gauche du separateur) */}
+                <div
+                  className="absolute inset-0 transition-[clip-path] duration-1000 ease-in-out"
+                  style={{ clipPath: `inset(0 ${100 - divider}% 0 0)` }}
+                >
+                  <Image
+                    src="/images/hero/studio-before.png"
+                    alt="Avant transformation"
+                    fill
+                    className="object-cover"
+                    sizes="480px"
+                    priority
+                  />
+                </div>
+
+                {/* Etiquettes */}
+                <span className="absolute left-2.5 top-2.5 rounded-md border border-white/15 bg-black/55 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
+                  Avant
+                </span>
+                <span className="absolute right-2.5 top-2.5 rounded-md border border-[#00d4ff]/40 bg-[#00d4ff]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#00d4ff] backdrop-blur-sm">
+                  Après
+                </span>
+
+                {/* Separateur + poignee */}
+                <div
+                  className="absolute inset-y-0 z-10 w-0.5 bg-white/80 transition-[left] duration-1000 ease-in-out"
+                  style={{ left: `${divider}%`, boxShadow: "0 0 14px rgba(255,255,255,0.6)" }}
+                >
+                  <span className="absolute top-1/2 left-1/2 flex h-7 w-7 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/60 bg-black/70 backdrop-blur-sm">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-white">
+                      <path d="M9 6L4 12l5 6M15 6l5 6-5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </span>
+                </div>
+
+                {/* Mini controles overlay bas gauche */}
+                <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5">
+                  {[Camera, Monitor].map((Icon, i) => (
+                    <span key={i} className="flex h-6 w-6 items-center justify-center rounded-md bg-black/55 backdrop-blur-sm">
+                      <Icon className="h-3 w-3 text-white/80" />
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Panneau de controle */}
+            <div className="hidden w-[190px] shrink-0 flex-col gap-3 border-l border-white/[0.08] bg-[#0a0e18] p-3 md:flex">
+              {/* Onglets */}
+              <div className="flex gap-1 rounded-lg bg-white/5 p-0.5">
+                {(["visage", "corps"] as const).map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setTab(t)}
+                    className={`flex-1 rounded-md py-1 text-[10px] font-bold uppercase tracking-wide transition-all ${
+                      tab === t ? "bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] text-white" : "text-gray-400"
+                    }`}
+                  >
+                    {t === "visage" ? "Visage" : "Corps"}
+                  </button>
+                ))}
+              </div>
+
+              {/* Selection avatar */}
+              <div>
+                <p className="mb-1.5 text-[9px] font-bold uppercase tracking-wider text-gray-500">Sélection d&apos;avatar</p>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {AVATARS.map((a, i) => (
+                    <button
+                      key={i}
+                      className={`relative aspect-square overflow-hidden rounded-lg ${
+                        i === 0 ? "ring-2 ring-[#00d4ff]" : "ring-1 ring-white/10"
+                      }`}
+                    >
+                      {a.type === "img" ? (
+                        <Image src={a.src!} alt={`Avatar ${i + 1}`} fill className="object-cover" sizes="52px" />
+                      ) : (
+                        <span className="block h-full w-full" style={{ background: `linear-gradient(135deg, ${a.from}, ${a.to})` }} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sliders */}
+              <div className="flex flex-col gap-2">
+                {SLIDERS.map((s) => (
+                  <div key={s.label}>
+                    <div className="mb-1 flex items-center justify-between text-[9px]">
+                      <span className="font-medium text-gray-400">{s.label}</span>
+                      <span className="font-bold text-white">{s.value}%</span>
+                    </div>
+                    <div className="relative h-1 rounded-full bg-white/10">
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6]"
+                        style={{ width: `${s.value}%` }}
+                      />
+                      <span
+                        className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow"
+                        style={{ left: `${s.value}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Bouton appliquer */}
+              <button className="mt-auto rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] py-2 text-[11px] font-bold text-white transition-all hover:brightness-110">
+                Appliquer en direct
               </button>
-            ))}
+            </div>
+          </div>
+
+          {/* Barre de controles bas */}
+          <div className="flex items-center gap-2 border-t border-white/[0.08] bg-[#0d1220] px-3 py-2">
+            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300">
+              <Mic className="h-3.5 w-3.5" />
+            </button>
+            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300">
+              <Video className="h-3.5 w-3.5" />
+            </button>
+            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300">
+              <Monitor className="h-3.5 w-3.5" />
+            </button>
+            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300">
+              <Camera className="h-3.5 w-3.5" />
+            </button>
+            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-[#ff2d2d]">
+              <Circle className="h-3.5 w-3.5 fill-current" />
+            </button>
+
+            {/* Meter audio */}
+            <div className="ml-auto flex items-center gap-1.5">
+              <Volume2 className="h-3.5 w-3.5 text-gray-500" />
+              <div className="flex items-end gap-0.5">
+                {[0.5, 0.9, 0.6, 1, 0.7, 0.4, 0.8].map((h, i) => (
+                  <span
+                    key={i}
+                    className="cc-wave-bar w-0.5 rounded-full bg-gradient-to-t from-[#00ff88] to-[#00d4ff]"
+                    style={{ height: `${h * 14}px`, animationDelay: `${i * 0.1}s` }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Carte spectateurs flottante */}
+          <div className="absolute -bottom-5 right-3 hidden items-center gap-3 rounded-xl border border-white/10 bg-[#0d1220]/95 px-3 py-2 shadow-xl backdrop-blur-sm sm:flex">
+            <div>
+              <p className="text-[8px] font-bold uppercase tracking-wider text-gray-500">Spectateurs</p>
+              <p className="text-lg font-black leading-none text-white">{viewers.toLocaleString("en-US")}</p>
+              <p className="flex items-center gap-0.5 text-[9px] font-semibold text-[#00ff88]">
+                <TrendingUp className="h-2.5 w-2.5" />
+                +12.5% aujourd&apos;hui
+              </p>
+            </div>
+            <svg width="52" height="28" viewBox="0 0 52 28" fill="none" className="text-[#00ff88]">
+              <path d="M1 22 L10 16 L18 19 L26 9 L34 13 L42 5 L51 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           </div>
         </div>
 
-        {/* Scene de stream */}
-        <div className="relative aspect-video w-full overflow-hidden bg-black">
-          {/* Fond gameplay */}
-          <Image
-            src="/images/hero/game-scene.png"
-            alt="Scene de jeu en direct"
-            fill
-            className="object-cover opacity-90"
-            sizes="640px"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/30" />
-
-          {/* Barre live (haut) */}
-          <div className="absolute inset-x-0 top-0 flex items-center justify-between p-3">
-            <div className="flex items-center gap-2">
-              <span
-                className="flex items-center gap-1.5 rounded-md bg-[#ff2d2d] px-2 py-1 text-[11px] font-bold text-white"
-                style={{ boxShadow: "0 0 16px rgba(255,45,45,0.6)" }}
-              >
-                <span className="cc-blink h-1.5 w-1.5 rounded-full bg-white" />
-                LIVE
-              </span>
-              <span className="flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
-                <Users className="h-3 w-3" />
-                {viewers.toLocaleString("fr-FR")}
-              </span>
-            </div>
-            <span
-              className="flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-bold backdrop-blur-sm"
-              style={{ background: `${accent}22`, color: accent, boxShadow: `inset 0 0 0 1px ${accent}55` }}
-            >
-              <Radio className="h-3 w-3" />
-              SWAP ON
-            </span>
+        {/* ===== Panneau chat ===== */}
+        <div className="hidden w-[168px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f16] shadow-2xl xl:flex">
+          <div className="border-b border-white/[0.08] px-3 py-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-white">Chat en direct</p>
           </div>
-
-          {/* Chat overlay (droite) */}
-          <div className="absolute right-3 top-14 hidden w-40 flex-col gap-1.5 md:flex">
+          <div className="flex flex-1 flex-col gap-2.5 p-3">
             <AnimatePresence mode="popLayout">
               {visibleChat.map((c, i) => (
                 <motion.div
                   key={`${c.user}-${chatIndex}-${i}`}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1 - i * 0.25, x: 0 }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
-                  transition={{ duration: 0.4 }}
-                  className="rounded-lg bg-black/55 px-2.5 py-1.5 text-[10px] leading-tight backdrop-blur-sm"
+                  transition={{ duration: 0.35 }}
+                  className="flex gap-2"
                 >
-                  <span className="font-bold" style={{ color: c.color }}>
-                    {c.user}
-                  </span>{" "}
-                  <span className="text-gray-200">{c.msg}</span>
+                  <span
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white"
+                    style={{ background: c.color }}
+                  >
+                    {c.user[0]}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-[9px] font-bold" style={{ color: c.color }}>
+                      {c.user}
+                    </p>
+                    <p className="text-[9px] leading-tight text-gray-300">{c.msg}</p>
+                  </div>
                 </motion.div>
               ))}
             </AnimatePresence>
           </div>
-
-          {/* Facecam : le swap en direct */}
-          <div className="absolute bottom-3 left-3 w-[42%] max-w-[220px]">
-            <div
-              className="relative aspect-[4/5] overflow-hidden rounded-xl border-2"
-              style={{ borderColor: accent, boxShadow: `0 0 24px ${accent}55` }}
-            >
-              {/* Image reelle */}
-              <Image
-                src="/images/hero/creator-real.png"
-                alt="Createur avant swap"
-                fill
-                className={`object-cover transition-opacity duration-500 ${swapped ? "opacity-0" : "opacity-100"}`}
-                sizes="220px"
-                priority
-              />
-              {/* Image swappee */}
-              <Image
-                src="/images/hero/creator-swapped.png"
-                alt="Createur apres swap ChapCam"
-                fill
-                className={`object-cover transition-opacity duration-500 ${swapped ? "opacity-100" : "opacity-0"}`}
-                sizes="220px"
-              />
-
-              {/* Ligne de scan pendant le swap */}
-              <AnimatePresence>
-                {isSwapping && (
-                  <motion.div
-                    className="absolute inset-x-0 h-8 pointer-events-none"
-                    style={{
-                      background: `linear-gradient(180deg, transparent, ${accent}90, transparent)`,
-                    }}
-                    initial={{ top: "-20%", opacity: 0 }}
-                    animate={{ top: "110%", opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.9, ease: "easeInOut" }}
-                  />
-                )}
-              </AnimatePresence>
-
-              {/* Points de tracking facial */}
-              <div className="absolute inset-0 pointer-events-none">
-                {[
-                  { top: "34%", left: "34%" },
-                  { top: "34%", left: "66%" },
-                  { top: "52%", left: "50%" },
-                  { top: "68%", left: "40%" },
-                  { top: "68%", left: "60%" },
-                ].map((pt, i) => (
-                  <span
-                    key={i}
-                    className="absolute h-1.5 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full"
-                    style={{ top: pt.top, left: pt.left, background: accent, boxShadow: `0 0 8px ${accent}` }}
-                  />
-                ))}
-              </div>
-
-              {/* Etiquette cam */}
-              <div className="absolute bottom-1.5 left-1.5 rounded-md bg-black/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
-                Facecam
-              </div>
+          <div className="px-3 pb-2">
+            <div className="rounded-lg bg-white/5 px-2.5 py-1.5 text-[9px] text-gray-500">Envoyer un message…</div>
+          </div>
+          <div className="border-t border-white/[0.08] px-3 py-2.5">
+            <p className="mb-1.5 text-[8px] font-bold uppercase tracking-wider text-gray-500">En live sur</p>
+            <div className="flex items-center gap-2 text-[10px] font-bold">
+              <span className="text-[#9146FF]">Twitch</span>
+              <span className="text-[#ff4d4d]">YT</span>
+              <span className="text-white">TikTok</span>
             </div>
           </div>
-
-          {/* Barre de controles (bas droite) */}
-          <div className="absolute bottom-3 right-3 flex items-center gap-2">
-            <div className="flex items-end gap-0.5 rounded-lg bg-black/50 px-2 py-1.5 backdrop-blur-sm">
-              {[0.4, 0.8, 0.5, 1, 0.6].map((h, i) => (
-                <span
-                  key={i}
-                  className="cc-wave-bar w-0.5 rounded-full"
-                  style={{ height: `${h * 16}px`, background: accent, animationDelay: `${i * 0.12}s` }}
-                />
-              ))}
-            </div>
-            <button className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/50 text-white backdrop-blur-sm">
-              <Mic className="h-4 w-4" />
-            </button>
-            <button
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-black"
-              style={{ background: accent }}
-            >
-              <Video className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        {/* Pied : legende */}
-        <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-[#0d1119] px-4 py-2.5">
-          <div className="flex items-center gap-2 text-[11px] text-gray-400">
-            <MessageSquare className="h-3.5 w-3.5" style={{ color: accent }} />
-            Diffuse sur <span className="font-semibold text-white">{PLATFORMS[platform].label}</span>
-          </div>
-          <span className="text-[11px] font-medium text-gray-500">1080p · 60 FPS · &lt; 40 ms</span>
         </div>
       </div>
     </div>
