@@ -51,8 +51,8 @@ export function HeroSection() {
           className="order-2 flex flex-col gap-6 lg:order-1"
         >
           {/* Eyebrow */}
-          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-300 backdrop-blur-sm">
-            <TrendingUp className="h-3.5 w-3.5 text-[#00d4ff]" />
+          <span className="group inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-300 shadow-[0_2px_12px_-4px_rgba(0,212,255,0.25)] backdrop-blur-md transition-all duration-300 hover:border-[#00d4ff]/40 hover:bg-white/[0.08] hover:shadow-[0_4px_20px_-4px_rgba(0,212,255,0.5)]">
+            <TrendingUp className="h-3.5 w-3.5 text-[#00d4ff] transition-transform duration-300 group-hover:scale-110" />
             N°1 des outils de transformation en direct
           </span>
 
@@ -82,7 +82,7 @@ export function HeroSection() {
             {BADGES.map((b) => (
               <span
                 key={b}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-300"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00ff88]/40 hover:bg-white/[0.08] hover:text-white hover:shadow-[0_6px_20px_-6px_rgba(0,255,136,0.35)]"
               >
                 <Check className="h-3.5 w-3.5 text-[#00ff88]" />
                 {b}
@@ -120,8 +120,8 @@ export function HeroSection() {
               {PLATFORMS.map((p) => (
                 <span
                   key={p.name}
-                  className="text-sm font-bold tracking-tight transition-opacity hover:opacity-100"
-                  style={{ color: p.color, opacity: 0.75 }}
+                  className="inline-block cursor-default text-sm font-bold tracking-tight opacity-75 transition-all duration-300 hover:-translate-y-0.5 hover:opacity-100 hover:[text-shadow:0_0_16px_currentColor]"
+                  style={{ color: p.color }}
                 >
                   {p.name}
                 </span>
@@ -131,7 +131,7 @@ export function HeroSection() {
 
           {/* Disponibilite (drapeaux) */}
           <div className="flex items-center gap-2 pt-1 text-xs text-gray-500">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-1">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-1 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.5)] backdrop-blur-sm transition-all duration-300 hover:border-white/20 hover:bg-white/[0.08]">
               {FLAGS.map((f) => (
                 <Image
                   key={f.alt}
@@ -140,7 +140,7 @@ export function HeroSection() {
                   width={20}
                   height={14}
                   style={{ height: "auto" }}
-                  className="w-5 rounded-[3px] object-cover ring-1 ring-white/15"
+                  className="w-5 rounded-[3px] object-cover ring-1 ring-white/15 transition-transform duration-300 hover:z-10 hover:scale-125"
                 />
               ))}
             </span>

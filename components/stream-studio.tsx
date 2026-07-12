@@ -72,7 +72,7 @@ export function StreamStudio() {
 
       <div className="relative flex gap-3">
         {/* ===== Fenetre principale du studio ===== */}
-        <div className="relative min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f16] shadow-2xl">
+        <div className="group/window relative min-w-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f16]/95 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.85),0_0_0_1px_rgba(255,255,255,0.04),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl transition-shadow duration-500 hover:shadow-[0_36px_100px_-24px_rgba(0,0,0,0.9),0_0_50px_-12px_rgba(0,212,255,0.35),0_0_0_1px_rgba(255,255,255,0.06),inset_0_1px_0_rgba(255,255,255,0.08)]">
           {/* Barre de titre */}
           <div className="flex items-center gap-2 border-b border-white/[0.08] bg-[#0d1220] px-3 py-2.5">
             <span className="flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-br from-[#00d4ff] to-[#8b5cf6]">
@@ -154,7 +154,7 @@ export function StreamStudio() {
                 {/* Mini controles overlay bas gauche */}
                 <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5">
                   {[Camera, Monitor].map((Icon, i) => (
-                    <span key={i} className="flex h-6 w-6 items-center justify-center rounded-md bg-black/55 backdrop-blur-sm">
+                    <span key={i} className="flex h-6 w-6 items-center justify-center rounded-md border border-white/10 bg-black/55 backdrop-blur-md transition-all duration-200 hover:scale-110 hover:border-white/25 hover:bg-black/70">
                       <Icon className="h-3 w-3 text-white/80" />
                     </span>
                   ))}
@@ -186,8 +186,8 @@ export function StreamStudio() {
                   {AVATARS.map((a, i) => (
                     <button
                       key={i}
-                      className={`relative aspect-square overflow-hidden rounded-lg ${
-                        i === 0 ? "ring-2 ring-[#00d4ff]" : "ring-1 ring-white/10"
+                      className={`relative aspect-square overflow-hidden rounded-lg transition-all duration-300 hover:z-10 hover:scale-[1.08] hover:ring-2 hover:ring-[#00d4ff]/70 ${
+                        i === 0 ? "ring-2 ring-[#00d4ff] shadow-[0_0_16px_-2px_rgba(0,212,255,0.6)]" : "ring-1 ring-white/10"
                       }`}
                     >
                       {a.type === "img" ? (
@@ -223,7 +223,7 @@ export function StreamStudio() {
               </div>
 
               {/* Bouton appliquer */}
-              <button className="mt-auto rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] py-2 text-[11px] font-bold text-white transition-all hover:brightness-110">
+              <button className="mt-auto rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] py-2 text-[11px] font-bold text-white shadow-[0_6px_20px_-6px_rgba(0,212,255,0.6)] transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_10px_28px_-6px_rgba(139,92,246,0.7)] active:translate-y-0">
                 Appliquer en direct
               </button>
             </div>
@@ -231,19 +231,19 @@ export function StreamStudio() {
 
           {/* Barre de controles bas */}
           <div className="flex items-center gap-2 border-t border-white/[0.08] bg-[#0d1220] px-3 py-2">
-            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300">
+            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white hover:shadow-[0_4px_12px_-4px_rgba(0,212,255,0.4)]">
               <Mic className="h-3.5 w-3.5" />
             </button>
-            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300">
+            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white hover:shadow-[0_4px_12px_-4px_rgba(0,212,255,0.4)]">
               <Video className="h-3.5 w-3.5" />
             </button>
-            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300">
+            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white hover:shadow-[0_4px_12px_-4px_rgba(0,212,255,0.4)]">
               <Monitor className="h-3.5 w-3.5" />
             </button>
-            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300">
+            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-gray-300 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/10 hover:text-white hover:shadow-[0_4px_12px_-4px_rgba(0,212,255,0.4)]">
               <Camera className="h-3.5 w-3.5" />
             </button>
-            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-[#ff2d2d]">
+            <button className="flex h-7 w-7 items-center justify-center rounded-md bg-white/5 text-[#ff2d2d] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#ff2d2d]/15 hover:shadow-[0_4px_12px_-4px_rgba(255,45,45,0.5)]">
               <Circle className="h-3.5 w-3.5 fill-current" />
             </button>
 
@@ -263,7 +263,7 @@ export function StreamStudio() {
           </div>
 
           {/* Carte spectateurs flottante */}
-          <div className="absolute -bottom-5 right-3 hidden items-center gap-3 rounded-xl border border-white/10 bg-[#0d1220]/95 px-3 py-2 shadow-xl backdrop-blur-sm sm:flex">
+          <div className="absolute -bottom-5 right-3 hidden items-center gap-3 rounded-xl border border-white/10 bg-[#0d1220]/80 px-3 py-2 shadow-[0_20px_50px_-16px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00ff88]/30 hover:shadow-[0_24px_60px_-16px_rgba(0,0,0,0.95),0_0_30px_-8px_rgba(0,255,136,0.4)] sm:flex">
             <div>
               <p className="text-[8px] font-bold uppercase tracking-wider text-gray-500">Spectateurs</p>
               <p className="text-lg font-black leading-none text-white">{viewers.toLocaleString("en-US")}</p>
@@ -279,7 +279,7 @@ export function StreamStudio() {
         </div>
 
         {/* ===== Panneau chat ===== */}
-        <div className="hidden w-[168px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f16] shadow-2xl xl:flex">
+        <div className="hidden w-[168px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f16]/90 shadow-[0_30px_80px_-24px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl xl:flex">
           <div className="border-b border-white/[0.08] px-3 py-2.5">
             <p className="text-[10px] font-bold uppercase tracking-wider text-white">Chat en direct</p>
           </div>
@@ -292,10 +292,10 @@ export function StreamStudio() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.35 }}
-                  className="flex gap-2"
+                  className="flex gap-2 rounded-md px-1 py-0.5 transition-colors duration-200 hover:bg-white/[0.06]"
                 >
                   <span
-                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white"
+                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[8px] font-bold text-white shadow-[0_0_10px_-2px_currentColor]"
                     style={{ background: c.color }}
                   >
                     {c.user[0]}
