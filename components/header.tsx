@@ -64,8 +64,19 @@ export function Header() {
 
         {/* CTA Buttons */}
         <div className="flex items-center gap-3">
-          {/* Communaute - TikTok & Instagram */}
+          {/* Communaute - Facebook, TikTok & Instagram */}
           <div className="hidden items-center gap-1.5 sm:flex">
+            <a
+              href="https://www.facebook.com/share/1BLApD4N6j/?mibextid=wwXIfr"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Communauté Facebook ChapCam"
+              title="Communauté Facebook"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.1] hover:shadow-[0_6px_18px_-6px_rgba(8,102,255,0.5)]"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logos/facebook.svg" alt="Facebook" width={18} height={18} className="h-[18px] w-[18px] object-contain" />
+            </a>
             <a
               href="https://www.tiktok.com/@multivoix.ci"
               target="_blank"
