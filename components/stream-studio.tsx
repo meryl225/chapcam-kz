@@ -6,13 +6,13 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Mic, Video, Monitor, Camera, Circle, Settings, Sliders, Volume2, TrendingUp } from "lucide-react"
 
 const AVATARS = [
-  { type: "img", src: "/images/hero/studio-after.png" },
-  { type: "grad", from: "#00d4ff", to: "#8b5cf6" },
-  { type: "img", src: "/images/hero/creator-swapped.png" },
-  { type: "grad", from: "#00ff88", to: "#00d4ff" },
-  { type: "grad", from: "#e91e8c", to: "#8b5cf6" },
-  { type: "grad", from: "#f97316", to: "#e91e8c" },
-]
+  { src: "/images/hero/avatars/a1.png" },
+  { src: "/images/hero/avatars/a2.png" },
+  { src: "/images/hero/avatars/a3.png" },
+  { src: "/images/hero/avatars/a4.png" },
+  { src: "/images/hero/avatars/a5.png" },
+  { src: "/images/hero/avatars/a6.png" },
+  ]
 
 const SLIDERS = [
   { label: "Similarité", value: 85 },
@@ -190,10 +190,9 @@ export function StreamStudio() {
                         i === 0 ? "ring-2 ring-[#00d4ff] shadow-[0_0_16px_-2px_rgba(0,212,255,0.6)]" : "ring-1 ring-white/10"
                       }`}
                     >
-                      {a.type === "img" ? (
-                        <Image src={a.src!} alt={`Avatar ${i + 1}`} fill className="object-cover" sizes="52px" />
-                      ) : (
-                        <span className="block h-full w-full" style={{ background: `linear-gradient(135deg, ${a.from}, ${a.to})` }} />
+                      <Image src={a.src} alt={`Avatar ${i + 1}`} fill className="object-cover" sizes="52px" />
+                      {i === 0 && (
+                        <span className="absolute bottom-0.5 right-0.5 h-2 w-2 rounded-full bg-[#00d4ff] ring-2 ring-[#0b0f16]" />
                       )}
                     </button>
                   ))}
