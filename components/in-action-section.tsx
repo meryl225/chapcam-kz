@@ -16,7 +16,7 @@ export function InActionSection() {
   ]
 
   return (
-    <section className="relative py-24 px-6 overflow-hidden">
+    <section id="in-action" className="relative scroll-mt-24 py-24 px-6 overflow-hidden">
       {/* Background glow effects */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-[#00ff88]/10 rounded-full blur-[120px]" />

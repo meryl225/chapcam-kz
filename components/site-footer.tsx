@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { MapPin, Phone } from "lucide-react"
 
 export function SiteFooter() {
   const year = new Date().getFullYear()
@@ -13,6 +14,23 @@ export function SiteFooter() {
           <p className="mt-1 text-sm text-muted-foreground">
             Plateforme d&apos;intelligence artificielle responsable. © {year} ChapCam. Tous droits réservés.
           </p>
+
+          <div className="mt-4 flex flex-col items-center gap-2 md:items-start">
+            <p className="flex items-start gap-2 text-sm text-muted-foreground">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              <span>
+                Yopougon Niangon Texaco, Pharmacie Léa,
+                <br className="hidden md:block" /> boutique METATECH
+              </span>
+            </p>
+            <a
+              href="tel:+2250555560189"
+              className="flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              <Phone className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+              +225 05 55 56 01 89
+            </a>
+          </div>
         </div>
 
         <nav aria-label="Liens légaux" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">

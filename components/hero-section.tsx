@@ -2,257 +2,203 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Zap, Shield, Monitor, MessageCircle, Gamepad2 } from "lucide-react"
+import { ArrowRight, Play, Check, TrendingUp, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { FeatureList } from "@/components/feature-list"
-import { PhoneMockup } from "@/components/phone-mockup"
+import { StreamStudio } from "@/components/stream-studio"
+import { MonitorFrame } from "@/components/monitor-frame"
 import { motion } from "framer-motion"
+
+const FLAGS = [
+  { src: "/images/flag-cote-divoire.png", alt: "Cote d'Ivoire" },
+  { src: "/images/flag-benin.png", alt: "Benin" },
+  { src: "/images/flag-togo.png", alt: "Togo" },
+  { src: "/images/flag-cameroun.png", alt: "Cameroun" },
+]
+
+const BADGES = ["Temps réel", "30 FPS fluide", "Ultra HD 4K", "Faible latence", "Sécurisé"]
+
+const PLATFORMS = [
+  { name: "WhatsApp", color: "#25D366", logo: "/logos/whatsapp.svg" },
+  { name: "Discord", color: "#5865F2", logo: "/logos/discord.svg" },
+  { name: "Twitch", color: "#9146FF", logo: "/logos/twitch.svg" },
+  { name: "TikTok Live", color: "#ffffff", logo: "/logos/tiktok.svg" },
+  { name: "YouTube", color: "#ff4d4d", logo: "/logos/youtube.svg" },
+  { name: "OBS", color: "#a78bfa", logo: "/logos/obs.svg" },
+  { name: "Zoom", color: "#2D8CFF", logo: "/logos/zoom.svg" },
+]
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-screen pt-28 pb-12 px-6 overflow-hidden">
-      {/* Drapeaux flottants - pays disponibles */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, delay: 0.3 }}
-        className="absolute left-4 top-24 z-20 md:left-6 lg:left-10"
-      >
+    <section className="relative min-h-screen overflow-hidden px-6 pt-28 pb-20">
+      {/* Grille de fond subtile */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.35]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
+          backgroundSize: "56px 56px",
+          maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black, transparent)",
+          WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black, transparent)",
+        }}
+      />
+
+      <div className="relative mx-auto grid min-h-[calc(100vh-12rem)] max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.12fr)] lg:gap-8">
+        {/* ===== Colonne copy ===== */}
         <motion.div
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md"
-        >
-            {[
-              { src: "/images/flag-cote-divoire.png", alt: "Cote d'Ivoire" },
-              { src: "/images/flag-benin.png", alt: "Benin" },
-              { src: "/images/flag-togo.png", alt: "Togo" },
-              { src: "/images/flag-cameroun.png", alt: "Cameroun" },
-            ].map((flag, i) => (
-              <motion.div
-                key={flag.alt}
-                animate={{ y: [0, -4, 0] }}
-                transition={{ duration: 3, repeat: Infinity, delay: i * 0.2, ease: "easeInOut" }}
-                whileHover={{ scale: 1.15 }}
-                className="overflow-hidden rounded-md shadow-lg ring-1 ring-white/20"
-              >
-                <Image
-                  src={flag.src || "/placeholder.svg"}
-                  alt={`Drapeau ${flag.alt}`}
-                  width={48}
-                  height={32}
-                  className="h-8 w-12 object-cover"
-                />
-              </motion.div>
-            ))}
-        </motion.div>
-      </motion.div>
-
-      <div className="max-w-7xl mx-auto grid lg:grid-cols-[1fr_1.2fr_1fr] gap-8 items-center min-h-[calc(100vh-8rem)]">
-        {/* Left - Features */}
-        <motion.div 
-          initial={{ opacity: 0, x: -50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex flex-col gap-6 relative z-10"
-        >
-          {/* Badge createurs & gamers */}
-          <motion.div 
-            animate={{ 
-              scale: [1, 1.02, 1],
-              boxShadow: [
-                "0 0 20px rgba(34,197,94,0.4)",
-                "0 0 40px rgba(34,197,94,0.6)",
-                "0 0 20px rgba(34,197,94,0.4)"
-              ]
-            }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="inline-flex items-center gap-2 bg-[#22c55e] px-5 py-2.5 rounded-full w-fit"
-          >
-            <motion.span 
-              animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
-              transition={{ duration: 1, repeat: Infinity }}
-              className="w-2.5 h-2.5 rounded-full bg-white" 
-            />
-            <span className="text-white font-bold text-sm tracking-wide">CREATEURS &amp; GAMERS</span>
-          </motion.div>
-
-          <FeatureList />
-
-          {/* Promo ChapSim - numeros virtuels, SMS OTP & proxies premium */}
-          <Link href="/chapsim" className="block w-full">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.7 }}
-              whileHover={{ scale: 1.02 }}
-              className="group relative w-full overflow-hidden rounded-2xl border border-[#7c3aed]/40 bg-[#0d0a24]/80 backdrop-blur-sm transition-all hover:border-[#a78bfa]/70 hover:shadow-[0_0_40px_rgba(124,58,237,0.5)]"
-            >
-              {/* halo violet */}
-              <motion.div
-                aria-hidden
-                className="pointer-events-none absolute -right-10 -top-10 h-36 w-36 rounded-full bg-[#7c3aed]/40 blur-3xl"
-                animate={{ opacity: [0.4, 0.7, 0.4] }}
-                transition={{ duration: 3, repeat: Infinity }}
-              />
-
-              <div className="relative">
-                <Image
-                  src="/chapsim/presentation.jpg"
-                  alt="ChapSim - Numeros virtuels, SMS OTP et proxies premium"
-                  width={1280}
-                  height={640}
-                  className="h-auto w-full"
-                />
-              </div>
-
-              <div className="relative flex items-center justify-between gap-3 p-4">
-                <div className="min-w-0">
-                  <span className="inline-flex items-center rounded-full bg-[#7c3aed]/20 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#c4b5fd]">
-                    Nouveau
-                  </span>
-                  <p className="mt-1.5 text-sm font-bold leading-tight text-white text-balance">
-                    ChapSim - Numeros virtuels & proxies
-                  </p>
-                </div>
-                <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-[#7c3aed] to-[#4f46e5] px-4 py-2 text-xs font-bold text-white transition-all group-hover:brightness-110">
-                  Obtenir
-                  <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-                </span>
-              </div>
-            </motion.div>
-          </Link>
-        </motion.div>
-
-        {/* Center - Phone Mockup */}
-        <motion.div 
-          initial={{ opacity: 0, y: 50 }}
+          initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.4 }}
-          className="flex justify-center relative z-10"
+          transition={{ duration: 0.7 }}
+          className="order-2 flex flex-col gap-6 lg:order-1"
         >
-          <PhoneMockup />
-        </motion.div>
-
-        {/* Right - CTA Content */}
-        <motion.div 
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
-          className="flex flex-col gap-6 relative z-10"
-        >
-          <span className="inline-flex w-fit items-center gap-2 text-sm font-semibold uppercase tracking-widest text-[#00d4ff]">
-            <Gamepad2 className="w-4 h-4" />
-            La cam des createurs &amp; streamers
+          {/* Eyebrow */}
+          <span className="group inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-300 shadow-[0_2px_12px_-4px_rgba(0,212,255,0.25)] backdrop-blur-md transition-all duration-300 hover:border-[#00d4ff]/40 hover:bg-white/[0.08] hover:shadow-[0_4px_20px_-4px_rgba(0,212,255,0.5)]">
+            <TrendingUp className="h-3.5 w-3.5 text-[#00d4ff] transition-transform duration-300 group-hover:scale-110" />
+            N°1 des outils de transformation en direct
           </span>
 
-          <h1 className="text-4xl lg:text-5xl font-black text-white leading-tight text-balance">
-            CHANGE DE VISAGE ET TON CORPS ENTIER{" "}
-            <motion.span 
-              className="bg-gradient-to-r from-[#8b5cf6] via-[#e91e8c] to-[#f97316] bg-clip-text text-transparent"
-              animate={{ 
-                backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"]
-              }}
-              transition={{ duration: 5, repeat: Infinity }}
-              style={{ backgroundSize: "200% 200%" }}
-            >
-              EN TEMPS REEL.
-            </motion.span>
+          {/* Titre */}
+          <h1 className="text-balance text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl xl:text-7xl">
+            La caméra IA
+            <br />
+            des{" "}
+            <span className="bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] bg-clip-text text-transparent">
+              créateurs
+            </span>
+            <br />
+            &amp;{" "}
+            <span className="bg-gradient-to-r from-[#8b5cf6] to-[#e91e8c] bg-clip-text text-transparent">
+              gamers.
+            </span>
           </h1>
-          
-          <p className="text-gray-400 text-lg leading-relaxed">
-            Cree du contenu sans montrer ton vrai visage : streams gaming, videos TikTok &amp; YouTube, lives et appels. ChapCam transforme ton apparence en direct, sur toutes tes plateformes.
+
+          {/* Sous-titre */}
+          <p className="max-w-xl text-pretty text-lg leading-relaxed text-gray-400">
+            Change de visage et de corps en temps réel pour tes streams, vidéos, appels et réseaux
+            sociaux. Garde tes mouvements. Reste toi, deviens quelqu&apos;un d&apos;autre.
           </p>
 
-          {/* Plateformes compatibles - createurs & gamers */}
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
-              Compatible :
-            </span>
-            {["Twitch", "YouTube", "TikTok", "OBS", "Discord", "Zoom"].map((platform) => (
+          {/* Badges */}
+          <div className="flex flex-wrap gap-2">
+            {BADGES.map((b) => (
               <span
-                key={platform}
-                className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold text-gray-300 backdrop-blur-sm"
+                key={b}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-gray-300 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00ff88]/40 hover:bg-white/[0.08] hover:text-white hover:shadow-[0_6px_20px_-6px_rgba(0,255,136,0.35)]"
               >
-                {platform}
+                <Check className="h-3.5 w-3.5 text-[#00ff88]" />
+                {b}
               </span>
             ))}
           </div>
 
-          {/* Premium CTA Button - Blue Violet */}
-          <Link href="/auth/sign-up">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="relative w-fit group"
-            >
-              {/* Animated glow */}
-              <motion.div 
-                className="absolute inset-0 bg-gradient-to-r from-[#7c3aed] via-[#3b82f6] to-[#00d4ff] rounded-full blur-xl opacity-60"
-                animate={{ 
-                  scale: [1, 1.1, 1],
-                  opacity: [0.5, 0.8, 0.5]
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-              <Button className="relative bg-gradient-to-r from-[#7c3aed] via-[#3b82f6] to-[#00d4ff] text-white border-0 px-8 py-7 rounded-full font-bold text-lg transition-all flex items-center gap-3 group-hover:shadow-[0_0_40px_rgba(99,102,241,0.6)]">
-                Commencer maintenant
-                <motion.div
-                  animate={{ x: [0, 5, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  <ArrowRight className="w-5 h-5" />
-                </motion.div>
+          {/* CTA */}
+          <div className="flex flex-wrap items-center gap-3 pt-1">
+            <Link href="/auth/sign-up">
+              <Button className="group h-14 rounded-2xl bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] px-8 text-base font-bold text-white transition-all hover:brightness-110 hover:shadow-[0_0_40px_rgba(0,212,255,0.4)]">
+                Commencer gratuitement
+                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
-            </motion.div>
-          </Link>
-
-          {/* WhatsApp Contact Button */}
-          <a href="https://wa.me/2250555560189" target="_blank" rel="noopener noreferrer">
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="relative w-fit"
-            >
-              <motion.div 
-                className="absolute inset-0 bg-[#22c55e] rounded-full blur-lg opacity-40"
-                animate={{ opacity: [0.3, 0.6, 0.3] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-              <Button 
+            </Link>
+            <Link href="#in-action">
+              <Button
                 variant="outline"
-                className="relative bg-[#22c55e]/10 border-[#22c55e] text-[#22c55e] hover:bg-[#22c55e] hover:text-white px-6 py-5 rounded-full font-semibold transition-all flex items-center gap-2"
+                className="h-14 rounded-2xl border-white/15 bg-white/5 px-6 text-base font-semibold text-white hover:bg-white/10"
               >
-                <MessageCircle className="w-5 h-5" />
-                Nous contacter sur WhatsApp
+                <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/10">
+                  <Play className="h-3.5 w-3.5 fill-current" />
+                </span>
+                Voir la démo
               </Button>
-            </motion.div>
-          </a>
-
-          {/* Feature badges */}
-          <div className="flex items-center gap-6 mt-2">
-            <motion.div 
-              whileHover={{ scale: 1.1 }}
-              className="flex items-center gap-2 text-gray-400 hover:text-[#fbbf24] transition-colors cursor-default"
-            >
-              <Zap className="w-5 h-5 text-[#fbbf24]" />
-              <span className="text-sm font-medium">Temps reel</span>
-            </motion.div>
-            <motion.div 
-              whileHover={{ scale: 1.1 }}
-              className="flex items-center gap-2 text-gray-400 hover:text-[#22c55e] transition-colors cursor-default"
-            >
-              <Shield className="w-5 h-5 text-[#22c55e]" />
-              <span className="text-sm font-medium">Securise</span>
-            </motion.div>
-            <motion.div 
-              whileHover={{ scale: 1.1 }}
-              className="flex items-center gap-2 text-gray-400 hover:text-[#00d4ff] transition-colors cursor-default"
-            >
-              <Monitor className="w-5 h-5 text-[#00d4ff]" />
-              <span className="text-sm font-medium">Haute qualite</span>
-            </motion.div>
+            </Link>
           </div>
+
+          {/* Preuve sociale */}
+          <div className="flex items-center gap-3 pt-1">
+            <div className="flex -space-x-3">
+              {["a3", "a2", "a6", "a1", "a5"].map((a) => (
+                <img
+                  key={a}
+                  src={`/images/hero/avatars/${a}.png`}
+                  alt="Créateur inscrit"
+                  width={36}
+                  height={36}
+                  loading="lazy"
+                  className="h-9 w-9 rounded-full border-2 border-[#0a0e1a] object-cover"
+                />
+              ))}
+            </div>
+            <div>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Star key={i} className="h-3.5 w-3.5 fill-[#facc15] text-[#facc15]" />
+                ))}
+              </div>
+              <p className="text-sm text-gray-400">
+                <span className="font-bold text-white">+10 000 créateurs</span> déjà inscrits
+              </p>
+            </div>
+          </div>
+
+          {/* Fonctionne avec */}
+          <div className="pt-2">
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Fonctionne avec
+            </p>
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5">
+              {PLATFORMS.map((p) => (
+                <span
+                  key={p.name}
+                  className="group inline-flex cursor-default items-center gap-2 text-sm font-bold tracking-tight opacity-80 transition-all duration-300 hover:-translate-y-0.5 hover:opacity-100"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.logo || "/placeholder.svg"}
+                    alt={`Logo ${p.name}`}
+                    width={20}
+                    height={20}
+                    loading="lazy"
+                    className="h-5 w-5 object-contain transition-transform duration-300 group-hover:scale-110"
+                  />
+                  <span
+                    className="transition-[text-shadow] duration-300 group-hover:[text-shadow:0_0_16px_currentColor]"
+                    style={{ color: p.color }}
+                  >
+                    {p.name}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Disponibilite (drapeaux) */}
+          <div className="flex items-center gap-2 pt-1 text-xs text-gray-500">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-1 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.5)] backdrop-blur-sm transition-all duration-300 hover:border-white/20 hover:bg-white/[0.08]">
+              {FLAGS.map((f) => (
+                <Image
+                  key={f.alt}
+                  src={f.src || "/placeholder.svg"}
+                  alt={`Drapeau ${f.alt}`}
+                  width={20}
+                  height={14}
+                  style={{ height: "auto" }}
+                  className="w-5 rounded-[3px] object-cover ring-1 ring-white/15 transition-transform duration-300 hover:z-10 hover:scale-125"
+                />
+              ))}
+            </span>
+            Disponible en Afrique de l&apos;Ouest &amp; Centrale
+          </div>
+        </motion.div>
+
+        {/* ===== Colonne studio ===== */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.8, delay: 0.15 }}
+          className="order-1 flex justify-center lg:order-2 lg:justify-end"
+        >
+          <MonitorFrame>
+            <StreamStudio />
+          </MonitorFrame>
         </motion.div>
       </div>
     </section>

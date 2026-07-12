@@ -1,5 +1,6 @@
 import { Header } from "@/components/header"
 import { HeroSection } from "@/components/hero-section"
+import { CreatorsSection } from "@/components/creators-section"
 import { InActionSection } from "@/components/in-action-section"
 import { HowItWorksSection } from "@/components/how-it-works-section"
 import { RoadmapSection } from "@/components/roadmap-section"
@@ -10,6 +11,7 @@ import { TutorialSection } from "@/components/tutorial-section"
 import { FounderSection } from "@/components/founder-section"
 import { AnimatedBackground } from "@/components/animated-background"
 import { TelegramSupport } from "@/components/telegram-support"
+import { LiveActivity } from "@/components/live-activity"
 import { SiteFooter } from "@/components/site-footer"
 
 export default function Home() {
@@ -26,6 +28,7 @@ export default function Home() {
       <div className="relative z-10">
         <Header />
         <HeroSection />
+        <CreatorsSection />
         <InActionSection />
         <RoadmapSection />
         <HowItWorksSection />
@@ -39,6 +42,9 @@ export default function Home() {
 
       {/* Telegram Support Button */}
       <TelegramSupport />
+
+      {/* Notifications d'activite en direct */}
+      <LiveActivity />
     </main>
   )
 }
