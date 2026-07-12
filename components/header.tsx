@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Globe, ChevronDown } from "lucide-react"
+import { Globe, ChevronDown, MessageCircle } from "lucide-react"
 
 export function Header() {
   return (
@@ -120,6 +120,23 @@ export function Header() {
               <img src="/logos/instagram.svg" alt="Instagram" width={18} height={18} className="h-[18px] w-[18px] object-contain" />
             </a>
           </div>
+
+          {/* Bouton WhatsApp */}
+          <a
+            href="https://wa.me/2250555560189"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Contacter ChapCam sur WhatsApp"
+          >
+            <motion.span
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+              className="hidden items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_-4px_rgba(37,211,102,0.6)] transition-all hover:bg-[#1ebe5a] hover:shadow-[0_0_28px_-4px_rgba(37,211,102,0.8)] sm:flex"
+            >
+              <MessageCircle className="h-4 w-4" />
+              WhatsApp
+            </motion.span>
+          </a>
 
           {/* Selecteur de langue FR */}
           <button
