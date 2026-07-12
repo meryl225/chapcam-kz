@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { MessageCircle } from "lucide-react"
+import { Globe, ChevronDown } from "lucide-react"
 
 export function Header() {
   return (
@@ -45,71 +45,50 @@ export function Header() {
         {/* Navigation */}
         <nav className="hidden md:flex items-center gap-8">
           {[
-            { name: "Accueil", href: "/" },
-            { name: "Comment ca marche", href: "#comment-ca-marche" },
-            { name: "Roadmap", href: "#roadmap" },
+            { name: "Fonctionnalités", href: "#comment-ca-marche" },
             { name: "Tarifs", href: "#tarifs" },
             { name: "ESIM ChapCam", href: "/numbers" },
             { name: "FAQ", href: "#faq" },
-            { name: "Telecharger", href: "/download" },
-            { name: "Founder", href: "#founder" }
+            { name: "Télécharger", href: "/download" },
           ].map((item) => (
-            <Link 
+            <Link
               key={item.name}
-              href={item.href} 
-              className={`text-white/70 hover:text-white transition-colors text-sm font-medium relative group ${item.name === "Telecharger" ? "text-[#00ff88]" : ""} ${item.name === "Roadmap" ? "text-[#00d4ff]" : ""} ${item.name === "ESIM ChapCam" ? "text-[#2563EB]" : ""}`}
+              href={item.href}
+              className="text-white/70 hover:text-white transition-colors text-sm font-medium relative group"
             >
               {item.name}
-              <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-[#e91e8c] group-hover:w-full transition-all duration-300" />
+              <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] group-hover:w-full transition-all duration-300" />
             </Link>
           ))}
         </nav>
 
         {/* CTA Buttons */}
         <div className="flex items-center gap-3">
-          {/* WhatsApp Button */}
-          <a href="https://wa.me/2250555560189" target="_blank" rel="noopener noreferrer">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Button 
-                className="hidden lg:flex items-center gap-2 bg-[#22c55e] hover:bg-[#16a34a] text-white border-0 px-5 py-2 rounded-full font-medium transition-all shadow-[0_0_20px_rgba(34,197,94,0.4)] hover:shadow-[0_0_30px_rgba(34,197,94,0.6)]"
-              >
-                <MessageCircle className="w-4 h-4" />
-                WhatsApp
-              </Button>
-            </motion.div>
-          </a>
-          
-          {/* S'inscrire - Violet */}
-          <Link href="/auth/sign-up">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="relative"
-            >
-              <div className="absolute inset-0 bg-[#8b5cf6] rounded-full blur-lg opacity-50 animate-pulse" />
-              <Button 
-                className="relative bg-[#8b5cf6] hover:bg-[#7c3aed] text-white border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_25px_rgba(139,92,246,0.5)]"
-              >
-                {"S'inscrire"}
-              </Button>
-            </motion.div>
-          </Link>
-          
-          {/* Connexion - Electric Blue */}
+          {/* Selecteur de langue FR */}
+          <button
+            type="button"
+            className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-white/80 transition-colors hover:border-white/20 hover:bg-white/[0.08] hover:text-white"
+          >
+            <Globe className="w-4 h-4" />
+            FR
+            <ChevronDown className="w-3.5 h-3.5 opacity-60" />
+          </button>
+
+          {/* Se connecter - contour */}
           <Link href="/auth/login">
-            <motion.div
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="relative"
+            <Button
+              variant="ghost"
+              className="rounded-full border border-white/10 bg-transparent px-5 py-2 font-medium text-white transition-colors hover:border-white/20 hover:bg-white/5"
             >
-              <div className="absolute inset-0 bg-[#00d4ff] rounded-full blur-lg opacity-30" />
-              <Button 
-                className="relative bg-[#00d4ff] hover:bg-[#00b8e6] text-[#0a0e1a] border-0 px-6 py-2 rounded-full font-semibold transition-all shadow-[0_0_20px_rgba(0,212,255,0.4)]"
-              >
-                Connexion
+              Se connecter
+            </Button>
+          </Link>
+
+          {/* S'inscrire gratuitement - degrade bleu -> violet */}
+          <Link href="/auth/sign-up">
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+              <Button className="rounded-full border-0 bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] px-5 py-2 font-semibold text-white shadow-[0_0_25px_-4px_rgba(139,92,246,0.6)] transition-all hover:brightness-110 hover:shadow-[0_0_32px_-4px_rgba(0,212,255,0.7)]">
+                {"S'inscrire gratuitement"}
               </Button>
             </motion.div>
           </Link>
