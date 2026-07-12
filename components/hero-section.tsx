@@ -224,7 +224,7 @@ export function HeroSection() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.5 }}
-            className="group relative block w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-[#0b1020] shadow-[0_20px_60px_-20px_rgba(99,102,241,0.5)] transition-all duration-300 hover:-translate-y-1 hover:border-[#6366f1]/50 hover:shadow-[0_28px_70px_-20px_rgba(99,102,241,0.7)]"
+            className="group relative block w-full max-w-xs overflow-hidden rounded-2xl border border-white/10 bg-[#0b1020] shadow-[0_20px_60px_-20px_rgba(99,102,241,0.5)] transition-all duration-300 hover:-translate-y-1 hover:border-[#6366f1]/50 hover:shadow-[0_28px_70px_-20px_rgba(99,102,241,0.7)]"
           >
             <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/80 backdrop-blur-sm">
               <Sparkles className="h-3 w-3 text-[#8b5cf6]" />
