@@ -47,7 +47,11 @@ export function Header() {
           {[
             { name: "Produit", href: "#comment-ca-marche", caret: true },
             { name: "Fonctionnalités", href: "#comment-ca-marche" },
+            { name: "Comment ça marche", href: "#comment-ca-marche" },
+            { name: "Roadmap", href: "#roadmap" },
             { name: "Tarifs", href: "#tarifs" },
+            { name: "Télécharger", href: "/download" },
+            { name: "Founder", href: "#founder" },
           ].map((item) => (
             <Link
               key={item.name}
