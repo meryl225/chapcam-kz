@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { UserPlus, Sparkles, Download, X } from "lucide-react"
 
@@ -27,9 +27,46 @@ const NAMES = [
   "AyaStream",
   "Boubacar L.",
   "NashPlay",
+  "Konan Y.",
+  "Rokia S.",
+  "DjustReal",
+  "Emmanuel K.",
+  "Nadège A.",
+  "VibzMaster",
+  "Salif T.",
+  "Chantal B.",
+  "KingZeus_",
+  "Ousmane D.",
+  "Grace M.",
+  "PixelWarrior",
+  "Adjoua K.",
+  "Franck N.",
+  "MissLive228",
+  "Bakary C.",
+  "Sandrine O.",
+  "ZoukGamer",
+  "Habib T.",
+  "Clarisse E.",
 ]
 
-const CITIES = ["Abidjan", "Cotonou", "Lomé", "Douala", "Yaoundé", "Yamoussoukro", "Bouaké", "Porto-Novo"]
+const CITIES = [
+  "Abidjan",
+  "Cotonou",
+  "Lomé",
+  "Douala",
+  "Yaoundé",
+  "Yamoussoukro",
+  "Bouaké",
+  "Porto-Novo",
+  "Dakar",
+  "Ouagadougou",
+  "Bamako",
+  "Conakry",
+  "San-Pédro",
+  "Korhogo",
+  "Garoua",
+  "Kara",
+]
 
 const ACTIONS: Record<
   ActivityType,
@@ -63,13 +100,24 @@ type Item = {
   minutes: number
 }
 
-function randomItem(id: number): Item {
+function pick<T>(list: T[], exclude?: T): T {
+  let value = list[Math.floor(Math.random() * list.length)]
+  // Evite de repeter la meme valeur que la notification precedente
+  let guard = 0
+  while (exclude !== undefined && value === exclude && list.length > 1 && guard < 10) {
+    value = list[Math.floor(Math.random() * list.length)]
+    guard++
+  }
+  return value
+}
+
+function randomItem(id: number, prev?: Item | null): Item {
   const types: ActivityType[] = ["signup", "swap", "download", "signup", "swap"]
   return {
     id,
-    type: types[Math.floor(Math.random() * types.length)],
-    name: NAMES[Math.floor(Math.random() * NAMES.length)],
-    city: CITIES[Math.floor(Math.random() * CITIES.length)],
+    type: pick(types, prev?.type),
+    name: pick(NAMES, prev?.name),
+    city: pick(CITIES, prev?.city),
     minutes: Math.floor(Math.random() * 12) + 1,
   }
 }
@@ -78,9 +126,12 @@ export function LiveActivity() {
   const [current, setCurrent] = useState<Item | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [counter, setCounter] = useState(1)
+  const lastRef = useRef<Item | null>(null)
 
   const showNext = useCallback(() => {
-    setCurrent(randomItem(Date.now()))
+    const next = randomItem(Date.now(), lastRef.current)
+    lastRef.current = next
+    setCurrent(next)
     setCounter((c) => c + 1)
   }, [])
 
