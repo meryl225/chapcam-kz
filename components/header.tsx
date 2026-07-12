@@ -14,7 +14,7 @@ export function Header() {
       transition={{ duration: 0.6, ease: "easeOut" }}
       className="fixed top-0 left-0 right-0 z-50 px-6 py-4 backdrop-blur-xl bg-[#0a0e1a]/70 border-b border-white/5"
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+      <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
           <motion.div 
@@ -43,7 +43,7 @@ export function Header() {
         </Link>
 
         {/* Navigation */}
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden lg:flex items-center gap-5 xl:gap-6">
           {[
             { name: "Comment ça marche", href: "#comment-ca-marche" },
             { name: "Roadmap", href: "#roadmap" },
@@ -54,7 +54,7 @@ export function Header() {
             <Link
               key={item.name}
               href={item.href}
-              className="text-white/70 hover:text-white transition-colors text-sm font-medium relative group inline-flex items-center gap-1"
+              className="whitespace-nowrap text-white/70 hover:text-white transition-colors text-sm font-medium relative group inline-flex items-center gap-1"
             >
               {item.name}
               {item.caret && <ChevronDown className="w-3.5 h-3.5 opacity-60" />}
@@ -67,7 +67,7 @@ export function Header() {
             href="https://chapsim.app/"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-white/70 hover:text-white transition-colors text-sm font-medium relative group inline-flex items-center gap-2"
+            className="whitespace-nowrap text-white/70 hover:text-white transition-colors text-sm font-medium relative group inline-flex items-center gap-2"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -83,9 +83,9 @@ export function Header() {
         </nav>
 
         {/* CTA Buttons */}
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2 xl:gap-3">
           {/* Communaute - Facebook, TikTok & Instagram */}
-          <div className="hidden items-center gap-1.5 sm:flex">
+          <div className="hidden items-center gap-1.5 lg:flex">
             <a
               href="https://www.facebook.com/share/1BLApD4N6j/?mibextid=wwXIfr"
               target="_blank"
