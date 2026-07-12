@@ -64,6 +64,32 @@ export function Header() {
 
         {/* CTA Buttons */}
         <div className="flex items-center gap-3">
+          {/* Communaute - TikTok & Instagram */}
+          <div className="hidden items-center gap-1.5 sm:flex">
+            <a
+              href="https://www.tiktok.com/@multivoix.ci"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Communauté TikTok ChapCam"
+              title="Communauté TikTok"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.1] hover:shadow-[0_6px_18px_-6px_rgba(0,212,255,0.5)]"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logos/tiktok.svg" alt="TikTok" width={18} height={18} className="h-[18px] w-[18px] object-contain" />
+            </a>
+            <a
+              href="https://www.instagram.com/chapcam_officiel"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Communauté Instagram ChapCam"
+              title="Communauté Instagram"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.1] hover:shadow-[0_6px_18px_-6px_rgba(233,30,140,0.5)]"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logos/instagram.svg" alt="Instagram" width={18} height={18} className="h-[18px] w-[18px] object-contain" />
+            </a>
+          </div>
+
           {/* Selecteur de langue FR */}
           <button
             type="button"
