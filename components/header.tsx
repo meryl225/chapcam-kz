@@ -49,8 +49,6 @@ export function Header() {
             { name: "Fonctionnalités", href: "#comment-ca-marche" },
             { name: "Tarifs", href: "#tarifs" },
             { name: "Ressources", href: "#faq", caret: true },
-            { name: "API", href: "/download" },
-            { name: "Entreprise", href: "#founder" },
           ].map((item) => (
             <Link
               key={item.name}
