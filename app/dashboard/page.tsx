@@ -91,7 +91,28 @@ export default async function DashboardHubPage() {
           style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.25), transparent 70%)' }}
         />
 
-        <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+        {/* Avatar decoratif ChapCam */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-0 z-0 hidden -translate-x-1/2 lg:block"
+        >
+          <div className="relative">
+            <div
+              className="absolute -inset-6 rounded-full opacity-70 blur-2xl"
+              style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.35), transparent 70%)' }}
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/dashboard/hero-avatar.jpg"
+              alt=""
+              width={168}
+              height={168}
+              className="relative h-40 w-40 rounded-2xl border border-white/10 object-cover shadow-[0_20px_60px_-20px_rgba(99,102,241,0.6)]"
+            />
+          </div>
+        </div>
+
+        <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-background/50 px-3 py-1 text-xs font-semibold text-muted-foreground backdrop-blur">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
