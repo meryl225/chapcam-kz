@@ -90,11 +90,53 @@ function Badge({ kind, accent }: { kind: NonNullable<Tool['badge']>; accent: str
   const label = kind === 'NEW' ? 'Nouveau' : kind === 'ACTIF' ? 'Actif' : 'Pro'
   return (
     <span
-      className="rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide backdrop-blur"
-      style={{ backgroundColor: `${accent}22`, color: accent }}
+      className="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.08em] backdrop-blur-md"
+      style={{
+        backgroundColor: `${accent}14`,
+        borderColor: `${accent}33`,
+        color: accent,
+      }}
     >
+      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accent}` }} />
       {label}
     </span>
+  )
+}
+
+function OpenCta({ accent }: { accent: string }) {
+  return (
+    <span
+      className="inline-flex w-fit items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-semibold transition-all duration-300 group-hover:gap-3"
+      style={{ color: accent, borderColor: `${accent}33`, backgroundColor: `${accent}12` }}
+    >
+      Ouvrir
+      <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+    </span>
+  )
+}
+
+function PreviewTile({ tool, className }: { tool: Tool; className?: string }) {
+  return (
+    <div
+      className={`relative flex items-center justify-center overflow-hidden rounded-[20px] border border-white/[0.06] ${className ?? ''}`}
+      style={{ background: tool.gradient }}
+    >
+      {/* léger grain lumineux */}
+      <div
+        aria-hidden
+        className="absolute inset-0 opacity-70"
+        style={{ background: 'radial-gradient(circle at 30% 15%, rgba(255,255,255,0.10), transparent 60%)' }}
+      />
+      {/* vignette basse pour la profondeur */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 bottom-0 h-16"
+        style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.35), transparent)' }}
+      />
+      <div className="relative w-full max-w-[260px] px-3 transition-transform duration-500 group-hover:scale-[1.03]">
+        <tool.Preview />
+      </div>
+    </div>
   )
 }
 
@@ -105,65 +147,95 @@ export function ToolsGrid() {
         <Link
           key={tool.href}
           href={tool.href}
-          className={`group relative flex flex-col overflow-hidden rounded-3xl border border-hairline bg-card transition-all duration-300 hover:-translate-y-1.5 hover:border-white/20 hover:shadow-[0_24px_60px_-20px_rgba(0,0,0,0.6)] ${
+          style={{ ['--accent' as string]: tool.accent }}
+          className={`group relative flex flex-col overflow-hidden rounded-[26px] border border-white/[0.08] p-px transition-all duration-500 hover:-translate-y-1.5 hover:border-[var(--accent)]/40 hover:shadow-[0_30px_80px_-30px_var(--accent)] ${
             tool.featured ? 'sm:col-span-2 lg:col-span-1' : ''
           }`}
         >
+          {/* Fond dégradé sombre teinté par l'accent */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 rounded-[26px]"
+            style={{
+              background: `radial-gradient(120% 90% at 50% -10%, ${tool.accent}1f, transparent 55%), linear-gradient(180deg, rgba(255,255,255,0.03), transparent 40%), var(--color-card, #0b0f19)`,
+            }}
+          />
+          {/* Liseré supérieur lumineux */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-8 top-0 h-px opacity-40 transition-opacity duration-500 group-hover:opacity-100"
+            style={{ background: `linear-gradient(90deg, transparent, ${tool.accent}, transparent)` }}
+          />
           {/* Halo coloré au survol */}
           <div
             aria-hidden
-            className="pointer-events-none absolute -top-24 left-1/2 h-48 w-48 -translate-x-1/2 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-60"
-            style={{ background: `radial-gradient(circle, ${tool.accent}40, transparent 70%)` }}
+            className="pointer-events-none absolute -top-24 left-1/2 h-52 w-52 -translate-x-1/2 rounded-full opacity-0 blur-3xl transition-opacity duration-500 group-hover:opacity-70"
+            style={{ background: `radial-gradient(circle, ${tool.accent}55, transparent 70%)` }}
           />
 
-          {/* Zone aperçu avec dégradé doux */}
-          <div className="relative p-3">
-            <div
-              className="relative flex h-40 items-center justify-center overflow-hidden rounded-2xl border border-hairline"
-              style={{ background: tool.gradient }}
-            >
-              {/* léger grain lumineux */}
-              <div
-                aria-hidden
-                className="absolute inset-0 opacity-60"
-                style={{ background: 'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.08), transparent 60%)' }}
-              />
-              <div className="relative w-full max-w-[260px] px-4">
-                <tool.Preview />
+          {/* Pastille de statut (en ligne) */}
+          <span
+            aria-hidden
+            className="absolute right-4 top-4 z-10 h-2.5 w-2.5 rounded-full bg-[#22c55e]"
+            style={{ boxShadow: '0 0 10px #22c55e' }}
+          />
+
+          {tool.featured ? (
+            /* ---------- Mise en page verticale (mise en avant) ---------- */
+            <div className="relative flex flex-1 flex-col">
+              <div className="relative p-3.5 pb-1">
+                <PreviewTile tool={tool} className="h-40" />
+                {tool.badge && (
+                  <div className="absolute left-6 top-6">
+                    <Badge kind={tool.badge} accent={tool.accent} />
+                  </div>
+                )}
               </div>
-              {tool.badge && (
-                <div className="absolute right-3 top-3">
-                  <Badge kind={tool.badge} accent={tool.accent} />
+
+              <div className="flex flex-1 flex-col px-5 pb-5 pt-4">
+                <div className="mb-2.5 flex items-center gap-3">
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border transition-all duration-300 group-hover:scale-110"
+                    style={{
+                      backgroundColor: `${tool.accent}1a`,
+                      borderColor: `${tool.accent}2e`,
+                      boxShadow: `inset 0 1px 0 ${tool.accent}22`,
+                    }}
+                  >
+                    <tool.icon className="h-[22px] w-[22px]" style={{ color: tool.accent }} strokeWidth={2.25} />
+                  </div>
+                  <h3 className="text-[17px] font-semibold tracking-tight text-foreground text-balance">{tool.title}</h3>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Contenu */}
-          <div className="flex flex-1 flex-col px-5 pb-5 pt-1">
-            <div className="mb-3 flex items-center gap-3">
-              <div
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
-                style={{ backgroundColor: `${tool.accent}1f` }}
-              >
-                <tool.icon className="h-[22px] w-[22px]" style={{ color: tool.accent }} />
+                <p className="mb-5 flex-1 text-[13px] leading-relaxed text-muted-foreground text-pretty">
+                  {tool.description}
+                </p>
+                <OpenCta accent={tool.accent} />
               </div>
-              <h3 className="text-lg font-bold text-foreground text-balance">{tool.title}</h3>
             </div>
-
-            <p className="mb-5 flex-1 text-sm leading-relaxed text-muted-foreground text-pretty">
-              {tool.description}
-            </p>
-
-            {/* CTA */}
-            <span
-              className="inline-flex items-center gap-2 text-sm font-bold transition-colors"
-              style={{ color: tool.accent }}
-            >
-              Ouvrir
-              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1.5" />
-            </span>
-          </div>
+          ) : (
+            /* ---------- Mise en page horizontale ---------- */
+            <div className="relative flex flex-1 flex-col p-5 pr-8">
+              <div className="flex items-start gap-4">
+                <div className="w-[42%] max-w-[190px] shrink-0">
+                  <PreviewTile tool={tool} className="aspect-square" />
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col pt-1">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <h3 className="text-[17px] font-semibold tracking-tight text-foreground text-balance">
+                      {tool.title}
+                    </h3>
+                    {tool.badge && <Badge kind={tool.badge} accent={tool.accent} />}
+                  </div>
+                  <p className="text-[13px] leading-relaxed text-muted-foreground text-pretty">
+                    {tool.description}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-5">
+                <OpenCta accent={tool.accent} />
+              </div>
+            </div>
+          )}
         </Link>
       ))}
     </div>

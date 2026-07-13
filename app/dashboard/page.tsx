@@ -6,6 +6,7 @@ import { EsimPromo } from '@/components/dashboard/esim-promo'
 import { ConsentCard } from '@/components/dashboard/consent-card'
 import { SupportBanner } from '@/components/dashboard/support-banner'
 import { Sparkles, Crown, Check, Zap, Timer, Users, Hourglass, ArrowRight, Clock } from 'lucide-react'
+import { getUserAvatar } from '@/lib/user-avatar'
 
 const POINTS_PER_SECOND = 2
 
@@ -70,6 +71,7 @@ export default async function DashboardHubPage() {
     user?.email?.split('@')[0] ||
     'Bienvenue'
   const consentAccepted = (user?.user_metadata?.consent_accepted as boolean | undefined) ?? false
+  const avatarUrl = getUserAvatar(user?.id ?? user?.email)
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-10">
@@ -91,20 +93,43 @@ export default async function DashboardHubPage() {
           style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.25), transparent 70%)' }}
         />
 
-        <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+        <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-2xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-background/50 px-3 py-1 text-xs font-semibold text-muted-foreground backdrop-blur">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-              {isPro ? PLAN_LABELS[plan] || plan : 'Compte gratuit'}
-              <span className="mx-1 h-3 w-px bg-hairline" />
-              <Clock className="h-3 w-3" />
-              {fmtMinutes(points)} restantes
-            </span>
+            <div className="flex items-center gap-4 md:gap-5">
+              {/* Avatar de profil ChapCam */}
+              <div className="relative shrink-0">
+                <div
+                  aria-hidden
+                  className="absolute -inset-2 rounded-full opacity-70 blur-xl"
+                  style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.45), transparent 70%)' }}
+                />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={avatarUrl || "/placeholder.svg"}
+                  alt="Ton avatar ChapCam"
+                  width={80}
+                  height={80}
+                  className="relative h-16 w-16 rounded-full border-2 border-primary/40 object-cover shadow-[0_8px_30px_-8px_rgba(99,102,241,0.6)] md:h-20 md:w-20"
+                />
+                <span className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-background bg-primary md:h-4 md:w-4" />
+              </div>
 
-            <h1 className="mt-4 text-3xl font-bold tracking-tight text-foreground md:text-5xl text-balance">
-              {`Bonjour ${displayName}`}
-            </h1>
-            <p className="mt-3 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg text-pretty">
+              <div className="min-w-0">
+                <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-background/50 px-3 py-1 text-xs font-semibold text-muted-foreground backdrop-blur">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                  {isPro ? PLAN_LABELS[plan] || plan : 'Compte gratuit'}
+                  <span className="mx-1 h-3 w-px bg-hairline" />
+                  <Clock className="h-3 w-3" />
+                  {fmtMinutes(points)} restantes
+                </span>
+
+                <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground md:text-5xl text-balance">
+                  {`Bonjour ${displayName}`}
+                </h1>
+              </div>
+            </div>
+
+            <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg text-pretty">
               Transforme ton apparence et ta voix en temps réel avec l’IA.
             </p>
 

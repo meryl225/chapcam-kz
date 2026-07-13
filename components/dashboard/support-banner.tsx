@@ -34,7 +34,7 @@ export function SupportBanner() {
           </div>
           <div>
             <h3 className="text-xl font-bold tracking-tight text-foreground md:text-2xl text-balance">
-              Rencontres-tu un problème&nbsp;?
+              Veux-tu une assistance pro&nbsp;?
             </h3>
             <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground md:text-base text-pretty">
               Tu n’arrives pas à utiliser le logiciel IA&nbsp;? Notre équipe t’aide en direct.
