@@ -48,10 +48,10 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'DASHBOARD', color: '#34d399' },
-  { href: '/dashboard/voice-swap', icon: AudioLines, label: 'VOICE SWAP', badge: 'PRO', color: '#a78bfa' },
+  { href: '/dashboard/voice-swap', icon: AudioLines, label: 'VOICE SWAP', badge: 'PRO', color: '#ef4444' },
   { href: '/dashboard/voice-translator', icon: Languages, label: 'VOICE TRADUCTEUR', badge: 'NEW', color: '#38bdf8' },
-  { href: '/dashboard/photo-video', icon: ImageIcon, label: 'PHOTOS EN VIDEO', badge: 'NEW', color: '#f472b6' },
-  { href: '/dashboard/video-translation', icon: Film, label: 'TRADUCTION VIDEO', badge: 'NEW', color: '#fb923c' },
+  { href: '/dashboard/photo-video', icon: ImageIcon, label: 'PHOTOS EN VIDEO', badge: 'NEW', color: '#f59e0b' },
+  { href: '/dashboard/video-translation', icon: Film, label: 'TRADUCTION VIDEO', badge: 'NEW', color: '#8b5cf6' },
   { href: '/dashboard/avatars', icon: Users, label: 'MES AVATARS', color: '#22d3ee' },
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES', color: '#4ade80' },
   { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGER', color: '#facc15' },
@@ -258,13 +258,10 @@ function SidebarContent({
               }`}
             >
               <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border transition-all duration-200 ${
-                  isActivePath
-                    ? 'border-[var(--nav-accent)]/40 bg-[var(--nav-accent)]/20 text-[var(--nav-accent)]'
-                    : 'border-hairline bg-muted/60 text-muted-foreground group-hover/nav:border-[var(--nav-accent)]/40 group-hover/nav:bg-[var(--nav-accent)]/15 group-hover/nav:text-[var(--nav-accent)]'
-                }`}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-all duration-200 group-hover/nav:brightness-110 group-hover/nav:shadow-[0_4px_14px_-4px_var(--nav-accent)]"
+                style={{ backgroundColor: 'var(--nav-accent)' }}
               >
-                <item.icon className="h-[17px] w-[17px]" strokeWidth={2.25} />
+                <item.icon className="h-[17px] w-[17px]" strokeWidth={2.5} />
               </span>
               <span className="flex-1 truncate">{item.label}</span>
               {item.badge === 'NEW' && (
@@ -290,8 +287,11 @@ function SidebarContent({
           style={{ ['--nav-accent' as string]: '#38bdf8' }}
           className="group/nav mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground"
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-hairline bg-muted/60 text-muted-foreground transition-all duration-200 group-hover/nav:border-[var(--nav-accent)]/40 group-hover/nav:bg-[var(--nav-accent)]/15 group-hover/nav:text-[var(--nav-accent)]">
-            <HelpCircle className="h-[17px] w-[17px]" strokeWidth={2.25} />
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-all duration-200 group-hover/nav:brightness-110 group-hover/nav:shadow-[0_4px_14px_-4px_var(--nav-accent)]"
+            style={{ backgroundColor: 'var(--nav-accent)' }}
+          >
+            <HelpCircle className="h-[17px] w-[17px]" strokeWidth={2.5} />
           </span>
           <span className="flex-1 truncate">AIDE & SUPPORT</span>
         </a>
@@ -302,8 +302,8 @@ function SidebarContent({
             href="/admin/stats"
             className="group/nav mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight text-primary transition-all duration-200 ring-1 ring-primary/30 bg-primary/10 hover:bg-primary/15"
           >
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-primary/40 bg-primary/20 text-primary">
-              <Shield className="h-[17px] w-[17px]" strokeWidth={2.25} />
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
+              <Shield className="h-[17px] w-[17px]" strokeWidth={2.5} />
             </span>
             <span className="flex-1 truncate">ADMIN STATS</span>
           </Link>
