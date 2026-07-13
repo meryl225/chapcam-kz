@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@decartai/sdk':
-        specifier: latest
-        version: 0.1.0(@types/dom-mediacapture-record@1.0.22)
+        specifier: 0.1.14
+        version: 0.1.14(@types/dom-mediacapture-record@1.0.22)
       '@fal-ai/client':
         specifier: ^1.10.1
         version: 1.10.1
@@ -257,8 +257,8 @@ packages:
   '@date-fns/tz@1.5.0':
     resolution: {integrity: sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==}
 
-  '@decartai/sdk@0.1.0':
-    resolution: {integrity: sha512-noLfNBx2SlJmUbkZqpkd5R697lQgUixieHgqyM8odJCtRKs2VDYs1wfrNO6Dtnf88eCKRHy0KpmCEwsX1Mqivg==}
+  '@decartai/sdk@0.1.14':
+    resolution: {integrity: sha512-KZzfG+mAufiGRFmQfYWCGvLFMDaSkpesQtzrnnT6qwAmtJ1aQY+XUa9R/Z5uw4yS+JQQ5PcZkIJV+89lFvXjPA==}
 
   '@develar/schema-utils@2.6.5':
     resolution: {integrity: sha512-0cp4PsWQ/9avqTVMCtZ+GirikIA36ikvjtHweU4/j8yLtgObI0+JUPhYFScgwlteveGB1rt3Cm8UhN04XayDig==}
@@ -523,6 +523,9 @@ packages:
 
   '@livekit/protocol@1.45.8':
     resolution: {integrity: sha512-Q+l57E7w/xxOBFVWzdX5rkAZO7ffyF+rlDzNUYq2SU114+5aTyCq+PK4unaEVDNd4952Af7wteKr3sOgasGuaA==}
+
+  '@livekit/protocol@1.46.6':
+    resolution: {integrity: sha512-upzlHP1vi/kZ/QqALZTFskQ0ifqc2f15RKucHYOsIHJsaXvEYanG75mAb7o+Yomfs4XhQ4BaRsdY+TFHXpaqrg==}
 
   '@malept/cross-spawn-promise@2.0.0':
     resolution: {integrity: sha512-1DpKU0Z5ThltBwjNySMC14g0CkbyhCaz9FkhxqNsZI6uAPJXFS8cMXlBKo26FJ8ZuW6S9GCMcR9IO5k2X5/9Fg==}
@@ -2615,6 +2618,11 @@ packages:
     peerDependencies:
       '@types/dom-mediacapture-record': ^1
 
+  livekit-client@2.20.1:
+    resolution: {integrity: sha512-JxooxLFMkdwqTo4XLer+DCij6S3//Z/GuHSjqdhlj94Vtbh1Eayd7Lyq47qkIE86+xVJhqxIdYnq53lg4oPH9w==}
+    peerDependencies:
+      '@types/dom-mediacapture-record': ^1
+
   livekit-server-sdk@2.15.3:
     resolution: {integrity: sha512-CU+CaOsyiKR/8BW7myJ2LGNg7T66MV/HZx+AMeAiiGu8PQnVDwqJ42HEH61o20fH68e4cI+hYQcPA5Fs2aKv1g==}
     engines: {node: '>=18'}
@@ -3563,6 +3571,10 @@ packages:
     resolution: {integrity: sha512-U9vjByy/sK2OMXu5mmfuZFKTMIUQe34c0JXRO+oDrxJTsntdYT2iIFwYMOV7HhMTuktcZLGf2W1N/OcSf9ssWg==}
     engines: {node: '>=6.0.0', npm: '>=3.10.0'}
 
+  webrtc-adapter@9.0.6:
+    resolution: {integrity: sha512-CHbl2ZQbxx164IgWRgzJno4hWtM4tFbRam1QfI3Yxhs3w/DvqluVxVWeXs3oL5/fbGkSNLKo0Ty5MgUWceNhog==}
+    engines: {node: '>=6.0.0', npm: '>=3.10.0'}
+
   which@2.0.2:
     resolution: {integrity: sha512-BLI3Tl1TW3Pvl70l3yq3Y64i+awpwXqsGBYWkkqMtnbXgrMD+yj7rhW0kuEDxzJaYXGjEW5ogapKNMEKNMjibA==}
     engines: {node: '>= 8'}
@@ -3630,9 +3642,9 @@ snapshots:
 
   '@date-fns/tz@1.5.0': {}
 
-  '@decartai/sdk@0.1.0(@types/dom-mediacapture-record@1.0.22)':
+  '@decartai/sdk@0.1.14(@types/dom-mediacapture-record@1.0.22)':
     dependencies:
-      livekit-client: 2.19.0(@types/dom-mediacapture-record@1.0.22)
+      livekit-client: 2.20.1(@types/dom-mediacapture-record@1.0.22)
       mitt: 3.0.1
       p-retry: 6.2.1
       zod: 4.4.3
@@ -3883,6 +3895,10 @@ snapshots:
   '@livekit/mutex@1.1.1': {}
 
   '@livekit/protocol@1.45.8':
+    dependencies:
+      '@bufbuild/protobuf': 1.10.1
+
+  '@livekit/protocol@1.46.6':
     dependencies:
       '@bufbuild/protobuf': 1.10.1
 
@@ -6075,6 +6091,19 @@ snapshots:
       typed-emitter: 2.1.0
       webrtc-adapter: 9.0.5
 
+  livekit-client@2.20.1(@types/dom-mediacapture-record@1.0.22):
+    dependencies:
+      '@livekit/mutex': 1.1.1
+      '@livekit/protocol': 1.46.6
+      '@types/dom-mediacapture-record': 1.0.22
+      events: 3.3.0
+      jose: 6.2.3
+      loglevel: 1.9.2
+      sdp-transform: 2.15.0
+      tslib: 2.8.1
+      typed-emitter: 2.1.0
+      webrtc-adapter: 9.0.6
+
   livekit-server-sdk@2.15.3:
     dependencies:
       '@bufbuild/protobuf': 1.10.1
@@ -7073,6 +7102,10 @@ snapshots:
       defaults: 1.0.4
 
   webrtc-adapter@9.0.5:
+    dependencies:
+      sdp: 3.2.2
+
+  webrtc-adapter@9.0.6:
     dependencies:
       sdp: 3.2.2
 

@@ -18,7 +18,7 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
-    "@decartai/sdk": "latest",
+    "@decartai/sdk": "0.1.14",
     "@fal-ai/client": "^1.10.1",
     "@fal-ai/serverless-proxy": "^0.10.0",
     "@hookform/resolvers": "^3.9.1",

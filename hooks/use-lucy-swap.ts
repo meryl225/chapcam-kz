@@ -75,7 +75,7 @@ export function useLucySwap({
       // Dynamically import Decart SDK
       const { createDecartClient, models } = await import('@decartai/sdk')
 
-      const model = models.realtime('lucy-2.1')
+      const model = models.realtime('lucy-2.5')
 
       // Get camera stream
       const stream = await navigator.mediaDevices.getUserMedia({
