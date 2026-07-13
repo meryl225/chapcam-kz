@@ -150,7 +150,7 @@ export function useLucy21() {
       }
 
       const realtimeClient = await client.realtime.connect(stream, {
-        model: models.realtime('lucy-2.1'),
+        model: models.realtime('lucy-2.5'),
         mirror: 'auto',
         resolution: '720p',
 

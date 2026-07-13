@@ -33,7 +33,7 @@ export async function GET() {
     // 2. Creer un token ephemere avec restrictions
     const token = await client.tokens.create({
       expiresIn: 600, // 10 minutes max
-      allowedModels: ['lucy-2.1'],
+      allowedModels: ['lucy-2.5', 'lucy-2.1'],
       allowedOrigins: [
         'https://chapcam.com',
         'https://www.chapcam.com',
