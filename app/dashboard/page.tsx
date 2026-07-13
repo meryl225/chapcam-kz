@@ -6,6 +6,7 @@ import { EsimPromo } from '@/components/dashboard/esim-promo'
 import { ConsentCard } from '@/components/dashboard/consent-card'
 import { SupportBanner } from '@/components/dashboard/support-banner'
 import { Sparkles, Crown, Check, Zap, Timer, Users, Hourglass, ArrowRight, Clock } from 'lucide-react'
+import { getUserAvatar } from '@/lib/user-avatar'
 
 const POINTS_PER_SECOND = 2
 
@@ -70,6 +71,7 @@ export default async function DashboardHubPage() {
     user?.email?.split('@')[0] ||
     'Bienvenue'
   const consentAccepted = (user?.user_metadata?.consent_accepted as boolean | undefined) ?? false
+  const avatarUrl = getUserAvatar(user?.id ?? user?.email)
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-10">
@@ -103,7 +105,7 @@ export default async function DashboardHubPage() {
                 />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="/dashboard/hero-avatar.jpg"
+                  src={avatarUrl || "/placeholder.svg"}
                   alt="Ton avatar ChapCam"
                   width={80}
                   height={80}
