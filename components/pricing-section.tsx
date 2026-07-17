@@ -169,7 +169,7 @@ export function PricingSection() {
             const Icon = plan.icon
             return (
               <motion.div
-                key={plan.duration}
+                key={plan.id}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -328,16 +328,16 @@ export function PricingSection() {
           {/* Logos Mobile Money principaux */}
           <div className="mb-8 flex flex-wrap items-center justify-center gap-4">
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
-              <Image src="/images/orange-money-logo.png" alt="Orange Money" width={60} height={40} className="object-contain" />
+              <Image src="/images/orange-money-logo.png" alt="Orange Money" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
-              <Image src="/images/mtn-momo-logo.jpg" alt="MTN Mobile Money" width={60} height={40} className="object-contain" />
+              <Image src="/images/mtn-momo-logo.jpg" alt="MTN Mobile Money" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-[#1DC8FF] p-2">
-              <Image src="/images/wave-logo.png" alt="Wave" width={50} height={40} className="object-contain" />
+              <Image src="/images/wave-logo.png" alt="Wave" width={38} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
-              <Image src="/images/djamo-logo.png" alt="Djamo" width={60} height={40} className="object-contain" />
+              <Image src="/images/djamo-logo.png" alt="Djamo" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
           </div>
 
