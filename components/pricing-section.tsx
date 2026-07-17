@@ -52,7 +52,7 @@ const plans = [
     validity: "Valable 1 mois",
     color: "#a855f7",
     bgGradient: "from-purple-500/20 to-purple-600/5",
-    popular: true,
+    popular: false,
     highlight: false,
     watermark: "with" as Watermark,
     icon: Star
@@ -145,18 +145,16 @@ export function PricingSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -8, scale: 1.03 }}
+                whileHover={{ y: -8, scale: plan.highlight ? 1.08 : 1.03 }}
                 style={
                   plan.highlight
-                    ? { borderColor: plan.color, boxShadow: `0 0 40px ${plan.color}33` }
+                    ? { borderColor: plan.color, boxShadow: `0 0 60px ${plan.color}55` }
                     : undefined
                 }
                 className={`relative rounded-3xl bg-[#111] p-8 transition-all duration-300 ${
-                  plan.popular
-                    ? "border border-[#00ff88] scale-105 shadow-2xl shadow-[#00ff88]/20"
-                    : plan.highlight
-                      ? "border-2"
-                      : "border border-white/10 hover:border-white/30"
+                  plan.highlight
+                    ? "border-2 lg:scale-105 z-10"
+                    : "border border-white/10 hover:border-white/30"
                 }`}
               >
                 {/* Discount Badge */}
@@ -243,7 +241,7 @@ export function PricingSection() {
                 <Link href={`/dashboard/plans?plan=${plan.id}`}>
                   <Button 
                     className={`w-full py-6 text-base font-bold rounded-2xl transition-all ${
-                      plan.popular 
+                      plan.highlight 
                         ? "bg-[#00ff88] text-black hover:bg-[#00dd77]" 
                         : "bg-white text-black hover:bg-gray-200"
                     }`}
