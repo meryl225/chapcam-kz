@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { Check, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff } from 'lucide-react'
+import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -143,7 +143,16 @@ function PlansContent() {
                   -{plan.discount}%
                 </div>
 
-                {plan.highlight && (
+                {/* Badge du haut : "MEILLEURE OFFRE" pour le VIP PRO, sinon "SANS LOGO" */}
+                {plan.bestOffer ? (
+                  <div
+                    className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full px-5 py-1 text-sm font-bold text-black shadow-lg"
+                    style={{ backgroundColor: accent }}
+                  >
+                    <Crown className="h-4 w-4" />
+                    MEILLEURE OFFRE
+                  </div>
+                ) : plan.highlight ? (
                   <div
                     className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full px-5 py-1 text-sm font-bold text-black"
                     style={{ backgroundColor: accent }}
@@ -151,7 +160,7 @@ function PlansContent() {
                     <DropletOff className="h-4 w-4" />
                     SANS LOGO
                   </div>
-                )}
+                ) : null}
 
                 <div className="text-sm font-medium text-emerald-400">{plan.duration}</div>
                 <h3 className="mt-2 text-3xl font-bold text-foreground">{plan.name}</h3>

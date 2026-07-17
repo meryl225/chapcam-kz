@@ -21,8 +21,10 @@ export interface PlanConfig {
   minutes: string
   features: string[]
   popular: boolean
-  // Forfait mis en avant (agrandi + halo). Reserve a Premium et Ultimate.
+  // Forfait mis en avant (agrandi + halo). Reserve a Premium et VIP PRO.
   highlight: boolean
+  // Forfait le plus avantageux : affiche le badge "MEILLEURE OFFRE". Reserve au VIP PRO.
+  bestOffer: boolean
   watermark: WatermarkStatus
 }
 
@@ -40,6 +42,7 @@ export const PLANS: PlanConfig[] = [
     features: ['Transformation du visage et corps entier', 'Qualite HD'],
     popular: false,
     highlight: false,
+    bestOffer: false,
     watermark: 'with',
   },
   {
@@ -55,6 +58,7 @@ export const PLANS: PlanConfig[] = [
     features: ['Transformation du visage et corps entier', 'Qualite HD 1080p', 'Support prioritaire'],
     popular: false,
     highlight: false,
+    bestOffer: false,
     watermark: 'with',
   },
   {
@@ -70,11 +74,12 @@ export const PLANS: PlanConfig[] = [
     features: ['Transformation du visage et corps entier', 'Qualite 4K Ultra HD', 'Support prioritaire'],
     popular: false,
     highlight: true,
+    bestOffer: false,
     watermark: 'manual',
   },
   {
     id: 'ultimate',
-    name: 'Ultimate',
+    name: 'VIP PRO',
     duration: '365 Jours',
     durationDays: 365,
     price: 85000,
@@ -90,6 +95,7 @@ export const PLANS: PlanConfig[] = [
     ],
     popular: false,
     highlight: true,
+    bestOffer: true,
     watermark: 'auto',
   },
 ]

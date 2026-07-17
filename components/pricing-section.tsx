@@ -32,6 +32,7 @@ const plans = [
     bgGradient: "from-cyan-500/20 to-blue-600/5",
     popular: false,
     highlight: false,
+    bestOffer: false,
     watermark: "with" as Watermark,
     icon: Zap
   },
@@ -54,6 +55,7 @@ const plans = [
     bgGradient: "from-purple-500/20 to-purple-600/5",
     popular: false,
     highlight: false,
+    bestOffer: false,
     watermark: "with" as Watermark,
     icon: Star
   },
@@ -76,12 +78,13 @@ const plans = [
     bgGradient: "from-green-500/20 to-green-600/5",
     popular: false,
     highlight: true,
+    bestOffer: false,
     watermark: "manual" as Watermark,
     icon: Star
   },
   {
     id: "ultimate",
-    name: "Ultimate",
+    name: "VIP PRO",
     duration: "365 JOURS",
     price: "85.000",
     oldPrice: "110.000",
@@ -99,6 +102,7 @@ const plans = [
     bgGradient: "from-orange-500/20 to-yellow-500/5",
     popular: false,
     highlight: true,
+    bestOffer: true,
     watermark: "auto" as Watermark,
     icon: Crown
   }
@@ -162,14 +166,16 @@ export function PricingSection() {
                   -{plan.discount}%
                 </div>
 
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#00ff88] text-black text-sm font-bold px-6 py-1 rounded-full">
-                    MEILLEUR CHOIX
+                {/* Badge du haut : "MEILLEURE OFFRE" pour le VIP PRO, sinon "SANS LOGO" pour les forfaits mis en avant */}
+                {plan.bestOffer ? (
+                  <div
+                    className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-black text-sm font-bold px-5 py-1 rounded-full whitespace-nowrap shadow-lg"
+                    style={{ backgroundColor: plan.color }}
+                  >
+                    <Crown className="w-4 h-4" />
+                    MEILLEURE OFFRE
                   </div>
-                )}
-
-                {/* Badge "SANS LOGO" pour les forfaits Premium et Ultimate */}
-                {plan.highlight && (
+                ) : plan.highlight ? (
                   <div
                     className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-black text-sm font-bold px-5 py-1 rounded-full whitespace-nowrap"
                     style={{ backgroundColor: plan.color }}
@@ -177,7 +183,7 @@ export function PricingSection() {
                     <DropletOff className="w-4 h-4" />
                     SANS LOGO
                   </div>
-                )}
+                ) : null}
 
                 <div className="flex items-center gap-3 mb-6 mt-4">
                   <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${plan.color}20` }}>
