@@ -264,3 +264,77 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
   }
 }
+
+// PATCH admin : activer/desactiver MANUELLEMENT le retrait de watermark.
+// Reserve au forfait Premium (50 000 F) : le sans-watermark n'est PAS
+// automatique pour ce plan, l'admin l'accorde au cas par cas. Le drapeau est
+// stocke dans user_metadata.no_watermark (aucune migration DB requise) et est
+// lu cote serveur par /api/decart-token pour choisir la cle Decart.
+export async function PATCH(req: NextRequest) {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: 'Acces refuse.' }, { status: 403 })
+  }
+
+  try {
+    const body = await req.json().catch(() => ({}))
+    const email = String(body.email || '').trim().toLowerCase()
+    const noWatermark = body.noWatermark === true
+
+    if (!EMAIL_RE.test(email)) {
+      return NextResponse.json({ error: 'Email invalide.' }, { status: 400 })
+    }
+
+    const admin = createAdminClient()
+    const userId = await resolveUserIdByEmail(admin, email)
+    if (!userId) {
+      return NextResponse.json(
+        { error: `Aucun compte ChapCam ne correspond a "${email}".` },
+        { status: 404 },
+      )
+    }
+
+    // Verifie que l'utilisateur a bien un abonnement Premium actif : le
+    // sans-watermark manuel ne concerne que ce forfait (l'Ultimate est deja
+    // automatique, les autres n'y ont pas droit).
+    const { data: sub } = await admin
+      .from('subscriptions')
+      .select('plan, is_active, status, expires_at, end_date')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    const planId = String(sub?.plan || '').toLowerCase()
+    if (noWatermark && planId !== 'premium') {
+      const hint =
+        planId === 'ultimate'
+          ? 'Le forfait Ultimate (85 000 F) est deja sans watermark automatiquement.'
+          : 'Le retrait manuel du watermark est reserve au forfait Premium (50 000 F).'
+      return NextResponse.json({ error: hint }, { status: 400 })
+    }
+
+    // Ecrit le drapeau dans les metadonnees utilisateur (fusion, non destructif).
+    const { error } = await admin.auth.admin.updateUserById(userId, {
+      user_metadata: { no_watermark: noWatermark },
+    })
+    if (error) {
+      console.error('[admin/subscriptions] Erreur update metadata:', error.message)
+      return NextResponse.json({ error: 'Erreur lors de la mise a jour.' }, { status: 500 })
+    }
+
+    await admin.from('admin_logs').insert({
+      action: 'toggle_watermark',
+      admin_email: ADMIN_EMAIL,
+      details: { email, plan: planId, no_watermark: noWatermark },
+    })
+
+    return NextResponse.json({
+      success: true,
+      noWatermark,
+      message: noWatermark
+        ? `Sans watermark ACTIVE pour ${email} (Premium).`
+        : `Sans watermark DESACTIVE pour ${email}.`,
+    })
+  } catch (err: any) {
+    console.error('[admin/subscriptions] Exception PATCH:', err?.message || err)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
+  }
+}
