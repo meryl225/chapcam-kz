@@ -37,29 +37,6 @@ const plans = [
     icon: Zap
   },
   {
-    id: "standard",
-    name: "Standard",
-    duration: "30 JOURS",
-    price: "25.000",
-    oldPrice: "35.000",
-    discount: 29,
-    currency: "FCFA",
-    features: [
-      "Transformation du visage et corps entier",
-      "1 250 points (10 min 25 sec)",
-      "Qualite HD 1080p",
-      "Support prioritaire"
-    ],
-    validity: "Valable 1 mois",
-    color: "#a855f7",
-    bgGradient: "from-purple-500/20 to-purple-600/5",
-    popular: false,
-    highlight: false,
-    bestOffer: false,
-    watermark: "with" as Watermark,
-    icon: Star
-  },
-  {
     id: "premium",
     name: "Premium",
     duration: "90 JOURS",
@@ -164,7 +141,7 @@ export function PricingSection() {
         </motion.div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {plans.map((plan, index) => {
             const Icon = plan.icon
             return (

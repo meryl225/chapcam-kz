@@ -117,7 +117,7 @@ function PlansContent() {
           <ChapCamPcPromo />
         </motion.div>
 
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan, index) => {
             const loading = pendingId === plan.id
             // Couleur d'accent des forfaits mis en avant (sans logo)
