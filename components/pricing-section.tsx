@@ -105,6 +105,30 @@ const plans = [
     bestOffer: true,
     watermark: "auto" as Watermark,
     icon: Crown
+  },
+  {
+    id: "vipdebout",
+    name: "VIP DEBOUT",
+    duration: "365 JOURS",
+    price: "150.000",
+    oldPrice: "180.000",
+    discount: 17,
+    currency: "FCFA",
+    features: [
+      "Transformation du visage et corps entier",
+      "7 200 points (60 min)",
+      "Qualite 4K Ultra HD maximale",
+      "Support VIP prioritaire 24/7",
+      "Acces anticipe a toutes les nouveautes"
+    ],
+    validity: "Valable 1 an",
+    color: "#ec4899",
+    bgGradient: "from-pink-500/20 to-rose-600/5",
+    popular: false,
+    highlight: true,
+    bestOffer: false,
+    watermark: "auto" as Watermark,
+    icon: Crown
   }
 ]
 
@@ -139,7 +163,7 @@ export function PricingSection() {
         </motion.div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
           {plans.map((plan, index) => {
             const Icon = plan.icon
             return (

@@ -17,7 +17,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
  */
 
 // Forfaits qui donnent droit au sans-watermark automatique.
-const AUTO_NO_WATERMARK_PLANS = new Set(['ultimate'])
+const AUTO_NO_WATERMARK_PLANS = new Set(['ultimate', 'vipdebout'])
 // Forfaits eligibles au sans-watermark manuel (active par l'admin).
 const MANUAL_NO_WATERMARK_PLANS = new Set(['premium'])
 

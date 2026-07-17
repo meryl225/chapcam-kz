@@ -1,7 +1,7 @@
 // Source de verite des formules d'abonnement ChapCam.
 // Utilise a la fois par la page /dashboard/plans et les routes API.
 
-export type PlanId = 'starter' | 'standard' | 'premium' | 'ultimate'
+export type PlanId = 'starter' | 'standard' | 'premium' | 'ultimate' | 'vipdebout'
 
 // Statut du logo (watermark) par forfait :
 // - 'with'   : rendu AVEC logo ChapCam (Starter, Standard)
@@ -98,6 +98,27 @@ export const PLANS: PlanConfig[] = [
     bestOffer: true,
     watermark: 'auto',
   },
+  {
+    id: 'vipdebout',
+    name: 'VIP DEBOUT',
+    duration: '365 Jours',
+    durationDays: 365,
+    price: 150000,
+    oldPrice: 180000,
+    discount: 17,
+    points: 7200,
+    minutes: '60 min',
+    features: [
+      'Transformation du visage et corps entier',
+      'Qualite 4K Ultra HD maximale',
+      'Support VIP prioritaire 24/7',
+      'Acces anticipe a toutes les nouveautes',
+    ],
+    popular: false,
+    highlight: true,
+    bestOffer: false,
+    watermark: 'auto',
+  },
 ]
 
 export function getPlan(id: string): PlanConfig | undefined {
@@ -113,6 +134,7 @@ export const PROXY_QUOTA_GB: Record<PlanId, number> = {
   standard: 15,
   premium: 50,
   ultimate: 120,
+  vipdebout: 200,
 }
 
 /** Quota proxy (Go) accordé par un forfait. Retourne 0 si forfait inconnu/absent. */
