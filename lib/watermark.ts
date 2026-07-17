@@ -30,10 +30,24 @@ export type WatermarkDecision = {
   reason: 'auto' | 'manual' | 'default'
 }
 
-function isSubscriptionActive(sub: { is_active?: boolean | null; expires_at?: string | null } | null): boolean {
-  if (!sub?.is_active) return false
-  if (sub.expires_at) {
-    const exp = new Date(sub.expires_at).getTime()
+type SubRow = {
+  plan?: string | null
+  is_active?: boolean | null
+  status?: string | null
+  expires_at?: string | null
+  end_date?: string | null
+} | null
+
+function isSubscriptionActive(sub: SubRow): boolean {
+  if (!sub) return false
+  // La table utilise a la fois is_active (booleen) et status='active' selon les
+  // ecritures : on considere l'abonnement actif si l'un des deux l'indique.
+  const flaggedActive = sub.is_active === true || sub.status === 'active'
+  if (!flaggedActive) return false
+  // Expiration : on accepte expires_at ou end_date.
+  const expRaw = sub.expires_at || sub.end_date
+  if (expRaw) {
+    const exp = new Date(expRaw).getTime()
     if (Number.isFinite(exp) && exp < Date.now()) return false
   }
   return true
@@ -49,7 +63,7 @@ export async function resolveWatermarkForUser(userId: string): Promise<Watermark
   // Plan actif depuis la table subscriptions (source de verite du forfait).
   const { data: sub } = await supabase
     .from('subscriptions')
-    .select('plan, is_active, expires_at')
+    .select('plan, is_active, status, expires_at, end_date')
     .eq('user_id', userId)
     .maybeSingle()
 

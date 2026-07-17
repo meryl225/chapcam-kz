@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { UserPlus, Loader2, ArrowLeft, Check, UserMinus, Trash2 } from 'lucide-react'
+import { UserPlus, Loader2, ArrowLeft, Check, UserMinus, Trash2, Droplet, DropletOff } from 'lucide-react'
 import Link from 'next/link'
 import { PLANS } from '@/lib/plans'
 import { LIVE_OFFERS } from '@/lib/live-offers'
@@ -15,6 +15,8 @@ export default function AdminSubscriptionsPage() {
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
   const [removeEmail, setRemoveEmail] = useState('')
   const [removing, setRemoving] = useState(false)
+  const [wmEmail, setWmEmail] = useState('')
+  const [wmBusy, setWmBusy] = useState<'on' | 'off' | null>(null)
 
   const selectedPlan = PLANS.find((p) => p.id === plan)
   const selectedLiveOffer = LIVE_OFFERS.find((o) => o.id === plan)
@@ -74,6 +76,33 @@ export default function AdminSubscriptionsPage() {
       setToast({ type: 'err', msg: 'Erreur de connexion' })
     } finally {
       setRemoving(false)
+    }
+  }
+
+  const handleWatermark = async (noWatermark: boolean) => {
+    const target = wmEmail.trim()
+    if (!target) {
+      setToast({ type: 'err', msg: 'Entrez l\'email du client Premium.' })
+      return
+    }
+    setWmBusy(noWatermark ? 'on' : 'off')
+    setToast(null)
+    try {
+      const res = await fetch('/api/admin/subscriptions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: target, noWatermark }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setToast({ type: 'ok', msg: data.message || 'Mise a jour effectuee' })
+      } else {
+        setToast({ type: 'err', msg: data.error || 'Erreur' })
+      }
+    } catch {
+      setToast({ type: 'err', msg: 'Erreur de connexion' })
+    } finally {
+      setWmBusy(null)
     }
   }
 
@@ -272,6 +301,67 @@ export default function AdminSubscriptionsPage() {
               )}
             </button>
           </form>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-sky-500/30 bg-[#0a1420] p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-500/15">
+              <DropletOff className="h-6 w-6 text-sky-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Retrait du watermark (Premium)</h2>
+              <p className="text-sm text-gray-400">
+                Reserve au forfait Premium (50 000 F). L&apos;Ultimate (85 000 F) est deja sans
+                watermark automatiquement.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div>
+              <label className={labelClass}>Email du client Premium</label>
+              <input
+                type="email"
+                value={wmEmail}
+                onChange={(e) => setWmEmail(e.target.value)}
+                className="w-full rounded-xl border border-gray-700 bg-[#0a0a0a] px-4 py-3 text-white outline-none transition-colors focus:border-sky-500"
+                placeholder="utilisateur@exemple.com"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Active ou desactive le rendu sans watermark pour ce client. Prise en compte au
+                prochain lancement de swap.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => handleWatermark(true)}
+                disabled={wmBusy !== null}
+                className="flex items-center justify-center gap-2 rounded-2xl bg-sky-500 py-4 font-semibold text-white transition-colors hover:bg-sky-600 disabled:opacity-60"
+              >
+                {wmBusy === 'on' ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <DropletOff className="h-5 w-5" />
+                )}
+                Activer sans watermark
+              </button>
+              <button
+                type="button"
+                onClick={() => handleWatermark(false)}
+                disabled={wmBusy !== null}
+                className="flex items-center justify-center gap-2 rounded-2xl border border-gray-700 bg-[#0a0a0a] py-4 font-semibold text-gray-200 transition-colors hover:border-gray-500 disabled:opacity-60"
+              >
+                {wmBusy === 'off' ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Droplet className="h-5 w-5" />
+                )}
+                Remettre le watermark
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -58,7 +58,7 @@ export async function GET() {
 
     return NextResponse.json({
       success: true,
-      token: token.apiKey || token.token,
+      token: token.apiKey,
       expiresAt: token.expiresAt,
       userId: user.id,
       noWatermark: usedNoWatermark
