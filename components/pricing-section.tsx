@@ -2,10 +2,16 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock, CreditCard } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { ChapCamPcPromo } from "@/components/chapcam-pc-promo"
+
+// Statut du logo (watermark) par forfait :
+// - "with"   : rendu AVEC logo ChapCam (Starter, Standard)
+// - "manual" : sans logo, active manuellement sur demande (Premium 50.000 F)
+// - "auto"   : sans logo automatiquement inclus (Ultimate 85.000 F)
+type Watermark = "with" | "manual" | "auto"
 
 const plans = [
   {
@@ -25,6 +31,8 @@ const plans = [
     color: "#00d4ff",
     bgGradient: "from-cyan-500/20 to-blue-600/5",
     popular: false,
+    highlight: false,
+    watermark: "with" as Watermark,
     icon: Zap
   },
   {
@@ -45,6 +53,8 @@ const plans = [
     color: "#a855f7",
     bgGradient: "from-purple-500/20 to-purple-600/5",
     popular: true,
+    highlight: false,
+    watermark: "with" as Watermark,
     icon: Star
   },
   {
@@ -65,6 +75,8 @@ const plans = [
     color: "#22c55e",
     bgGradient: "from-green-500/20 to-green-600/5",
     popular: false,
+    highlight: true,
+    watermark: "manual" as Watermark,
     icon: Star
   },
   {
@@ -86,6 +98,8 @@ const plans = [
     color: "#f97316",
     bgGradient: "from-orange-500/20 to-yellow-500/5",
     popular: false,
+    highlight: true,
+    watermark: "auto" as Watermark,
     icon: Crown
   }
 ]
@@ -132,10 +146,17 @@ export function PricingSection() {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ y: -8, scale: 1.03 }}
-                className={`relative rounded-3xl border bg-[#111] p-8 transition-all duration-300 ${
-                  plan.popular 
-                    ? "border-[#00ff88] scale-105 shadow-2xl shadow-[#00ff88]/20" 
-                    : "border-white/10 hover:border-white/30"
+                style={
+                  plan.highlight
+                    ? { borderColor: plan.color, boxShadow: `0 0 40px ${plan.color}33` }
+                    : undefined
+                }
+                className={`relative rounded-3xl bg-[#111] p-8 transition-all duration-300 ${
+                  plan.popular
+                    ? "border border-[#00ff88] scale-105 shadow-2xl shadow-[#00ff88]/20"
+                    : plan.highlight
+                      ? "border-2"
+                      : "border border-white/10 hover:border-white/30"
                 }`}
               >
                 {/* Discount Badge */}
@@ -146,6 +167,17 @@ export function PricingSection() {
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#00ff88] text-black text-sm font-bold px-6 py-1 rounded-full">
                     MEILLEUR CHOIX
+                  </div>
+                )}
+
+                {/* Badge "SANS LOGO" pour les forfaits Premium et Ultimate */}
+                {plan.highlight && (
+                  <div
+                    className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-black text-sm font-bold px-5 py-1 rounded-full whitespace-nowrap"
+                    style={{ backgroundColor: plan.color }}
+                  >
+                    <DropletOff className="w-4 h-4" />
+                    SANS LOGO
                   </div>
                 )}
 
@@ -170,6 +202,34 @@ export function PricingSection() {
                   <span className="text-gray-400 text-xl"> {plan.currency}</span>
                   <p className="text-gray-500 text-sm mt-1">{plan.validity}</p>
                 </div>
+
+                {/* Statut du logo (watermark) mis en avant */}
+                {plan.watermark === "with" ? (
+                  <div className="mb-6 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                    <Droplet className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-bold text-gray-300">Avec logo ChapCam</p>
+                      <p className="text-xs text-gray-500">Filigrane visible sur le rendu</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="mb-6 flex items-center gap-3 rounded-2xl px-4 py-3"
+                    style={{ backgroundColor: `${plan.color}1f`, border: `1px solid ${plan.color}66` }}
+                  >
+                    <DropletOff className="w-5 h-5 flex-shrink-0" style={{ color: plan.color }} />
+                    <div>
+                      <p className="text-sm font-bold" style={{ color: plan.color }}>
+                        {plan.watermark === "auto" ? "Sans logo (automatique)" : "Sans logo (sur demande)"}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {plan.watermark === "auto"
+                          ? "Retrait du logo inclus, active automatiquement"
+                          : "Retrait du logo active par notre equipe"}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <ul className="space-y-4 mb-10 text-gray-300">
                   {plan.features.map((feature, i) => (
