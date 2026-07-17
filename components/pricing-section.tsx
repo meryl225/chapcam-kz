@@ -32,30 +32,9 @@ const plans = [
     bgGradient: "from-cyan-500/20 to-blue-600/5",
     popular: false,
     highlight: false,
+    bestOffer: false,
     watermark: "with" as Watermark,
     icon: Zap
-  },
-  {
-    id: "standard",
-    name: "Standard",
-    duration: "30 JOURS",
-    price: "25.000",
-    oldPrice: "35.000",
-    discount: 29,
-    currency: "FCFA",
-    features: [
-      "Transformation du visage et corps entier",
-      "1 250 points (10 min 25 sec)",
-      "Qualite HD 1080p",
-      "Support prioritaire"
-    ],
-    validity: "Valable 1 mois",
-    color: "#a855f7",
-    bgGradient: "from-purple-500/20 to-purple-600/5",
-    popular: false,
-    highlight: false,
-    watermark: "with" as Watermark,
-    icon: Star
   },
   {
     id: "premium",
@@ -76,12 +55,14 @@ const plans = [
     bgGradient: "from-green-500/20 to-green-600/5",
     popular: false,
     highlight: true,
-    watermark: "manual" as Watermark,
+    bestOffer: false,
+    // Affichage public : AVEC logo. Retrait possible manuellement par l'admin.
+    watermark: "with" as Watermark,
     icon: Star
   },
   {
     id: "ultimate",
-    name: "Ultimate",
+    name: "VIP PRO",
     duration: "365 JOURS",
     price: "85.000",
     oldPrice: "110.000",
@@ -99,6 +80,31 @@ const plans = [
     bgGradient: "from-orange-500/20 to-yellow-500/5",
     popular: false,
     highlight: true,
+    bestOffer: true,
+    watermark: "auto" as Watermark,
+    icon: Crown
+  },
+  {
+    id: "vipdebout",
+    name: "VIP DEBOUT",
+    duration: "365 JOURS",
+    price: "150.000",
+    oldPrice: "180.000",
+    discount: 17,
+    currency: "FCFA",
+    features: [
+      "Transformation du visage et corps entier",
+      "7 200 points (60 min)",
+      "Qualite 4K Ultra HD maximale",
+      "Support VIP prioritaire 24/7",
+      "Acces anticipe a toutes les nouveautes"
+    ],
+    validity: "Valable 1 an",
+    color: "#2563eb",
+    bgGradient: "from-blue-500/20 to-blue-700/5",
+    popular: false,
+    highlight: true,
+    bestOffer: false,
     watermark: "auto" as Watermark,
     icon: Crown
   }
@@ -140,7 +146,7 @@ export function PricingSection() {
             const Icon = plan.icon
             return (
               <motion.div
-                key={plan.duration}
+                key={plan.id}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -162,14 +168,16 @@ export function PricingSection() {
                   -{plan.discount}%
                 </div>
 
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#00ff88] text-black text-sm font-bold px-6 py-1 rounded-full">
-                    MEILLEUR CHOIX
+                {/* Badge du haut : "MEILLEURE OFFRE" pour le VIP PRO, sinon "SANS LOGO" pour les forfaits mis en avant */}
+                {plan.bestOffer ? (
+                  <div
+                    className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-black text-sm font-bold px-5 py-1 rounded-full whitespace-nowrap shadow-lg"
+                    style={{ backgroundColor: plan.color }}
+                  >
+                    <Crown className="w-4 h-4" />
+                    MEILLEURE OFFRE
                   </div>
-                )}
-
-                {/* Badge "SANS LOGO" pour les forfaits Premium et Ultimate */}
-                {plan.highlight && (
+                ) : plan.highlight && plan.watermark !== "with" ? (
                   <div
                     className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-black text-sm font-bold px-5 py-1 rounded-full whitespace-nowrap"
                     style={{ backgroundColor: plan.color }}
@@ -177,7 +185,7 @@ export function PricingSection() {
                     <DropletOff className="w-4 h-4" />
                     SANS LOGO
                   </div>
-                )}
+                ) : null}
 
                 <div className="flex items-center gap-3 mb-6 mt-4">
                   <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${plan.color}20` }}>
@@ -196,7 +204,12 @@ export function PricingSection() {
                     <span className="text-red-400 text-sm font-semibold">-{plan.discount}%</span>
                   </div>
                   {/* New Price */}
-                  <span className="text-5xl font-black text-[#00ff88]">{plan.price}</span>
+                  <span
+                    className="text-5xl font-black"
+                    style={{ color: plan.id === "vipdebout" ? plan.color : "#00ff88" }}
+                  >
+                    {plan.price}
+                  </span>
                   <span className="text-gray-400 text-xl"> {plan.currency}</span>
                   <p className="text-gray-500 text-sm mt-1">{plan.validity}</p>
                 </div>
@@ -292,16 +305,16 @@ export function PricingSection() {
           {/* Logos Mobile Money principaux */}
           <div className="mb-8 flex flex-wrap items-center justify-center gap-4">
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
-              <Image src="/images/orange-money-logo.png" alt="Orange Money" width={60} height={40} className="object-contain" />
+              <Image src="/images/orange-money-logo.png" alt="Orange Money" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
-              <Image src="/images/mtn-momo-logo.jpg" alt="MTN Mobile Money" width={60} height={40} className="object-contain" />
+              <Image src="/images/mtn-momo-logo.jpg" alt="MTN Mobile Money" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-[#1DC8FF] p-2">
-              <Image src="/images/wave-logo.png" alt="Wave" width={50} height={40} className="object-contain" />
+              <Image src="/images/wave-logo.png" alt="Wave" width={38} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
-              <Image src="/images/djamo-logo.png" alt="Djamo" width={60} height={40} className="object-contain" />
+              <Image src="/images/djamo-logo.png" alt="Djamo" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
           </div>
 

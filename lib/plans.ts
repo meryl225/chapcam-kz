@@ -1,7 +1,13 @@
 // Source de verite des formules d'abonnement ChapCam.
 // Utilise a la fois par la page /dashboard/plans et les routes API.
 
-export type PlanId = 'starter' | 'standard' | 'premium' | 'ultimate'
+export type PlanId = 'starter' | 'standard' | 'premium' | 'ultimate' | 'vipdebout'
+
+// Statut du logo (watermark) par forfait :
+// - 'with'   : rendu AVEC logo ChapCam (Starter, Standard)
+// - 'manual' : sans logo, active manuellement sur demande (Premium 50.000 F)
+// - 'auto'   : sans logo automatiquement inclus (Ultimate 85.000 F)
+export type WatermarkStatus = 'with' | 'manual' | 'auto'
 
 export interface PlanConfig {
   id: PlanId
@@ -15,6 +21,11 @@ export interface PlanConfig {
   minutes: string
   features: string[]
   popular: boolean
+  // Forfait mis en avant (agrandi + halo). Reserve a Premium et VIP PRO.
+  highlight: boolean
+  // Forfait le plus avantageux : affiche le badge "MEILLEURE OFFRE". Reserve au VIP PRO.
+  bestOffer: boolean
+  watermark: WatermarkStatus
 }
 
 export const PLANS: PlanConfig[] = [
@@ -30,19 +41,9 @@ export const PLANS: PlanConfig[] = [
     minutes: '4 min 10 sec',
     features: ['Transformation du visage et corps entier', 'Qualite HD'],
     popular: false,
-  },
-  {
-    id: 'standard',
-    name: 'Standard',
-    duration: '30 Jours',
-    durationDays: 30,
-    price: 25000,
-    oldPrice: 35000,
-    discount: 29,
-    points: 1250,
-    minutes: '10 min 25 sec',
-    features: ['Transformation du visage et corps entier', 'Qualite HD 1080p', 'Support prioritaire'],
-    popular: true,
+    highlight: false,
+    bestOffer: false,
+    watermark: 'with',
   },
   {
     id: 'premium',
@@ -56,10 +57,15 @@ export const PLANS: PlanConfig[] = [
     minutes: '20 min 50 sec',
     features: ['Transformation du visage et corps entier', 'Qualite 4K Ultra HD', 'Support prioritaire'],
     popular: false,
+    highlight: true,
+    bestOffer: false,
+    // Affichage public : AVEC logo. Le retrait reste possible manuellement par
+    // l'admin pour un client precis (voir MANUAL_NO_WATERMARK_PLANS dans lib/watermark.ts).
+    watermark: 'with',
   },
   {
     id: 'ultimate',
-    name: 'Ultimate',
+    name: 'VIP PRO',
     duration: '365 Jours',
     durationDays: 365,
     price: 85000,
@@ -74,6 +80,30 @@ export const PLANS: PlanConfig[] = [
       'Acces aux nouveautes',
     ],
     popular: false,
+    highlight: true,
+    bestOffer: true,
+    watermark: 'auto',
+  },
+  {
+    id: 'vipdebout',
+    name: 'VIP DEBOUT',
+    duration: '365 Jours',
+    durationDays: 365,
+    price: 150000,
+    oldPrice: 180000,
+    discount: 17,
+    points: 7200,
+    minutes: '60 min',
+    features: [
+      'Transformation du visage et corps entier',
+      'Qualite 4K Ultra HD maximale',
+      'Support VIP prioritaire 24/7',
+      'Acces anticipe a toutes les nouveautes',
+    ],
+    popular: false,
+    highlight: true,
+    bestOffer: false,
+    watermark: 'auto',
   },
 ]
 
@@ -90,6 +120,7 @@ export const PROXY_QUOTA_GB: Record<PlanId, number> = {
   standard: 15,
   premium: 50,
   ultimate: 120,
+  vipdebout: 200,
 }
 
 /** Quota proxy (Go) accordé par un forfait. Retourne 0 si forfait inconnu/absent. */

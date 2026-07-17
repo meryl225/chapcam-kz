@@ -24,10 +24,11 @@ export const PC_OFFER: PcOffer = {
   originalPrice: 100000,
   discountPercent: 50,
   description:
-    "Utilise la puissance de ton ordinateur. Compatible Windows ET MacBook. Aucune connexion internet requise apres installation. Compatible WhatsApp, Zoom, Discord, TikTok Live.",
+    "Change uniquement le visage (le corps n'est pas transforme). Utilise la puissance de ton ordinateur. Compatible Windows ET MacBook. Aucune connexion internet requise apres installation. Compatible WhatsApp, Zoom, Discord, TikTok Live.",
   requirement:
     "Compatible Windows et MacBook. Vous pouvez installer sur tout type d'ordinateur, mais une carte graphique GPU dediee (type PC Gamer) est recommandee pour de meilleures performances.",
   features: [
+    'Change uniquement le visage (le corps n\'est pas transforme)',
     'Compatible Windows et MacBook',
     'GPU dedie (PC Gamer) recommande pour de meilleures performances',
     'Face swap temps reel sur ton GPU local',
