@@ -122,7 +122,7 @@ function PlansContent() {
             const loading = pendingId === plan.id
             // Couleur d'accent des forfaits mis en avant (sans logo)
             const accent =
-              plan.id === 'vipdebout' ? '#ec4899' : plan.id === 'ultimate' ? '#f97316' : '#22c55e'
+              plan.id === 'vipdebout' ? '#2563eb' : plan.id === 'ultimate' ? '#f97316' : '#22c55e'
             return (
               <motion.div
                 key={plan.id}
@@ -173,7 +173,10 @@ function PlansContent() {
                     </span>
                     <span className="text-sm font-semibold text-red-400">-{plan.discount}%</span>
                   </div>
-                  <span className="text-5xl font-bold text-primary">
+                  <span
+                    className="text-5xl font-bold text-primary"
+                    style={plan.id === 'vipdebout' ? { color: accent } : undefined}
+                  >
                     {plan.price.toLocaleString()}
                   </span>
                   <span className="text-2xl text-muted-foreground"> FCFA</span>

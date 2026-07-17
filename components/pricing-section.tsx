@@ -122,8 +122,8 @@ const plans = [
       "Acces anticipe a toutes les nouveautes"
     ],
     validity: "Valable 1 an",
-    color: "#ec4899",
-    bgGradient: "from-pink-500/20 to-rose-600/5",
+    color: "#2563eb",
+    bgGradient: "from-blue-500/20 to-blue-700/5",
     popular: false,
     highlight: true,
     bestOffer: false,
@@ -226,7 +226,12 @@ export function PricingSection() {
                     <span className="text-red-400 text-sm font-semibold">-{plan.discount}%</span>
                   </div>
                   {/* New Price */}
-                  <span className="text-5xl font-black text-[#00ff88]">{plan.price}</span>
+                  <span
+                    className="text-5xl font-black"
+                    style={{ color: plan.id === "vipdebout" ? plan.color : "#00ff88" }}
+                  >
+                    {plan.price}
+                  </span>
                   <span className="text-gray-400 text-xl"> {plan.currency}</span>
                   <p className="text-gray-500 text-sm mt-1">{plan.validity}</p>
                 </div>
