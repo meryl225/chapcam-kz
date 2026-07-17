@@ -153,7 +153,7 @@ function PlansContent() {
                     <Crown className="h-4 w-4" />
                     MEILLEURE OFFRE
                   </div>
-                ) : plan.highlight ? (
+                ) : plan.highlight && plan.watermark !== 'with' ? (
                   <div
                     className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full px-5 py-1 text-sm font-bold text-black"
                     style={{ backgroundColor: accent }}

@@ -79,7 +79,8 @@ const plans = [
     popular: false,
     highlight: true,
     bestOffer: false,
-    watermark: "manual" as Watermark,
+    // Affichage public : AVEC logo. Retrait possible manuellement par l'admin.
+    watermark: "with" as Watermark,
     icon: Star
   },
   {
@@ -199,7 +200,7 @@ export function PricingSection() {
                     <Crown className="w-4 h-4" />
                     MEILLEURE OFFRE
                   </div>
-                ) : plan.highlight ? (
+                ) : plan.highlight && plan.watermark !== "with" ? (
                   <div
                     className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-black text-sm font-bold px-5 py-1 rounded-full whitespace-nowrap"
                     style={{ backgroundColor: plan.color }}

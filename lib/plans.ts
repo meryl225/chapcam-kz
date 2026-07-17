@@ -75,7 +75,9 @@ export const PLANS: PlanConfig[] = [
     popular: false,
     highlight: true,
     bestOffer: false,
-    watermark: 'manual',
+    // Affichage public : AVEC logo. Le retrait reste possible manuellement par
+    // l'admin pour un client precis (voir MANUAL_NO_WATERMARK_PLANS dans lib/watermark.ts).
+    watermark: 'with',
   },
   {
     id: 'ultimate',
