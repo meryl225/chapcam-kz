@@ -6,6 +6,7 @@ import { Check, Download, Infinity as InfinityIcon, Monitor, ShieldCheck, Sparkl
 import { PcCountdown } from "@/components/chapcam-pc/pc-countdown"
 
 const includedFeatures = [
+  "Change uniquement le visage (le corps n'est pas transforme)",
   "Paiement unique, acces a vie",
   "Aucun credit a recharger, jamais",
   "Change d'apparence en direct dans tous tes appels video",
@@ -59,8 +60,19 @@ export function ChapCamPcLanding() {
           >
             Tu veux changer d&apos;apparence sans payer des credits a chaque fois ?
             Telecharge <span className="text-white font-semibold">ChapCam PC</span>, le logiciel
-            a vie. Installe-le une seule fois et transforme ton visage en direct dans tous tes appels video.
+            a vie.             Installe-le une seule fois et transforme ton visage en direct dans tous tes appels video.
           </motion.p>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#00d4ff]/40 bg-[#00d4ff]/10 px-5 py-2 text-sm font-semibold text-[#00d4ff]"
+          >
+            <Sparkles className="w-4 h-4" />
+            Offre a vie : seul le visage est transforme, le corps reste inchange.
+          </motion.p>
+
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
