@@ -3,6 +3,12 @@
 
 export type PlanId = 'starter' | 'standard' | 'premium' | 'ultimate'
 
+// Statut du logo (watermark) par forfait :
+// - 'with'   : rendu AVEC logo ChapCam (Starter, Standard)
+// - 'manual' : sans logo, active manuellement sur demande (Premium 50.000 F)
+// - 'auto'   : sans logo automatiquement inclus (Ultimate 85.000 F)
+export type WatermarkStatus = 'with' | 'manual' | 'auto'
+
 export interface PlanConfig {
   id: PlanId
   name: string
@@ -15,6 +21,9 @@ export interface PlanConfig {
   minutes: string
   features: string[]
   popular: boolean
+  // Forfait mis en avant (agrandi + halo). Reserve a Premium et Ultimate.
+  highlight: boolean
+  watermark: WatermarkStatus
 }
 
 export const PLANS: PlanConfig[] = [
@@ -30,6 +39,8 @@ export const PLANS: PlanConfig[] = [
     minutes: '4 min 10 sec',
     features: ['Transformation du visage et corps entier', 'Qualite HD'],
     popular: false,
+    highlight: false,
+    watermark: 'with',
   },
   {
     id: 'standard',
@@ -42,7 +53,9 @@ export const PLANS: PlanConfig[] = [
     points: 1250,
     minutes: '10 min 25 sec',
     features: ['Transformation du visage et corps entier', 'Qualite HD 1080p', 'Support prioritaire'],
-    popular: true,
+    popular: false,
+    highlight: false,
+    watermark: 'with',
   },
   {
     id: 'premium',
@@ -56,6 +69,8 @@ export const PLANS: PlanConfig[] = [
     minutes: '20 min 50 sec',
     features: ['Transformation du visage et corps entier', 'Qualite 4K Ultra HD', 'Support prioritaire'],
     popular: false,
+    highlight: true,
+    watermark: 'manual',
   },
   {
     id: 'ultimate',
@@ -74,6 +89,8 @@ export const PLANS: PlanConfig[] = [
       'Acces aux nouveautes',
     ],
     popular: false,
+    highlight: true,
+    watermark: 'auto',
   },
 ]
 

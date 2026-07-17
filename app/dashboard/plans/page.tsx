@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { Check, Crown, Clock, Sparkles, Loader2, CreditCard } from 'lucide-react'
+import { Check, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -120,26 +120,36 @@ function PlansContent() {
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan, index) => {
             const loading = pendingId === plan.id
+            // Couleur d'accent des forfaits mis en avant (sans logo)
+            const accent = plan.id === 'ultimate' ? '#f97316' : '#22c55e'
             return (
               <motion.div
                 key={plan.id}
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
-                className={`relative flex flex-col rounded-3xl border bg-card p-8 transition-all hover:border-primary ${
-                  plan.popular
-                    ? 'scale-[1.03] border-primary shadow-2xl shadow-primary/20'
-                    : 'border-gray-800'
+                style={
+                  plan.highlight
+                    ? { borderColor: accent, boxShadow: `0 0 60px ${accent}55` }
+                    : undefined
+                }
+                className={`relative flex flex-col rounded-3xl bg-card p-8 transition-all ${
+                  plan.highlight
+                    ? 'border-2 lg:scale-105 z-10'
+                    : 'border border-gray-800 hover:border-primary'
                 }`}
               >
                 <div className="absolute -right-3 -top-3 rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
                   -{plan.discount}%
                 </div>
 
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-primary px-6 py-1 text-sm font-bold text-black">
-                    <Crown className="h-4 w-4" />
-                    MEILLEUR CHOIX
+                {plan.highlight && (
+                  <div
+                    className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full px-5 py-1 text-sm font-bold text-black"
+                    style={{ backgroundColor: accent }}
+                  >
+                    <DropletOff className="h-4 w-4" />
+                    SANS LOGO
                   </div>
                 )}
 
@@ -159,7 +169,35 @@ function PlansContent() {
                   <span className="text-2xl text-muted-foreground"> FCFA</span>
                 </div>
 
-                <ul className="mt-8 flex-1 space-y-4 text-muted-foreground">
+                {/* Statut du logo (watermark) mis en avant */}
+                {plan.watermark === 'with' ? (
+                  <div className="mt-8 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                    <Droplet className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Avec logo ChapCam</p>
+                      <p className="text-xs text-muted-foreground">Filigrane visible sur le rendu</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="mt-8 flex items-center gap-3 rounded-2xl px-4 py-3"
+                    style={{ backgroundColor: `${accent}1f`, border: `1px solid ${accent}66` }}
+                  >
+                    <DropletOff className="h-5 w-5 flex-shrink-0" style={{ color: accent }} />
+                    <div>
+                      <p className="text-sm font-bold" style={{ color: accent }}>
+                        {plan.watermark === 'auto' ? 'Sans logo (automatique)' : 'Sans logo (sur demande)'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {plan.watermark === 'auto'
+                          ? 'Retrait du logo inclus, active automatiquement'
+                          : 'Retrait du logo active par notre equipe'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <ul className="mt-6 flex-1 space-y-4 text-muted-foreground">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-center gap-3">
                       <Check className="h-5 w-5 flex-shrink-0 text-emerald-400" />
@@ -176,7 +214,7 @@ function PlansContent() {
                   onClick={() => startCheckout(plan.id)}
                   disabled={!!pendingId}
                   className={`mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all disabled:opacity-60 ${
-                    plan.popular
+                    plan.highlight
                       ? 'bg-primary text-black hover:bg-primary/90'
                       : 'bg-white text-black hover:bg-gray-200'
                   }`}
