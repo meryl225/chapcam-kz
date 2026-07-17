@@ -264,7 +264,7 @@ export function PricingSection() {
           <div className="inline-flex items-center gap-3 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-6 py-3">
             <Clock className="w-5 h-5 text-yellow-400" />
             <p className="text-yellow-400 font-semibold">
-              Offre valable jusqu&apos;au 1er Juin 2026 ou jusqu&apos;a epuisement des places.
+              Offre valable jusqu&apos;au 1er Septembre 2026 ou jusqu&apos;a epuisement des places.
             </p>
           </div>
         </motion.div>
