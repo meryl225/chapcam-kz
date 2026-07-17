@@ -63,17 +63,6 @@ export function ChapCamPcLanding() {
             a vie.             Installe-le une seule fois et transforme ton visage en direct dans tous tes appels video.
           </motion.p>
 
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="mt-4 inline-flex items-center gap-2 rounded-full border border-[#00d4ff]/40 bg-[#00d4ff]/10 px-5 py-2 text-sm font-semibold text-[#00d4ff]"
-          >
-            <Sparkles className="w-4 h-4" />
-            Offre a vie : seul le visage est transforme, le corps reste inchange.
-          </motion.p>
-
-
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

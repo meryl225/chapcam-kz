@@ -36,10 +36,15 @@ export function ChapCamPcPromo() {
               </div>
               <h3 className="text-2xl font-black text-white md:text-3xl">ChapCam PC</h3>
               <p className="mt-1 max-w-md text-sm text-gray-300">
-                Le logiciel complet sur ton ordinateur. Tu paies une seule fois et il est a toi
-                pour toujours : aucun abonnement, cle de licence envoyee par email.
+                Le logiciel complet sur ton ordinateur pour le changement de visage. Tu paies une
+                seule fois et il est a toi pour toujours : aucun abonnement, cle de licence envoyee
+                par email.
               </p>
               <ul className="mt-3 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-gray-300 sm:justify-start">
+                <li className="flex items-center gap-1.5">
+                  <Check className="h-3.5 w-3.5 text-[#00ff88]" />
+                  Changement de visage
+                </li>
                 <li className="flex items-center gap-1.5">
                   <Check className="h-3.5 w-3.5 text-[#00ff88]" />
                   Windows et MacBook
