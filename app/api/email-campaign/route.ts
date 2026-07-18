@@ -323,6 +323,111 @@ function getSupportEmail(userName: string) {
   return { subject, html }
 }
 
+// Template email pour la campagne "ChapCam 2.0" (nouveau moteur IA, base sur
+// Decart AI 2.5). Message cle : plus besoin de PC gamer / GPU dedie, ca tourne
+// sur tout type de PC. Sorti le 17 juillet. CTA vers les recharges + WhatsApp.
+function getChapCam2Email(userName: string) {
+  const subject = 'ChapCam 2.0 est disponible - fonctionne desormais sur TOUT type de PC'
+  const WHATSAPP_URL =
+    'https://wa.me/2250555560189?text=' +
+    encodeURIComponent('Bonjour ChapCam, je veux tester la nouvelle version ChapCam 2.0.')
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0e1a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0e1a; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%); border-radius: 24px; border: 1px solid rgba(0, 255, 136, 0.3); overflow: hidden;">
+
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(90deg, #7c3aed, #2563eb, #00ff88); padding: 22px; text-align: center;">
+              <p style="margin: 0 0 4px; color: rgba(255,255,255,0.85); font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">Nouvelle version - 17 juillet</p>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 800;">ChapCam 2.0 est la</h1>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 38px;">
+              <p style="color: #ffffff; font-size: 18px; margin: 0 0 18px;">Salut ${userName || 'toi'},</p>
+
+              <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
+                On vient de sortir <strong style="color: #ffffff;">ChapCam 2.0</strong>, notre nouveau moteur IA
+                bien plus rapide et realiste. Le plus gros changement :
+                <strong style="color: #00ff88;">plus besoin d'un PC Gamer ni d'une carte graphique dediee</strong>.
+              </p>
+
+              <!-- Highlight Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.35); border-radius: 16px; margin: 0 0 24px;">
+                <tr>
+                  <td style="padding: 24px;">
+                    <p style="color: #00ff88; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin: 0 0 12px;">Ce qui change avec la 2.0</p>
+                    <p style="color: #ffffff; font-size: 15px; margin: 6px 0;">&#10003; Fonctionne sur <strong>tout type de PC</strong> (plus besoin de PC Gamer)</p>
+                    <p style="color: #ffffff; font-size: 15px; margin: 6px 0;">&#10003; Transformation du <strong>visage et du corps entier</strong></p>
+                    <p style="color: #ffffff; font-size: 15px; margin: 6px 0;">&#10003; Change meme la <strong>couleur de peau</strong></p>
+                    <p style="color: #ffffff; font-size: 15px; margin: 6px 0;">&#10003; Qualite superieure et faible latence en direct</p>
+                    <p style="color: #ffffff; font-size: 15px; margin: 6px 0;">&#10003; Compatible WhatsApp, Zoom, Discord, TikTok Live</p>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="color: #a0a0a0; font-size: 15px; line-height: 1.6; margin: 0 0 8px;">
+                Recharge tes points et teste ChapCam 2.0 des maintenant.
+              </p>
+
+              <!-- CTA principal -->
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center" style="padding: 22px 0 10px;">
+                    <a href="https://chapcam.com/dashboard/plans" style="display: inline-block; background: linear-gradient(90deg, #00ff88, #00d4ff); color: #000000; font-size: 16px; font-weight: bold; text-decoration: none; padding: 16px 44px; border-radius: 12px;">
+                      Tester ChapCam 2.0
+                    </a>
+                  </td>
+                </tr>
+                <!-- CTA WhatsApp -->
+                <tr>
+                  <td align="center" style="padding: 4px 0 0;">
+                    <a href="${WHATSAPP_URL}" style="display: inline-block; background: rgba(37, 211, 102, 0.15); border: 1px solid rgba(37, 211, 102, 0.5); color: #25D366; font-size: 15px; font-weight: bold; text-decoration: none; padding: 14px 36px; border-radius: 12px;">
+                      Une question ? Ecris-nous sur WhatsApp
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="color: #888888; font-size: 13px; text-align: center; margin: 18px 0 0;">
+                Support WhatsApp : <strong style="color:#e5e5e5;">+225 05 55 56 01 89</strong>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 38px; border-top: 1px solid rgba(255,255,255,0.1);">
+              <p style="color: #666; font-size: 12px; text-align: center; margin: 0;">
+                Tu recois cet email car tu es inscrit sur ChapCam.<br>
+                <a href="https://chapcam.com" style="color: #00ff88;">chapcam.com</a>
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`
+
+  return { subject, html }
+}
+
 // Template email pour le rappel de lancement
 function getLaunchReminderEmail(userName: string, type: 'D2' | 'D1' | 'DJ') {
   const subjects = {
@@ -424,10 +529,10 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json()
-    const { type } = body // 'D2', 'D1', 'DJ', 'PC', 'VIDEO' ou 'SUPPORT'
+    const { type } = body // 'D2', 'D1', 'DJ', 'PC', 'VIDEO', 'SUPPORT' ou 'V2'
 
-    if (!type || !['D2', 'D1', 'DJ', 'PC', 'VIDEO', 'SUPPORT'].includes(type)) {
-      return NextResponse.json({ error: 'Type invalide. Utilise D2, D1, DJ, PC, VIDEO ou SUPPORT' }, { status: 400 })
+    if (!type || !['D2', 'D1', 'DJ', 'PC', 'VIDEO', 'SUPPORT', 'V2'].includes(type)) {
+      return NextResponse.json({ error: 'Type invalide. Utilise D2, D1, DJ, PC, VIDEO, SUPPORT ou V2' }, { status: 400 })
     }
     
     // Recuperer TOUS les utilisateurs via le client admin (service_role)
@@ -504,7 +609,9 @@ export async function POST(request: NextRequest) {
                 ? getVideoCallEmail(user.name || '')
                 : type === 'SUPPORT'
                   ? getSupportEmail(user.name || '')
-                  : getLaunchReminderEmail(user.name || '', type as 'D2' | 'D1' | 'DJ')
+                  : type === 'V2'
+                    ? getChapCam2Email(user.name || '')
+                    : getLaunchReminderEmail(user.name || '', type as 'D2' | 'D1' | 'DJ')
           return {
             from: 'ChapCam <noreply@chapcam.com>',
             to: user.email,

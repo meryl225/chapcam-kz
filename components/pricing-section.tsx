@@ -2,10 +2,16 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock, CreditCard } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { ChapCamPcPromo } from "@/components/chapcam-pc-promo"
+
+// Statut du logo (watermark) par forfait :
+// - "with"   : rendu AVEC logo ChapCam (Starter, Standard)
+// - "manual" : sans logo, active manuellement sur demande (Premium 50.000 F)
+// - "auto"   : sans logo automatiquement inclus (Ultimate 85.000 F)
+type Watermark = "with" | "manual" | "auto"
 
 const plans = [
   {
@@ -25,27 +31,10 @@ const plans = [
     color: "#00d4ff",
     bgGradient: "from-cyan-500/20 to-blue-600/5",
     popular: false,
+    highlight: false,
+    bestOffer: false,
+    watermark: "with" as Watermark,
     icon: Zap
-  },
-  {
-    id: "standard",
-    name: "Standard",
-    duration: "30 JOURS",
-    price: "25.000",
-    oldPrice: "35.000",
-    discount: 29,
-    currency: "FCFA",
-    features: [
-      "Transformation du visage et corps entier",
-      "1 250 points (10 min 25 sec)",
-      "Qualite HD 1080p",
-      "Support prioritaire"
-    ],
-    validity: "Valable 1 mois",
-    color: "#a855f7",
-    bgGradient: "from-purple-500/20 to-purple-600/5",
-    popular: true,
-    icon: Star
   },
   {
     id: "premium",
@@ -65,11 +54,15 @@ const plans = [
     color: "#22c55e",
     bgGradient: "from-green-500/20 to-green-600/5",
     popular: false,
+    highlight: true,
+    bestOffer: false,
+    // Affichage public : AVEC logo. Retrait possible manuellement par l'admin.
+    watermark: "with" as Watermark,
     icon: Star
   },
   {
     id: "ultimate",
-    name: "Ultimate",
+    name: "VIP PRO",
     duration: "365 JOURS",
     price: "85.000",
     oldPrice: "110.000",
@@ -86,6 +79,33 @@ const plans = [
     color: "#f97316",
     bgGradient: "from-orange-500/20 to-yellow-500/5",
     popular: false,
+    highlight: true,
+    bestOffer: true,
+    watermark: "auto" as Watermark,
+    icon: Crown
+  },
+  {
+    id: "vipdebout",
+    name: "VIP DEBOUT",
+    duration: "365 JOURS",
+    price: "150.000",
+    oldPrice: "180.000",
+    discount: 17,
+    currency: "FCFA",
+    features: [
+      "Transformation du visage et corps entier",
+      "7 200 points (60 min)",
+      "Qualite 4K Ultra HD maximale",
+      "Support VIP prioritaire 24/7",
+      "Acces anticipe a toutes les nouveautes"
+    ],
+    validity: "Valable 1 an",
+    color: "#2563eb",
+    bgGradient: "from-blue-500/20 to-blue-700/5",
+    popular: false,
+    highlight: true,
+    bestOffer: false,
+    watermark: "auto" as Watermark,
     icon: Crown
   }
 ]
@@ -120,22 +140,65 @@ export function PricingSection() {
           <ChapCamPcPromo />
         </motion.div>
 
+        {/* Annonce ChapCam 2.0 : les offres de recharge concernent le nouveau logiciel */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-12 rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 md:p-8"
+        >
+          <div className="flex flex-col items-center gap-4 text-center md:flex-row md:items-center md:gap-6 md:text-left">
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-black">
+              <Sparkles className="h-7 w-7" />
+            </div>
+            <div className="flex-1">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
+                Nouveau · Sorti le 17 juillet
+              </div>
+              <h3 className="text-xl font-bold text-white md:text-2xl">
+                Ces recharges alimentent ChapCam 2.0
+              </h3>
+              <p className="mt-2 text-pretty text-gray-300 leading-relaxed">
+                Toutes les offres ci-dessous sont destinees a notre nouveau logiciel{" "}
+                <span className="font-semibold text-emerald-400">ChapCam 2.0</span>, qui fonctionne
+                desormais avec <span className="font-semibold text-white">tout type de PC</span> et
+                permet meme de <span className="font-semibold text-white">changer la couleur de peau</span>.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 text-sm text-gray-300 md:min-w-[220px]">
+              <span className="inline-flex items-center gap-2">
+                <Monitor className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                Compatible avec tout type de PC
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Palette className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                Changement de la couleur de peau
+              </span>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
           {plans.map((plan, index) => {
             const Icon = plan.icon
             return (
               <motion.div
-                key={plan.duration}
+                key={plan.id}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -8, scale: 1.03 }}
-                className={`relative rounded-3xl border bg-[#111] p-8 transition-all duration-300 ${
-                  plan.popular 
-                    ? "border-[#00ff88] scale-105 shadow-2xl shadow-[#00ff88]/20" 
-                    : "border-white/10 hover:border-white/30"
+                whileHover={{ y: -8, scale: plan.highlight ? 1.08 : 1.03 }}
+                style={
+                  plan.highlight
+                    ? { borderColor: plan.color, boxShadow: `0 0 60px ${plan.color}55` }
+                    : undefined
+                }
+                className={`relative rounded-3xl bg-[#111] p-8 transition-all duration-300 ${
+                  plan.highlight
+                    ? "border-2 lg:scale-105 z-10"
+                    : "border border-white/10 hover:border-white/30"
                 }`}
               >
                 {/* Discount Badge */}
@@ -143,11 +206,24 @@ export function PricingSection() {
                   -{plan.discount}%
                 </div>
 
-                {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#00ff88] text-black text-sm font-bold px-6 py-1 rounded-full">
-                    MEILLEUR CHOIX
+                {/* Badge du haut : "MEILLEURE OFFRE" pour le VIP PRO, sinon "SANS LOGO" pour les forfaits mis en avant */}
+                {plan.bestOffer ? (
+                  <div
+                    className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-black text-sm font-bold px-5 py-1 rounded-full whitespace-nowrap shadow-lg"
+                    style={{ backgroundColor: plan.color }}
+                  >
+                    <Crown className="w-4 h-4" />
+                    MEILLEURE OFFRE
                   </div>
-                )}
+                ) : plan.highlight && plan.watermark !== "with" ? (
+                  <div
+                    className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-black text-sm font-bold px-5 py-1 rounded-full whitespace-nowrap"
+                    style={{ backgroundColor: plan.color }}
+                  >
+                    <DropletOff className="w-4 h-4" />
+                    SANS LOGO
+                  </div>
+                ) : null}
 
                 <div className="flex items-center gap-3 mb-6 mt-4">
                   <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${plan.color}20` }}>
@@ -166,10 +242,43 @@ export function PricingSection() {
                     <span className="text-red-400 text-sm font-semibold">-{plan.discount}%</span>
                   </div>
                   {/* New Price */}
-                  <span className="text-5xl font-black text-[#00ff88]">{plan.price}</span>
+                  <span
+                    className="text-5xl font-black"
+                    style={{ color: plan.id === "vipdebout" ? plan.color : "#00ff88" }}
+                  >
+                    {plan.price}
+                  </span>
                   <span className="text-gray-400 text-xl"> {plan.currency}</span>
                   <p className="text-gray-500 text-sm mt-1">{plan.validity}</p>
                 </div>
+
+                {/* Statut du logo (watermark) mis en avant */}
+                {plan.watermark === "with" ? (
+                  <div className="mb-6 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                    <Droplet className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-bold text-gray-300">Avec logo ChapCam</p>
+                      <p className="text-xs text-gray-500">Filigrane visible sur le rendu</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="mb-6 flex items-center gap-3 rounded-2xl px-4 py-3"
+                    style={{ backgroundColor: `${plan.color}1f`, border: `1px solid ${plan.color}66` }}
+                  >
+                    <DropletOff className="w-5 h-5 flex-shrink-0" style={{ color: plan.color }} />
+                    <div>
+                      <p className="text-sm font-bold" style={{ color: plan.color }}>
+                        {plan.watermark === "auto" ? "Sans logo (automatique)" : "Sans logo (sur demande)"}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {plan.watermark === "auto"
+                          ? "Retrait du logo inclus, active automatiquement"
+                          : "Retrait du logo active par notre equipe"}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 <ul className="space-y-4 mb-10 text-gray-300">
                   {plan.features.map((feature, i) => (
@@ -183,7 +292,7 @@ export function PricingSection() {
                 <Link href={`/dashboard/plans?plan=${plan.id}`}>
                   <Button 
                     className={`w-full py-6 text-base font-bold rounded-2xl transition-all ${
-                      plan.popular 
+                      plan.highlight 
                         ? "bg-[#00ff88] text-black hover:bg-[#00dd77]" 
                         : "bg-white text-black hover:bg-gray-200"
                     }`}
@@ -206,7 +315,7 @@ export function PricingSection() {
           <div className="inline-flex items-center gap-3 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-6 py-3">
             <Clock className="w-5 h-5 text-yellow-400" />
             <p className="text-yellow-400 font-semibold">
-              Offre valable jusqu&apos;au 1er Juin 2026 ou jusqu&apos;a epuisement des places.
+              Offre valable jusqu&apos;au 1er Septembre 2026 ou jusqu&apos;a epuisement des places.
             </p>
           </div>
         </motion.div>
@@ -234,16 +343,16 @@ export function PricingSection() {
           {/* Logos Mobile Money principaux */}
           <div className="mb-8 flex flex-wrap items-center justify-center gap-4">
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
-              <Image src="/images/orange-money-logo.png" alt="Orange Money" width={60} height={40} className="object-contain" />
+              <Image src="/images/orange-money-logo.png" alt="Orange Money" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
-              <Image src="/images/mtn-momo-logo.jpg" alt="MTN Mobile Money" width={60} height={40} className="object-contain" />
+              <Image src="/images/mtn-momo-logo.jpg" alt="MTN Mobile Money" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-[#1DC8FF] p-2">
-              <Image src="/images/wave-logo.png" alt="Wave" width={50} height={40} className="object-contain" />
+              <Image src="/images/wave-logo.png" alt="Wave" width={38} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
-              <Image src="/images/djamo-logo.png" alt="Djamo" width={60} height={40} className="object-contain" />
+              <Image src="/images/djamo-logo.png" alt="Djamo" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
           </div>
 

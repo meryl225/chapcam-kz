@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardSidebar, PlanGuardBanner } from '@/components/dashboard/sidebar'
 import { TelegramSupport } from '@/components/telegram-support'
+import { ChapCam2Announcement } from '@/components/dashboard/chapcam-2-announcement'
 
 /*
 subscriptions table schema:
@@ -101,6 +102,9 @@ export default async function DashboardLayout({
 
       {/* Telegram Support Button */}
       <TelegramSupport />
+
+      {/* Popup d'annonce ChapCam 2.0 (affiche une fois apres connexion) */}
+      <ChapCam2Announcement />
     </div>
   )
 }

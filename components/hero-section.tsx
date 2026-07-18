@@ -196,8 +196,7 @@ export function HeroSection() {
                   alt={`Drapeau ${f.alt}`}
                   width={20}
                   height={14}
-                  style={{ height: "auto" }}
-                  className="w-5 rounded-[3px] object-cover ring-1 ring-white/15 transition-transform duration-300 hover:z-10 hover:scale-125"
+                  className="h-3.5 w-5 rounded-[3px] object-cover ring-1 ring-white/15 transition-transform duration-300 hover:z-10 hover:scale-125"
                 />
               ))}
             </span>
