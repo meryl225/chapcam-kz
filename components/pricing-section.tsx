@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { ChapCamPcPromo } from "@/components/chapcam-pc-promo"
@@ -138,6 +138,44 @@ export function PricingSection() {
           className="mb-12"
         >
           <ChapCamPcPromo />
+        </motion.div>
+
+        {/* Annonce ChapCam 2.0 : les offres de recharge concernent le nouveau logiciel */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-12 rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 md:p-8"
+        >
+          <div className="flex flex-col items-center gap-4 text-center md:flex-row md:items-center md:gap-6 md:text-left">
+            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-black">
+              <Sparkles className="h-7 w-7" />
+            </div>
+            <div className="flex-1">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
+                Nouveau · Sorti le 17 juillet
+              </div>
+              <h3 className="text-xl font-bold text-white md:text-2xl">
+                Ces recharges alimentent ChapCam 2.0
+              </h3>
+              <p className="mt-2 text-pretty text-gray-300 leading-relaxed">
+                Toutes les offres ci-dessous sont destinees a notre nouveau logiciel{" "}
+                <span className="font-semibold text-emerald-400">ChapCam 2.0</span>, qui fonctionne
+                desormais avec <span className="font-semibold text-white">tout type de PC</span> et
+                permet meme de <span className="font-semibold text-white">changer la couleur de peau</span>.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 text-sm text-gray-300 md:min-w-[220px]">
+              <span className="inline-flex items-center gap-2">
+                <Monitor className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                Compatible avec tout type de PC
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Palette className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                Changement de la couleur de peau
+              </span>
+            </div>
+          </div>
         </motion.div>
 
         {/* Pricing Cards */}
