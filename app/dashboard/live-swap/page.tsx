@@ -549,6 +549,7 @@ export default function DashboardPage() {
                   playsInline
                   muted
                   className="h-full w-full object-cover"
+                  style={{ transform: 'scaleX(-1)' }}
                 />
 
                 {/* Spinner de connexion uniquement (transient, sans texte) pour

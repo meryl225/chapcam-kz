@@ -151,7 +151,15 @@ export function useLucy21() {
 
       const realtimeClient = await client.realtime.connect(stream, {
         model: models.realtime('lucy-2.5'),
-        mirror: 'auto',
+        // IMPORTANT : on DESACTIVE le miroir interne du SDK.
+        // Avec `mirror: 'auto'`, le SDK enveloppe la camera dans un pipeline
+        // MediaStreamTrackProcessor dont le dispose n'annule pas le flux de
+        // lecture : la camera reste alors ALLUMEE apres l'arret du swap
+        // (voyant actif) jusqu'au rechargement de la page. En publiant
+        // directement le flux camera brut, `disconnect()` (qui coupe les
+        // tracks) eteint reellement la camera. L'effet miroir "selfie" est
+        // reproduit en pur CSS (scaleX(-1)) sur les deux videos de la page.
+        mirror: false,
         resolution: '720p',
 
         // IMPORTANT : on passe l'avatar (image + prompt) via `initialState`.
