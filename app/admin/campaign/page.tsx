@@ -70,7 +70,8 @@ export default function AdminCampaignPage() {
     }
   }
 
-  const sendCampaign = async (type: "D2" | "D1" | "DJ" | "PC" | "VIDEO" | "SUPPORT") => {
+  const sendCampaign = async (type: "D2" | "D1" | "DJ" | "PC" | "VIDEO" | "SUPPORT" | "V2") => {
+    if (type === "V2" && !confirm("Envoyer la campagne 'ChapCam 2.0 disponible' a TOUS les utilisateurs inscrits ?")) return
     if (type === "PC" && !confirm("Envoyer la campagne 'ChapCam PC a vie - 50 000 FCFA' a TOUS les utilisateurs inscrits ?")) return
     if (type === "VIDEO" && !confirm("Envoyer la campagne 'Appels video' a TOUS les utilisateurs inscrits ?")) return
     if (type === "SUPPORT" && !confirm("Envoyer la campagne 'Assistance / Besoin d'aide ?' a TOUS les utilisateurs inscrits ?")) return
@@ -152,6 +153,60 @@ export default function AdminCampaignPage() {
             Envoie les emails de rappel aux utilisateurs inscrits pour le lancement du <span className="text-[#00ff88] font-bold">Samedi 30 Mai a 19h GMT</span>
           </p>
         </div>
+
+        {/* Campagne ChapCam 2.0 - nouvelle version */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-6xl mx-auto mb-10"
+        >
+          <div className="bg-gradient-to-br from-[#1e1233] to-[#0f1420] border border-[#a855f7]/40 rounded-2xl p-6">
+            <div className="flex items-start gap-4 mb-5">
+              <div className="w-12 h-12 rounded-xl bg-[#a855f7]/15 flex items-center justify-center flex-shrink-0">
+                <Rocket className="w-6 h-6 text-[#a855f7]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-white mb-1">Campagne ChapCam 2.0 - Nouvelle version</h3>
+                <p className="text-gray-400 text-sm">
+                  Annonce a tous les inscrits la sortie de <strong className="text-white">ChapCam 2.0</strong> (17 juillet) :
+                  fonctionne desormais sur <strong className="text-[#00ff88]">tout type de PC</strong> (plus besoin de PC Gamer),
+                  transformation du visage, du corps et de la <strong className="text-white">couleur de peau</strong>.
+                  L&apos;email contient un bouton <strong className="text-white">Tester (recharges)</strong> et un bouton
+                  <strong className="text-[#25D366]"> WhatsApp</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 mb-5 text-sm">
+              <span className="inline-flex items-center gap-1.5 text-gray-300">
+                <Users className="w-4 h-4 text-[#a855f7]" />
+                Tous les utilisateurs inscrits
+              </span>
+              <span className="inline-flex items-center gap-1.5 text-gray-300">
+                <Clock className="w-4 h-4 text-[#a855f7]" />
+                Sujet : &quot;ChapCam 2.0 est disponible&quot;
+              </span>
+            </div>
+
+            <button
+              onClick={() => sendCampaign("V2")}
+              disabled={sending !== null}
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[#a855f7] to-[#00d4ff] text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {sending === "V2" ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Envoi en cours...
+                </>
+              ) : (
+                <>
+                  <Send className="w-5 h-5" />
+                  Envoyer la campagne ChapCam 2.0
+                </>
+              )}
+            </button>
+          </div>
+        </motion.div>
 
         {/* Bonus Live Pro - premiers utilisateurs */}
         <motion.div
