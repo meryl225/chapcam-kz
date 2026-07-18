@@ -1,7 +1,9 @@
 // Source de verite des formules d'abonnement ChapCam.
 // Utilise a la fois par la page /dashboard/plans et les routes API.
 
-export type PlanId = 'starter' | 'standard' | 'premium' | 'ultimate'
+// 'standard' est conserve dans le type pour la compatibilite des anciens
+// abonnes en base, mais n'apparait plus dans la liste des forfaits proposes.
+export type PlanId = 'starter' | 'standard' | 'premium' | 'ultimate' | 'vip_debout'
 
 export interface PlanConfig {
   id: PlanId
@@ -15,6 +17,10 @@ export interface PlanConfig {
   minutes: string
   features: string[]
   popular: boolean
+  /** true = filigrane "logo ChapCam" visible sur le rendu ; false = sans logo (retrait automatique) */
+  watermark: boolean
+  /** Etiquette mise en avant affichee sur la carte (ex: "Meilleure offre", "Sans logo") */
+  highlight?: string
 }
 
 export const PLANS: PlanConfig[] = [
@@ -28,21 +34,9 @@ export const PLANS: PlanConfig[] = [
     discount: 17,
     points: 500,
     minutes: '4 min 10 sec',
-    features: ['Transformation du visage et corps entier', 'Qualite HD'],
+    features: ['Transformation du visage et corps entier', 'Qualite HD 1080p'],
     popular: false,
-  },
-  {
-    id: 'standard',
-    name: 'Standard',
-    duration: '30 Jours',
-    durationDays: 30,
-    price: 25000,
-    oldPrice: 35000,
-    discount: 29,
-    points: 1250,
-    minutes: '10 min 25 sec',
-    features: ['Transformation du visage et corps entier', 'Qualite HD 1080p', 'Support prioritaire'],
-    popular: true,
+    watermark: true,
   },
   {
     id: 'premium',
@@ -56,10 +50,11 @@ export const PLANS: PlanConfig[] = [
     minutes: '20 min 50 sec',
     features: ['Transformation du visage et corps entier', 'Qualite 4K Ultra HD', 'Support prioritaire'],
     popular: false,
+    watermark: true,
   },
   {
     id: 'ultimate',
-    name: 'Ultimate',
+    name: 'VIP PRO',
     duration: '365 Jours',
     durationDays: 365,
     price: 85000,
@@ -71,9 +66,31 @@ export const PLANS: PlanConfig[] = [
       'Transformation du visage et corps entier',
       'Qualite 4K Ultra HD',
       'Support VIP 24/7',
-      'Acces aux nouveautes',
+      'Acces aux nouveautes en avant-premiere',
+    ],
+    popular: true,
+    watermark: false,
+    highlight: 'Meilleure offre',
+  },
+  {
+    id: 'vip_debout',
+    name: 'VIP DEBOUT',
+    duration: '365 Jours',
+    durationDays: 365,
+    price: 150000,
+    oldPrice: 180000,
+    discount: 17,
+    points: 7200,
+    minutes: '60 min',
+    features: [
+      'Transformation du visage et corps entier',
+      'Qualite 4K Ultra HD maximale',
+      'Support VIP prioritaire 24/7',
+      'Acces anticipe a toutes les nouveautes',
     ],
     popular: false,
+    watermark: false,
+    highlight: 'Sans logo',
   },
 ]
 
@@ -90,6 +107,7 @@ export const PROXY_QUOTA_GB: Record<PlanId, number> = {
   standard: 15,
   premium: 50,
   ultimate: 120,
+  vip_debout: 200,
 }
 
 /** Quota proxy (Go) accordé par un forfait. Retourne 0 si forfait inconnu/absent. */
