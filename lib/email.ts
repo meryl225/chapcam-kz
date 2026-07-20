@@ -1,37 +1,38 @@
 // -----------------------------------------------------------------------------
-// Envoi d'emails via SMTP (nodemailer).
+// Envoi d'emails via l'API HTTP transactionnelle de Brevo.
 //
-// ChapCam n'utilise plus l'API Resend (compte suspendu). On passe par un
-// fournisseur SMTP standard (Brevo, SendGrid, Mailgun, Postmark, ...), ce qui
-// rend l'app independante d'un fournisseur unique : il suffit de renseigner les
-// identifiants SMTP dans les variables d'environnement.
+// ChapCam n'utilise plus l'API Resend (compte suspendu). On passe par Brevo via
+// son API HTTP (https://api.brevo.com/v3/smtp/email) plutot que par le SMTP :
+//   - le SMTP (ports 587/465) est souvent bloque ou peu fiable sur les
+//     plateformes serverless comme Vercel ;
+//   - l'API HTTP passe par le port 443, toujours disponible, et est la methode
+//     recommandee par Brevo pour ce type d'hebergement.
 //
-// Variables requises :
-//   SMTP_HOST   ex: smtp-relay.brevo.com
-//   SMTP_PORT   ex: 587 (STARTTLS) ou 465 (SSL)
-//   SMTP_USER   identifiant SMTP fourni par le service
-//   SMTP_PASS   cle / mot de passe SMTP fourni par le service
-//   EMAIL_FROM  (optionnel) ex: "ChapCam <noreply@chapcam.com>"
+// Variable requise :
+//   BREVO_API_KEY   cle API Brevo (format "xkeysib-...")
+//                   -> Brevo > SMTP & API > onglet "API Keys" > "Generate a new API key"
 //
-// IMPORTANT : le domaine de l'adresse EMAIL_FROM (chapcam.com) doit etre
-// verifie (SPF + DKIM) chez le nouveau fournisseur, sinon les emails seront
-// rejetes ou classes en spam.
+// Variable optionnelle :
+//   EMAIL_FROM      ex: "ChapCam <contact@chapcam.com>"
+//
+// IMPORTANT : l'adresse d'envoi doit appartenir a un expediteur / domaine
+// VERIFIE chez Brevo. Ici seul contact@chapcam.com est verifie (DKIM valide) ;
+// l'ancienne adresse noreply@chapcam.com n'est PAS verifiee et serait rejetee,
+// donc on l'ignore et on retombe sur l'adresse verifiee.
 //
 // L'adaptateur ci-dessous expose la MEME interface que le client Resend
 // (`client.emails.send(...)` et `client.batch.send(...)`), afin que toutes les
 // fonctions d'envoi existantes continuent de fonctionner sans modification.
 // -----------------------------------------------------------------------------
-let transporter: any = null
-let smtpClient: any = null
+let brevoClient: any = null
 
-// Adresse d'expediteur. Seule contact@chapcam.com est verifiee chez Brevo
-// (DKIM valide). L'ancienne adresse noreply@chapcam.com n'est PAS verifiee et
-// serait rejetee, donc on l'ignore et on retombe sur l'adresse verifiee.
 const VERIFIED_FROM = 'ChapCam <contact@chapcam.com>'
 const FROM_EMAIL =
   process.env.EMAIL_FROM && !process.env.EMAIL_FROM.includes('noreply@chapcam.com')
     ? process.env.EMAIL_FROM
     : VERIFIED_FROM
+
+const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
 
 type SendPayload = {
   from?: string
@@ -41,51 +42,70 @@ type SendPayload = {
   replyTo?: string
 }
 
-async function getResendClient() {
-  if (smtpClient) return smtpClient
+// Transforme "ChapCam <contact@chapcam.com>" en { name, email }.
+function parseAddress(input: string): { name?: string; email: string } {
+  const match = input.match(/^\s*(.*?)\s*<([^>]+)>\s*$/)
+  if (match) {
+    return { name: match[1] || undefined, email: match[2].trim() }
+  }
+  return { email: input.trim() }
+}
 
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
-    console.warn('[Email] SMTP not configured (SMTP_HOST / SMTP_USER / SMTP_PASS manquants)')
+async function getResendClient() {
+  if (brevoClient) return brevoClient
+
+  const apiKey = process.env.BREVO_API_KEY
+  if (!apiKey) {
+    console.warn('[Email] BREVO_API_KEY manquant - envoi desactive')
     return null
   }
 
-  const nodemailerMod = await import('nodemailer')
-  const nodemailer: any = (nodemailerMod as any).default ?? nodemailerMod
-  const port = Number(SMTP_PORT) || 587
-  transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port,
-    secure: port === 465, // true pour 465 (SSL), false pour 587 (STARTTLS)
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  })
+  const sendOne = async (msg: SendPayload): Promise<string | undefined> => {
+    const sender = parseAddress(msg.from || FROM_EMAIL)
+    const recipients = (Array.isArray(msg.to) ? msg.to : [msg.to]).map((email) => ({ email }))
 
-  const sendOne = async (msg: SendPayload) => {
-    const info = await transporter.sendMail({
-      from: msg.from || FROM_EMAIL,
-      to: msg.to,
+    const body: Record<string, any> = {
+      sender,
+      to: recipients,
       subject: msg.subject,
-      html: msg.html,
-      replyTo: msg.replyTo,
+      htmlContent: msg.html,
+    }
+    if (msg.replyTo) body.replyTo = parseAddress(msg.replyTo)
+
+    const res = await fetch(BREVO_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'api-key': apiKey,
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify(body),
     })
-    return info?.messageId as string | undefined
+
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '')
+      throw new Error(`Brevo API ${res.status}: ${detail.slice(0, 200)}`)
+    }
+    const data = await res.json().catch(() => ({}))
+    return data?.messageId as string | undefined
   }
 
   // Interface compatible Resend
-  smtpClient = {
+  brevoClient = {
     emails: {
       send: async (msg: SendPayload) => {
         try {
           const id = await sendOne(msg)
           return { data: { id }, error: null }
         } catch (error: any) {
+          console.error('[Email] Echec envoi Brevo:', error?.message || error)
           return { data: null, error: error?.message || error }
         }
       },
     },
     batch: {
       // Resend.batch.send accepte un tableau de messages ; on les envoie
-      // sequentiellement via SMTP et on renvoie la liste des ids.
+      // sequentiellement via l'API HTTP et on renvoie la liste des ids.
       send: async (messages: SendPayload[]) => {
         try {
           const data: Array<{ id: string | undefined }> = []
@@ -95,13 +115,14 @@ async function getResendClient() {
           }
           return { data, error: null }
         } catch (error: any) {
+          console.error('[Email] Echec envoi batch Brevo:', error?.message || error)
           return { data: null, error: error?.message || error }
         }
       },
     },
   }
 
-  return smtpClient
+  return brevoClient
 }
 
 // Template email de bienvenue / confirmation d'inscription
