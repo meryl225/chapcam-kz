@@ -1,18 +1,129 @@
-// Dynamic import to avoid build-time errors when API key is not set
-let resend: any = null
+// -----------------------------------------------------------------------------
+// Envoi d'emails via l'API HTTP transactionnelle de Brevo.
+//
+// ChapCam n'utilise plus l'API Resend (compte suspendu). On passe par Brevo via
+// son API HTTP (https://api.brevo.com/v3/smtp/email) plutot que par le SMTP :
+//   - le SMTP (ports 587/465) est souvent bloque ou peu fiable sur les
+//     plateformes serverless comme Vercel ;
+//   - l'API HTTP passe par le port 443, toujours disponible, et est la methode
+//     recommandee par Brevo pour ce type d'hebergement.
+//
+// Variable requise :
+//   BREVO_API_KEY   cle API Brevo (format "xkeysib-...")
+//                   -> Brevo > SMTP & API > onglet "API Keys" > "Generate a new API key"
+//
+// Variable optionnelle :
+//   EMAIL_FROM      ex: "ChapCam <contact@chapcam.com>"
+//
+// IMPORTANT : l'adresse d'envoi doit appartenir a un expediteur / domaine
+// VERIFIE chez Brevo. Ici seul contact@chapcam.com est verifie (DKIM valide) ;
+// l'ancienne adresse noreply@chapcam.com n'est PAS verifiee et serait rejetee,
+// donc on l'ignore et on retombe sur l'adresse verifiee.
+//
+// L'adaptateur ci-dessous expose la MEME interface que le client Resend
+// (`client.emails.send(...)` et `client.batch.send(...)`), afin que toutes les
+// fonctions d'envoi existantes continuent de fonctionner sans modification.
+// -----------------------------------------------------------------------------
+let brevoClient: any = null
 
-async function getResendClient() {
-  if (resend) return resend
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('[Email] RESEND_API_KEY not configured')
-    return null
-  }
-  const { Resend } = await import('resend')
-  resend = new Resend(process.env.RESEND_API_KEY)
-  return resend
+const VERIFIED_FROM = 'ChapCam <contact@chapcam.com>'
+const FROM_EMAIL =
+  process.env.EMAIL_FROM && !process.env.EMAIL_FROM.includes('noreply@chapcam.com')
+    ? process.env.EMAIL_FROM
+    : VERIFIED_FROM
+
+const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
+
+type SendPayload = {
+  from?: string
+  to: string | string[]
+  subject: string
+  html: string
+  replyTo?: string
 }
 
-const FROM_EMAIL = 'ChapCam <noreply@chapcam.com>'
+// Transforme "ChapCam <contact@chapcam.com>" en { name, email }.
+function parseAddress(input: string): { name?: string; email: string } {
+  const match = input.match(/^\s*(.*?)\s*<([^>]+)>\s*$/)
+  if (match) {
+    return { name: match[1] || undefined, email: match[2].trim() }
+  }
+  return { email: input.trim() }
+}
+
+async function getResendClient() {
+  if (brevoClient) return brevoClient
+
+  const apiKey = process.env.BREVO_API_KEY
+  if (!apiKey) {
+    console.warn('[Email] BREVO_API_KEY manquant - envoi desactive')
+    return null
+  }
+
+  const sendOne = async (msg: SendPayload): Promise<string | undefined> => {
+    const sender = parseAddress(msg.from || FROM_EMAIL)
+    const recipients = (Array.isArray(msg.to) ? msg.to : [msg.to]).map((email) => ({ email }))
+
+    const body: Record<string, any> = {
+      sender,
+      to: recipients,
+      subject: msg.subject,
+      htmlContent: msg.html,
+    }
+    if (msg.replyTo) body.replyTo = parseAddress(msg.replyTo)
+
+    const res = await fetch(BREVO_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'api-key': apiKey,
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (!res.ok) {
+      const detail = await res.text().catch(() => '')
+      throw new Error(`Brevo API ${res.status}: ${detail.slice(0, 200)}`)
+    }
+    const data = await res.json().catch(() => ({}))
+    return data?.messageId as string | undefined
+  }
+
+  // Interface compatible Resend
+  brevoClient = {
+    emails: {
+      send: async (msg: SendPayload) => {
+        try {
+          const id = await sendOne(msg)
+          return { data: { id }, error: null }
+        } catch (error: any) {
+          console.error('[Email] Echec envoi Brevo:', error?.message || error)
+          return { data: null, error: error?.message || error }
+        }
+      },
+    },
+    batch: {
+      // Resend.batch.send accepte un tableau de messages ; on les envoie
+      // sequentiellement via l'API HTTP et on renvoie la liste des ids.
+      send: async (messages: SendPayload[]) => {
+        try {
+          const data: Array<{ id: string | undefined }> = []
+          for (const msg of messages) {
+            const id = await sendOne(msg)
+            data.push({ id })
+          }
+          return { data, error: null }
+        } catch (error: any) {
+          console.error('[Email] Echec envoi batch Brevo:', error?.message || error)
+          return { data: null, error: error?.message || error }
+        }
+      },
+    },
+  }
+
+  return brevoClient
+}
 
 // Template email de bienvenue / confirmation d'inscription
 export async function sendWelcomeEmail(to: string, userName: string) {

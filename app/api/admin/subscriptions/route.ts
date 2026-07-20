@@ -21,7 +21,11 @@ async function resolveUserIdByEmail(
 ): Promise<string | null> {
   try {
     const target = email.trim().toLowerCase()
-    for (let page = 1; page <= 10; page++) {
+    // On parcourt TOUTES les pages jusqu'a epuisement. L'ancien plafond de 10
+    // pages (10 000 users) laissait les comptes au-dela introuvables des que la
+    // base a depasse 10 000 utilisateurs. Plafond de securite large (500 pages
+    // = 500 000 users) pour eviter toute boucle infinie.
+    for (let page = 1; page <= 500; page++) {
       const { data } = await admin.auth.admin.listUsers({ page, perPage: 1000 })
       const users = data?.users || []
       const match = users.find((u) => u.email?.toLowerCase() === target)
