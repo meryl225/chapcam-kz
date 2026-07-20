@@ -1,26 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 // 2 points = 1 seconde
 const POINTS_PER_SECOND = 2
 
 export async function POST(request: NextRequest) {
   try {
+    // On authentifie l'utilisateur avec SA session (pour obtenir son user_id)...
     const supabase = await createClient()
-    
+
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       return NextResponse.json({ success: false, error: 'Non authentifie' }, { status: 401 })
     }
 
-    const body = await request.json()
+    // sendBeacon envoie un Blob JSON : on parse defensivement.
+    const body = await request.json().catch(() => ({}))
     const { pointsToDeduct, sessionDuration } = body
 
     // Calculer les points a deduire
-    const points = pointsToDeduct || (sessionDuration * POINTS_PER_SECOND)
+    const points = Math.max(0, Math.floor(pointsToDeduct || (sessionDuration * POINTS_PER_SECOND) || 0))
+    if (points <= 0) {
+      return NextResponse.json({ success: false, error: 'Rien a deduire' }, { status: 400 })
+    }
 
-    // Recuperer les points actuels
-    const { data: subscription, error: fetchError } = await supabase
+    // ...mais on ecrit avec le service_role (RLS verrouille les ecritures via la
+    // cle publique). C'est sur : on reste STRICTEMENT scope au user_id verifie,
+    // donc l'utilisateur ne peut pas manipuler son propre solde depuis le client.
+    const admin = createAdminClient()
+
+    // Recuperer les points actuels (scope au user authentifie)
+    const { data: subscription, error: fetchError } = await admin
       .from('subscriptions')
       .select('id, points, max_points, plan')
       .eq('user_id', user.id)
@@ -53,7 +64,7 @@ export async function POST(request: NextRequest) {
     const newPoints = currentPoints - pointsDeducted
     const depleted = newPoints <= 0
 
-    const { error: updateError } = await supabase
+    const { error: updateError } = await admin
       .from('subscriptions')
       .update({ 
         points: newPoints,
@@ -70,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Enregistrer la session de swap
-    await supabase.from('swap_sessions').insert({
+    await admin.from('swap_sessions').insert({
       user_id: user.id,
       duration_seconds: sessionDuration || Math.floor(pointsDeducted / POINTS_PER_SECOND),
       points_used: pointsDeducted,
