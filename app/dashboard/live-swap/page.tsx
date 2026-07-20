@@ -31,6 +31,12 @@ export default function DashboardPage() {
   const [duration, setDuration] = useState(0)
   const [pointsUsed, setPointsUsed] = useState(0)
   const [isSyncingPoints, setIsSyncingPoints] = useState(false)
+  // Refs miroir : utilisees dans les intervalles / handlers de fermeture pour
+  // eviter les closures perimees (bug qui empechait toute deduction).
+  const durationRef = useRef(0)          // duree totale du swap en cours (s)
+  const pointsUsedRef = useRef(0)        // total points consommes ce swap
+  const pendingSyncRef = useRef(0)       // points consommes NON encore envoyes au serveur
+  const remainingRef = useRef(0)         // solde restant estime (pour couper a 0)
   // Certification d'usage responsable, requise avant chaque demarrage de swap.
   const [swapConsent, setSwapConsent] = useState(false)
 
@@ -157,6 +163,7 @@ export default function DashboardPage() {
         if (pointsData?.success) {
           setUserPoints(pointsData.points ?? 0)
           setMaxPoints(pointsData.maxPoints ?? 0)
+          remainingRef.current = pointsData.points ?? 0
         }
       } catch (err) {
         console.error('Erreur chargement points:', err)
@@ -178,56 +185,111 @@ export default function DashboardPage() {
     loadData()
   }, [])
 
-  // Track points usage en temps reel (localement)
+  // Envoie au serveur les points consommes mais pas encore synchronises.
+  // Utilise des refs -> aucune closure perimee. Rejoue le lot en cas d'echec.
+  const syncPendingPoints = useCallback(async () => {
+    const chunk = pendingSyncRef.current
+    if (chunk <= 0) return
+    pendingSyncRef.current = 0
+    try {
+      const res = await fetch('/api/points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        keepalive: true, // permet a la requete d'aboutir meme si l'onglet se ferme
+        body: JSON.stringify({
+          pointsToDeduct: chunk,
+          sessionDuration: Math.max(1, Math.round(chunk / POINTS_PER_SECOND)),
+        }),
+      })
+      const data = await res.json().catch(() => null)
+      if (data?.success) {
+        setMaxPoints(data.maxPoints ?? 0)
+        if (typeof data.currentPoints === 'number') {
+          remainingRef.current = data.currentPoints
+          setUserPoints(data.currentPoints)
+        }
+        if (data.depleted) handleStopSwapAndSave()
+      } else {
+        // Echec -> on remet le lot en attente pour re-essayer au prochain tick.
+        pendingSyncRef.current += chunk
+      }
+    } catch (err) {
+      console.error('Erreur sync points:', err)
+      pendingSyncRef.current += chunk
+    }
+  }, [])
+
+  // Track points usage en temps reel + synchronisation serveur periodique.
   useEffect(() => {
     if (!isConnected) return
+    const SYNC_EVERY_SECONDS = 10
     const interval = setInterval(() => {
-      setDuration(prev => prev + 1)
-      setPointsUsed(prev => prev + POINTS_PER_SECOND)
-      setUserPoints(prev => {
-        const newPoints = Math.max(0, prev - POINTS_PER_SECOND)
-        if (newPoints === 0) {
-          // Plus de points - arreter le swap et sauvegarder
-          handleStopSwapAndSave()
-        }
-        return newPoints
-      })
+      durationRef.current += 1
+      pointsUsedRef.current += POINTS_PER_SECOND
+      pendingSyncRef.current += POINTS_PER_SECOND
+      remainingRef.current = Math.max(0, remainingRef.current - POINTS_PER_SECOND)
+
+      setDuration(durationRef.current)
+      setPointsUsed(pointsUsedRef.current)
+      setUserPoints(remainingRef.current)
+
+      // Synchronisation reguliere : on ne perd jamais plus de ~10s de conso.
+      if (durationRef.current % SYNC_EVERY_SECONDS === 0) {
+        void syncPendingPoints()
+      }
+
+      // Solde epuise -> couper le swap et sauvegarder le reste.
+      if (remainingRef.current <= 0) {
+        handleStopSwapAndSave()
+      }
     }, 1000)
     return () => clearInterval(interval)
-  }, [isConnected])
+  }, [isConnected, syncPendingPoints])
 
-  // Fonction pour arreter le swap et sauvegarder les points
-  const handleStopSwapAndSave = async () => {
+  // Flush de securite quand l'onglet se ferme / passe en arriere-plan / navigation.
+  // sendBeacon garantit l'envoi meme pendant la fermeture de la page.
+  useEffect(() => {
+    const flushBeacon = () => {
+      const chunk = pendingSyncRef.current
+      if (chunk <= 0) return
+      pendingSyncRef.current = 0
+      try {
+        const blob = new Blob([JSON.stringify({
+          pointsToDeduct: chunk,
+          sessionDuration: Math.max(1, Math.round(chunk / POINTS_PER_SECOND)),
+        })], { type: 'application/json' })
+        navigator.sendBeacon?.('/api/points', blob)
+      } catch {
+        pendingSyncRef.current += chunk
+      }
+    }
+    const onVisibility = () => { if (document.visibilityState === 'hidden') flushBeacon() }
+    window.addEventListener('pagehide', flushBeacon)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('pagehide', flushBeacon)
+      document.removeEventListener('visibilitychange', onVisibility)
+      flushBeacon() // flush au demontage (navigation interne vers une autre page)
+    }
+  }, [])
+
+  // Arrete le swap et sauvegarde le reste des points consommes.
+  const handleStopSwapAndSave = useCallback(async () => {
     disconnect()
-
-    // Sauvegarder les points utilises dans Supabase
-    if (pointsUsed > 0 && !isSyncingPoints) {
+    if (!isSyncingPoints) {
       setIsSyncingPoints(true)
       try {
-        const res = await fetch('/api/points', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pointsToDeduct: pointsUsed,
-            sessionDuration: duration
-          })
-        })
-        const data = await res.json().catch(() => null)
-        if (data?.success) {
-          setUserPoints(data.currentPoints ?? 0)
-          setMaxPoints(data.maxPoints ?? 0)
-        }
-      } catch (err) {
-        console.error('Erreur sauvegarde points:', err)
+        await syncPendingPoints()
       } finally {
         setIsSyncingPoints(false)
       }
     }
-
-    // Reset les compteurs
+    // Reset des compteurs de session
     setPointsUsed(0)
     setDuration(0)
-  }
+    pointsUsedRef.current = 0
+    durationRef.current = 0
+  }, [disconnect, isSyncingPoints, syncPendingPoints])
 
   // === TRACKING UTILISATEURS ACTIFS ===
   useEffect(() => {
@@ -275,6 +337,11 @@ export default function DashboardPage() {
     })
     setDuration(0)
     setPointsUsed(0)
+    // Init des refs de suivi pour cette session (evite toute closure perimee).
+    durationRef.current = 0
+    pointsUsedRef.current = 0
+    pendingSyncRef.current = 0
+    remainingRef.current = userPoints
     await connect(selectedAvatar.url)
   }
 
