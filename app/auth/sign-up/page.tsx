@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { createBrowserClient } from '@supabase/ssr'
+import { TurnstileWidget, isTurnstileEnabled } from '@/components/turnstile-widget'
 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
@@ -17,6 +18,7 @@ export default function SignUpPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [consent, setConsent] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const router = useRouter()
 
   const CGU_VERSION = '2026-06'
@@ -40,6 +42,12 @@ export default function SignUpPage() {
       return
     }
 
+    // Anti-bots : si la protection CAPTCHA est configuree, un jeton valide est obligatoire.
+    if (isTurnstileEnabled && !captchaToken) {
+      setError('Veuillez valider la verification anti-robot')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -49,6 +57,7 @@ export default function SignUpPage() {
         email,
         password,
         options: {
+          captchaToken: captchaToken ?? undefined,
           data: {
             plan: 'free',
             avatar_limit: 1,
@@ -63,6 +72,7 @@ export default function SignUpPage() {
       })
 
       if (signUpError) {
+        setCaptchaToken(null)
         if (signUpError.message.includes('already registered')) {
           setError('Cette adresse email est deja utilisee')
         } else {
@@ -289,9 +299,11 @@ export default function SignUpPage() {
               </span>
             </label>
 
+            <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+
             <button
               type="submit"
-              disabled={loading || !consent}
+              disabled={loading || !consent || (isTurnstileEnabled && !captchaToken)}
               className="w-full py-4 bg-gradient-to-r from-[#e91e8c] to-[#8b5cf6] hover:from-[#d11a7d] hover:to-[#7c3aed] text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-[#e91e8c]/20"
             >
               {loading ? (
