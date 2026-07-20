@@ -24,7 +24,14 @@
 let transporter: any = null
 let smtpClient: any = null
 
-const FROM_EMAIL = process.env.EMAIL_FROM || 'ChapCam <noreply@chapcam.com>'
+// Adresse d'expediteur. Seule contact@chapcam.com est verifiee chez Brevo
+// (DKIM valide). L'ancienne adresse noreply@chapcam.com n'est PAS verifiee et
+// serait rejetee, donc on l'ignore et on retombe sur l'adresse verifiee.
+const VERIFIED_FROM = 'ChapCam <contact@chapcam.com>'
+const FROM_EMAIL =
+  process.env.EMAIL_FROM && !process.env.EMAIL_FROM.includes('noreply@chapcam.com')
+    ? process.env.EMAIL_FROM
+    : VERIFIED_FROM
 
 type SendPayload = {
   from?: string
