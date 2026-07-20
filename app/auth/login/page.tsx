@@ -5,6 +5,7 @@ import Image from 'next/image'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { TurnstileWidget, isTurnstileEnabled } from '@/components/turnstile-widget'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -14,11 +15,19 @@ export default function LoginPage() {
   const [showForgotPassword, setShowForgotPassword] = useState(false)
   const [resetEmailSent, setResetEmailSent] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
+
+    // Anti-bots : jeton CAPTCHA obligatoire si la protection est configuree.
+    if (isTurnstileEnabled && !captchaToken) {
+      setError('Veuillez valider la verification anti-robot')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -27,9 +36,11 @@ export default function LoginPage() {
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: { captchaToken: captchaToken ?? undefined },
       })
 
       if (signInError) {
+        setCaptchaToken(null)
         if (signInError.message.includes('Invalid login credentials')) {
           setError('Email ou mot de passe incorrect')
         } else if (signInError.message.includes('Email not confirmed')) {
@@ -255,9 +266,11 @@ export default function LoginPage() {
                 </button>
               </div>
 
+              <TurnstileWidget onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || (isTurnstileEnabled && !captchaToken)}
                 className="w-full py-4 bg-gradient-to-r from-[#e91e8c] to-[#8b5cf6] hover:from-[#d11a7d] hover:to-[#7c3aed] text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-[#e91e8c]/20"
               >
                 {loading ? (
