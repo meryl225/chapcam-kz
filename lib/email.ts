@@ -259,6 +259,61 @@ export async function sendAbuseReportEmail(report: {
   }
 }
 
+// Alerte admin : une licence ChapCam PC est suspectee d'etre partagee.
+export async function sendLicenseSharingAlertEmail(info: {
+  licenseKey: string
+  email?: string | null
+  distinctMachines: number
+  windowDays: number
+}) {
+  const client = await getResendClient()
+  if (!client) {
+    console.warn('[Email] Email non configure - alerte partage ignoree')
+    return { success: false, error: 'Email service not configured' }
+  }
+
+  const esc = (v: string) =>
+    String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: ['fanny.guck@gmail.com'],
+      subject: `Alerte : licence PC partagee — ${info.licenseKey}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #0a0a0a; color: #ffffff;">
+          <h2 style="color: #ff5555; margin: 0 0 16px;">Licence PC suspectee de partage</h2>
+          <p style="color: #cccccc; font-size: 14px; line-height: 1.6;">
+            La licence ci-dessous a ete utilisee sur <strong>${info.distinctMachines} PC differents</strong>
+            en ${info.windowDays} jours. Elle a ete <strong>automatiquement suspendue</strong>.
+          </p>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr><td style="padding: 8px 0; color: #9aa3b2; width: 160px;">Cle de licence</td><td style="padding: 8px 0;"><code>${esc(info.licenseKey)}</code></td></tr>
+            <tr><td style="padding: 8px 0; color: #9aa3b2;">Client (email)</td><td style="padding: 8px 0;">${info.email ? esc(info.email) : '—'}</td></tr>
+            <tr><td style="padding: 8px 0; color: #9aa3b2;">Machines distinctes</td><td style="padding: 8px 0;">${info.distinctMachines}</td></tr>
+          </table>
+          <div style="margin-top: 16px; padding: 16px; background: #111111; border: 1px solid #242424; border-radius: 12px;">
+            <p style="color: #9aa3b2; margin: 0; font-size: 13px; line-height: 1.6;">
+              Pour reactiver cette licence (si le client est legitime), repassez son statut a
+              <strong>active</strong> dans l'admin des licences PC.
+            </p>
+          </div>
+          <p style="margin-top: 16px; color: #666; font-size: 12px;">Detecte le ${new Date().toLocaleString('fr-FR')}</p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[Email] Erreur envoi alerte partage:', error)
+      return { success: false, error }
+    }
+    return { success: true, id: data?.id }
+  } catch (error) {
+    console.error('[Email] Exception envoi alerte partage:', error)
+    return { success: false, error }
+  }
+}
+
 // Template email de reinitialisation de mot de passe
 export async function sendPasswordResetEmail(to: string, resetLink: string) {
   const client = await getResendClient()

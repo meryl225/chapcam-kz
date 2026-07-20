@@ -16,6 +16,7 @@ import {
   Check,
   Send,
   Mail,
+  AlertTriangle,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -34,6 +35,7 @@ interface Stats {
   active: number
   revoked: number
   activated: number
+  suspectedSharing?: number
 }
 
 export default function AdminLicensesPage() {
@@ -267,10 +269,16 @@ export default function AdminLicensesPage() {
         </div>
 
         {stats && (
-          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <StatCard icon={<KeyRound className="h-5 w-5" />} label="Total" value={stats.total} />
             <StatCard icon={<ShieldCheck className="h-5 w-5" />} label="Actives" value={stats.active} accent />
             <StatCard icon={<CheckCircle2 className="h-5 w-5" />} label="Activees PC" value={stats.activated} />
+            <StatCard
+              icon={<AlertTriangle className="h-5 w-5" />}
+              label="Partage suspecte"
+              value={stats.suspectedSharing ?? 0}
+              danger
+            />
             <StatCard icon={<Ban className="h-5 w-5" />} label="Revoquees" value={stats.revoked} />
           </div>
         )}
@@ -371,15 +379,23 @@ export default function AdminLicensesPage() {
                       className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                         l.status === 'revoked'
                           ? 'bg-red-500/15 text-red-400'
-                          : l.activated
-                            ? 'bg-[#00ff88]/15 text-[#00ff88]'
-                            : 'bg-gray-700/40 text-gray-300'
+                          : l.status === 'suspected_sharing'
+                            ? 'bg-orange-500/15 text-orange-400'
+                            : l.activated
+                              ? 'bg-[#00ff88]/15 text-[#00ff88]'
+                              : 'bg-gray-700/40 text-gray-300'
                       }`}
                     >
-                      {l.status === 'revoked' ? 'Revoquee' : l.activated ? 'Activee' : 'Active'}
+                      {l.status === 'revoked'
+                        ? 'Revoquee'
+                        : l.status === 'suspected_sharing'
+                          ? 'Partage suspecte'
+                          : l.activated
+                            ? 'Activee'
+                            : 'Active'}
                     </span>
 
-                    {l.status === 'revoked' ? (
+                    {l.status === 'revoked' || l.status === 'suspected_sharing' ? (
                       <ActionBtn
                         onClick={() => act(l.id, 'reactivate')}
                         busy={busyId === l.id}
@@ -433,15 +449,22 @@ function StatCard({
   label,
   value,
   accent,
+  danger,
 }: {
   icon: React.ReactNode
   label: string
   value: number
   accent?: boolean
+  danger?: boolean
 }) {
+  const iconColor = danger ? 'text-orange-400' : accent ? 'text-[#00ff88]' : 'text-gray-400'
   return (
-    <div className="rounded-2xl border border-gray-800 bg-[#111] p-4">
-      <div className={`mb-2 ${accent ? 'text-[#00ff88]' : 'text-gray-400'}`}>{icon}</div>
+    <div
+      className={`rounded-2xl border bg-[#111] p-4 ${
+        danger && value > 0 ? 'border-orange-500/40' : 'border-gray-800'
+      }`}
+    >
+      <div className={`mb-2 ${iconColor}`}>{icon}</div>
       <p className="text-2xl font-bold text-white">{value}</p>
       <p className="text-xs text-gray-500">{label}</p>
     </div>

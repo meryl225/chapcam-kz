@@ -118,6 +118,87 @@ export async function activatePcLicense(
   }
 }
 
+// -----------------------------------------------------------------------------
+// Anti-partage : 2 machines distinctes max par fenetre glissante de 90 jours.
+// -----------------------------------------------------------------------------
+export const MAX_MACHINES = 2
+export const SHARING_WINDOW_DAYS = 90
+
+export interface SharingCheckResult {
+  allowed: boolean          // false = 3e machine detectee -> a bloquer
+  flaggedNow: boolean       // true = la licence vient d'etre suspendue par cet appel
+  distinctMachines: number  // nb de machines distinctes sur la fenetre (apres decision)
+  isNewMachine: boolean
+}
+
+// Enregistre la machine courante pour la licence et applique la regle
+// anti-partage. Doit etre appelee APRES avoir verifie que la licence est active.
+//
+//  - Si l'empreinte est deja connue (dans la fenetre) -> on met a jour last_seen.
+//  - Si c'est une nouvelle empreinte ET qu'il y a deja MAX_MACHINES machines
+//    actives sur la fenetre -> partage suspecte : on NE lie PAS cette machine,
+//    on suspend la licence (status = 'suspected_sharing') et on renvoie
+//    allowed:false + flaggedNow:true (pour notifier l'admin une seule fois).
+export async function recordMachineAndCheckSharing(
+  admin: Admin,
+  licenseKey: string,
+  hardwareId: string,
+): Promise<SharingCheckResult> {
+  const key = normalizeLicenseKey(licenseKey)
+  const hw = String(hardwareId || '').trim()
+  const since = new Date(Date.now() - SHARING_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString()
+
+  // Filet de securite : si la table n'existe pas encore (migration non jouee),
+  // on n'empeche jamais un client legitime d'utiliser son logiciel.
+  try {
+    // Machines distinctes actives sur la fenetre.
+    const { data: machines, error } = await admin
+      .from('pc_license_machines')
+      .select('hardware_id, last_seen')
+      .eq('license_key', key)
+      .gte('last_seen', since)
+
+    if (error) {
+      console.warn('[pc-license] Anti-partage indisponible (lecture):', error.message)
+      return { allowed: true, flaggedNow: false, distinctMachines: 1, isNewMachine: false }
+    }
+
+    const known = new Set((machines || []).map((m) => String(m.hardware_id).trim()))
+    const isNewMachine = !known.has(hw)
+
+    // Nouvelle machine alors que le quota est deja atteint -> partage suspecte.
+    if (isNewMachine && known.size >= MAX_MACHINES) {
+      // Suspend la licence une seule fois (flaggedNow true uniquement a la bascule).
+      const { data: updated } = await admin
+        .from('pc_licenses')
+        .update({
+          status: 'suspected_sharing',
+          flagged_at: new Date().toISOString(),
+          flag_reason: `Plus de ${MAX_MACHINES} PC differents en ${SHARING_WINDOW_DAYS} jours`,
+        })
+        .eq('license_key', key)
+        .eq('status', 'active') // ne bascule que depuis 'active'
+        .select('id')
+      const flaggedNow = !!(updated && updated.length > 0)
+      return { allowed: false, flaggedNow, distinctMachines: known.size + 1, isNewMachine: true }
+    }
+
+    // Machine autorisee : on enregistre / rafraichit sa derniere utilisation.
+    await admin
+      .from('pc_license_machines')
+      .upsert(
+        { license_key: key, hardware_id: hw, last_seen: new Date().toISOString() },
+        { onConflict: 'license_key,hardware_id' },
+      )
+
+    const distinct = isNewMachine ? known.size + 1 : known.size
+    return { allowed: true, flaggedNow: false, distinctMachines: distinct, isNewMachine }
+  } catch (e) {
+    console.warn('[pc-license] Anti-partage ignore (exception):', (e as Error).message)
+    return { allowed: true, flaggedNow: false, distinctMachines: 1, isNewMachine: false }
+  }
+}
+
 // Verifie a chaque lancement que la licence est toujours valide pour ce PC.
 export async function verifyPcLicense(
   admin: Admin,
