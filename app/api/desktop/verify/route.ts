@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { normalizeLicenseKey } from '@/lib/pc-license'
+import {
+  normalizeLicenseKey,
+  recordMachineAndCheckSharing,
+  SHARING_WINDOW_DAYS,
+} from '@/lib/pc-license'
+import { sendLicenseSharingAlertEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -47,7 +52,35 @@ export async function POST(request: Request) {
 
     // 5. Licence non active.
     if (data.status !== 'active') {
-      return NextResponse.json({ valid: false, message: 'Licence désactivée ou expirée.' })
+      const msg =
+        data.status === 'suspected_sharing'
+          ? 'Licence bloquée : utilisation sur trop de PC différents. Contactez le support.'
+          : 'Licence désactivée ou expirée.'
+      return NextResponse.json({ valid: false, message: msg })
+    }
+
+    // 5bis. Anti-partage : enregistre ce PC et applique la regle 2 PC / 90 jours.
+    //       Si une 3e machine differente est detectee, la licence est suspendue
+    //       et l'admin notifie. On fait ce controle AVANT toute (re)liaison.
+    const sharing = await recordMachineAndCheckSharing(supabase, license_key, hardware_id)
+    if (!sharing.allowed) {
+      if (sharing.flaggedNow) {
+        // Notification admin best-effort (n'empeche pas la reponse).
+        try {
+          await sendLicenseSharingAlertEmail({
+            licenseKey: license_key,
+            email: data.email,
+            distinctMachines: sharing.distinctMachines,
+            windowDays: SHARING_WINDOW_DAYS,
+          })
+        } catch (e) {
+          console.error('[desktop/verify] Alerte partage non envoyee:', (e as Error).message)
+        }
+      }
+      return NextResponse.json({
+        valid: false,
+        message: 'Licence bloquée : utilisation sur trop de PC différents. Contactez le support.',
+      })
     }
 
     // 6. Premiere activation : aucun hardware_id encore lie.

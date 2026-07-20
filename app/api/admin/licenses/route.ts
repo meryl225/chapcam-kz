@@ -40,6 +40,7 @@ export async function GET() {
         active: licenses.filter((l) => l.status === 'active').length,
         revoked: licenses.filter((l) => l.status === 'revoked').length,
         activated: licenses.filter((l) => l.activated).length,
+        suspectedSharing: licenses.filter((l) => l.status === 'suspected_sharing').length,
       },
     })
   } catch (err: any) {
@@ -86,17 +87,36 @@ export async function POST(request: NextRequest) {
     }
 
     // 'reset' : detache le PC actuel pour permettre une reactivation ailleurs.
+    // 'reactivate' : repasse en 'active' et efface les drapeaux de partage.
     const patch =
       action === 'revoke'
         ? { status: 'revoked' }
         : action === 'reactivate'
-          ? { status: 'active' }
+          ? { status: 'active', flagged_at: null, flag_reason: null }
           : { hardware_id: null, activated_at: null, status: 'active' }
 
     const { error } = await admin.from('pc_licenses').update(patch).eq('id', id)
     if (error) {
       console.error('[admin/licenses] Maj echouee:', error.message)
       return NextResponse.json({ error: 'Mise a jour impossible.' }, { status: 500 })
+    }
+
+    // Reactivation : on remet a zero la fenetre anti-partage (on efface les
+    // machines connues) pour que le client legitime reparte proprement et ne
+    // soit pas immediatement rebloque. Best-effort.
+    if (action === 'reactivate') {
+      try {
+        const { data: lic } = await admin
+          .from('pc_licenses')
+          .select('license_key')
+          .eq('id', id)
+          .maybeSingle()
+        if (lic?.license_key) {
+          await admin.from('pc_license_machines').delete().eq('license_key', lic.license_key)
+        }
+      } catch (e) {
+        console.warn('[admin/licenses] Reset machines ignore:', (e as Error).message)
+      }
     }
 
     return NextResponse.json({ success: true })
