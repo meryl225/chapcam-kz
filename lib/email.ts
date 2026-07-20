@@ -1,18 +1,101 @@
-// Dynamic import to avoid build-time errors when API key is not set
-let resend: any = null
+// -----------------------------------------------------------------------------
+// Envoi d'emails via SMTP (nodemailer).
+//
+// ChapCam n'utilise plus l'API Resend (compte suspendu). On passe par un
+// fournisseur SMTP standard (Brevo, SendGrid, Mailgun, Postmark, ...), ce qui
+// rend l'app independante d'un fournisseur unique : il suffit de renseigner les
+// identifiants SMTP dans les variables d'environnement.
+//
+// Variables requises :
+//   SMTP_HOST   ex: smtp-relay.brevo.com
+//   SMTP_PORT   ex: 587 (STARTTLS) ou 465 (SSL)
+//   SMTP_USER   identifiant SMTP fourni par le service
+//   SMTP_PASS   cle / mot de passe SMTP fourni par le service
+//   EMAIL_FROM  (optionnel) ex: "ChapCam <noreply@chapcam.com>"
+//
+// IMPORTANT : le domaine de l'adresse EMAIL_FROM (chapcam.com) doit etre
+// verifie (SPF + DKIM) chez le nouveau fournisseur, sinon les emails seront
+// rejetes ou classes en spam.
+//
+// L'adaptateur ci-dessous expose la MEME interface que le client Resend
+// (`client.emails.send(...)` et `client.batch.send(...)`), afin que toutes les
+// fonctions d'envoi existantes continuent de fonctionner sans modification.
+// -----------------------------------------------------------------------------
+let transporter: any = null
+let smtpClient: any = null
 
-async function getResendClient() {
-  if (resend) return resend
-  if (!process.env.RESEND_API_KEY) {
-    console.warn('[Email] RESEND_API_KEY not configured')
-    return null
-  }
-  const { Resend } = await import('resend')
-  resend = new Resend(process.env.RESEND_API_KEY)
-  return resend
+const FROM_EMAIL = process.env.EMAIL_FROM || 'ChapCam <noreply@chapcam.com>'
+
+type SendPayload = {
+  from?: string
+  to: string | string[]
+  subject: string
+  html: string
+  replyTo?: string
 }
 
-const FROM_EMAIL = 'ChapCam <noreply@chapcam.com>'
+async function getResendClient() {
+  if (smtpClient) return smtpClient
+
+  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS } = process.env
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
+    console.warn('[Email] SMTP not configured (SMTP_HOST / SMTP_USER / SMTP_PASS manquants)')
+    return null
+  }
+
+  const nodemailerMod = await import('nodemailer')
+  const nodemailer: any = (nodemailerMod as any).default ?? nodemailerMod
+  const port = Number(SMTP_PORT) || 587
+  transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port,
+    secure: port === 465, // true pour 465 (SSL), false pour 587 (STARTTLS)
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  })
+
+  const sendOne = async (msg: SendPayload) => {
+    const info = await transporter.sendMail({
+      from: msg.from || FROM_EMAIL,
+      to: msg.to,
+      subject: msg.subject,
+      html: msg.html,
+      replyTo: msg.replyTo,
+    })
+    return info?.messageId as string | undefined
+  }
+
+  // Interface compatible Resend
+  smtpClient = {
+    emails: {
+      send: async (msg: SendPayload) => {
+        try {
+          const id = await sendOne(msg)
+          return { data: { id }, error: null }
+        } catch (error: any) {
+          return { data: null, error: error?.message || error }
+        }
+      },
+    },
+    batch: {
+      // Resend.batch.send accepte un tableau de messages ; on les envoie
+      // sequentiellement via SMTP et on renvoie la liste des ids.
+      send: async (messages: SendPayload[]) => {
+        try {
+          const data: Array<{ id: string | undefined }> = []
+          for (const msg of messages) {
+            const id = await sendOne(msg)
+            data.push({ id })
+          }
+          return { data, error: null }
+        } catch (error: any) {
+          return { data: null, error: error?.message || error }
+        }
+      },
+    },
+  }
+
+  return smtpClient
+}
 
 // Template email de bienvenue / confirmation d'inscription
 export async function sendWelcomeEmail(to: string, userName: string) {
