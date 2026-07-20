@@ -673,8 +673,19 @@ async function fulfillConfirmedInvoice(params: {
   return { status: 'completed', alreadyDone: false, result }
 }
 
-// Credite directement a partir d'un IPN PayDunya deja verifie par hash.
-// N'appelle PAS l'API de confirmation (donc independant de Private Key/Token).
+// Credite a partir d'un IPN PayDunya dont le hash a ete verifie.
+//
+// SECURITE (anti-fraude) : le hash SHA-512(Master Key) prouve seulement que
+// l'expediteur connait la Master Key. Or cette cle a fuite (elle etait embarquee
+// dans le code source du logiciel PC pirate). Un attaquant peut donc forger un
+// IPN "completed" avec un faux token et un custom_data arbitraire pour s'offrir
+// un abonnement gratuit. On NE fait donc PLUS confiance au corps de l'IPN :
+// on RECONFIRME systematiquement la facture aupres de l'API PayDunya
+// (server-to-server), qui est la seule source de verite. Un token forge (qui ne
+// correspond a aucune vraie facture payee) ne sera jamais confirme "completed".
+//
+// Le parametre `status`/`customData`/`totalAmount` du corps n'est plus utilise
+// pour crediter : il ne sert qu'a court-circuiter proprement les IPN non payes.
 export async function fulfillFromVerifiedIpn(payload: {
   token: string
   status: string
@@ -682,7 +693,22 @@ export async function fulfillFromVerifiedIpn(payload: {
   customData: Record<string, any>
   transactionId?: string | null
 }) {
-  return fulfillConfirmedInvoice({ ...payload, source: 'callback' })
+  // Optimisation : si l'IPN annonce lui-meme un etat non paye, inutile
+  // d'appeler l'API — on trace comme pending/cancelled sans crediter.
+  const declared = String(payload.status || '').toLowerCase()
+  if (declared && declared !== 'completed') {
+    return fulfillConfirmedInvoice({
+      token: payload.token,
+      status: declared,
+      totalAmount: payload.totalAmount,
+      customData: payload.customData,
+      source: 'callback',
+      transactionId: payload.transactionId ?? null,
+    })
+  }
+  // IPN annonce "completed" : on ne le croit PAS sur parole, on reconfirme
+  // aupres de PayDunya avec nos cles serveur avant tout credit.
+  return confirmAndFulfillPaydunya(payload.token, 'callback')
 }
 
 // Confirme + credite une facture PayDunya de maniere idempotente.
