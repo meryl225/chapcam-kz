@@ -18,16 +18,48 @@ export default function UpdatePasswordPage() {
   const router = useRouter()
   const supabase = createClient()
 
+  const [sessionReady, setSessionReady] = useState(false)
+
   useEffect(() => {
-    // Verifier si l'utilisateur a un token de reset valide
-    const checkSession = async () => {
+    // Le lien de reinitialisation ramene ici avec la session soit dans le hash
+    // (#access_token=...&type=recovery), soit via un code (?code=...). Supabase
+    // met un court instant a etablir la session : on ecoute donc les evenements
+    // d'auth plutot que d'appeler getSession() immediatement (ce qui affichait
+    // un faux message "lien invalide").
+    let settled = false
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        settled = true
+        setSessionReady(true)
+        setError("")
+      } else if (event === "SIGNED_OUT") {
+        setSessionReady(false)
+      }
+    })
+
+    // Verification initiale + filet de securite au cas ou l'evenement est deja passe
+    const check = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        // Pas de session, peut-etre que le lien est expire
-        setError("Le lien de reinitialisation est invalide ou a expire.")
+      if (session) {
+        settled = true
+        setSessionReady(true)
+        setError("")
       }
     }
-    checkSession()
+    check()
+
+    // Si rien n'est etabli au bout de 3s, le lien est probablement invalide/expire
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        setError("Le lien de reinitialisation est invalide ou a expire. Veuillez redemander un nouveau lien.")
+      }
+    }, 3000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [supabase.auth])
 
   const handleSubmit = async (e: React.FormEvent) => {
