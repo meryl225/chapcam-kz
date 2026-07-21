@@ -6,6 +6,8 @@ import { motion } from "framer-motion"
 const COUNTRIES = [
   { name: "Cote d'Ivoire", flag: "/images/flag-cote-divoire.png" },
   { name: "Benin", flag: "/images/flag-benin.png" },
+  { name: "Nigeria", flag: "/images/flag-nigeria.png" },
+  { name: "Ghana", flag: "/images/flag-ghana.png" },
   { name: "Togo", flag: "/images/flag-togo.png" },
   { name: "Cameroun", flag: "/images/flag-cameroun.png" },
 ]
@@ -24,11 +26,11 @@ export function AvailableCountriesSection() {
             Disponible des maintenant
           </p>
           <h2 className="text-balance text-3xl font-black text-white md:text-5xl">
-            ChapCam est disponible dans ces 4 pays
+            ChapCam est disponible dans ces 6 pays
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-pretty text-base text-gray-400 md:text-lg">
             Paiement Mobile Money et carte bancaire pris en charge en Cote d&apos;Ivoire, au Benin,
-            au Togo et au Cameroun.
+            au Nigeria, au Ghana, au Togo et au Cameroun.
           </p>
         </motion.div>
 
