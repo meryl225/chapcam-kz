@@ -12,6 +12,7 @@ import { FounderSection } from "@/components/founder-section"
 import { AnimatedBackground } from "@/components/animated-background"
 import { TelegramSupport } from "@/components/telegram-support"
 import { LiveActivity } from "@/components/live-activity"
+import { PaymentBadgePopup } from "@/components/payment-badge-popup"
 import { SiteFooter } from "@/components/site-footer"
 
 export default function Home() {
@@ -45,6 +46,9 @@ export default function Home() {
 
       {/* Notifications d'activite en direct */}
       <LiveActivity />
+
+      {/* Badges paiements & cryptos (popup a gauche, alternance aleatoire) */}
+      <PaymentBadgePopup />
     </main>
   )
 }

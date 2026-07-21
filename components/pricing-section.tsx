@@ -329,14 +329,25 @@ export function PricingSection() {
         >
           <p className="mb-6 text-center text-gray-400">Moyens de paiement acceptes</p>
 
-          {/* Carte bancaire mise en avant */}
-          <div className="mx-auto mb-8 flex max-w-md items-center justify-center gap-3 rounded-2xl border border-white/10 bg-[#111] px-6 py-4">
-            <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#00ff88]/15">
-              <CreditCard className="h-6 w-6 text-[#00ff88]" />
-            </span>
-            <div className="text-left">
-              <p className="font-bold text-white">Carte bancaire</p>
-              <p className="text-sm text-gray-400">Visa &amp; Mastercard acceptees</p>
+          {/* Carte bancaire + Crypto mis en avant */}
+          <div className="mx-auto mb-8 flex max-w-2xl flex-col items-stretch justify-center gap-3 sm:flex-row">
+            <div className="flex flex-1 items-center justify-center gap-3 rounded-2xl border border-white/10 bg-[#111] px-6 py-4">
+              <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#00ff88]/15">
+                <CreditCard className="h-6 w-6 text-[#00ff88]" />
+              </span>
+              <div className="text-left">
+                <p className="font-bold text-white">Carte bancaire</p>
+                <p className="text-sm text-gray-400">Visa &amp; Mastercard acceptees</p>
+              </div>
+            </div>
+            <div className="flex flex-1 items-center justify-center gap-3 rounded-2xl border border-[#f7931a]/40 bg-[#f7931a]/10 px-6 py-4">
+              <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl">
+                <Image src="/images/bitcoin-logo.png" alt="Bitcoin" width={44} height={44} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
+              </span>
+              <div className="text-left">
+                <p className="font-bold text-white">Cryptomonnaie</p>
+                <p className="text-sm text-gray-400">Bitcoin, USDT, ETH &amp; plus</p>
+              </div>
             </div>
           </div>
 
@@ -353,6 +364,10 @@ export function PricingSection() {
             </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
               <Image src="/images/djamo-logo.png" alt="Djamo" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
+            </div>
+            {/* Banniere crypto (Bitcoin, Ethereum, USDT, TON, BNB...) */}
+            <div className="flex h-14 items-center justify-center overflow-hidden rounded-xl">
+              <Image src="/images/crypto-accepted-logos.png" alt="Cryptomonnaies acceptees : Bitcoin, Ethereum, USDT, TON, BNB" width={150} height={56} style={{ width: "auto", height: "auto" }} className="max-h-full object-contain" />
             </div>
           </div>
 
@@ -380,7 +395,9 @@ export function PricingSection() {
             ))}
           </div>
 
-          <p className="mt-8 text-center text-sm text-gray-500">Paiement securise via PayDunya</p>
+          <p className="mt-8 text-center text-sm text-gray-500">
+            Paiement securise via PayDunya (mobile money &amp; carte) ou Trybit (crypto)
+          </p>
         </motion.div>
       </div>
     </section>

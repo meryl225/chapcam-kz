@@ -11,8 +11,7 @@ import {
   MapPin,
   CreditCard,
 } from 'lucide-react'
-import { isInAppBrowser } from '@/lib/in-app-browser'
-import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
+import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 
 interface InstallRequest {
   id: string
@@ -39,8 +38,8 @@ export default function MesDemandesPage() {
   const [requests, setRequests] = useState<InstallRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [paying, setPaying] = useState<string | null>(null)
-  const [inAppUrl, setInAppUrl] = useState<string | null>(null)
+  // Paiement partage : choix PayDunya (mobile money/carte) ou Crypto (Trybit).
+  const { startCheckout, pendingKey, error: payError, modal } = usePaymentCheckout()
 
   const load = useCallback(async () => {
     try {
@@ -62,35 +61,15 @@ export default function MesDemandesPage() {
     load()
   }, [load])
 
-  const handlePay = async (id: string) => {
-    setPaying(id)
+  const handlePay = (id: string) => {
     setError(null)
-    try {
-      const res = await fetch('/api/payment/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: 'install' }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.success || !data.invoice_url) {
-        setError(data.error || 'Erreur lors du lancement du paiement.')
-        return
-      }
-      if (isInAppBrowser()) {
-        setInAppUrl(data.invoice_url)
-        return
-      }
-      window.location.href = data.invoice_url
-    } catch {
-      setError('Erreur reseau. Reessayez.')
-    } finally {
-      setPaying(null)
-    }
+    // La cle de chargement est l'id de la demande pour cibler le bon bouton.
+    startCheckout('install', { loaderKey: id })
   }
 
   return (
     <div className="p-6">
-      {inAppUrl && <InAppBrowserNotice url={inAppUrl} onClose={() => setInAppUrl(null)} />}
+      {modal}
       <div className="mb-6 flex items-center gap-3">
         <Link
           href="/dashboard"
@@ -107,9 +86,9 @@ export default function MesDemandesPage() {
         </div>
       </div>
 
-      {error && (
+      {(error || payError) && (
         <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {error}
+          {error || payError}
         </div>
       )}
 
@@ -165,10 +144,10 @@ export default function MesDemandesPage() {
               {!r.paid && (
                 <button
                   onClick={() => handlePay(r.id)}
-                  disabled={paying === r.id}
+                  disabled={pendingKey === r.id}
                   className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-orange-600 disabled:opacity-60"
                 >
-                  {paying === r.id ? (
+                  {pendingKey === r.id ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <CreditCard className="h-4 w-4" />
