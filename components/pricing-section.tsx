@@ -365,6 +365,14 @@ export function PricingSection() {
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
               <Image src="/images/djamo-logo.png" alt="Djamo" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
+            {/* Logo Bitcoin */}
+            <div className="flex h-14 w-20 items-center justify-center overflow-hidden rounded-xl bg-white p-2">
+              <Image src="/images/bitcoin-logo.png" alt="Bitcoin" width={44} height={44} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
+            </div>
+            {/* Banniere crypto (Bitcoin, Ethereum, USDT, TON, BNB...) */}
+            <div className="flex h-14 items-center justify-center overflow-hidden rounded-xl">
+              <Image src="/images/crypto-accepted-logos.png" alt="Cryptomonnaies acceptees : Bitcoin, Ethereum, USDT, TON, BNB" width={150} height={56} style={{ width: "auto", height: "auto" }} className="max-h-full object-contain" />
+            </div>
           </div>
 
           {/* Methodes par pays */}
