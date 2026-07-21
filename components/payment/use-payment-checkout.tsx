@@ -6,7 +6,7 @@ import { ChevronRight, CreditCard, Loader2, ShieldCheck, X, Zap } from 'lucide-r
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 
-export type PaymentMethod = 'paydunya' | 'trybit'
+export type PaymentMethod = 'paydunya' | 'trybit' | 'nowpayments'
 
 interface StartOptions {
   phoneNumber?: string
@@ -23,6 +23,7 @@ interface Chooser {
 const ENDPOINTS: Record<PaymentMethod, string> = {
   paydunya: '/api/payment/create',
   trybit: '/api/payment/trybit/create',
+  nowpayments: '/api/payment/nowpayments/create',
 }
 
 // Hook partage de paiement ChapCam. Presente un choix de methode
@@ -189,6 +190,33 @@ export function usePaymentCheckout() {
                     </span>
                   </span>
                   <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-amber-500" />
+                </button>
+
+                {/* NOWPayments : crypto (alternative) */}
+                <button
+                  onClick={() => pay('nowpayments')}
+                  disabled={!!pendingKey}
+                  className="group flex items-center gap-4 rounded-xl border border-hairline bg-muted/30 p-4 text-left transition-all hover:border-sky-500 hover:bg-muted hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:opacity-60"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-sky-500/15 text-sky-500">
+                    {pendingMethod === 'nowpayments' ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Image src="/images/bitcoin-logo.png" alt="Crypto" width={28} height={28} className="h-7 w-7 object-contain" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="font-semibold text-foreground">Cryptomonnaie</span>
+                      <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-500">
+                        En EUR
+                      </span>
+                    </span>
+                    <span className="mt-1 block text-sm text-muted-foreground">
+                      BTC, USDT, ETH et 200+ — via NOWPayments
+                    </span>
+                  </span>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-sky-500" />
                 </button>
               </div>
 
