@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useState, type ReactNode } from 'react'
-import { Bitcoin, CreditCard, Loader2, ShieldCheck, X } from 'lucide-react'
+import Image from 'next/image'
+import { CreditCard, Loader2, ShieldCheck, X } from 'lucide-react'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 
@@ -140,11 +141,11 @@ export function usePaymentCheckout() {
                 disabled={!!pendingKey}
                 className="flex items-center gap-4 rounded-xl border border-hairline bg-muted/40 p-4 text-left transition-colors hover:border-amber-500 hover:bg-muted disabled:opacity-60"
               >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-500">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#f7931a]/15 text-[#f7931a]">
                   {pendingMethod === 'trybit' ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
-                    <Bitcoin className="h-5 w-5" />
+                    <Image src="/images/bitcoin-logo.png" alt="Bitcoin" width={28} height={28} className="h-7 w-7 object-contain" />
                   )}
                 </span>
                 <span className="min-w-0">
