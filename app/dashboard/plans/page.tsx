@@ -1,56 +1,23 @@
 'use client'
 
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useEffect, useRef, Suspense } from 'react'
 import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
 import { ChapCamPcPromo } from '@/components/chapcam-pc-promo'
-import { isInAppBrowser } from '@/lib/in-app-browser'
-import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
+import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 
 function PlansContent() {
   const searchParams = useSearchParams()
-  // id du produit en cours de redirection vers PayDunya (pour le loader par bouton)
-  const [pendingId, setPendingId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  // URL PayDunya a ouvrir manuellement quand on est dans un navigateur integre
-  const [inAppUrl, setInAppUrl] = useState<string | null>(null)
+  // Paiement partage : ouvre le choix de methode (PayDunya / Crypto) puis redirige.
+  const { startCheckout, pendingKey, error, modal } = usePaymentCheckout()
   // evite de relancer le checkout auto plusieurs fois (ex: arrivee depuis l'accueil)
   const autoStarted = useRef(false)
 
-  const startCheckout = async (productId: string) => {
-    setError(null)
-    setPendingId(productId)
-    try {
-      const res = await fetch('/api/payment/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId }),
-      })
-      const data = await res.json()
-      if (res.ok && data.success && data.invoice_url) {
-        // Dans un navigateur integre (TikTok, Instagram...), la page PayDunya
-        // ne se charge pas : on invite a ouvrir le lien dans le vrai navigateur.
-        if (isInAppBrowser()) {
-          setInAppUrl(data.invoice_url)
-          return
-        }
-        // Redirection vers la page de paiement securisee PayDunya.
-        window.location.href = data.invoice_url
-        return
-      }
-      setError(data.error || 'Impossible de demarrer le paiement. Reessayez.')
-    } catch {
-      setError('Erreur de connexion. Reessayez.')
-    } finally {
-      setPendingId(null)
-    }
-  }
-
-  // Si l'utilisateur arrive depuis la page d'accueil avec ?plan=ID, on lance
-  // automatiquement le paiement PayDunya pour ce produit (formule ou Live Pro).
+  // Si l'utilisateur arrive depuis la page d'accueil avec ?plan=ID, on ouvre
+  // automatiquement le choix de paiement pour ce produit (formule ou Live Pro).
   useEffect(() => {
     if (autoStarted.current) return
     const requested = searchParams.get('plan')
@@ -64,7 +31,7 @@ function PlansContent() {
 
   return (
     <div className="min-h-screen bg-background px-6 py-12">
-      {inAppUrl && <InAppBrowserNotice url={inAppUrl} onClose={() => setInAppUrl(null)} />}
+      {modal}
       <div className="mx-auto max-w-7xl">
         {/* Banniere offre */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
@@ -157,7 +124,7 @@ function PlansContent() {
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan, index) => {
-            const loading = pendingId === plan.id
+            const loading = pendingKey === plan.id
             // Couleur d'accent des forfaits mis en avant (sans logo)
             const accent =
               plan.id === 'vipdebout' ? '#2563eb' : plan.id === 'ultimate' ? '#f97316' : '#22c55e'
@@ -263,7 +230,7 @@ function PlansContent() {
 
                 <button
                   onClick={() => startCheckout(plan.id)}
-                  disabled={!!pendingId}
+                  disabled={!!pendingKey}
                   className={`mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all disabled:opacity-60 ${
                     plan.highlight
                       ? 'bg-primary text-black hover:bg-primary/90'
