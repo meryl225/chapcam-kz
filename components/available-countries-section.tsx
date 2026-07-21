@@ -57,6 +57,35 @@ export function AvailableCountriesSection() {
             </motion.div>
           ))}
         </div>
+
+        {/* Grace au paiement crypto (Trybit), ChapCam est accessible partout dans le monde */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2 }}
+          className="relative mt-16 overflow-hidden rounded-3xl border border-white/10 bg-[#0a0f0d] px-6 py-12 text-center md:py-16"
+        >
+          <div className="relative mx-auto mb-8 aspect-[16/9] w-full max-w-3xl">
+            <Image
+              src="/images/world-map-dots.png"
+              alt="Carte du monde : ChapCam accessible partout"
+              fill
+              className="object-contain opacity-80"
+              sizes="(max-width: 768px) 100vw, 768px"
+            />
+          </div>
+          <p className="mb-3 text-sm font-bold uppercase tracking-widest text-[#f7931a]">
+            Paiement crypto
+          </p>
+          <h3 className="text-balance text-2xl font-black text-white md:text-4xl">
+            Et partout dans le monde
+          </h3>
+          <p className="mx-auto mt-4 max-w-2xl text-pretty text-base text-gray-400 md:text-lg">
+            Ou que vous soyez, payez en cryptomonnaie (Bitcoin, USDT, ETH et plus) via Trybit
+            et activez votre compte instantanement, sans frontieres.
+          </p>
+        </motion.div>
       </div>
     </section>
   )
