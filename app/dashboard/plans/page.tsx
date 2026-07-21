@@ -4,6 +4,7 @@ import { useEffect, useRef, Suspense } from 'react'
 import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
 import { ChapCamPcPromo } from '@/components/chapcam-pc-promo'
@@ -44,10 +45,20 @@ function PlansContent() {
               </div>
               <h3 className="mb-2 text-xl font-black text-foreground md:text-2xl">
                 Payez par <span className="text-primary">Carte bancaire, Wave, Orange, MTN, Moov ou Djamo</span> via PayDunya
+                {" "}ou en <span className="text-[#f7931a]">Cryptomonnaie</span> via Trybit
               </h3>
               <p className="text-sm text-muted-foreground">
                 Activation automatique de votre compte des que le paiement est confirme.
               </p>
+              {/* Logos crypto acceptes (Bitcoin, Ethereum, USDT, TON, BNB) */}
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg">
+                  <Image src="/images/bitcoin-logo.png" alt="Bitcoin" width={32} height={32} className="max-h-full max-w-full object-contain" />
+                </span>
+                <span className="flex h-8 items-center justify-center overflow-hidden rounded-lg">
+                  <Image src="/images/crypto-accepted-logos.png" alt="Cryptomonnaies acceptees : Bitcoin, Ethereum, USDT, TON, BNB" width={120} height={32} className="max-h-full object-contain" />
+                </span>
+              </div>
             </div>
           </div>
         </motion.div>
