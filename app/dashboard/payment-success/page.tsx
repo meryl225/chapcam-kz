@@ -12,24 +12,34 @@ const MAX_ATTEMPTS = 8 // ~16s de polling pour absorber le delai de l'IPN PayDun
 function PaymentSuccessContent() {
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
+  const provider = searchParams.get('provider')
   // Paiement crypto Trybit : redirection statique sans token, on reconnait le
   // retour via ?provider=trybit et on interroge la route de statut crypto.
-  const isCrypto = searchParams.get('provider') === 'trybit'
+  const isTrybit = provider === 'trybit'
+  // Paiement crypto NOWPayments : le provider ajoute NP_id (payment_id) a l'URL.
+  const isNowPayments = provider === 'nowpayments'
+  const isCrypto = isTrybit || isNowPayments
   const uuid = searchParams.get('uuid')
+  const npId = searchParams.get('NP_id') || searchParams.get('payment_id')
   const [status, setStatus] = useState<Status>('checking')
   const [kind, setKind] = useState<'plan' | 'live' | null>(null)
 
   const check = useCallback(async () => {
     // Le crypto n'a pas de token dans l'URL : la route retrouve la derniere
-    // facture Trybit de l'utilisateur connecte.
+    // facture de l'utilisateur connecte (ou via l'identifiant fourni).
     if (!isCrypto && !token) {
       setStatus('error')
       return true
     }
     try {
-      const url = isCrypto
-        ? `/api/payment/trybit/status${uuid ? `?uuid=${encodeURIComponent(uuid)}` : ''}`
-        : `/api/payment/status?token=${encodeURIComponent(token!)}`
+      let url: string
+      if (isNowPayments) {
+        url = `/api/payment/nowpayments/status${npId ? `?payment_id=${encodeURIComponent(npId)}` : ''}`
+      } else if (isTrybit) {
+        url = `/api/payment/trybit/status${uuid ? `?uuid=${encodeURIComponent(uuid)}` : ''}`
+      } else {
+        url = `/api/payment/status?token=${encodeURIComponent(token!)}`
+      }
       const res = await fetch(url, { cache: 'no-store' })
       const data = await res.json()
       if (data.status === 'completed') {
@@ -45,7 +55,7 @@ function PaymentSuccessContent() {
     } catch {
       return false
     }
-  }, [token, isCrypto, uuid])
+  }, [token, isCrypto, isTrybit, isNowPayments, uuid, npId])
 
   useEffect(() => {
     if (!isCrypto && !token) {
@@ -83,9 +93,11 @@ function PaymentSuccessContent() {
             </div>
             <h1 className="mb-2 text-2xl font-bold text-foreground">Verification du paiement...</h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              {isCrypto
-                ? 'Nous confirmons votre transaction crypto aupres de Trybit. Patientez quelques secondes.'
-                : 'Nous confirmons votre transaction aupres de PayDunya. Patientez quelques secondes.'}
+              {isNowPayments
+                ? 'Nous confirmons votre transaction crypto aupres de NOWPayments. Patientez quelques secondes.'
+                : isTrybit
+                  ? 'Nous confirmons votre transaction crypto aupres de Trybit. Patientez quelques secondes.'
+                  : 'Nous confirmons votre transaction aupres de PayDunya. Patientez quelques secondes.'}
             </p>
           </>
         )}
