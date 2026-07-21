@@ -29,8 +29,9 @@ const XOF_PER_EUR = 655.957
 
 export function xofToEur(amountXof: number): number {
   const eur = amountXof / XOF_PER_EUR
-  // Deux decimales, minimum 0,50 EUR (garde-fou anti montant nul).
-  return Math.max(0.5, Math.round(eur * 100) / 100)
+  // Montant ENTIER en EUR (aucune virgule) pour des tarifs crypto stables.
+  // On arrondit au superieur pour ne jamais sous-facturer, minimum 1 EUR.
+  return Math.max(1, Math.ceil(eur))
 }
 
 export function nowpaymentsConfigured(): boolean {

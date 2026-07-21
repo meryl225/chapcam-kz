@@ -165,17 +165,17 @@ export function usePaymentCheckout() {
                   <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
                 </button>
 
-                {/* Trybit : crypto */}
+                {/* NOWPayments : crypto (seule option crypto active) */}
                 <button
-                  onClick={() => pay('trybit')}
+                  onClick={() => pay('nowpayments')}
                   disabled={!!pendingKey}
-                  className="group flex items-center gap-4 rounded-xl border border-hairline bg-muted/30 p-4 text-left transition-all hover:border-amber-500 hover:bg-muted hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-60"
+                  className="group flex items-center gap-4 rounded-xl border border-hairline bg-muted/30 p-4 text-left transition-all hover:border-[#f7931a] hover:bg-muted hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f7931a] disabled:opacity-60"
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#f7931a]/15 text-[#f7931a]">
-                    {pendingMethod === 'trybit' ? (
+                    {pendingMethod === 'nowpayments' ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
                     ) : (
-                      <Image src="/images/bitcoin-logo.png" alt="Bitcoin" width={28} height={28} className="h-7 w-7 object-contain" />
+                      <Image src="/images/bitcoin-logo.png" alt="Crypto" width={28} height={28} className="h-7 w-7 object-contain" />
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
@@ -186,37 +186,10 @@ export function usePaymentCheckout() {
                       </span>
                     </span>
                     <span className="mt-1 block text-sm text-muted-foreground">
-                      Bitcoin, USDT, ETH et plus — via Trybit
+                      Bitcoin, USDT, ETH et 200+ cryptos acceptees
                     </span>
                   </span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-amber-500" />
-                </button>
-
-                {/* NOWPayments : crypto (alternative) */}
-                <button
-                  onClick={() => pay('nowpayments')}
-                  disabled={!!pendingKey}
-                  className="group flex items-center gap-4 rounded-xl border border-hairline bg-muted/30 p-4 text-left transition-all hover:border-sky-500 hover:bg-muted hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:opacity-60"
-                >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-sky-500/15 text-sky-500">
-                    {pendingMethod === 'nowpayments' ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <Image src="/images/bitcoin-logo.png" alt="Crypto" width={28} height={28} className="h-7 w-7 object-contain" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="font-semibold text-foreground">Cryptomonnaie</span>
-                      <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-500">
-                        En EUR
-                      </span>
-                    </span>
-                    <span className="mt-1 block text-sm text-muted-foreground">
-                      BTC, USDT, ETH et 200+ — via NOWPayments
-                    </span>
-                  </span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-sky-500" />
+                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-[#f7931a]" />
                 </button>
               </div>
 
