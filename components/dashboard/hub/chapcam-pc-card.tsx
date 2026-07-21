@@ -1,48 +1,20 @@
 'use client'
 
-import { useState } from 'react'
 import { Check, Download, Loader2, Lock } from 'lucide-react'
 import { PC_OFFER } from '@/lib/pc-offer'
-import { isInAppBrowser } from '@/lib/in-app-browser'
-import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
+import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 
 export function ChapCamPcCard() {
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [inAppUrl, setInAppUrl] = useState<string | null>(null)
-
-  const buy = async () => {
-    setError(null)
-    setLoading(true)
-    try {
-      const res = await fetch('/api/payment/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: PC_OFFER.id }),
-      })
-      const data = await res.json().catch(() => null)
-      if (res.ok && data?.success && data?.invoice_url) {
-        if (isInAppBrowser()) {
-          setInAppUrl(data.invoice_url)
-          return
-        }
-        window.location.href = data.invoice_url
-        return
-      }
-      setError(data?.error || 'Impossible de demarrer le paiement. Reessaie.')
-    } catch {
-      setError('Erreur de connexion. Reessaie.')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Paiement partage : choix PayDunya (mobile money/carte) ou Crypto (Trybit).
+  const { startCheckout, pendingKey, error, modal } = usePaymentCheckout()
+  const loading = pendingKey === PC_OFFER.id
 
   return (
     <div className="rounded-2xl border border-hairline bg-card p-5">
-      {inAppUrl && <InAppBrowserNotice url={inAppUrl} onClose={() => setInAppUrl(null)} />}
+      {modal}
       {/* Bouton principal : telecharger = lancer le paiement */}
       <button
-        onClick={buy}
+        onClick={() => startCheckout(PC_OFFER.id)}
         disabled={loading}
         className="group inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-primary px-5 py-4 text-base font-extrabold text-black shadow-lg shadow-primary/30 transition-all hover:brightness-110 disabled:opacity-60"
       >

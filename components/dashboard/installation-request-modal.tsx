@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import { X, Download, Loader2, Check, MapPin, Phone } from 'lucide-react'
-import { isInAppBrowser } from '@/lib/in-app-browser'
-import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
+import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 
 const APPS = [
   'WhatsApp',
@@ -29,36 +28,14 @@ export function InstallationRequestModal({ open, onClose }: Props) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
-  const [paying, setPaying] = useState(false)
-  const [inAppUrl, setInAppUrl] = useState<string | null>(null)
+  // Paiement partage : choix PayDunya (mobile money/carte) ou Crypto (Trybit).
+  const { startCheckout, pendingKey, error: payError, modal } = usePaymentCheckout()
+  const paying = pendingKey === 'install'
 
-  const INSTALL_FEE = 8500
-
-  const handlePay = async () => {
+  const handlePay = () => {
     setError(null)
-    setPaying(true)
-    try {
-      const res = await fetch('/api/payment/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: 'install', phoneNumber: phone.trim() }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.success || !data.invoice_url) {
-        setError(data.error || 'Erreur lors du lancement du paiement.')
-        return
-      }
-      // Redirection directe vers PayDunya : credit automatique au retour.
-      if (isInAppBrowser()) {
-        setInAppUrl(data.invoice_url)
-        return
-      }
-      window.location.href = data.invoice_url
-    } catch {
-      setError('Erreur reseau. Reessayez.')
-    } finally {
-      setPaying(false)
-    }
+    // Ouvre le choix de methode en transmettant le numero joignable.
+    startCheckout('install', { phoneNumber: phone.trim(), loaderKey: 'install' })
   }
 
   if (!open) return null
@@ -117,7 +94,7 @@ export function InstallationRequestModal({ open, onClose }: Props) {
 
   return (
     <>
-      {inAppUrl && <InAppBrowserNotice url={inAppUrl} onClose={() => setInAppUrl(null)} />}
+      {modal}
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="relative w-full max-w-lg rounded-2xl border border-[#2563eb]/30 bg-card p-6 shadow-[0_0_40px_rgba(37,99,235,0.25)]">
         <button
@@ -146,13 +123,13 @@ export function InstallationRequestModal({ open, onClose }: Props) {
                 <span className="text-lg font-bold text-foreground">8 500 F</span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Paiement securise via PayDunya. Compte credite automatiquement.
+                Paiement securise par mobile money, carte ou crypto. Compte credite automatiquement.
               </p>
             </div>
 
-            {error && (
+            {(error || payError) && (
               <p className="mt-3 w-full rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-                {error}
+                {error || payError}
               </p>
             )}
 
