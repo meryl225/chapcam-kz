@@ -9,6 +9,7 @@ import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
 import { ChapCamPcPromo } from '@/components/chapcam-pc-promo'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
+import { PaymentBadgePopup } from '@/components/payment-badge-popup'
 
 function PlansContent() {
   const searchParams = useSearchParams()
@@ -33,6 +34,8 @@ function PlansContent() {
   return (
     <div className="min-h-screen bg-background px-6 py-12">
       {modal}
+      {/* Badges paiements & cryptos (popup a gauche, alternance aleatoire) */}
+      <PaymentBadgePopup />
       <div className="mx-auto max-w-7xl">
         {/* Banniere offre */}
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
