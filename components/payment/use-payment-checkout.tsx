@@ -2,7 +2,7 @@
 
 import { useCallback, useState, type ReactNode } from 'react'
 import Image from 'next/image'
-import { CreditCard, Loader2, ShieldCheck, X } from 'lucide-react'
+import { ChevronRight, CreditCard, Loader2, ShieldCheck, X, Zap } from 'lucide-react'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 
@@ -92,75 +92,104 @@ export function usePaymentCheckout() {
       {inAppUrl && <InAppBrowserNotice url={inAppUrl} onClose={() => setInAppUrl(null)} />}
       {chooser && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-md rounded-2xl border border-hairline bg-card p-6 shadow-2xl">
-            <button
-              onClick={close}
-              disabled={!!pendingKey}
-              className="absolute right-4 top-4 text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
-              aria-label="Fermer"
-            >
-              <X className="h-5 w-5" />
-            </button>
+          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-hairline bg-card shadow-2xl">
+            {/* En-tete */}
+            <div className="border-b border-hairline px-6 pb-5 pt-6">
+              <button
+                onClick={close}
+                disabled={!!pendingKey}
+                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+                aria-label="Fermer"
+              >
+                <X className="h-5 w-5" />
+              </button>
 
-            <h3 className="text-lg font-bold text-foreground">Choisissez votre moyen de paiement</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Votre compte est credite automatiquement des la confirmation.
-            </p>
-
-            {error && (
-              <p className="mt-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
+              <h3 className="pr-8 text-lg font-bold text-foreground">Choisissez votre moyen de paiement</h3>
+              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Zap className="h-3.5 w-3.5 shrink-0 text-primary" />
+                Compte credite automatiquement des la confirmation.
               </p>
-            )}
-
-            <div className="mt-5 flex flex-col gap-3">
-              {/* PayDunya : mobile money / carte */}
-              <button
-                onClick={() => pay('paydunya')}
-                disabled={!!pendingKey}
-                className="flex items-center gap-4 rounded-xl border border-hairline bg-muted/40 p-4 text-left transition-colors hover:border-primary hover:bg-muted disabled:opacity-60"
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-                  {pendingMethod === 'paydunya' ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <CreditCard className="h-5 w-5" />
-                  )}
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-semibold text-foreground">Mobile Money ou Carte</span>
-                  <span className="block text-sm text-muted-foreground">
-                    Wave, Orange, MTN, Moov, Djamo, carte bancaire — via PayDunya
-                  </span>
-                </span>
-              </button>
-
-              {/* Trybit : crypto */}
-              <button
-                onClick={() => pay('trybit')}
-                disabled={!!pendingKey}
-                className="flex items-center gap-4 rounded-xl border border-hairline bg-muted/40 p-4 text-left transition-colors hover:border-amber-500 hover:bg-muted disabled:opacity-60"
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#f7931a]/15 text-[#f7931a]">
-                  {pendingMethod === 'trybit' ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Image src="/images/bitcoin-logo.png" alt="Bitcoin" width={28} height={28} className="h-7 w-7 object-contain" />
-                  )}
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-semibold text-foreground">Cryptomonnaie</span>
-                  <span className="block text-sm text-muted-foreground">
-                    Bitcoin, USDT, ETH et plus — via Trybit (montant en EUR)
-                  </span>
-                </span>
-              </button>
             </div>
 
-            <p className="mt-4 flex items-center justify-center gap-1.5 text-center text-xs text-text-faint">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Paiement 100% securise
-            </p>
+            <div className="px-6 pb-6 pt-5">
+              {error && (
+                <p className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+
+              <div className="flex flex-col gap-3">
+                {/* PayDunya : mobile money / carte */}
+                <button
+                  onClick={() => pay('paydunya')}
+                  disabled={!!pendingKey}
+                  className="group relative flex items-center gap-4 rounded-xl border border-hairline bg-muted/40 p-4 text-left transition-all hover:border-primary hover:bg-muted hover:shadow-md disabled:opacity-60"
+                >
+                  <span className="absolute -top-2 left-4 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
+                    Populaire
+                  </span>
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                    {pendingMethod === 'paydunya' ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <CreditCard className="h-5 w-5" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-foreground">Mobile Money ou Carte</span>
+                    <span className="mt-2 flex flex-wrap items-center gap-1.5">
+                      {[
+                        { src: '/images/wave-logo.png', alt: 'Wave' },
+                        { src: '/images/orange-money-logo.png', alt: 'Orange Money' },
+                        { src: '/images/mtn-momo-logo.jpg', alt: 'MTN MoMo' },
+                        { src: '/images/djamo-logo.png', alt: 'Djamo' },
+                      ].map((logo) => (
+                        <span
+                          key={logo.alt}
+                          className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-md bg-white ring-1 ring-hairline"
+                        >
+                          <Image src={logo.src} alt={logo.alt} width={20} height={20} className="h-5 w-5 object-contain" />
+                        </span>
+                      ))}
+                      <span className="text-xs text-muted-foreground">+ carte bancaire</span>
+                    </span>
+                  </span>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                </button>
+
+                {/* Trybit : crypto */}
+                <button
+                  onClick={() => pay('trybit')}
+                  disabled={!!pendingKey}
+                  className="group flex items-center gap-4 rounded-xl border border-hairline bg-muted/40 p-4 text-left transition-all hover:border-amber-500 hover:bg-muted hover:shadow-md disabled:opacity-60"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#f7931a]/15 text-[#f7931a]">
+                    {pendingMethod === 'trybit' ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Image src="/images/bitcoin-logo.png" alt="Bitcoin" width={28} height={28} className="h-7 w-7 object-contain" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="font-semibold text-foreground">Cryptomonnaie</span>
+                      <span className="rounded-full bg-[#f7931a]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#f7931a]">
+                        En EUR
+                      </span>
+                    </span>
+                    <span className="mt-1 block text-sm text-muted-foreground">
+                      Bitcoin, USDT, ETH et plus — via Trybit
+                    </span>
+                  </span>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-amber-500" />
+                </button>
+              </div>
+
+              <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-text-faint">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Paiement 100% securise
+              </p>
+            </div>
           </div>
         </div>
       )}
