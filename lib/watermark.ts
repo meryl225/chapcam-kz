@@ -93,10 +93,21 @@ export function pickDecartApiKey(noWatermark: boolean): { apiKey: string | undef
   const withWm = process.env.DECART_API_KEY
   const withoutWm = process.env.DECART_API_KEY_NO_WATERMARK
 
-  if (noWatermark && withoutWm) {
-    return { apiKey: withoutWm, usedNoWatermark: true }
+  // Cle ideale selon la decision de watermark.
+  if (noWatermark) {
+    if (withoutWm) return { apiKey: withoutWm, usedNoWatermark: true }
+    // Repli : pas de cle sans watermark -> on utilise celle avec watermark
+    // plutot que de casser le swap.
+    if (withWm) return { apiKey: withWm, usedNoWatermark: false }
+  } else {
+    if (withWm) return { apiKey: withWm, usedNoWatermark: false }
+    // Repli symetrique : si la cle AVEC watermark manque (ex: non configuree),
+    // on ne renvoie pas un service casse pour les comptes standard/essai :
+    // on utilise la cle sans watermark disponible. Mieux vaut un rendu sans
+    // watermark qu'un service totalement indisponible.
+    if (withoutWm) return { apiKey: withoutWm, usedNoWatermark: true }
   }
-  // Repli securise : si la cle sans watermark manque, on ne casse pas le swap,
-  // on retombe sur la cle avec watermark.
-  return { apiKey: withWm, usedNoWatermark: false }
+
+  // Aucune cle configuree.
+  return { apiKey: undefined, usedNoWatermark: false }
 }
