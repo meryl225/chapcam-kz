@@ -182,11 +182,11 @@ export function usePaymentCheckout() {
                     <span className="flex items-center gap-2">
                       <span className="font-semibold text-foreground">Cryptomonnaie</span>
                       <span className="rounded-full bg-[#f7931a]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#f7931a]">
-                        USDT
+                        En EUR
                       </span>
                     </span>
                     <span className="mt-1 block text-sm text-muted-foreground">
-                      Paiement en USDT (reseau BSC) — montant fixe, sans frais surprise
+                      Bitcoin, USDT, ETH et 200+ cryptos acceptees
                     </span>
                   </span>
                   <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-[#f7931a]" />
