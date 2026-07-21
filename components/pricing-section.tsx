@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Bitcoin } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { ChapCamPcPromo } from "@/components/chapcam-pc-promo"
@@ -341,8 +341,8 @@ export function PricingSection() {
               </div>
             </div>
             <div className="flex flex-1 items-center justify-center gap-3 rounded-2xl border border-[#f7931a]/40 bg-[#f7931a]/10 px-6 py-4">
-              <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#f7931a]/20">
-                <Bitcoin className="h-6 w-6 text-[#f7931a]" />
+              <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl">
+                <Image src="/images/bitcoin-logo.png" alt="Bitcoin" width={44} height={44} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
               </span>
               <div className="text-left">
                 <p className="font-bold text-white">Cryptomonnaie</p>
@@ -364,10 +364,6 @@ export function PricingSection() {
             </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
               <Image src="/images/djamo-logo.png" alt="Djamo" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
-            </div>
-            {/* Logo Bitcoin */}
-            <div className="flex h-14 w-20 items-center justify-center overflow-hidden rounded-xl bg-white p-2">
-              <Image src="/images/bitcoin-logo.png" alt="Bitcoin" width={44} height={44} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>
             {/* Banniere crypto (Bitcoin, Ethereum, USDT, TON, BNB...) */}
             <div className="flex h-14 items-center justify-center overflow-hidden rounded-xl">
