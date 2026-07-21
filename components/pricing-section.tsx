@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Bitcoin } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { ChapCamPcPromo } from "@/components/chapcam-pc-promo"
@@ -329,14 +329,25 @@ export function PricingSection() {
         >
           <p className="mb-6 text-center text-gray-400">Moyens de paiement acceptes</p>
 
-          {/* Carte bancaire mise en avant */}
-          <div className="mx-auto mb-8 flex max-w-md items-center justify-center gap-3 rounded-2xl border border-white/10 bg-[#111] px-6 py-4">
-            <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#00ff88]/15">
-              <CreditCard className="h-6 w-6 text-[#00ff88]" />
-            </span>
-            <div className="text-left">
-              <p className="font-bold text-white">Carte bancaire</p>
-              <p className="text-sm text-gray-400">Visa &amp; Mastercard acceptees</p>
+          {/* Carte bancaire + Crypto mis en avant */}
+          <div className="mx-auto mb-8 flex max-w-2xl flex-col items-stretch justify-center gap-3 sm:flex-row">
+            <div className="flex flex-1 items-center justify-center gap-3 rounded-2xl border border-white/10 bg-[#111] px-6 py-4">
+              <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#00ff88]/15">
+                <CreditCard className="h-6 w-6 text-[#00ff88]" />
+              </span>
+              <div className="text-left">
+                <p className="font-bold text-white">Carte bancaire</p>
+                <p className="text-sm text-gray-400">Visa &amp; Mastercard acceptees</p>
+              </div>
+            </div>
+            <div className="flex flex-1 items-center justify-center gap-3 rounded-2xl border border-[#f7931a]/40 bg-[#f7931a]/10 px-6 py-4">
+              <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-[#f7931a]/20">
+                <Bitcoin className="h-6 w-6 text-[#f7931a]" />
+              </span>
+              <div className="text-left">
+                <p className="font-bold text-white">Cryptomonnaie</p>
+                <p className="text-sm text-gray-400">Bitcoin, USDT, ETH &amp; plus</p>
+              </div>
             </div>
           </div>
 
@@ -380,7 +391,9 @@ export function PricingSection() {
             ))}
           </div>
 
-          <p className="mt-8 text-center text-sm text-gray-500">Paiement securise via PayDunya</p>
+          <p className="mt-8 text-center text-sm text-gray-500">
+            Paiement securise via PayDunya (mobile money &amp; carte) ou Trybit (crypto)
+          </p>
         </motion.div>
       </div>
     </section>
