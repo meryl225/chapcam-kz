@@ -93,18 +93,21 @@ export function usePaymentCheckout() {
       {chooser && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-hairline bg-card shadow-2xl">
+            <button
+              onClick={close}
+              disabled={!!pendingKey}
+              className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+              aria-label="Fermer"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
             {/* En-tete */}
             <div className="border-b border-hairline px-6 pb-5 pt-6">
-              <button
-                onClick={close}
-                disabled={!!pendingKey}
-                className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-                aria-label="Fermer"
-              >
-                <X className="h-5 w-5" />
-              </button>
-
-              <h3 className="pr-8 text-lg font-bold text-foreground">Choisissez votre moyen de paiement</h3>
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <ShieldCheck className="h-5 w-5" />
+              </span>
+              <h3 className="mt-3 pr-8 text-lg font-bold text-foreground">Finalisez votre paiement</h3>
               <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Zap className="h-3.5 w-3.5 shrink-0 text-primary" />
                 Compte credite automatiquement des la confirmation.
@@ -118,15 +121,19 @@ export function usePaymentCheckout() {
                 </p>
               )}
 
+              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-text-faint">
+                Choisissez une methode
+              </p>
+
               <div className="flex flex-col gap-3">
                 {/* PayDunya : mobile money / carte */}
                 <button
                   onClick={() => pay('paydunya')}
                   disabled={!!pendingKey}
-                  className="group relative flex items-center gap-4 rounded-xl border border-hairline bg-muted/40 p-4 text-left transition-all hover:border-primary hover:bg-muted hover:shadow-md disabled:opacity-60"
+                  className="group relative flex items-center gap-4 rounded-xl border border-hairline bg-muted/30 p-4 text-left transition-all hover:border-primary hover:bg-muted hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60"
                 >
-                  <span className="absolute -top-2 left-4 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
-                    Populaire
+                  <span className="absolute -top-2 left-4 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground shadow-sm">
+                    Recommande
                   </span>
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
                     {pendingMethod === 'paydunya' ? (
@@ -161,7 +168,7 @@ export function usePaymentCheckout() {
                 <button
                   onClick={() => pay('trybit')}
                   disabled={!!pendingKey}
-                  className="group flex items-center gap-4 rounded-xl border border-hairline bg-muted/40 p-4 text-left transition-all hover:border-amber-500 hover:bg-muted hover:shadow-md disabled:opacity-60"
+                  className="group flex items-center gap-4 rounded-xl border border-hairline bg-muted/30 p-4 text-left transition-all hover:border-amber-500 hover:bg-muted hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 disabled:opacity-60"
                 >
                   <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#f7931a]/15 text-[#f7931a]">
                     {pendingMethod === 'trybit' ? (
@@ -185,10 +192,18 @@ export function usePaymentCheckout() {
                 </button>
               </div>
 
-              <p className="mt-5 flex items-center justify-center gap-1.5 text-center text-xs text-text-faint">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Paiement 100% securise
-              </p>
+              {/* Gages de confiance */}
+              <div className="mt-5 flex items-center justify-center gap-4 border-t border-hairline pt-4 text-xs text-text-faint">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                  100% securise
+                </span>
+                <span className="h-3 w-px bg-hairline" />
+                <span className="flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-primary" />
+                  Activation instantanee
+                </span>
+              </div>
             </div>
           </div>
         </div>
