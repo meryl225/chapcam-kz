@@ -34,7 +34,7 @@ export function AvailableCountriesSection() {
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-2 gap-6 md:grid-cols-4 md:gap-8">
+        <div className="mx-auto grid max-w-4xl grid-cols-2 gap-6 sm:grid-cols-3 md:gap-8">
           {COUNTRIES.map((country, index) => (
             <motion.div
               key={country.name}
