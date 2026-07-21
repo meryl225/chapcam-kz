@@ -69,9 +69,14 @@ export async function createNowInvoice(params: {
   origin: string
 }): Promise<NowInvoice | null> {
   const base = (params.origin || 'https://chapcam.com').replace(/\/$/, '')
+  // Montant ENTIER en USDT (aucune virgule). En libellant le prix directement
+  // en USDT-BSC et en forcant la devise de paiement a la meme (USDTBSC),
+  // NOWPayments ne fait aucune conversion de marche : le montant a envoyer est
+  // exactement l'entier facture (ex : 16 USDT), stable et sans decimales.
   const body = {
     price_amount: xofToEur(params.amountXof),
-    price_currency: 'eur',
+    price_currency: 'usdtbsc',
+    pay_currency: 'usdtbsc',
     order_id: params.orderId,
     order_description: 'Recharge ChapCam',
     ipn_callback_url: `${base}/api/payment/nowpayments/callback`,
