@@ -215,7 +215,7 @@ export async function fulfillTrybitInvoice(params: {
       .from('payment_requests')
       .select('*')
       .eq('wave_transaction_reference', info.orderId)
-      .eq('payment_method', 'trybit')
+      .like('paydunya_token', 'INV-%')
       .maybeSingle()
     reqRow = data
   }
@@ -224,7 +224,6 @@ export async function fulfillTrybitInvoice(params: {
       .from('payment_requests')
       .select('*')
       .eq('paydunya_token', prefixedUuid(uuid))
-      .eq('payment_method', 'trybit')
       .maybeSingle()
     reqRow = data
   }

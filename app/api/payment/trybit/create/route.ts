@@ -7,7 +7,7 @@ import { getLiveOffer } from '@/lib/live-offers'
 import { getInstallOffer } from '@/lib/install-offer'
 import { getPcOffer } from '@/lib/pc-offer'
 import { getVoiceOffer } from '@/lib/voice-offers'
-import { createTrybitInvoice, trybitConfigured } from '@/lib/trybit'
+import { createTrybitInvoice, trybitConfigured, prefixedUuid } from '@/lib/trybit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -83,11 +83,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Enregistrer une demande "pending" liee a la facture Trybit.
-    // ANTI-DOUBLON : on reutilise une demande crypto pending existante pour le
-    // meme produit au lieu d'en creer une nouvelle a chaque clic.
+    // Les factures crypto sont identifiees par leur token prefixe "INV-"
+    // (specifique a Trybit), independamment de payment_method : la contrainte
+    // CHECK de la table peut ne pas encore autoriser la valeur 'trybit'.
     try {
       const admin = createAdminClient()
-      const row = {
+      const cryptoToken = prefixedUuid(invoice.uuid) // ex: INV-xxxx
+      const baseRow = {
         full_name: fullName,
         email: user.email,
         phone_number: phoneNumber,
@@ -96,26 +98,37 @@ export async function POST(request: NextRequest) {
         wave_transaction_reference: orderId, // colonne NOT NULL : on y met l'order_id
         status: 'pending',
         user_id: user.id,
-        payment_method: 'trybit',
-        paydunya_token: invoice.uuid, // reutilisee pour stocker l'uuid de la facture crypto
+        paydunya_token: cryptoToken, // reutilisee pour stocker l'uuid de la facture crypto
       }
 
+      // ANTI-DOUBLON : reutilise une demande crypto pending existante pour le
+      // meme produit (identifiee par le token INV-, pas par payment_method).
       const { data: existing } = await admin
         .from('payment_requests')
         .select('id')
         .eq('user_id', user.id)
         .eq('plan', productId)
-        .eq('payment_method', 'trybit')
+        .like('paydunya_token', 'INV-%')
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
 
-      if (existing) {
-        await admin.from('payment_requests').update(row).eq('id', existing.id)
-      } else {
-        await admin.from('payment_requests').insert(row)
+      // Tente d'ecrire payment_method:'trybit' (etiquetage propre). Si la
+      // contrainte CHECK le refuse, on retente sans (valeur par defaut) pour ne
+      // jamais perdre la demande.
+      const write = async (withMethod: boolean) => {
+        const row = withMethod ? { ...baseRow, payment_method: 'trybit' } : baseRow
+        return existing
+          ? admin.from('payment_requests').update(row).eq('id', existing.id)
+          : admin.from('payment_requests').insert(row)
       }
+      let { error } = await write(true)
+      if (error) {
+        const retry = await write(false)
+        error = retry.error
+      }
+      if (error) console.error('[Trybit] Enregistrement payment_requests echoue:', error)
     } catch (dbErr) {
       // On n'echoue pas le paiement : le postback peut retrouver la facture via
       // l'API Trybit. On log seulement.

@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       .from('payment_requests')
       .select('paydunya_token, status')
       .eq('user_id', user.id)
-      .eq('payment_method', 'trybit')
+      .like('paydunya_token', 'INV-%')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
