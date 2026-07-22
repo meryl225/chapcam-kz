@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Shield, RefreshCw } from 'lucide-react'
+import { Shield, RefreshCw, Activity } from 'lucide-react'
 
 export default function AdminStatsPage() {
   const [stats, setStats] = useState({
@@ -118,14 +119,23 @@ export default function AdminStatsPage() {
           </div>
         </div>
 
-        <button
-          onClick={loadStats}
-          disabled={refreshing}
-          className="mt-10 px-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-gray-200 transition flex items-center gap-3 disabled:opacity-50"
-        >
-          <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-          {refreshing ? 'Chargement...' : 'Rafraichir les statistiques'}
-        </button>
+        <div className="mt-10 flex flex-wrap gap-4">
+          <button
+            onClick={loadStats}
+            disabled={refreshing}
+            className="px-8 py-4 bg-white text-black font-bold rounded-2xl hover:bg-gray-200 transition flex items-center gap-3 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Chargement...' : 'Rafraichir les statistiques'}
+          </button>
+          <Link
+            href="/admin/consumption"
+            className="px-8 py-4 bg-[#00ff88] text-black font-bold rounded-2xl hover:bg-[#00dd77] transition flex items-center gap-3"
+          >
+            <Activity className="w-5 h-5" />
+            Suivi de consommation
+          </Link>
+        </div>
       </div>
     </div>
   )
