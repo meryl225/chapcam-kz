@@ -8,6 +8,7 @@ const nextConfig = {
     // applique le lazy-load. C'est le principal levier pour la vitesse cote client
     // (le dossier public pesait ~17 Mo d'images pleine resolution servies brutes).
     formats: ['image/avif', 'image/webp'],
+    qualities: [70, 75],
     minimumCacheTTL: 31536000,
     remotePatterns: [
       { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },

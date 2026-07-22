@@ -132,13 +132,13 @@ export function HeroSection() {
           <div className="flex items-center gap-3 pt-1">
             <div className="flex -space-x-3">
               {["a3", "a2", "a6", "a1", "a5"].map((a) => (
-                <img
+                <Image
                   key={a}
                   src={`/images/hero/avatars/${a}.png`}
                   alt="Créateur inscrit"
                   width={36}
                   height={36}
-                  loading="lazy"
+                  quality={70}
                   className="h-9 w-9 rounded-full border-2 border-[#0a0e1a] object-cover"
                 />
               ))}
@@ -229,10 +229,12 @@ export function HeroSection() {
               <Sparkles className="h-3 w-3 text-[#8b5cf6]" />
               Partenaire
             </span>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/chapsim/banner.png"
               alt="ChapSim - Numéros virtuels, SMS OTP et proxies premium"
+              width={1024}
+              height={500}
+              sizes="(max-width: 640px) 90vw, 320px"
               className="h-auto w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
             />
             <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-[#0b1020]/90 px-4 py-3 backdrop-blur-sm">

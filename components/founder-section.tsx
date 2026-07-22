@@ -65,8 +65,9 @@ export function FounderSection() {
                   src="/images/founder-meryl-kacou.png"
                   alt="Meryl Kacou - CEO & Founder ChapCam"
                   fill
+                  loading="lazy"
+                  sizes="(max-width: 768px) 100vw, 480px"
                   className="object-cover object-top"
-                  priority
                 />
                 
                 {/* Gradient overlay */}
