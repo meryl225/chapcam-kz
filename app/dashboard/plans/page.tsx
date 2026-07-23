@@ -185,7 +185,7 @@ function PlansContent() {
                 )}
 
                 <div className="absolute -right-3 -top-3 z-20 rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
-                  -25%
+                  -{plan.discount}%
                 </div>
 
                 {/* Badge du haut : "MEILLEURE OFFRE" pour les forfaits VIP mis en avant */}
@@ -242,11 +242,11 @@ function PlansContent() {
                     <span className="text-xl text-text-faint line-through">
                       {plan.oldPrice.toLocaleString()}
                     </span>
-                    <span className="text-sm font-semibold text-red-400">-25%</span>
+                    <span className="text-sm font-semibold text-red-400">-{plan.discount}%</span>
                   </div>
                   <span
                     className="text-5xl font-bold text-primary"
-                    style={plan.id === 'vipdebout' ? { color: '#facc15' } : undefined}
+                    style={plan.id === 'vipdebout' ? { color: accent } : undefined}
                   >
                     {plan.price.toLocaleString()}
                   </span>
