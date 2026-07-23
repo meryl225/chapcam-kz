@@ -71,7 +71,10 @@ const plans = [
     features: [
       "Transformation du visage et corps entier",
       "4 250 points (35 min 25 sec)",
-      "Qualite 4K Ultra HD",
+      "Rendu Full HD 1080p sans logo",
+      "Studio CHAPCAM : scènes en direct (décors, styles, effets)",
+      "Prompts personnalisés en direct + Enhance",
+      "Suivi temps réel : chrono précis & qualité réseau",
       "Support VIP 24/7",
       "Acces aux nouveautes en avant-premiere"
     ],
@@ -95,7 +98,10 @@ const plans = [
     features: [
       "Transformation du visage et corps entier",
       "7 200 points (60 min)",
-      "Qualite 4K Ultra HD maximale",
+      "Rendu Full HD 1080p sans logo",
+      "Studio CHAPCAM complet : scènes en direct (décors, styles, effets, arrière-plans)",
+      "Prompts personnalisés illimités en direct + Enhance",
+      "Suivi temps réel : chrono précis & qualité réseau",
       "Support VIP prioritaire 24/7",
       "Acces anticipe a toutes les nouveautes"
     ],
