@@ -16,6 +16,22 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const POINTS_PER_SECOND = 2
 
+// Libelle + couleur par verdict de qualite reseau (Lucy 2.5).
+const QUALITY_UI: Record<string, { label: string; color: string }> = {
+  good: { label: 'Connexion excellente', color: 'text-primary' },
+  fair: { label: 'Connexion correcte', color: 'text-yellow-500' },
+  poor: { label: 'Connexion faible', color: 'text-orange-500' },
+  critical: { label: 'Connexion critique', color: 'text-red-500' },
+}
+
+// Formate des secondes en mm:ss.
+function formatDuration(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}:${sec.toString().padStart(2, '0')}`
+}
+
 interface Avatar {
   id: string
   name: string
@@ -37,6 +53,10 @@ export default function DashboardPage() {
   const [enhancePrompt, setEnhancePrompt] = useState(true)
   const [activePresetId, setActivePresetId] = useState<string | null>(null)
   const [isApplyingPrompt, setIsApplyingPrompt] = useState(false)
+  // Qualite HD 1080p : reservee VIP, activee par defaut pour eux.
+  const [hdEnabled, setHdEnabled] = useState(true)
+  // Codec video prefere (avance) : undefined = negociation par defaut du SDK.
+  const [videoCodec, setVideoCodec] = useState<'h264' | 'vp8' | 'vp9' | ''>('')
   const [duration, setDuration] = useState(0)
   const [pointsUsed, setPointsUsed] = useState(0)
   const [isSyncingPoints, setIsSyncingPoints] = useState(false)
@@ -107,6 +127,11 @@ export default function DashboardPage() {
     disconnect,
     updateAvatar,
     setLivePrompt,
+    elapsedSeconds,
+    connectionQuality,
+    qualityFactor,
+    queuePosition,
+    activeResolution,
   } = useLucy21()
 
   const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -353,7 +378,11 @@ export default function DashboardPage() {
     pointsUsedRef.current = 0
     pendingSyncRef.current = 0
     remainingRef.current = userPoints
-    await connect(selectedAvatar.url)
+    // 1080p uniquement pour les VIP ayant laisse le HD active ; codec avance optionnel.
+    await connect(selectedAvatar.url, {
+      hd: isVip && hdEnabled,
+      codec: videoCodec || undefined,
+    })
   }
 
   const handleStopSwap = () => handleStopSwapAndSave()
@@ -479,9 +508,18 @@ export default function DashboardPage() {
       {/* Status bar */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-hairline bg-muted px-5 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-2">
-          {isConnected ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-text-faint" />}
-          <span className={`text-sm font-medium ${isConnected ? 'text-primary' : 'text-muted-foreground'}`}>
-            {isConnected ? 'Connexion excellente' : 'Connexion prête'}
+          {isConnected ? (
+            <Wifi className={`h-4 w-4 ${QUALITY_UI[connectionQuality ?? 'good'].color}`} />
+          ) : (
+            <WifiOff className="h-4 w-4 text-text-faint" />
+          )}
+          <span
+            className={`text-sm font-medium ${isConnected ? QUALITY_UI[connectionQuality ?? 'good'].color : 'text-muted-foreground'}`}
+            title={isConnected && qualityFactor ? `Facteur limitant : ${qualityFactor}` : undefined}
+          >
+            {isConnected
+              ? QUALITY_UI[connectionQuality ?? 'good'].label
+              : 'Connexion prête'}
           </span>
         </div>
         <div className="hidden h-4 w-px bg-muted sm:block" />
@@ -493,11 +531,13 @@ export default function DashboardPage() {
         <div className="hidden h-4 w-px bg-muted sm:block" />
         <div className="flex items-center gap-2 text-sm">
           <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-            {renderQuality === 'ultra' ? '4K' : renderQuality === 'hd' ? 'HD' : 'SD'}
+            {isConnected ? (activeResolution === '1080p' ? '1080p' : '720p') : renderQuality === 'ultra' ? '4K' : renderQuality === 'hd' ? 'HD' : 'SD'}
           </span>
           <span className="text-muted-foreground">Qualité :</span>
           <span className="font-medium text-foreground">
-            {renderQuality === 'ultra' ? 'Ultra HD' : renderQuality === 'hd' ? 'HD' : 'Standard'}
+            {isConnected
+              ? activeResolution === '1080p' ? 'Full HD 1080p' : 'HD 720p'
+              : renderQuality === 'ultra' ? 'Ultra HD' : renderQuality === 'hd' ? 'HD' : 'Standard'}
           </span>
         </div>
         <div className="hidden h-4 w-px bg-muted sm:block" />
@@ -506,7 +546,34 @@ export default function DashboardPage() {
           <span className="text-muted-foreground">Latence :</span>
           <span className="font-medium text-foreground">{stats.latency || 120} ms</span>
         </div>
+        {isConnected && (
+          <>
+            <div className="hidden h-4 w-px bg-muted sm:block" />
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="h-4 w-4 text-primary" />
+              <span className="text-muted-foreground">Direct :</span>
+              <span className="font-mono font-medium text-foreground tabular-nums">
+                {formatDuration(elapsedSeconds)}
+              </span>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* File d'attente Lucy 2.5 : affichee quand les serveurs sont satures */}
+      {queuePosition && queuePosition.position > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
+          <Loader2 className="h-5 w-5 shrink-0 animate-spin text-yellow-500" />
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              File d&apos;attente : position {queuePosition.position} sur {queuePosition.queueSize}
+            </p>
+            <p className="mt-0.5 text-xs text-foreground/60">
+              Les serveurs sont très demandés. Ta session démarre dès qu&apos;une place se libère.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Rappel : c'est la vraie version premium */}
       <div className="flex items-start gap-3 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent p-4">
@@ -761,6 +828,51 @@ export default function DashboardPage() {
               Transforme ta scène en direct : décors, styles, effets et arrière-plans changent
               instantanément pendant le live, sans couper la caméra.
             </p>
+
+            {/* Qualite HD 1080p (VIP) + codec avance */}
+            <div className="mb-4 space-y-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
+              <button
+                type="button"
+                disabled={!isVip || isConnected}
+                onClick={() => setHdEnabled(v => !v)}
+                className="flex w-full items-center justify-between disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="flex items-center gap-2 text-left">
+                  <Maximize2 className="h-4 w-4 text-yellow-500" />
+                  <span className="flex flex-col">
+                    <span className="text-sm font-semibold text-foreground">Qualité Full HD 1080p</span>
+                    <span className="text-[11px] text-foreground/50">
+                      Image ultra nette. Réservé VIP. Choix à faire avant de démarrer.
+                    </span>
+                  </span>
+                </span>
+                <span
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${hdEnabled && isVip ? 'bg-yellow-500' : 'bg-hairline-strong'}`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${hdEnabled && isVip ? 'translate-x-5' : 'translate-x-0.5'}`}
+                  />
+                </span>
+              </button>
+
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="codec-select" className="text-xs text-foreground/60">
+                  Codec vidéo (avancé)
+                </label>
+                <select
+                  id="codec-select"
+                  value={videoCodec}
+                  disabled={!isVip || isConnected}
+                  onChange={e => setVideoCodec(e.target.value as typeof videoCodec)}
+                  className="rounded-lg border border-hairline bg-black/40 px-2.5 py-1.5 text-xs font-medium text-foreground outline-none focus:border-yellow-500/50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="">Auto</option>
+                  <option value="h264">H.264 (compatible)</option>
+                  <option value="vp9">VP9 (net)</option>
+                  <option value="vp8">VP8</option>
+                </select>
+              </div>
+            </div>
 
             {/* Presets par categorie */}
             <div className="space-y-3">
