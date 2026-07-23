@@ -246,7 +246,7 @@ function PlansContent() {
                   </div>
                   <span
                     className="text-5xl font-bold text-primary"
-                    style={plan.id === 'vipdebout' ? { color: accent } : undefined}
+                    style={plan.id === 'vipdebout' ? { color: '#facc15' } : undefined}
                   >
                     {plan.price.toLocaleString()}
                   </span>
