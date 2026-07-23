@@ -144,6 +144,8 @@ function PlansContent() {
               plan.id === 'vipdebout' ? '#2563eb' : plan.id === 'ultimate' ? '#f97316' : '#22c55e'
             // Forfait le plus haut de gamme : rendu premium ornemente (couronne doree).
             const isVipDebout = plan.id === 'vipdebout'
+            // VIP PRO : petit logo couronne a cote du titre.
+            const isVipPro = plan.id === 'ultimate'
             return (
               <motion.div
                 key={plan.id}
@@ -157,7 +159,7 @@ function PlansContent() {
                     ? { borderColor: accent, boxShadow: `0 0 60px ${accent}55` }
                     : undefined
                 }
-                className={`relative flex flex-col overflow-hidden rounded-3xl p-8 transition-all ${
+                className={`relative flex flex-col rounded-3xl p-8 transition-all ${
                   isVipDebout
                     ? 'border-2 bg-gradient-to-b from-[#161310] via-card to-card lg:scale-105 z-10'
                     : plan.highlight
@@ -165,16 +167,21 @@ function PlansContent() {
                     : 'border border-gray-800 bg-card hover:border-primary'
                 }`}
               >
-                {/* Halo dore ornemente en fond pour le forfait premium */}
+                {/* Halo dore ornemente en fond pour le forfait premium.
+                    rounded-3xl + overflow-hidden ici pour ne pas rogner les badges de la carte. */}
                 {isVipDebout && (
                   <div
                     aria-hidden
-                    className="pointer-events-none absolute inset-0 opacity-60"
-                    style={{
-                      background:
-                        'radial-gradient(120% 80% at 50% -10%, rgba(250,204,21,0.18), transparent 55%)',
-                    }}
-                  />
+                    className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl opacity-60"
+                  >
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        background:
+                          'radial-gradient(120% 80% at 50% -10%, rgba(250,204,21,0.18), transparent 55%)',
+                      }}
+                    />
+                  </div>
                 )}
 
                 <div className="absolute -right-3 -top-3 z-20 rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
@@ -218,7 +225,17 @@ function PlansContent() {
                 )}
 
                 <div className={`text-sm font-medium text-emerald-400 ${isVipDebout ? 'text-center' : ''}`}>{plan.duration}</div>
-                <h3 className={`mt-2 text-3xl font-bold text-foreground ${isVipDebout ? 'text-center' : ''}`}>{plan.name}</h3>
+                <h3 className={`mt-2 flex items-center gap-2 text-3xl font-bold text-foreground ${isVipDebout ? 'justify-center' : ''}`}>
+                  {isVipPro && (
+                    <span
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg shadow-[0_0_16px_rgba(249,115,22,0.5)]"
+                      style={{ backgroundColor: accent }}
+                    >
+                      <Crown className="h-5 w-5 text-black" strokeWidth={2.5} />
+                    </span>
+                  )}
+                  {plan.name}
+                </h3>
 
                 <div className="mb-2 mt-8">
                   <div className="mb-1 flex items-center gap-2">
