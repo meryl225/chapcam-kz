@@ -88,8 +88,17 @@ export async function POST(request: Request) {
     const form = new FormData()
     form.append('audio', new Blob([new Uint8Array(wav)], { type: 'audio/wav' }), 'segment.wav')
     form.append('model_id', 'eleven_multilingual_sts_v2')
-    form.append('remove_background_noise', 'true')
-    form.append('voice_settings', JSON.stringify({ stability: 0.5, similarity_boost: 0.75 }))
+    // Debruitage desactive : le micro applique deja noiseSuppression cote client,
+    // et cette option ajoute une passe de traitement (donc de la latence) chez
+    // ElevenLabs. On l'enleve pour un rendu plus rapide et plus naturel.
+    form.append('remove_background_noise', 'false')
+    // Reglages equilibres : stability plus haute = voix plus reguliere (moins de
+    // "bug"/artefacts entre segments) ; similarity_boost eleve = plus fidele a la
+    // voix cible ; style 0 = pas d'exageration (plus rapide et stable).
+    form.append(
+      'voice_settings',
+      JSON.stringify({ stability: 0.65, similarity_boost: 0.85, style: 0, use_speaker_boost: false }),
+    )
 
     const apiUrl =
       `${ELEVENLABS_BASE}/speech-to-speech/${encodeURIComponent(voiceId)}/stream` +
@@ -101,7 +110,7 @@ export async function POST(request: Request) {
       body: form,
     })
 
-    if (!res.ok) {
+    if (!res.ok || !res.body) {
       const detail = await res.text().catch(() => '')
       return NextResponse.json(
         { ok: false, error: `ElevenLabs HTTP ${res.status} ${detail.slice(0, 120)}` },
@@ -109,10 +118,10 @@ export async function POST(request: Request) {
       )
     }
 
-    const arrayBuf = await res.arrayBuffer()
     const rttMs = Date.now() - t0
 
     // Decremente le solde : duree de l'audio source (en secondes, arrondie au sup).
+    // Calcule AVANT le streaming (la taille du segment source est deja connue).
     const segmentSeconds = Math.max(1, Math.ceil(pcm.length / 2 / TARGET_SAMPLE_RATE))
     const newRemaining = Math.max(0, secondsLeft - segmentSeconds)
     await admin
@@ -120,7 +129,9 @@ export async function POST(request: Request) {
       .update({ seconds_remaining: newRemaining, updated_at: new Date().toISOString() })
       .eq('id', sub.id)
 
-    return new NextResponse(arrayBuf, {
+    // Streaming direct du PCM converti vers le client : la lecture peut demarrer
+    // des les premiers octets recus au lieu d'attendre tout le segment.
+    return new NextResponse(res.body, {
       status: 200,
       headers: {
         'Content-Type': 'application/octet-stream',
