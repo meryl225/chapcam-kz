@@ -776,7 +776,7 @@ export default function DashboardPage() {
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
-                <p className="text-sm font-semibold text-foreground">Studio Lucy 2.5</p>
+                <p className="text-sm font-semibold text-foreground">Studio CHAPCAM</p>
                 <span className="rounded-full bg-gradient-to-r from-primary to-[#8b5cf6] px-2 py-0.5 text-[10px] font-bold text-black">
                   VIP
                 </span>
