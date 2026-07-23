@@ -22,16 +22,19 @@ import {
 } from '@/lib/voice-swap'
 
 const TARGET_SAMPLE_RATE = 16000
-// Duree max d'un segment avant envoi force (ms) meme si la personne parle encore.
-// Reglage equilibre : segments un peu plus courts = plus reactif, tout en gardant
-// assez de contexte pour une voix stable.
-const MAX_SEGMENT_MS = 1000
-// Duree de silence qui cloture un segment (ms). Reduit pour baisser la latence
-// sans couper les fins de mots.
-const SILENCE_HANG_MS = 280
+// COHERENCE DES MOTS : on ne coupe JAMAIS a l'aveugle en plein milieu d'un mot.
+// A partir de cette duree, on veut cloturer le segment MAIS on attend la
+// prochaine petite pause (creux d'energie) pour couper a une frontiere de mot.
+const SOFT_MAX_SEGMENT_MS = 2200
+// Filet de securite : au-dela, on coupe meme sans pause (borne la latence).
+// Rare en parole normale car il y a presque toujours une micro-pause avant.
+const HARD_MAX_SEGMENT_MS = 4500
+// Duree de silence qui cloture un segment (ms). Augmentee : une micro-pause
+// entre deux syllabes ne doit PAS couper un mot ; on attend une vraie fin de mot.
+const SILENCE_HANG_MS = 380
 // Duree minimale d'un segment avant envoi (ms) : evite d'envoyer des bribes trop
 // courtes qui produisent des artefacts / une voix "hachee".
-const MIN_SEGMENT_MS = 220
+const MIN_SEGMENT_MS = 240
 // Seuil d'energie RMS (0..1) au-dessus duquel on considere qu'il y a de la voix.
 const VAD_RMS_THRESHOLD = 0.012
 // Buffer de gigue (jitter) : petite avance audio maintenue en lecture pour
@@ -242,24 +245,37 @@ export class VoiceSwapEngine {
       this.segmentSamples += ds.length
     }
 
+    if (!this.voiceActive) return
+
     const segMs = (this.segmentSamples / TARGET_SAMPLE_RATE) * 1000
     const silenceMs = now - this.lastVoiceTs
+    // Creux d'energie sur la frame courante = petite pause (frontiere de mot).
+    const inDip = rms < VAD_RMS_THRESHOLD
 
-    // Envoi force si le segment est long (la personne parle en continu).
-    if (this.voiceActive && segMs >= MAX_SEGMENT_MS) {
+    // 1) Filet de securite : segment tres long -> on coupe meme sans pause.
+    if (segMs >= HARD_MAX_SEGMENT_MS) {
       this.flushSegment(now)
       return
     }
-    // Fin de phrase detectee (silence) : on envoie si le segment est assez long,
-    // sinon on abandonne la bribe (bruit court) pour eviter les artefacts.
-    if (this.voiceActive && silenceMs >= SILENCE_HANG_MS) {
+
+    // 2) Fin de phrase franche (silence prolonge) : frontiere ideale.
+    if (silenceMs >= SILENCE_HANG_MS) {
       if (segMs >= MIN_SEGMENT_MS) {
         this.flushSegment(now)
       } else {
+        // Bribe trop courte (bruit) : on abandonne pour eviter les artefacts.
         this.segment = []
         this.segmentSamples = 0
         this.voiceActive = false
       }
+      return
+    }
+
+    // 3) Segment deja long : on NE coupe PAS en plein mot. On attend le prochain
+    //    creux d'energie (petite pause entre mots) pour couper proprement -> les
+    //    mots restent entiers et coherents une fois convertis.
+    if (segMs >= SOFT_MAX_SEGMENT_MS && inDip) {
+      this.flushSegment(now)
     }
   }
 
