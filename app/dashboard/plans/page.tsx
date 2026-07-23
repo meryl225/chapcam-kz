@@ -188,7 +188,7 @@ function PlansContent() {
                   -{plan.discount}%
                 </div>
 
-                {/* Badge du haut : "POPULAIRE" pour VIP PRO, "MEILLEURE OFFRE" pour les autres VIP */}
+                {/* Badge du haut : "POPULAIRE" pour VIP PRO, "MEILLEURE OFFRE" pour VIP DEBOUT */}
                 {plan.bestOffer ? (
                   <div
                     className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full px-5 py-1 text-sm font-bold text-black shadow-lg"
@@ -197,7 +197,7 @@ function PlansContent() {
                     <Crown className="h-4 w-4" />
                     POPULAIRE
                   </div>
-                ) : plan.highlight && plan.watermark !== 'with' ? (
+                ) : plan.id === 'vipdebout' ? (
                   <div
                     className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full px-5 py-1 text-sm font-bold text-black shadow-lg"
                     style={{ backgroundColor: accent }}
