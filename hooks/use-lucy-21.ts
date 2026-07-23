@@ -269,6 +269,27 @@ export function useLucy21() {
     }
   }, [])
 
+  // Appliquer un prompt Lucy 2.5 A CHAUD pendant le live (decor, style, effets,
+  // arriere-plans...) sans couper la session ni la camera. C'est la
+  // fonctionnalite phare de Lucy 2.5 : le rendu change en direct.
+  // Reserve aux offres VIP cote UI ; ici on expose juste la capacite technique.
+  const setLivePrompt = useCallback(async (prompt: string, enhance = true) => {
+    const client = realtimeClientRef.current
+    if (!client || !prompt.trim()) return
+    try {
+      // setPrompt(text, { enhance }) est l'API temps reel du SDK Decart.
+      await client.setPrompt(prompt.trim(), { enhance })
+    } catch (err) {
+      console.error('[Lucy 2.5] Erreur application prompt live:', err)
+      // Repli : certaines versions du SDK n'exposent que set().
+      try {
+        await client.set({ prompt: prompt.trim(), enhance })
+      } catch (err2) {
+        console.error('[Lucy 2.5] Repli set() echoue:', err2)
+      }
+    }
+  }, [])
+
   return {
     isConnected,
     isConnecting,
@@ -279,5 +300,6 @@ export function useLucy21() {
     connect,
     disconnect,
     updateAvatar,
+    setLivePrompt,
   }
 }

@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2, AudioLines } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2, AudioLines, Sparkles, Wand2, Lock } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
+import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
 import { SwapConsent, GenerateNotice } from '@/components/dashboard/swap-consent'
@@ -27,7 +28,15 @@ export default function DashboardPage() {
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
   const [userPoints, setUserPoints] = useState(0)
   const [maxPoints, setMaxPoints] = useState(0)
+  const [plan, setPlan] = useState<string>('free')
   const [userId, setUserId] = useState<string | null>(null)
+
+  // --- Studio Lucy 2.5 (prompts en direct, reserve VIP) ---
+  const isVip = isVipPlan(plan)
+  const [livePrompt, setLivePromptText] = useState('')
+  const [enhancePrompt, setEnhancePrompt] = useState(true)
+  const [activePresetId, setActivePresetId] = useState<string | null>(null)
+  const [isApplyingPrompt, setIsApplyingPrompt] = useState(false)
   const [duration, setDuration] = useState(0)
   const [pointsUsed, setPointsUsed] = useState(0)
   const [isSyncingPoints, setIsSyncingPoints] = useState(false)
@@ -97,6 +106,7 @@ export default function DashboardPage() {
     connect,
     disconnect,
     updateAvatar,
+    setLivePrompt,
   } = useLucy21()
 
   const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -163,6 +173,7 @@ export default function DashboardPage() {
         if (pointsData?.success) {
           setUserPoints(pointsData.points ?? 0)
           setMaxPoints(pointsData.maxPoints ?? 0)
+          setPlan(pointsData.plan ?? 'free')
           remainingRef.current = pointsData.points ?? 0
         }
       } catch (err) {
@@ -364,6 +375,30 @@ export default function DashboardPage() {
       }
     }
   }
+
+  // Appliquer une scene preset (decor / style / effet / arriere-plan) A CHAUD.
+  const handleApplyPreset = useCallback(async (presetId: string, presetPrompt: string) => {
+    if (!isVip || !isConnected || isApplyingPrompt) return
+    setIsApplyingPrompt(true)
+    setActivePresetId(presetId)
+    try {
+      await setLivePrompt(buildScenePrompt(presetPrompt), enhancePrompt)
+    } finally {
+      setIsApplyingPrompt(false)
+    }
+  }, [isVip, isConnected, isApplyingPrompt, enhancePrompt, setLivePrompt])
+
+  // Appliquer un prompt libre saisi par l'utilisateur VIP.
+  const handleApplyFreePrompt = useCallback(async () => {
+    if (!isVip || !isConnected || isApplyingPrompt || !livePrompt.trim()) return
+    setIsApplyingPrompt(true)
+    setActivePresetId(null)
+    try {
+      await setLivePrompt(buildScenePrompt(livePrompt), enhancePrompt)
+    } finally {
+      setIsApplyingPrompt(false)
+    }
+  }, [isVip, isConnected, isApplyingPrompt, livePrompt, enhancePrompt, setLivePrompt])
 
   const handleModeChange = useCallback((mode: 'auto' | 'local' | 'cloud') => {
     // Si PC gamer, ignorer tout changement et rester en local
@@ -734,6 +769,133 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Studio Lucy 2.5 : prompts en direct (reserve VIP PRO / VIP DEBOUT) */}
+          <div className="relative mb-4 overflow-hidden rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <p className="text-sm font-semibold text-foreground">Studio Lucy 2.5</p>
+                <span className="rounded-full bg-gradient-to-r from-primary to-[#8b5cf6] px-2 py-0.5 text-[10px] font-bold text-black">
+                  VIP
+                </span>
+              </div>
+              {isVip && (
+                <span className="flex items-center gap-1 text-[11px] text-foreground/50">
+                  <Crown className="h-3.5 w-3.5 text-primary" />
+                  Sans watermark
+                </span>
+              )}
+            </div>
+
+            <p className="mb-3 text-xs leading-relaxed text-foreground/50">
+              Transforme ta scène en direct : décors, styles, effets et arrière-plans changent
+              instantanément pendant le live, sans couper la caméra.
+            </p>
+
+            {/* Presets par categorie */}
+            <div className="space-y-3">
+              {LUCY_PRESET_CATEGORIES.map(category => (
+                <div key={category.id}>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
+                    {category.label}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {category.presets.map(preset => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        disabled={!isVip || !isConnected || isApplyingPrompt}
+                        onClick={() => handleApplyPreset(preset.id, preset.prompt)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                          activePresetId === preset.id
+                            ? 'border-primary bg-primary/15 text-primary shadow-[0_0_16px_rgba(0,255,136,0.25)]'
+                            : 'border-hairline text-foreground/70 hover:border-primary/40 hover:text-foreground'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Prompt libre + Enhance */}
+            <div className="mt-4 space-y-2">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
+                Prompt personnalisé
+              </label>
+              <textarea
+                value={livePrompt}
+                onChange={e => setLivePromptText(e.target.value)}
+                disabled={!isVip}
+                rows={2}
+                placeholder="Ex: dans un manoir gothique éclairé aux bougies, style cinématique..."
+                className="w-full resize-none rounded-xl border border-hairline bg-background/60 p-3 text-sm text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  disabled={!isVip}
+                  onClick={() => setEnhancePrompt(v => !v)}
+                  className="flex items-center gap-1.5 text-xs text-foreground/60 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span
+                    className={`flex h-4 w-4 items-center justify-center rounded border ${
+                      enhancePrompt ? 'border-primary bg-primary' : 'border-hairline-strong'
+                    }`}
+                  >
+                    {enhancePrompt && <Check className="h-3 w-3 text-black" />}
+                  </span>
+                  Enhance (améliore le prompt)
+                </button>
+                <button
+                  type="button"
+                  disabled={!isVip || !isConnected || isApplyingPrompt || !livePrompt.trim()}
+                  onClick={handleApplyFreePrompt}
+                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-[#8b5cf6] px-4 py-2 text-xs font-bold text-black transition-all hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {isApplyingPrompt ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-3.5 w-3.5" />
+                  )}
+                  Appliquer
+                </button>
+              </div>
+            </div>
+
+            {isVip && !isConnected && (
+              <p className="mt-3 flex items-center gap-1.5 text-[11px] text-foreground/40">
+                <AlertCircle className="h-3.5 w-3.5" />
+                Démarre le Live Swap pour appliquer des scènes en direct.
+              </p>
+            )}
+
+            {/* Verrou upsell pour les comptes non-VIP */}
+            {!isVip && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-background/80 p-6 text-center backdrop-blur-sm">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-primary to-[#8b5cf6]">
+                  <Lock className="h-6 w-6 text-black" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Fonctionnalité VIP</p>
+                  <p className="mt-1 text-xs leading-relaxed text-foreground/60">
+                    Débloque les prompts Lucy 2.5 en direct et le rendu sans watermark avec
+                    VIP PRO ou VIP DEBOUT.
+                  </p>
+                </div>
+                <Link
+                  href="/dashboard/plans"
+                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-[#8b5cf6] px-5 py-2.5 text-sm font-bold text-black transition-all hover:shadow-[0_0_24px_rgba(139,92,246,0.45)]"
+                >
+                  <Crown className="h-4 w-4" />
+                  Passer VIP
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Certification d'usage responsable (avant demarrage) */}
