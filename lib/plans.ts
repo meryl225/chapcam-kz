@@ -5,8 +5,8 @@ export type PlanId = 'starter' | 'standard' | 'premium' | 'ultimate' | 'vipdebou
 
 // Statut du logo (watermark) par forfait :
 // - 'with'   : rendu AVEC logo ChapCam (Starter, Standard)
-// - 'manual' : sans logo, active manuellement sur demande (Premium 50.000 F)
-// - 'auto'   : sans logo automatiquement inclus (Ultimate 85.000 F)
+// - 'manual' : sans logo, active manuellement sur demande
+// - 'auto'   : sans logo automatiquement inclus (Premium 50.000 F, VIP PRO, VIP DEBOUT)
 export type WatermarkStatus = 'with' | 'manual' | 'auto'
 
 export interface PlanConfig {
@@ -55,13 +55,17 @@ export const PLANS: PlanConfig[] = [
     discount: 23,
     points: 2500,
     minutes: '20 min 50 sec',
-    features: ['Transformation du visage et corps entier', 'Qualite 4K Ultra HD', 'Support prioritaire'],
+    features: [
+      'Transformation du visage et corps entier',
+      'Rendu sans logo ChapCam inclus',
+      'Qualite 4K Ultra HD',
+      'Support prioritaire',
+    ],
     popular: false,
     highlight: true,
     bestOffer: false,
-    // Affichage public : AVEC logo. Le retrait reste possible manuellement par
-    // l'admin pour un client precis (voir MANUAL_NO_WATERMARK_PLANS dans lib/watermark.ts).
-    watermark: 'with',
+    // Sans logo automatique inclus (retrait du filigrane active des l'achat).
+    watermark: 'auto',
   },
   {
     id: 'ultimate',

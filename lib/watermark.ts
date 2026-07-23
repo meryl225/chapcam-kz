@@ -3,10 +3,8 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 /**
  * Regles de watermark par forfait (offres de recharge) :
  *  - starter (10 000 F) et standard (25 000 F)  -> AVEC watermark
- *  - premium (50 000 F)                         -> AVEC watermark par defaut,
- *      SANS watermark UNIQUEMENT si l'admin l'active manuellement
- *      (drapeau user_metadata.no_watermark = true)
- *  - ultimate (85 000 F)                        -> SANS watermark automatiquement
+ *  - premium (50 000 F)                         -> SANS watermark automatiquement
+ *  - ultimate (85 000 F) / vipdebout            -> SANS watermark automatiquement
  *
  * Le watermark est applique par l'API Decart en fonction de la CLE utilisee :
  *  - DECART_API_KEY                -> rend une video AVEC watermark
@@ -17,9 +15,9 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
  */
 
 // Forfaits qui donnent droit au sans-watermark automatique.
-const AUTO_NO_WATERMARK_PLANS = new Set(['ultimate', 'vipdebout'])
+const AUTO_NO_WATERMARK_PLANS = new Set(['premium', 'ultimate', 'vipdebout'])
 // Forfaits eligibles au sans-watermark manuel (active par l'admin).
-const MANUAL_NO_WATERMARK_PLANS = new Set(['premium'])
+const MANUAL_NO_WATERMARK_PLANS = new Set<string>([])
 
 export type WatermarkDecision = {
   /** true => utiliser la cle sans watermark */
