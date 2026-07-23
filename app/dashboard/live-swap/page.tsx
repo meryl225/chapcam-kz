@@ -1041,7 +1041,7 @@ export default function DashboardPage() {
         <aside className="h-fit space-y-6 rounded-2xl border border-hairline bg-muted p-5 backdrop-blur-xl lg:sticky lg:top-6">
           <div className="flex items-center gap-2">
             <Settings className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-bold text-foreground">R��glages du swap</h2>
+            <h2 className="text-base font-bold text-foreground">Réglages du swap</h2>
           </div>
 
           {/* Qualite de rendu */}
