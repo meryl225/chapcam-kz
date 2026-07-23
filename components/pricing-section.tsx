@@ -10,7 +10,7 @@ import { ChapCamPcPromo } from "@/components/chapcam-pc-promo"
 // Statut du logo (watermark) par forfait :
 // - "with"   : rendu AVEC logo ChapCam (Starter, Standard)
 // - "manual" : sans logo, active manuellement sur demande (Premium 50.000 F)
-// - "auto"   : sans logo automatiquement inclus (Ultimate 85.000 F)
+  // - "auto"   : sans logo automatiquement inclus (Premium 50.000 F, VIP PRO, VIP DEBOUT)
 type Watermark = "with" | "manual" | "auto"
 
 const plans = [
@@ -47,6 +47,7 @@ const plans = [
     features: [
       "Transformation du visage et corps entier",
       "2 500 points (20 min 50 sec)",
+      "Rendu sans logo ChapCam inclus",
       "Qualite 4K Ultra HD",
       "Support prioritaire"
     ],
@@ -56,8 +57,8 @@ const plans = [
     popular: false,
     highlight: true,
     bestOffer: false,
-    // Affichage public : AVEC logo. Retrait possible manuellement par l'admin.
-    watermark: "with" as Watermark,
+    // Sans logo automatique inclus des l'achat.
+    watermark: "auto" as Watermark,
     icon: Star
   },
   {
