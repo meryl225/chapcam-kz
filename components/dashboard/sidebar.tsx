@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines, Globe, ChevronRight } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines, Globe, ChevronRight, Crown } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -16,19 +16,24 @@ import { useState, useEffect } from 'react'
 
 const PLAN_LABELS: Record<string, string> = {
   free: 'Gratuit',
-  '1day': 'Plan 1 jour',
-  '30days': 'Plan 30 jours',
-  '90days': 'Plan 90 jours',
-  '365days': 'Plan 365 jours',
+  starter: 'Starter',
+  standard: 'Standard',
+  premium: 'Premium',
+  ultimate: 'VIP PRO',
+  vipdebout: 'VIP DEBOUT',
 }
 
 const PLAN_COLORS: Record<string, string> = {
-  free: 'bg-gray-500',
-  '1day': 'bg-blue-500',
-  '30days': 'bg-green-500',
-  '90days': 'bg-purple-500',
-  '365days': 'bg-yellow-500',
+  free: 'bg-gray-500 text-white',
+  starter: 'bg-blue-500 text-white',
+  standard: 'bg-green-500 text-white',
+  premium: 'bg-purple-500 text-white',
+  ultimate: 'bg-yellow-500 text-black',
+  vipdebout: 'bg-yellow-500 text-black',
 }
+
+// Forfaits VIP : rendu premium (dore, logo couronne, halo).
+const VIP_PLANS = new Set(['ultimate', 'vipdebout'])
 
 const PLAN_POINTS: Record<string, number> = {
   free: 0,
@@ -315,16 +320,24 @@ function SidebarContent({
         <p className="mb-3 truncate text-xs text-muted-foreground">{email}</p>
 
         <div className="mb-3 flex items-center gap-2">
-          <span className={`rounded-full px-2 py-0.5 text-xs font-bold text-foreground ${PLAN_COLORS[plan] || 'bg-gray-500'}`}>
-            {PLAN_LABELS[plan] || plan}
-          </span>
+          {VIP_PLANS.has(plan) ? (
+            <span className="relative inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-black shadow-[0_0_16px_rgba(250,204,21,0.55)] ring-1 ring-yellow-200/60">
+              <span className="pointer-events-none absolute inset-0 -translate-x-full animate-[shimmer_2.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+              <Crown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
+              {PLAN_LABELS[plan] || plan}
+            </span>
+          ) : (
+            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${PLAN_COLORS[plan] || 'bg-gray-500 text-white'}`}>
+              {PLAN_LABELS[plan] || plan}
+            </span>
+          )}
           {isExpired && <span className="text-xs text-red-400">Expire</span>}
         </div>
 
-        <div className="mb-3 rounded-lg bg-muted p-3">
+        <div className={`mb-3 rounded-lg p-3 ${VIP_PLANS.has(plan) ? 'bg-gradient-to-br from-yellow-500/10 to-amber-500/5 ring-1 ring-yellow-500/30' : 'bg-muted'}`}>
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Battery className="h-4 w-4 text-primary" />
+              <Battery className={`h-4 w-4 ${VIP_PLANS.has(plan) ? 'text-yellow-500' : 'text-primary'}`} />
               <span className="text-xs font-medium text-foreground">Points restants</span>
             </div>
             <span className="text-sm font-bold text-foreground">
