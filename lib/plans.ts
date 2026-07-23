@@ -95,7 +95,7 @@ export const PLANS: PlanConfig[] = [
     durationDays: 365,
     price: 150000,
     oldPrice: 180000,
-    discount: 17,
+    discount: 25,
     points: 7200,
     minutes: '60 min',
     features: [

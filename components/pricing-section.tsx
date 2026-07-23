@@ -93,7 +93,7 @@ const plans = [
     duration: "365 JOURS",
     price: "150.000",
     oldPrice: "180.000",
-    discount: 17,
+    discount: 25,
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
