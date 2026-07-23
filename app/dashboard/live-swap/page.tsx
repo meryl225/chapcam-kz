@@ -806,10 +806,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Studio Lucy 2.5 : prompts en direct (reserve VIP PRO / VIP DEBOUT)
-              Largeur volontairement reduite : bloc compact et resserre pour
-              manipuler facilement les presets sans traverser tout l'ecran. */}
-          <div className="relative mb-4 w-full max-w-xl overflow-hidden rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
+          {/* Bloc de controle compact (Studio + certification + bouton Live Swap) :
+              largeur reduite et centree pour manipuler facilement puis valider. */}
+          <div className="mx-auto w-full max-w-xl">
+          {/* Studio Lucy 2.5 : prompts en direct (reserve VIP PRO / VIP DEBOUT) */}
+          <div className="relative mb-4 w-full overflow-hidden rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
@@ -1025,6 +1026,7 @@ export default function DashboardPage() {
           </button>
 
           {!isConnected && <GenerateNotice className="mt-3" />}
+          </div>
         </div>
 
         {/* Panneau de reglages */}
