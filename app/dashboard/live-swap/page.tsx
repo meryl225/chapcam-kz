@@ -611,10 +611,12 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Main layout : contenu + panneau de reglages */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      {/* Main layout : contenu + panneau de reglages.
+          minmax(0,1fr) + min-w-0 : empeche la colonne principale de deborder
+          horizontalement (la piste 1fr a sinon un minimum = taille du contenu). */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* Colonne principale */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {/* Cameras avec cercle IA — la camera ChapCam est volontairement plus grande
               pour faciliter la capture en fenetre dans OBS */}
           <div className="relative grid gap-6 md:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
