@@ -14,18 +14,31 @@ function getApiKey(): string {
  * comptes). Sert de secours quand la cle API n'a pas la permission voices_read,
  * pour que la liste ne soit jamais vide. La conversion speech-to-speech accepte
  * directement ces voice_id.
+ *
+ * IMPORTANT : le voice swap est du speech-to-speech (modele multilingue). Il
+ * conserve la LANGUE et les mots de la personne : si vous parlez francais, la
+ * sortie est en francais. Ces voix ne changent que le TIMBRE. Toutes ont ete
+ * verifiees comme accessibles en STS avec la cle du projet.
+ *
+ * Pour de vraies voix a accent FRANCAIS natif : donner la permission
+ * "voices_read" a la cle ElevenLabs et ajouter des voix francaises depuis la
+ * Voice Library ElevenLabs -> elles apparaitront alors automatiquement ici.
  */
 const FALLBACK_VOICES = [
-  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel', description: 'Femme - calme, narration' },
-  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi', description: 'Femme - energique' },
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella', description: 'Femme - douce' },
-  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni', description: 'Homme - chaleureux' },
-  { id: 'MF3mGyEYCl7XYWbV9V6O', name: 'Elli', description: 'Femme - jeune' },
-  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh', description: 'Homme - profond' },
-  { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold', description: 'Homme - assure' },
-  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam', description: 'Homme - narration' },
-  { id: 'yoZ06aMxZJJ28mfd3POQ', name: 'Sam', description: 'Homme - dynamique' },
-  { id: 'CYw3kZ02Hs0563khs1Fj', name: 'Dave', description: 'Homme - conversationnel' },
+  // Voix feminines (roster moderne, rendu naturel en francais)
+  { id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte', description: 'Femme - douce, multilingue (bon rendu FR)', locale: 'fr' },
+  { id: 'Xb7hH8MSUJpSbSDYk0k2', name: 'Alice', description: 'Femme - claire et posee', locale: 'fr' },
+  { id: 'XrExE9yKIg1WjnnlVkGX', name: 'Matilda', description: 'Femme - chaleureuse', locale: 'fr' },
+  { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily', description: 'Femme - jeune, dynamique', locale: 'fr' },
+  { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica', description: 'Femme - expressive', locale: 'fr' },
+  { id: 'FGY2WhTYpPnrIDTdsKH5', name: 'Laura', description: 'Femme - conversationnelle', locale: 'fr' },
+  // Voix masculines
+  { id: 'nPczCjzI2devNBz1zQrb', name: 'Brian', description: 'Homme - profond, narration', locale: 'fr' },
+  { id: 'bIHbv24MWmeRgasZH58o', name: 'Will', description: 'Homme - naturel', locale: 'fr' },
+  { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', description: 'Homme - jeune, assure', locale: 'fr' },
+  { id: 'cjVigY5qzO86Huf0OWal', name: 'Eric', description: 'Homme - posé', locale: 'fr' },
+  { id: 'iP95p4xoKVk53GoZ742B', name: 'Chris', description: 'Homme - decontracte', locale: 'fr' },
+  { id: 'pqHfZKP75CvOlQylNhV4', name: 'Bill', description: 'Homme - mature', locale: 'fr' },
 ]
 
 /**
