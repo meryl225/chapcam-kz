@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2, AudioLines, Sparkles, Wand2, Lock } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
@@ -425,13 +425,6 @@ export default function DashboardPage() {
 
   const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND && swapConsent
 
-  const quickTools = [
-    { href: '/dashboard/voice-swap', label: 'Voice Swap', icon: AudioLines, color: '#8b5cf6' },
-    { href: '/dashboard/voice-translator', label: 'Voice Traducteur', icon: Languages, color: '#3b82f6' },
-    { href: '/dashboard/photo-video', label: 'Photos → Vidéo', icon: ImageIcon, color: '#f97316' },
-    { href: '/dashboard/video-translation', label: 'Traduction Vidéo', icon: Film, color: '#8b5cf6' },
-  ]
-
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Header */}
@@ -667,31 +660,6 @@ export default function DashboardPage() {
               <VirtualCameraIndicator className="m-3" />
             </div>
 
-          </div>
-
-          {/* Outils rapides ChapCam */}
-          <div className="rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-foreground/50">
-              Outils rapides ChapCam
-            </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {quickTools.map(tool => (
-                <Link
-                  key={tool.href}
-                  href={tool.href}
-                  className="group flex items-center gap-2.5 rounded-xl border border-hairline bg-black/30 px-3 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-hairline-strong"
-                >
-                  <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: `${tool.color}22` }}
-                  >
-                    <tool.icon className="h-4 w-4" style={{ color: tool.color }} />
-                  </span>
-                  <span className="flex-1 truncate text-xs font-medium text-foreground">{tool.label}</span>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-foreground/30 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground/60" />
-                </Link>
-              ))}
-            </div>
           </div>
 
           {/* Avatars */}
