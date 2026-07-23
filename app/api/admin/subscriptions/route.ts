@@ -4,6 +4,8 @@ import { isAdminRequest, ADMIN_EMAIL } from '@/lib/admin-auth'
 import { getPlan } from '@/lib/plans'
 import { getLiveOffer } from '@/lib/live-offers'
 import { grantLiveWindow } from '@/lib/live-access'
+import { creditVoiceMinutes } from '@/lib/fulfillment'
+import { VOICE_VALIDITY_DAYS } from '@/lib/voice-offers'
 import { sendSubscriptionApprovedEmail, sendLiveAccessApprovedEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
@@ -339,6 +341,69 @@ export async function PATCH(req: NextRequest) {
     })
   } catch (err: any) {
     console.error('[admin/subscriptions] Exception PATCH:', err?.message || err)
+    return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
+  }
+}
+
+// PUT admin : crediter MANUELLEMENT des minutes de Voice Swap (ChapVoice) a un
+// utilisateur via son email. Les minutes s'ACCUMULENT au solde restant et
+// l'expiration est prolongee (+validityDays), exactement comme un achat.
+export async function PUT(req: NextRequest) {
+  if (!(await isAdminRequest())) {
+    return NextResponse.json({ error: 'Acces refuse.' }, { status: 403 })
+  }
+
+  try {
+    const body = await req.json().catch(() => ({}))
+    const email = String(body.email || '').trim().toLowerCase()
+    const minutes = Number(body.minutes)
+    const validityDaysRaw = Number(body.validityDays)
+
+    if (!EMAIL_RE.test(email)) {
+      return NextResponse.json({ error: 'Email invalide.' }, { status: 400 })
+    }
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      return NextResponse.json(
+        { error: 'Nombre de minutes invalide (doit etre superieur a 0).' },
+        { status: 400 },
+      )
+    }
+
+    const validityDays =
+      Number.isFinite(validityDaysRaw) && validityDaysRaw > 0
+        ? Math.round(validityDaysRaw)
+        : VOICE_VALIDITY_DAYS
+
+    const admin = createAdminClient()
+    const userId = await resolveUserIdByEmail(admin, email)
+    if (!userId) {
+      return NextResponse.json(
+        {
+          error: `Aucun compte ChapCam ne correspond a "${email}". L'utilisateur doit d'abord creer un compte avec cet email.`,
+        },
+        { status: 404 },
+      )
+    }
+
+    const { end, secondsRemaining } = await creditVoiceMinutes(admin, userId, {
+      id: 'manual_voice',
+      minutes,
+      validityDays,
+    })
+
+    await admin.from('admin_logs').insert({
+      action: 'manual_voice_minutes',
+      admin_email: ADMIN_EMAIL,
+      details: { email, minutes, validityDays },
+    })
+
+    const totalMinutes = Math.floor(secondsRemaining / 60)
+    return NextResponse.json({
+      success: true,
+      message: `${minutes} min de Voice Swap creditees pour ${email}. Solde total : ${totalMinutes} min, valable jusqu'au ${fmtDate(end)}.`,
+    })
+  } catch (err: any) {
+    console.error('[admin/subscriptions] Exception PUT:', err?.message || err)
     return NextResponse.json({ error: 'Erreur serveur.' }, { status: 500 })
   }
 }
