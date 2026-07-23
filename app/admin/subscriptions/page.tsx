@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { UserPlus, Loader2, ArrowLeft, Check, UserMinus, Trash2, Droplet, DropletOff } from 'lucide-react'
+import { UserPlus, Loader2, ArrowLeft, Check, UserMinus, Trash2, Droplet, DropletOff, Mic } from 'lucide-react'
 import Link from 'next/link'
 import { PLANS } from '@/lib/plans'
 import { LIVE_OFFERS } from '@/lib/live-offers'
@@ -17,6 +17,10 @@ export default function AdminSubscriptionsPage() {
   const [removing, setRemoving] = useState(false)
   const [wmEmail, setWmEmail] = useState('')
   const [wmBusy, setWmBusy] = useState<'on' | 'off' | null>(null)
+  const [voiceEmail, setVoiceEmail] = useState('')
+  const [voiceMinutes, setVoiceMinutes] = useState('')
+  const [voiceValidity, setVoiceValidity] = useState('')
+  const [voiceBusy, setVoiceBusy] = useState(false)
 
   const selectedPlan = PLANS.find((p) => p.id === plan)
   const selectedLiveOffer = LIVE_OFFERS.find((o) => o.id === plan)
@@ -103,6 +107,42 @@ export default function AdminSubscriptionsPage() {
       setToast({ type: 'err', msg: 'Erreur de connexion' })
     } finally {
       setWmBusy(null)
+    }
+  }
+
+  const handleVoiceCredit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const target = voiceEmail.trim()
+    const minutes = Number(voiceMinutes)
+    if (!target || !Number.isFinite(minutes) || minutes <= 0) {
+      setToast({ type: 'err', msg: 'Entrez un email et un nombre de minutes valide.' })
+      return
+    }
+    setVoiceBusy(true)
+    setToast(null)
+    try {
+      const res = await fetch('/api/admin/subscriptions', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: target,
+          minutes,
+          validityDays: voiceValidity ? Number(voiceValidity) : undefined,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setToast({ type: 'ok', msg: data.message || 'Minutes creditees' })
+        setVoiceEmail('')
+        setVoiceMinutes('')
+        setVoiceValidity('')
+      } else {
+        setToast({ type: 'err', msg: data.error || 'Erreur' })
+      }
+    } catch {
+      setToast({ type: 'err', msg: 'Erreur de connexion' })
+    } finally {
+      setVoiceBusy(false)
     }
   }
 
@@ -362,6 +402,86 @@ export default function AdminSubscriptionsPage() {
               </button>
             </div>
           </div>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-amber-500/30 bg-[#1a1206] p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-500/15">
+              <Mic className="h-6 w-6 text-amber-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Ajouter des minutes Voice Swap</h2>
+              <p className="text-sm text-gray-400">
+                Credite manuellement des minutes ChapVoice. Les minutes s&apos;ajoutent au solde
+                restant et prolongent la validite.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleVoiceCredit} className="flex flex-col gap-4">
+            <div>
+              <label className={labelClass}>Email de l&apos;utilisateur</label>
+              <input
+                type="email"
+                required
+                value={voiceEmail}
+                onChange={(e) => setVoiceEmail(e.target.value)}
+                className="w-full rounded-xl border border-gray-700 bg-[#0a0a0a] px-4 py-3 text-white outline-none transition-colors focus:border-amber-500"
+                placeholder="utilisateur@exemple.com"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Minutes a crediter</label>
+                <input
+                  type="number"
+                  min={1}
+                  required
+                  value={voiceMinutes}
+                  onChange={(e) => setVoiceMinutes(e.target.value)}
+                  className="w-full rounded-xl border border-gray-700 bg-[#0a0a0a] px-4 py-3 text-white outline-none transition-colors focus:border-amber-500"
+                  placeholder="30"
+                />
+              </div>
+              <div>
+                <label className={labelClass}>
+                  Validite (jours) <span className="text-gray-500">facultatif</span>
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  value={voiceValidity}
+                  onChange={(e) => setVoiceValidity(e.target.value)}
+                  className="w-full rounded-xl border border-gray-700 bg-[#0a0a0a] px-4 py-3 text-white outline-none transition-colors focus:border-amber-500"
+                  placeholder="30"
+                />
+              </div>
+            </div>
+
+            <p className="rounded-lg border border-gray-800 bg-[#0a0a0a] px-3 py-2 text-xs text-gray-500">
+              Sans validite saisie, 30 jours sont appliques. Si le solde est encore valide, les
+              minutes s&apos;accumulent et l&apos;expiration repart de la fin en cours.
+            </p>
+
+            <button
+              type="submit"
+              disabled={voiceBusy}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-amber-500 py-4 font-semibold text-white transition-colors hover:bg-violet-600 disabled:opacity-60"
+            >
+              {voiceBusy ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Credit en cours...
+                </>
+              ) : (
+                <>
+                  <Mic className="h-5 w-5" />
+                  Crediter les minutes
+                </>
+              )}
+            </button>
+          </form>
         </div>
       </div>
 

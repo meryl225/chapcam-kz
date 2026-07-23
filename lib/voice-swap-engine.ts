@@ -23,11 +23,20 @@ import {
 
 const TARGET_SAMPLE_RATE = 16000
 // Duree max d'un segment avant envoi force (ms) meme si la personne parle encore.
-const MAX_SEGMENT_MS = 1200
-// Duree de silence qui cloture un segment (ms).
-const SILENCE_HANG_MS = 350
+// Reglage equilibre : segments un peu plus courts = plus reactif, tout en gardant
+// assez de contexte pour une voix stable.
+const MAX_SEGMENT_MS = 1000
+// Duree de silence qui cloture un segment (ms). Reduit pour baisser la latence
+// sans couper les fins de mots.
+const SILENCE_HANG_MS = 280
+// Duree minimale d'un segment avant envoi (ms) : evite d'envoyer des bribes trop
+// courtes qui produisent des artefacts / une voix "hachee".
+const MIN_SEGMENT_MS = 220
 // Seuil d'energie RMS (0..1) au-dessus duquel on considere qu'il y a de la voix.
 const VAD_RMS_THRESHOLD = 0.012
+// Buffer de gigue (jitter) : petite avance audio maintenue en lecture pour
+// absorber les variations de latence reseau et eviter les trous/coupures.
+const JITTER_BUFFER_MS = 160
 // Taille du buffer du ScriptProcessor (puissance de 2).
 const PROCESSOR_BUFFER = 2048
 
@@ -235,11 +244,22 @@ export class VoiceSwapEngine {
 
     const segMs = (this.segmentSamples / TARGET_SAMPLE_RATE) * 1000
     const silenceMs = now - this.lastVoiceTs
-    const shouldFlush =
-      this.voiceActive && (silenceMs >= SILENCE_HANG_MS || segMs >= MAX_SEGMENT_MS)
 
-    if (shouldFlush) {
+    // Envoi force si le segment est long (la personne parle en continu).
+    if (this.voiceActive && segMs >= MAX_SEGMENT_MS) {
       this.flushSegment(now)
+      return
+    }
+    // Fin de phrase detectee (silence) : on envoie si le segment est assez long,
+    // sinon on abandonne la bribe (bruit court) pour eviter les artefacts.
+    if (this.voiceActive && silenceMs >= SILENCE_HANG_MS) {
+      if (segMs >= MIN_SEGMENT_MS) {
+        this.flushSegment(now)
+      } else {
+        this.segment = []
+        this.segmentSamples = 0
+        this.voiceActive = false
+      }
     }
   }
 
@@ -345,10 +365,14 @@ export class VoiceSwapEngine {
     src.connect(this.playDest)
 
     const nowT = this.playCtx.currentTime
-    // Si la file est vide (retard pris), on repart de maintenant (underrun).
+    const jitterS = JITTER_BUFFER_MS / 1000
+    // Si la file est vide (retard pris), on ne repart PAS pile a "maintenant" :
+    // on ajoute une petite avance (jitter buffer) pour absorber les variations
+    // de latence reseau et eviter que le segment suivant arrive trop tard
+    // (ce qui creait des trous/coupures dans la voix).
     if (this.playQueueTime < nowT) {
       if (this.playQueueTime > 0) this.underruns += 1
-      this.playQueueTime = nowT
+      this.playQueueTime = nowT + jitterS
     }
     src.start(this.playQueueTime)
     this.playQueueTime += durationS
