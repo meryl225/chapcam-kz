@@ -91,6 +91,10 @@ export interface VoiceConversionSettings {
   stability?: number
   /** Similarite a la voix cible (0..1). */
   similarityBoost?: number
+  /** Exageration du style (0..1). */
+  style?: number
+  /** Renforcement de la ressemblance au locuteur cible. */
+  useSpeakerBoost?: boolean
   /** Supprimer le bruit de fond du micro avant conversion. */
   removeBackgroundNoise?: boolean
 }
@@ -98,9 +102,195 @@ export interface VoiceConversionSettings {
 export const DEFAULT_CONVERSION_SETTINGS: VoiceConversionSettings = {
   voiceId: '',
   modelId: 'eleven_multilingual_sts_v2',
-  stability: 0.5,
-  similarityBoost: 0.75,
-  removeBackgroundNoise: true,
+  stability: 0.65,
+  similarityBoost: 0.85,
+  style: 0,
+  useSpeakerBoost: false,
+  removeBackgroundNoise: false,
+}
+
+// ----------------------------------------------------------------------------
+// Modeles speech-to-speech reels (les SEULS acceptes par l'API voice-changer)
+// ----------------------------------------------------------------------------
+
+/** Les 2 modeles STS reellement disponibles cote ElevenLabs. */
+export const STS_MODELS = [
+  {
+    id: 'eleven_multilingual_sts_v2',
+    name: 'Multilingue v2',
+    description: 'Toutes langues (dont francais) - qualite maximale',
+  },
+  {
+    id: 'eleven_english_sts_v2',
+    name: 'Anglais v2',
+    description: 'Optimise pour l\'anglais - un peu plus rapide',
+  },
+] as const
+
+export type StsModelId = (typeof STS_MODELS)[number]['id']
+export const DEFAULT_STS_MODEL: StsModelId = 'eleven_multilingual_sts_v2'
+
+/** Reglages fins d'une session : modele + segmentation + voix. */
+export interface VoiceTuning {
+  modelId: StsModelId
+  /** 0..4 : plus haut = latence plus faible (compromis qualite). */
+  optimizeStreamingLatency: number
+  /** Cloture souple : au-dela, on coupe au prochain creux (frontiere de mot). */
+  softMaxSegmentMs: number
+  /** Filet de securite : coupe forcee meme sans pause. */
+  hardMaxSegmentMs: number
+  /** Silence qui cloture un segment (fin de phrase). */
+  silenceHangMs: number
+  /** Duree minimale d'un segment avant envoi. */
+  minSegmentMs: number
+  /** Avance de lecture anti-coupure. */
+  jitterBufferMs: number
+  stability: number
+  similarityBoost: number
+  style: number
+  useSpeakerBoost: boolean
+}
+
+/** Un mode de streaming = un preset complet latence/qualite pret a l'emploi. */
+export interface VoiceStreamMode {
+  id: string
+  label: string
+  description: string
+  /** Estimation lisible de la latence bout-en-bout. */
+  estLatency: string
+  /** Estimation lisible de la qualite de voix. */
+  estQuality: string
+  tuning: VoiceTuning
+}
+
+/**
+ * Presets ordonnes de la latence la plus faible a la qualite la plus haute.
+ * Tous utilisent un modele STS reel. Le decoupage respecte les frontieres de
+ * mots (jamais de coupe en plein mot) pour garder des mots coherents.
+ */
+export const VOICE_STREAM_MODES: VoiceStreamMode[] = [
+  {
+    id: 'ultra',
+    label: 'Ultra faible latence',
+    description: 'Reactivite maximale pour le direct. Voix correcte.',
+    estLatency: 'Tres faible (~0.6 s)',
+    estQuality: 'Correcte',
+    tuning: {
+      modelId: 'eleven_multilingual_sts_v2',
+      optimizeStreamingLatency: 4,
+      softMaxSegmentMs: 1200,
+      hardMaxSegmentMs: 3000,
+      silenceHangMs: 240,
+      minSegmentMs: 200,
+      jitterBufferMs: 100,
+      stability: 0.5,
+      similarityBoost: 0.8,
+      style: 0,
+      useSpeakerBoost: false,
+    },
+  },
+  {
+    id: 'gaming',
+    label: 'Gaming',
+    description: 'Faible latence pour Discord/jeux, voix plus stable.',
+    estLatency: 'Faible (~0.8 s)',
+    estQuality: 'Bonne',
+    tuning: {
+      modelId: 'eleven_multilingual_sts_v2',
+      optimizeStreamingLatency: 4,
+      softMaxSegmentMs: 1500,
+      hardMaxSegmentMs: 3500,
+      silenceHangMs: 300,
+      minSegmentMs: 220,
+      jitterBufferMs: 130,
+      stability: 0.6,
+      similarityBoost: 0.85,
+      style: 0,
+      useSpeakerBoost: false,
+    },
+  },
+  {
+    id: 'equilibre',
+    label: 'Equilibre',
+    description: 'Meilleur compromis latence / voix naturelle. Recommande.',
+    estLatency: 'Moyenne (~1.2 s)',
+    estQuality: 'Tres bonne',
+    tuning: {
+      modelId: 'eleven_multilingual_sts_v2',
+      optimizeStreamingLatency: 3,
+      softMaxSegmentMs: 2200,
+      hardMaxSegmentMs: 4500,
+      silenceHangMs: 380,
+      minSegmentMs: 240,
+      jitterBufferMs: 160,
+      stability: 0.65,
+      similarityBoost: 0.85,
+      style: 0,
+      useSpeakerBoost: true,
+    },
+  },
+  {
+    id: 'studio',
+    label: 'Studio',
+    description: 'Voix soignee et reguliere. Latence plus elevee.',
+    estLatency: 'Elevee (~1.8 s)',
+    estQuality: 'Maximale',
+    tuning: {
+      modelId: 'eleven_multilingual_sts_v2',
+      optimizeStreamingLatency: 2,
+      softMaxSegmentMs: 3000,
+      hardMaxSegmentMs: 6000,
+      silenceHangMs: 500,
+      minSegmentMs: 300,
+      jitterBufferMs: 220,
+      stability: 0.8,
+      similarityBoost: 0.9,
+      style: 0.1,
+      useSpeakerBoost: true,
+    },
+  },
+  {
+    id: 'podcast',
+    label: 'Podcast',
+    description: 'Rendu le plus riche pour enregistrement. Latence elevee.',
+    estLatency: 'Elevee (~2 s)',
+    estQuality: 'Maximale',
+    tuning: {
+      modelId: 'eleven_multilingual_sts_v2',
+      optimizeStreamingLatency: 2,
+      softMaxSegmentMs: 3500,
+      hardMaxSegmentMs: 7000,
+      silenceHangMs: 600,
+      minSegmentMs: 300,
+      jitterBufferMs: 240,
+      stability: 0.75,
+      similarityBoost: 0.9,
+      style: 0.15,
+      useSpeakerBoost: true,
+    },
+  },
+]
+
+export const DEFAULT_STREAM_MODE_ID = 'equilibre'
+
+export function getStreamMode(id: string): VoiceStreamMode {
+  return VOICE_STREAM_MODES.find((m) => m.id === id) || VOICE_STREAM_MODES[2]
+}
+
+/** Traitement du micro applique a la capture (getUserMedia). */
+export interface MicProcessing {
+  /** Suppression du bruit de fond. */
+  noiseSuppression: boolean
+  /** Annulation d'echo. */
+  echoCancellation: boolean
+  /** Gain automatique. */
+  autoGainControl: boolean
+}
+
+export const DEFAULT_MIC_PROCESSING: MicProcessing = {
+  noiseSuppression: true,
+  echoCancellation: true,
+  autoGainControl: true,
 }
 
 /** Peripherique audio (entree micro ou sortie). */
@@ -120,6 +310,10 @@ export interface VoiceSwapConfig {
   format: AudioFormat
   chunking: ChunkingConfig
   conversion: VoiceConversionSettings
+  /** Reglages fins (mode de streaming + segmentation). Optionnel. */
+  tuning?: VoiceTuning
+  /** Traitement du micro a la capture. Optionnel. */
+  micProcessing?: MicProcessing
   /** Peripherique d'entree (micro physique). null = peripherique par defaut. */
   inputDeviceId: string | null
   /** Peripherique de sortie (idealement VB-Cable). null = defaut. */

@@ -139,6 +139,8 @@ export function useVoiceSwap() {
           outputDeviceId: config.outputDeviceId ?? null,
           outputIsVirtual: !!outDevice?.isVirtual,
           voiceId,
+          tuning: config.tuning,
+          micProcessing: config.micProcessing,
           callbacks: {
             onError: (message) => setState((prev) => ({ ...prev, error: message })),
           },
@@ -175,6 +177,8 @@ export function useVoiceSwap() {
         outputDeviceId: config.outputDeviceId ?? null,
         outputIsVirtual: !!outDevice?.isVirtual,
         voiceId,
+        tuning: config.tuning,
+        micProcessing: config.micProcessing,
         callbacks: {
           onError: (message) =>
             setState((prev) => ({ ...prev, error: message })),

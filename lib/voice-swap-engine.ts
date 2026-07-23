@@ -17,29 +17,21 @@
 
 import {
   getVoiceSwapAPI,
+  getStreamMode,
+  DEFAULT_STREAM_MODE_ID,
+  DEFAULT_MIC_PROCESSING,
   type ConvertResult,
   type RendererMetrics,
+  type VoiceTuning,
+  type MicProcessing,
 } from '@/lib/voice-swap'
 
 const TARGET_SAMPLE_RATE = 16000
-// COHERENCE DES MOTS : on ne coupe JAMAIS a l'aveugle en plein milieu d'un mot.
-// A partir de cette duree, on veut cloturer le segment MAIS on attend la
-// prochaine petite pause (creux d'energie) pour couper a une frontiere de mot.
-const SOFT_MAX_SEGMENT_MS = 2200
-// Filet de securite : au-dela, on coupe meme sans pause (borne la latence).
-// Rare en parole normale car il y a presque toujours une micro-pause avant.
-const HARD_MAX_SEGMENT_MS = 4500
-// Duree de silence qui cloture un segment (ms). Augmentee : une micro-pause
-// entre deux syllabes ne doit PAS couper un mot ; on attend une vraie fin de mot.
-const SILENCE_HANG_MS = 380
-// Duree minimale d'un segment avant envoi (ms) : evite d'envoyer des bribes trop
-// courtes qui produisent des artefacts / une voix "hachee".
-const MIN_SEGMENT_MS = 240
+// La segmentation (soft/hard max, silence, min, jitter) et les reglages de voix
+// sont desormais fournis PAR SESSION via VoiceTuning (mode de streaming choisi
+// dans l'UI), au lieu de constantes fixes. Voir this.tuning.
 // Seuil d'energie RMS (0..1) au-dessus duquel on considere qu'il y a de la voix.
 const VAD_RMS_THRESHOLD = 0.012
-// Buffer de gigue (jitter) : petite avance audio maintenue en lecture pour
-// absorber les variations de latence reseau et eviter les trous/coupures.
-const JITTER_BUFFER_MS = 160
 // Taille du buffer du ScriptProcessor (puissance de 2).
 const PROCESSOR_BUFFER = 2048
 
@@ -107,6 +99,10 @@ export class VoiceSwapEngine {
   private outputIsVirtual: boolean
   /** Voix cible (utilisee par le mode web via la route API). */
   private voiceId: string | null
+  /** Reglages fins (modele, segmentation, voix) de la session. */
+  private tuning: VoiceTuning
+  /** Traitement applique au micro a la capture. */
+  private micProcessing: MicProcessing
   /** true = pas d'API Electron : on convertit via les routes web. */
   private webMode: boolean
 
@@ -138,12 +134,17 @@ export class VoiceSwapEngine {
     outputDeviceId?: string | null
     outputIsVirtual?: boolean
     voiceId?: string | null
+    tuning?: VoiceTuning
+    micProcessing?: MicProcessing
     callbacks?: VoiceSwapEngineCallbacks
   }) {
     this.inputDeviceId = opts.inputDeviceId ?? null
     this.outputDeviceId = opts.outputDeviceId ?? null
     this.outputIsVirtual = opts.outputIsVirtual ?? false
     this.voiceId = opts.voiceId ?? null
+    // Defaut = preset "Equilibre" si aucun reglage fourni.
+    this.tuning = opts.tuning ?? getStreamMode(DEFAULT_STREAM_MODE_ID).tuning
+    this.micProcessing = opts.micProcessing ?? DEFAULT_MIC_PROCESSING
     this.cb = opts.callbacks ?? {}
     // Sans pont Electron, on bascule sur la conversion via routes web.
     this.webMode = getVoiceSwapAPI() === null
@@ -158,9 +159,9 @@ export class VoiceSwapEngine {
       audio: {
         deviceId: this.inputDeviceId ? { exact: this.inputDeviceId } : undefined,
         channelCount: 1,
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
+        echoCancellation: this.micProcessing.echoCancellation,
+        noiseSuppression: this.micProcessing.noiseSuppression,
+        autoGainControl: this.micProcessing.autoGainControl,
       },
       video: false,
     })
@@ -253,14 +254,14 @@ export class VoiceSwapEngine {
     const inDip = rms < VAD_RMS_THRESHOLD
 
     // 1) Filet de securite : segment tres long -> on coupe meme sans pause.
-    if (segMs >= HARD_MAX_SEGMENT_MS) {
+    if (segMs >= this.tuning.hardMaxSegmentMs) {
       this.flushSegment(now)
       return
     }
 
     // 2) Fin de phrase franche (silence prolonge) : frontiere ideale.
-    if (silenceMs >= SILENCE_HANG_MS) {
-      if (segMs >= MIN_SEGMENT_MS) {
+    if (silenceMs >= this.tuning.silenceHangMs) {
+      if (segMs >= this.tuning.minSegmentMs) {
         this.flushSegment(now)
       } else {
         // Bribe trop courte (bruit) : on abandonne pour eviter les artefacts.
@@ -274,7 +275,7 @@ export class VoiceSwapEngine {
     // 3) Segment deja long : on NE coupe PAS en plein mot. On attend le prochain
     //    creux d'energie (petite pause entre mots) pour couper proprement -> les
     //    mots restent entiers et coherents une fois convertis.
-    if (segMs >= SOFT_MAX_SEGMENT_MS && inDip) {
+    if (segMs >= this.tuning.softMaxSegmentMs && inDip) {
       this.flushSegment(now)
     }
   }
@@ -338,7 +339,18 @@ export class VoiceSwapEngine {
       return
     }
     try {
-      const res = await fetch(`/api/voice-swap/convert?voiceId=${encodeURIComponent(this.voiceId)}`, {
+      // Transmet le modele + les reglages de voix (issus du mode de streaming)
+      // pour que la conversion serveur applique exactement le preset choisi.
+      const params = new URLSearchParams({
+        voiceId: this.voiceId,
+        model: this.tuning.modelId,
+        stability: String(this.tuning.stability),
+        similarity: String(this.tuning.similarityBoost),
+        style: String(this.tuning.style),
+        speakerBoost: this.tuning.useSpeakerBoost ? '1' : '0',
+        latency: String(this.tuning.optimizeStreamingLatency),
+      })
+      const res = await fetch(`/api/voice-swap/convert?${params.toString()}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/octet-stream' },
         body: pcm,
@@ -381,7 +393,7 @@ export class VoiceSwapEngine {
     src.connect(this.playDest)
 
     const nowT = this.playCtx.currentTime
-    const jitterS = JITTER_BUFFER_MS / 1000
+    const jitterS = this.tuning.jitterBufferMs / 1000
     // Si la file est vide (retard pris), on ne repart PAS pile a "maintenant" :
     // on ajoute une petite avance (jitter buffer) pour absorber les variations
     // de latence reseau et eviter que le segment suivant arrive trop tard
