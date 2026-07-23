@@ -455,7 +455,7 @@ export default function DashboardPage() {
   const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND && swapConsent
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="mx-auto w-full max-w-[1280px] p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
@@ -806,8 +806,10 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Studio Lucy 2.5 : prompts en direct (reserve VIP PRO / VIP DEBOUT) */}
-          <div className="relative mb-4 overflow-hidden rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
+          {/* Studio Lucy 2.5 : prompts en direct (reserve VIP PRO / VIP DEBOUT)
+              Largeur volontairement reduite : bloc compact et resserre pour
+              manipuler facilement les presets sans traverser tout l'ecran. */}
+          <div className="relative mb-4 w-full max-w-xl overflow-hidden rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
             <div className="mb-3 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
@@ -1029,7 +1031,7 @@ export default function DashboardPage() {
         <aside className="h-fit space-y-6 rounded-2xl border border-hairline bg-muted p-5 backdrop-blur-xl lg:sticky lg:top-6">
           <div className="flex items-center gap-2">
             <Settings className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-bold text-foreground">Réglages du swap</h2>
+            <h2 className="text-base font-bold text-foreground">R��glages du swap</h2>
           </div>
 
           {/* Qualite de rendu */}
