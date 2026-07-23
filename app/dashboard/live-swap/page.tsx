@@ -806,34 +806,39 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Bloc de controle compact (Studio + certification + bouton Live Swap) :
-              largeur reduite et centree pour manipuler facilement puis valider. */}
-          <div className="mx-auto w-full max-w-md">
-          {/* Studio Lucy 2.5 : prompts en direct (reserve VIP PRO / VIP DEBOUT) */}
-          <div className="relative mb-4 w-full overflow-hidden rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
-            <div className="mb-3 flex items-center justify-between">
+          {/* Studio CHAPCAM : prompts en direct (reserve VIP PRO / VIP DEBOUT).
+              Contenu organise en 2 colonnes pour un rendu equilibre et pro. */}
+          <div className="relative mb-4 w-full overflow-hidden rounded-2xl border border-hairline bg-muted p-5 backdrop-blur-xl">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-hairline pb-4">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <p className="text-sm font-semibold text-foreground">Studio CHAPCAM</p>
-                <span className="rounded-full bg-gradient-to-r from-primary to-[#8b5cf6] px-2 py-0.5 text-[10px] font-bold text-black">
-                  VIP
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-[#8b5cf6]/20">
+                  <Sparkles className="h-5 w-5 text-primary" />
                 </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-foreground">Studio CHAPCAM</p>
+                    <span className="rounded-full bg-gradient-to-r from-primary to-[#8b5cf6] px-2 py-0.5 text-[10px] font-bold text-black">
+                      VIP
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-foreground/50">
+                    Décors, styles, effets et arrière-plans en direct, sans couper la caméra.
+                  </p>
+                </div>
               </div>
               {isVip && (
-                <span className="flex items-center gap-1 text-[11px] text-foreground/50">
+                <span className="flex items-center gap-1 rounded-full border border-hairline bg-background/40 px-2.5 py-1 text-[11px] text-foreground/60">
                   <Crown className="h-3.5 w-3.5 text-primary" />
                   Sans watermark
                 </span>
               )}
             </div>
 
-            <p className="mb-3 text-xs leading-relaxed text-foreground/50">
-              Transforme ta scène en direct : décors, styles, effets et arrière-plans changent
-              instantanément pendant le live, sans couper la caméra.
-            </p>
-
+            <div className="grid gap-5 lg:grid-cols-2">
+              {/* Colonne gauche : reglages qualite + prompt personnalise */}
+              <div className="space-y-4">
             {/* Qualite HD 1080p (VIP) + codec avance */}
-            <div className="mb-4 space-y-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
+            <div className="space-y-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
               <button
                 type="button"
                 disabled={!isVip || isConnected}
@@ -877,36 +882,8 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Presets par categorie */}
-            <div className="space-y-3">
-              {LUCY_PRESET_CATEGORIES.map(category => (
-                <div key={category.id}>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
-                    {category.label}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {category.presets.map(preset => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        disabled={!isVip || !isConnected || isApplyingPrompt}
-                        onClick={() => handleApplyPreset(preset.id, preset.prompt)}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
-                          activePresetId === preset.id
-                            ? 'border-primary bg-primary/15 text-primary shadow-[0_0_16px_rgba(0,255,136,0.25)]'
-                            : 'border-hairline text-foreground/70 hover:border-primary/40 hover:text-foreground'
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
             {/* Prompt libre + Enhance */}
-            <div className="mt-4 space-y-2">
+            <div className="space-y-2">
               <label className="text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
                 Prompt personnalisé
               </label>
@@ -914,7 +891,7 @@ export default function DashboardPage() {
                 value={livePrompt}
                 onChange={e => setLivePromptText(e.target.value)}
                 disabled={!isVip}
-                rows={2}
+                rows={3}
                 placeholder="Ex: dans un manoir gothique éclairé aux bougies, style cinématique..."
                 className="w-full resize-none rounded-xl border border-hairline bg-background/60 p-3 text-sm text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
               />
@@ -947,6 +924,36 @@ export default function DashboardPage() {
                   )}
                   Appliquer
                 </button>
+              </div>
+            </div>
+              </div>
+
+              {/* Colonne droite : presets par categorie */}
+              <div className="space-y-3">
+                {LUCY_PRESET_CATEGORIES.map(category => (
+                  <div key={category.id}>
+                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
+                      {category.label}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {category.presets.map(preset => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          disabled={!isVip || !isConnected || isApplyingPrompt}
+                          onClick={() => handleApplyPreset(preset.id, preset.prompt)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                            activePresetId === preset.id
+                              ? 'border-primary bg-primary/15 text-primary shadow-[0_0_16px_rgba(0,255,136,0.25)]'
+                              : 'border-hairline text-foreground/70 hover:border-primary/40 hover:text-foreground'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -1026,7 +1033,6 @@ export default function DashboardPage() {
           </button>
 
           {!isConnected && <GenerateNotice className="mt-3" />}
-          </div>
         </div>
 
         {/* Panneau de reglages */}
