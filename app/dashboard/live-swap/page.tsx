@@ -975,7 +975,7 @@ export default function DashboardPage() {
                 <div>
                   <p className="text-sm font-bold text-foreground">Fonctionnalité VIP</p>
                   <p className="mt-1 text-xs leading-relaxed text-foreground/60">
-                    Débloque les prompts Lucy 2.5 en direct et le rendu sans watermark avec
+                    Débloque les prompts Studio CHAPCAM en direct et le rendu sans watermark avec
                     VIP PRO ou VIP DEBOUT.
                   </p>
                 </div>
