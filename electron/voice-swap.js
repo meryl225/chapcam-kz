@@ -88,9 +88,13 @@ class VoiceSwapService {
       conversion: {
         voiceId: '',
         modelId: 'eleven_multilingual_sts_v2',
-        stability: 0.5,
-        similarityBoost: 0.75,
-        removeBackgroundNoise: true,
+        // Reglages equilibres alignes sur la route web : voix plus reguliere
+        // (moins d'artefacts entre segments) et plus fidele a la cible.
+        stability: 0.65,
+        similarityBoost: 0.85,
+        // Debruitage desactive : le micro le fait deja et cette option ajoute
+        // une passe de traitement (donc de la latence) chez ElevenLabs.
+        removeBackgroundNoise: false,
       },
       inputDeviceId: null,
       outputDeviceId: null,
@@ -213,8 +217,10 @@ class VoiceSwapService {
       form.append(
         'voice_settings',
         JSON.stringify({
-          stability: this.config.conversion.stability ?? 0.5,
-          similarity_boost: this.config.conversion.similarityBoost ?? 0.75,
+          stability: this.config.conversion.stability ?? 0.65,
+          similarity_boost: this.config.conversion.similarityBoost ?? 0.85,
+          style: 0,
+          use_speaker_boost: false,
         }),
       )
 

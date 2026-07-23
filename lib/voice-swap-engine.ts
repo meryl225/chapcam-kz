@@ -365,10 +365,14 @@ export class VoiceSwapEngine {
     src.connect(this.playDest)
 
     const nowT = this.playCtx.currentTime
-    // Si la file est vide (retard pris), on repart de maintenant (underrun).
+    const jitterS = JITTER_BUFFER_MS / 1000
+    // Si la file est vide (retard pris), on ne repart PAS pile a "maintenant" :
+    // on ajoute une petite avance (jitter buffer) pour absorber les variations
+    // de latence reseau et eviter que le segment suivant arrive trop tard
+    // (ce qui creait des trous/coupures dans la voix).
     if (this.playQueueTime < nowT) {
       if (this.playQueueTime > 0) this.underruns += 1
-      this.playQueueTime = nowT
+      this.playQueueTime = nowT + jitterS
     }
     src.start(this.playQueueTime)
     this.playQueueTime += durationS
