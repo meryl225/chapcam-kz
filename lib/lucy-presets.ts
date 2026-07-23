@@ -13,12 +13,15 @@ export function isVipPlan(plan: string | null | undefined): boolean {
 }
 
 /**
- * Instruction de base : garde le swap d'avatar actif quoi qu'il arrive.
- * On la prefixe a chaque scene pour que changer de decor ne "casse" pas le
- * remplacement de la personne par l'avatar de reference.
+ * Rappel d'identite COURT, ajoute EN FIN de prompt.
+ * Volontairement leger : place en tete, la consigne "Full body swap, replace
+ * the person..." dominait le prompt et le modele ignorait le changement de
+ * decor/fond. En mettant la scene en premier et ce rappel bref a la fin, le
+ * changement de decor/style/fond est reellement pris en compte tout en gardant
+ * la personne de l'avatar de reference.
  */
 export const BASE_SWAP_INTENT =
-  'Full body swap, replace the person with the one in the reference image, keep natural movements and expressions.'
+  'Keep the same person from the reference image, natural movements and expressions.'
 
 export interface LucyPreset {
   id: string
@@ -33,9 +36,9 @@ export interface LucyPresetCategory {
   presets: LucyPreset[]
 }
 
-/** Construit le prompt final envoye a Lucy (base swap + scene). */
+/** Construit le prompt final envoye a Lucy : SCENE d'abord, rappel identite ensuite. */
 export function buildScenePrompt(scenePrompt: string): string {
-  return `${BASE_SWAP_INTENT} ${scenePrompt}`.trim()
+  return `${scenePrompt} ${BASE_SWAP_INTENT}`.trim()
 }
 
 export const LUCY_PRESET_CATEGORIES: LucyPresetCategory[] = [

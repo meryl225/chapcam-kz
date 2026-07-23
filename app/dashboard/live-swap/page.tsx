@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock, ChevronDown } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
@@ -53,6 +53,9 @@ export default function DashboardPage() {
   const [enhancePrompt, setEnhancePrompt] = useState(true)
   const [activePresetId, setActivePresetId] = useState<string | null>(null)
   const [isApplyingPrompt, setIsApplyingPrompt] = useState(false)
+  // Sections repliables : desencombrer la page pour tout voir d'un coup.
+  const [studioOpen, setStudioOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   // Qualite HD 1080p : reservee VIP, activee par defaut pour eux.
   const [hdEnabled, setHdEnabled] = useState(true)
   // Codec video prefere (avance) : undefined = negociation par defaut du SDK.
@@ -455,7 +458,7 @@ export default function DashboardPage() {
   const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND && swapConsent
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="mx-auto w-full max-w-[1280px] p-4 md:p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
@@ -611,10 +614,12 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Main layout : contenu + panneau de reglages */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      {/* Main layout : contenu + panneau de reglages.
+          minmax(0,1fr) + min-w-0 : empeche la colonne principale de deborder
+          horizontalement (la piste 1fr a sinon un minimum = taille du contenu). */}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* Colonne principale */}
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {/* Cameras avec cercle IA — la camera ChapCam est volontairement plus grande
               pour faciliter la capture en fenetre dans OBS */}
           <div className="relative grid gap-6 md:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
@@ -730,7 +735,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Avatars */}
-          <div className="grid gap-4 md:grid-cols-[260px_1fr]">
+          <div className="grid gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
             {/* Avatar selectionne */}
             <div className="rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
               <p className="mb-3 text-sm font-semibold text-foreground">Avatar sélectionné</p>
@@ -752,7 +757,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Mes avatars */}
-            <div className="rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
+            <div className="min-w-0 rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
               <div className="mb-3 flex items-center justify-between">
                 <p className="text-sm font-semibold text-foreground">Mes avatars</p>
                 <Link href="/dashboard/avatars" className="flex items-center gap-1 text-xs text-primary hover:underline">
@@ -806,31 +811,50 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Studio Lucy 2.5 : prompts en direct (reserve VIP PRO / VIP DEBOUT) */}
-          <div className="relative mb-4 overflow-hidden rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <p className="text-sm font-semibold text-foreground">Studio CHAPCAM</p>
-                <span className="rounded-full bg-gradient-to-r from-primary to-[#8b5cf6] px-2 py-0.5 text-[10px] font-bold text-black">
-                  VIP
+          {/* Studio CHAPCAM : prompts en direct (reserve VIP PRO / VIP DEBOUT).
+              Contenu organise en 2 colonnes pour un rendu equilibre et pro. */}
+          <div className="relative mb-4 w-full overflow-hidden rounded-2xl border border-hairline bg-muted p-5 backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={() => setStudioOpen(v => !v)}
+              className={`flex w-full flex-wrap items-center justify-between gap-2 ${studioOpen ? 'mb-4 border-b border-hairline pb-4' : ''}`}
+            >
+              <span className="flex items-center gap-2 text-left">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-[#8b5cf6]/20">
+                  <Sparkles className="h-5 w-5 text-primary" />
                 </span>
-              </div>
-              {isVip && (
-                <span className="flex items-center gap-1 text-[11px] text-foreground/50">
-                  <Crown className="h-3.5 w-3.5 text-primary" />
-                  Sans watermark
+                <span className="block">
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-foreground">Studio CHAPCAM</span>
+                    <span className="rounded-full bg-gradient-to-r from-primary to-[#8b5cf6] px-2 py-0.5 text-[10px] font-bold text-black">
+                      VIP
+                    </span>
+                  </span>
+                  <span className="block text-[11px] text-foreground/50">
+                    Décors, styles, effets et arrière-plans en direct, sans couper la caméra.
+                  </span>
                 </span>
-              )}
-            </div>
+              </span>
+              <span className="flex items-center gap-2">
+                {isVip && (
+                  <span className="hidden items-center gap-1 rounded-full border border-hairline bg-background/40 px-2.5 py-1 text-[11px] text-foreground/60 sm:flex">
+                    <Crown className="h-3.5 w-3.5 text-primary" />
+                    Sans watermark
+                  </span>
+                )}
+                <ChevronDown
+                  className={`h-5 w-5 text-foreground/50 transition-transform ${studioOpen ? 'rotate-180' : ''}`}
+                />
+              </span>
+            </button>
 
-            <p className="mb-3 text-xs leading-relaxed text-foreground/50">
-              Transforme ta scène en direct : décors, styles, effets et arrière-plans changent
-              instantanément pendant le live, sans couper la caméra.
-            </p>
-
+            {studioOpen && (
+            <>
+            <div className="grid gap-5 lg:grid-cols-2">
+              {/* Colonne gauche : reglages qualite + prompt personnalise */}
+              <div className="space-y-4">
             {/* Qualite HD 1080p (VIP) + codec avance */}
-            <div className="mb-4 space-y-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
+            <div className="space-y-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
               <button
                 type="button"
                 disabled={!isVip || isConnected}
@@ -874,36 +898,8 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Presets par categorie */}
-            <div className="space-y-3">
-              {LUCY_PRESET_CATEGORIES.map(category => (
-                <div key={category.id}>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
-                    {category.label}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {category.presets.map(preset => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        disabled={!isVip || !isConnected || isApplyingPrompt}
-                        onClick={() => handleApplyPreset(preset.id, preset.prompt)}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
-                          activePresetId === preset.id
-                            ? 'border-primary bg-primary/15 text-primary shadow-[0_0_16px_rgba(0,255,136,0.25)]'
-                            : 'border-hairline text-foreground/70 hover:border-primary/40 hover:text-foreground'
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-
             {/* Prompt libre + Enhance */}
-            <div className="mt-4 space-y-2">
+            <div className="space-y-2">
               <label className="text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
                 Prompt personnalisé
               </label>
@@ -911,7 +907,7 @@ export default function DashboardPage() {
                 value={livePrompt}
                 onChange={e => setLivePromptText(e.target.value)}
                 disabled={!isVip}
-                rows={2}
+                rows={3}
                 placeholder="Ex: dans un manoir gothique éclairé aux bougies, style cinématique..."
                 className="w-full resize-none rounded-xl border border-hairline bg-background/60 p-3 text-sm text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
               />
@@ -946,12 +942,44 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
+              </div>
+
+              {/* Colonne droite : presets par categorie */}
+              <div className="space-y-3">
+                {LUCY_PRESET_CATEGORIES.map(category => (
+                  <div key={category.id}>
+                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
+                      {category.label}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {category.presets.map(preset => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          disabled={!isVip || !isConnected || isApplyingPrompt}
+                          onClick={() => handleApplyPreset(preset.id, preset.prompt)}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                            activePresetId === preset.id
+                              ? 'border-primary bg-primary/15 text-primary shadow-[0_0_16px_rgba(0,255,136,0.25)]'
+                              : 'border-hairline text-foreground/70 hover:border-primary/40 hover:text-foreground'
+                          }`}
+                        >
+                          {preset.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             {isVip && !isConnected && (
               <p className="mt-3 flex items-center gap-1.5 text-[11px] text-foreground/40">
                 <AlertCircle className="h-3.5 w-3.5" />
                 Démarre le Live Swap pour appliquer des scènes en direct.
               </p>
+            )}
+            </>
             )}
 
             {/* Verrou upsell pour les comptes non-VIP */}
@@ -963,7 +991,7 @@ export default function DashboardPage() {
                 <div>
                   <p className="text-sm font-bold text-foreground">Fonctionnalité VIP</p>
                   <p className="mt-1 text-xs leading-relaxed text-foreground/60">
-                    Débloque les prompts Lucy 2.5 en direct et le rendu sans watermark avec
+                    Débloque les prompts Studio CHAPCAM en direct et le rendu sans watermark avec
                     VIP PRO ou VIP DEBOUT.
                   </p>
                 </div>
@@ -1027,11 +1055,22 @@ export default function DashboardPage() {
 
         {/* Panneau de reglages */}
         <aside className="h-fit space-y-6 rounded-2xl border border-hairline bg-muted p-5 backdrop-blur-xl lg:sticky lg:top-6">
-          <div className="flex items-center gap-2">
-            <Settings className="h-5 w-5 text-primary" />
-            <h2 className="text-base font-bold text-foreground">Réglages du swap</h2>
-          </div>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(v => !v)}
+            className="flex w-full items-center justify-between"
+          >
+            <span className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-primary" />
+              <span className="text-base font-bold text-foreground">Réglages du swap</span>
+            </span>
+            <ChevronDown
+              className={`h-5 w-5 text-foreground/50 transition-transform ${settingsOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
 
+          {settingsOpen && (
+          <>
           {/* Qualite de rendu */}
           <div>
             <p className="mb-2 text-xs font-medium text-foreground/60">Qualité de rendu</p>
@@ -1167,6 +1206,8 @@ export default function DashboardPage() {
               <span className="font-medium text-foreground">{pointsUsed} pts</span>
             </div>
           </div>
+          </>
+          )}
         </aside>
       </div>
 
