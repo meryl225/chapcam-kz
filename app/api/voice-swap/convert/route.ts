@@ -63,6 +63,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: 'Aucune voix cible selectionnee.' }, { status: 200 })
   }
 
+  // --- Reglages issus du mode de streaming (valides et bornes cote serveur) ---
+  const ALLOWED_MODELS = ['eleven_multilingual_sts_v2', 'eleven_english_sts_v2']
+  const reqModel = url.searchParams.get('model') || ''
+  const modelId = ALLOWED_MODELS.includes(reqModel) ? reqModel : 'eleven_multilingual_sts_v2'
+
+  const clamp01 = (raw: string | null, fallback: number) => {
+    const n = Number(raw)
+    return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback
+  }
+  const stability = clamp01(url.searchParams.get('stability'), 0.65)
+  const similarityBoost = clamp01(url.searchParams.get('similarity'), 0.85)
+  const style = clamp01(url.searchParams.get('style'), 0)
+  const useSpeakerBoost = url.searchParams.get('speakerBoost') === '1'
+  const latencyRaw = Number(url.searchParams.get('latency'))
+  const optimizeLatency = Number.isFinite(latencyRaw)
+    ? Math.min(4, Math.max(0, Math.round(latencyRaw)))
+    : 4
+
   // Verifie le solde de minutes (produit ChapVoice).
   const admin = adminClient()
   const { data: sub } = await admin
@@ -87,22 +105,24 @@ export async function POST(request: Request) {
     const wav = pcmToWav(pcm)
     const form = new FormData()
     form.append('audio', new Blob([new Uint8Array(wav)], { type: 'audio/wav' }), 'segment.wav')
-    form.append('model_id', 'eleven_multilingual_sts_v2')
-    // Debruitage desactive : le micro applique deja noiseSuppression cote client,
-    // et cette option ajoute une passe de traitement (donc de la latence) chez
-    // ElevenLabs. On l'enleve pour un rendu plus rapide et plus naturel.
+    form.append('model_id', modelId)
+    // Debruitage desactive : le micro applique deja son propre traitement cote
+    // client, et cette option ajoute une passe (donc de la latence) chez ElevenLabs.
     form.append('remove_background_noise', 'false')
-    // Reglages equilibres : stability plus haute = voix plus reguliere (moins de
-    // "bug"/artefacts entre segments) ; similarity_boost eleve = plus fidele a la
-    // voix cible ; style 0 = pas d'exageration (plus rapide et stable).
+    // Reglages issus du mode de streaming choisi dans l'UI (deja bornes plus haut).
     form.append(
       'voice_settings',
-      JSON.stringify({ stability: 0.65, similarity_boost: 0.85, style: 0, use_speaker_boost: false }),
+      JSON.stringify({
+        stability,
+        similarity_boost: similarityBoost,
+        style,
+        use_speaker_boost: useSpeakerBoost,
+      }),
     )
 
     const apiUrl =
       `${ELEVENLABS_BASE}/speech-to-speech/${encodeURIComponent(voiceId)}/stream` +
-      `?output_format=${STS_OUTPUT_FORMAT}&optimize_streaming_latency=4`
+      `?output_format=${STS_OUTPUT_FORMAT}&optimize_streaming_latency=${optimizeLatency}`
 
     const res = await fetch(apiUrl, {
       method: 'POST',

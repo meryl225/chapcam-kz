@@ -15,12 +15,23 @@ import {
   Check,
   Copy,
   Clock,
+  Zap,
+  Gauge,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { useVoiceSwap } from '@/hooks/use-voice-swap'
 import { useVoiceSubscription } from '@/hooks/use-voice-subscription'
 import { VoiceOffersSection } from '@/components/voice-swap/voice-offers-section'
 import { SwapConsent, GenerateNotice } from '@/components/dashboard/swap-consent'
-import { type VoiceSwapPhase } from '@/lib/voice-swap'
+import {
+  type VoiceSwapPhase,
+  STS_MODELS,
+  VOICE_STREAM_MODES,
+  DEFAULT_STREAM_MODE_ID,
+  DEFAULT_MIC_PROCESSING,
+  getStreamMode,
+  type StsModelId,
+} from '@/lib/voice-swap'
 
 const PHASE_LABELS: Record<VoiceSwapPhase, string> = {
   idle: 'Inactif',
@@ -48,6 +59,30 @@ export default function VoiceSwapPage() {
   const [busy, setBusy] = useState(false)
   // Certification d'usage responsable, requise avant chaque demarrage.
   const [swapConsent, setSwapConsent] = useState(false)
+
+  // --- Mode de streaming + reglages avances ---
+  const defaultTuning = getStreamMode(DEFAULT_STREAM_MODE_ID).tuning
+  const [modeId, setModeId] = useState(DEFAULT_STREAM_MODE_ID)
+  const [customized, setCustomized] = useState(false)
+  const [model, setModel] = useState<StsModelId>(defaultTuning.modelId)
+  const [stability, setStability] = useState(defaultTuning.stability)
+  const [similarity, setSimilarity] = useState(defaultTuning.similarityBoost)
+  const [style, setStyle] = useState(defaultTuning.style)
+  const [speakerBoost, setSpeakerBoost] = useState(defaultTuning.useSpeakerBoost)
+  const [mic, setMic] = useState(DEFAULT_MIC_PROCESSING)
+  const [advancedOpen, setAdvancedOpen] = useState(false)
+
+  // Applique un preset : synchronise tous les curseurs sur ses valeurs.
+  const applyMode = (id: string) => {
+    const t = getStreamMode(id).tuning
+    setModeId(id)
+    setCustomized(false)
+    setModel(t.modelId)
+    setStability(t.stability)
+    setSimilarity(t.similarityBoost)
+    setStyle(t.style)
+    setSpeakerBoost(t.useSpeakerBoost)
+  }
 
   const selectedVoiceProfile = useMemo(
     () => voices.find((v) => v.id === selectedVoice) || null,
@@ -86,8 +121,26 @@ export default function VoiceSwapPage() {
           voiceId: selectedVoice,
           acceptedAt: new Date().toISOString(),
         })
+        const base = getStreamMode(modeId).tuning
+        const tuning = {
+          ...base,
+          modelId: model,
+          stability,
+          similarityBoost: similarity,
+          style,
+          useSpeakerBoost: speakerBoost,
+        }
         await start({
-          conversion: { voiceId: selectedVoice },
+          conversion: {
+            voiceId: selectedVoice,
+            modelId: model,
+            stability,
+            similarityBoost: similarity,
+            style,
+            useSpeakerBoost: speakerBoost,
+          },
+          tuning,
+          micProcessing: mic,
           inputDeviceId: inputDeviceId || null,
           outputDeviceId: outputDeviceId || null,
         })
@@ -358,6 +411,186 @@ export default function VoiceSwapPage() {
             </select>
           </label>
         </div>
+      </section>
+
+      {/* Mode de streaming (presets latence/qualite) */}
+      <section className="mb-5 rounded-2xl border border-hairline bg-card p-6">
+        <div className="mb-1 flex items-center gap-2">
+          <Gauge className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold text-foreground">Mode de streaming</h2>
+          {customized && (
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-text-faint">
+              Personnalise
+            </span>
+          )}
+        </div>
+        <p className="mb-4 text-sm text-muted-foreground text-pretty">
+          Choisis un prereglage selon ton usage. Il ajuste le modele, le decoupage et la voix.
+        </p>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {VOICE_STREAM_MODES.map((m) => {
+            const active = m.id === modeId
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => applyMode(m.id)}
+                disabled={isRunning}
+                className={`flex flex-col rounded-xl border p-4 text-left transition-colors disabled:opacity-50 ${
+                  active
+                    ? 'border-primary bg-primary/5'
+                    : 'border-hairline bg-muted hover:border-primary/40'
+                }`}
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-foreground">{m.label}</span>
+                  {active && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                </span>
+                <span className="mt-1 text-xs text-muted-foreground text-pretty">
+                  {m.description}
+                </span>
+                <span className="mt-3 flex flex-wrap gap-1.5">
+                  <span className="flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-[10px] font-medium text-text-faint">
+                    <Zap className="h-3 w-3" />
+                    {m.estLatency}
+                  </span>
+                  <span className="flex items-center gap-1 rounded-full bg-background px-2 py-0.5 text-[10px] font-medium text-text-faint">
+                    <AudioLines className="h-3 w-3" />
+                    {m.estQuality}
+                  </span>
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Reglages avances */}
+        <button
+          type="button"
+          onClick={() => setAdvancedOpen((o) => !o)}
+          className="mt-4 flex w-full items-center justify-between rounded-xl border border-hairline bg-muted px-4 py-3 text-sm font-medium text-foreground transition-colors hover:border-primary/40"
+          aria-expanded={advancedOpen}
+        >
+          <span className="flex items-center gap-2">
+            <SlidersHorizontal className="h-4 w-4 text-primary" />
+            Reglages avances
+          </span>
+          <ChevronDown
+            className={`h-4 w-4 text-text-faint transition-transform ${advancedOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {advancedOpen && (
+          <div className="mt-3 flex flex-col gap-5 rounded-xl border border-hairline bg-muted/50 p-4">
+            {/* Modele */}
+            <label className="flex flex-col gap-1.5">
+              <span className="text-xs font-medium text-text-faint">Modele de conversion</span>
+              <select
+                value={model}
+                disabled={isRunning}
+                onChange={(e) => {
+                  setModel(e.target.value as StsModelId)
+                  setCustomized(true)
+                }}
+                className="rounded-xl border border-hairline bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary disabled:opacity-50"
+              >
+                {STS_MODELS.map((sm) => (
+                  <option key={sm.id} value={sm.id}>
+                    {sm.name} - {sm.description}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {/* Curseurs voix */}
+            {(
+              [
+                { label: 'Stabilite', value: stability, set: setStability, hint: 'Plus haut = voix plus reguliere' },
+                { label: 'Similarite', value: similarity, set: setSimilarity, hint: 'Fidelite a la voix cible' },
+                { label: 'Style', value: style, set: setStyle, hint: 'Exageration expressive (peut ralentir)' },
+              ] as const
+            ).map((row) => (
+              <label key={row.label} className="flex flex-col gap-1.5">
+                <span className="flex items-center justify-between text-xs font-medium text-text-faint">
+                  <span>
+                    {row.label}
+                    <span className="ml-2 font-normal text-text-faint/70">{row.hint}</span>
+                  </span>
+                  <span className="font-mono text-foreground">{row.value.toFixed(2)}</span>
+                </span>
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={row.value}
+                  disabled={isRunning}
+                  onChange={(e) => {
+                    row.set(Number(e.target.value))
+                    setCustomized(true)
+                  }}
+                  className="accent-primary disabled:opacity-50"
+                />
+              </label>
+            ))}
+
+            {/* Speaker boost */}
+            <button
+              type="button"
+              disabled={isRunning}
+              onClick={() => {
+                setSpeakerBoost((v) => !v)
+                setCustomized(true)
+              }}
+              className="flex items-center justify-between rounded-xl border border-hairline bg-background px-4 py-3 text-sm disabled:opacity-50"
+            >
+              <span className="flex flex-col text-left">
+                <span className="font-medium text-foreground">Speaker Boost</span>
+                <span className="text-xs text-text-faint">Renforce la ressemblance au locuteur</span>
+              </span>
+              <span
+                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${speakerBoost ? 'bg-primary' : 'bg-hairline'}`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-background transition-transform ${speakerBoost ? 'translate-x-5' : 'translate-x-0.5'}`}
+                />
+              </span>
+            </button>
+
+            {/* Traitement micro */}
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-text-faint">Traitement du micro</span>
+              {(
+                [
+                  { key: 'noiseSuppression', label: 'Suppression de bruit' },
+                  { key: 'echoCancellation', label: "Annulation d'echo" },
+                  { key: 'autoGainControl', label: 'Gain automatique' },
+                ] as const
+              ).map((row) => {
+                const on = mic[row.key]
+                return (
+                  <button
+                    key={row.key}
+                    type="button"
+                    disabled={isRunning}
+                    onClick={() => setMic((prev) => ({ ...prev, [row.key]: !prev[row.key] }))}
+                    className="flex items-center justify-between rounded-xl border border-hairline bg-background px-4 py-2.5 text-sm disabled:opacity-50"
+                  >
+                    <span className="font-medium text-foreground">{row.label}</span>
+                    <span
+                      className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${on ? 'bg-primary' : 'bg-hairline'}`}
+                    >
+                      <span
+                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-background transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}`}
+                      />
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Erreur runtime */}
