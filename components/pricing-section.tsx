@@ -71,7 +71,10 @@ const plans = [
     features: [
       "Transformation du visage et corps entier",
       "4 250 points (35 min 25 sec)",
-      "Qualite 4K Ultra HD",
+      "Rendu Full HD 1080p sans logo",
+      "Studio CHAPCAM : scènes en direct (décors, styles, effets)",
+      "Prompts personnalisés en direct + Enhance",
+      "Suivi temps réel : chrono précis & qualité réseau",
       "Support VIP 24/7",
       "Acces aux nouveautes en avant-premiere"
     ],
@@ -90,12 +93,15 @@ const plans = [
     duration: "365 JOURS",
     price: "150.000",
     oldPrice: "180.000",
-    discount: 17,
+    discount: 25,
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
       "7 200 points (60 min)",
-      "Qualite 4K Ultra HD maximale",
+      "Rendu Full HD 1080p sans logo",
+      "Studio CHAPCAM complet : scènes en direct (décors, styles, effets, arrière-plans)",
+      "Prompts personnalisés illimités en direct + Enhance",
+      "Suivi temps réel : chrono précis & qualité réseau",
       "Support VIP prioritaire 24/7",
       "Acces anticipe a toutes les nouveautes"
     ],
@@ -191,14 +197,18 @@ export function PricingSection() {
                 transition={{ delay: index * 0.1 }}
                 whileHover={{ y: -8, scale: plan.highlight ? 1.08 : 1.03 }}
                 style={
-                  plan.highlight
+                  plan.id === "vipdebout"
+                    ? { borderColor: "#facc15", boxShadow: "0 0 70px rgba(250,204,21,0.35)" }
+                    : plan.highlight
                     ? { borderColor: plan.color, boxShadow: `0 0 60px ${plan.color}55` }
                     : undefined
                 }
-                className={`relative rounded-3xl bg-[#111] p-8 transition-all duration-300 ${
-                  plan.highlight
-                    ? "border-2 lg:scale-105 z-10"
-                    : "border border-white/10 hover:border-white/30"
+                className={`relative rounded-3xl p-8 transition-all duration-300 ${
+                  plan.id === "vipdebout"
+                    ? "border-2 bg-gradient-to-b from-[#161310] to-[#111] lg:scale-105 z-10"
+                    : plan.highlight
+                    ? "border-2 bg-[#111] lg:scale-105 z-10"
+                    : "border border-white/10 bg-[#111] hover:border-white/30"
                 }`}
               >
                 {/* Discount Badge */}
@@ -206,28 +216,28 @@ export function PricingSection() {
                   -{plan.discount}%
                 </div>
 
-                {/* Badge du haut : "MEILLEURE OFFRE" pour le VIP PRO, sinon "SANS LOGO" pour les forfaits mis en avant */}
-                {plan.bestOffer ? (
+                {/* Badge du haut : "POPULAIRE" pour VIP PRO, "MEILLEURE OFFRE" pour VIP DEBOUT (premium) */}
+                {plan.id === "vipdebout" ? (
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 px-5 py-1 text-sm font-bold text-black shadow-[0_0_20px_rgba(250,204,21,0.55)]">
+                    <Crown className="w-4 h-4" />
+                    MEILLEURE OFFRE
+                  </div>
+                ) : plan.bestOffer ? (
                   <div
                     className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-black text-sm font-bold px-5 py-1 rounded-full whitespace-nowrap shadow-lg"
                     style={{ backgroundColor: plan.color }}
                   >
                     <Crown className="w-4 h-4" />
-                    MEILLEURE OFFRE
-                  </div>
-                ) : plan.highlight && plan.watermark !== "with" ? (
-                  <div
-                    className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 text-black text-sm font-bold px-5 py-1 rounded-full whitespace-nowrap"
-                    style={{ backgroundColor: plan.color }}
-                  >
-                    <DropletOff className="w-4 h-4" />
-                    SANS LOGO
+                    POPULAIRE
                   </div>
                 ) : null}
 
                 <div className="flex items-center gap-3 mb-6 mt-4">
-                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: `${plan.color}20` }}>
-                    <Icon className="w-6 h-6" style={{ color: plan.color }} />
+                  <div
+                    className="w-11 h-11 rounded-2xl flex items-center justify-center"
+                    style={{ backgroundColor: plan.id === "vipdebout" ? "#facc1522" : `${plan.color}20` }}
+                  >
+                    <Icon className="w-6 h-6" style={{ color: plan.id === "vipdebout" ? "#facc15" : plan.color }} />
                   </div>
                   <div>
                     <div className="font-bold text-white text-xl">{plan.name}</div>
@@ -244,7 +254,7 @@ export function PricingSection() {
                   {/* New Price */}
                   <span
                     className="text-5xl font-black"
-                    style={{ color: plan.id === "vipdebout" ? plan.color : "#00ff88" }}
+                    style={{ color: plan.id === "vipdebout" ? "#facc15" : "#00ff88" }}
                   >
                     {plan.price}
                   </span>

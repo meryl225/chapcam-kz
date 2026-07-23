@@ -3,8 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Languages, ImageIcon, Film, ArrowRight, Maximize2, Minimize2, AudioLines } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
+import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
 import { SwapConsent, GenerateNotice } from '@/components/dashboard/swap-consent'
@@ -14,6 +15,22 @@ const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
 
 const POINTS_PER_SECOND = 2
+
+// Libelle + couleur par verdict de qualite reseau (Lucy 2.5).
+const QUALITY_UI: Record<string, { label: string; color: string }> = {
+  good: { label: 'Connexion excellente', color: 'text-primary' },
+  fair: { label: 'Connexion correcte', color: 'text-yellow-500' },
+  poor: { label: 'Connexion faible', color: 'text-orange-500' },
+  critical: { label: 'Connexion critique', color: 'text-red-500' },
+}
+
+// Formate des secondes en mm:ss.
+function formatDuration(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds))
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  return `${m}:${sec.toString().padStart(2, '0')}`
+}
 
 interface Avatar {
   id: string
@@ -27,7 +44,19 @@ export default function DashboardPage() {
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
   const [userPoints, setUserPoints] = useState(0)
   const [maxPoints, setMaxPoints] = useState(0)
+  const [plan, setPlan] = useState<string>('free')
   const [userId, setUserId] = useState<string | null>(null)
+
+  // --- Studio Lucy 2.5 (prompts en direct, reserve VIP) ---
+  const isVip = isVipPlan(plan)
+  const [livePrompt, setLivePromptText] = useState('')
+  const [enhancePrompt, setEnhancePrompt] = useState(true)
+  const [activePresetId, setActivePresetId] = useState<string | null>(null)
+  const [isApplyingPrompt, setIsApplyingPrompt] = useState(false)
+  // Qualite HD 1080p : reservee VIP, activee par defaut pour eux.
+  const [hdEnabled, setHdEnabled] = useState(true)
+  // Codec video prefere (avance) : undefined = negociation par defaut du SDK.
+  const [videoCodec, setVideoCodec] = useState<'h264' | 'vp8' | 'vp9' | ''>('')
   const [duration, setDuration] = useState(0)
   const [pointsUsed, setPointsUsed] = useState(0)
   const [isSyncingPoints, setIsSyncingPoints] = useState(false)
@@ -97,6 +126,12 @@ export default function DashboardPage() {
     connect,
     disconnect,
     updateAvatar,
+    setLivePrompt,
+    elapsedSeconds,
+    connectionQuality,
+    qualityFactor,
+    queuePosition,
+    activeResolution,
   } = useLucy21()
 
   const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -163,6 +198,7 @@ export default function DashboardPage() {
         if (pointsData?.success) {
           setUserPoints(pointsData.points ?? 0)
           setMaxPoints(pointsData.maxPoints ?? 0)
+          setPlan(pointsData.plan ?? 'free')
           remainingRef.current = pointsData.points ?? 0
         }
       } catch (err) {
@@ -342,7 +378,11 @@ export default function DashboardPage() {
     pointsUsedRef.current = 0
     pendingSyncRef.current = 0
     remainingRef.current = userPoints
-    await connect(selectedAvatar.url)
+    // 1080p uniquement pour les VIP ayant laisse le HD active ; codec avance optionnel.
+    await connect(selectedAvatar.url, {
+      hd: isVip && hdEnabled,
+      codec: videoCodec || undefined,
+    })
   }
 
   const handleStopSwap = () => handleStopSwapAndSave()
@@ -364,6 +404,30 @@ export default function DashboardPage() {
       }
     }
   }
+
+  // Appliquer une scene preset (decor / style / effet / arriere-plan) A CHAUD.
+  const handleApplyPreset = useCallback(async (presetId: string, presetPrompt: string) => {
+    if (!isVip || !isConnected || isApplyingPrompt) return
+    setIsApplyingPrompt(true)
+    setActivePresetId(presetId)
+    try {
+      await setLivePrompt(buildScenePrompt(presetPrompt), enhancePrompt)
+    } finally {
+      setIsApplyingPrompt(false)
+    }
+  }, [isVip, isConnected, isApplyingPrompt, enhancePrompt, setLivePrompt])
+
+  // Appliquer un prompt libre saisi par l'utilisateur VIP.
+  const handleApplyFreePrompt = useCallback(async () => {
+    if (!isVip || !isConnected || isApplyingPrompt || !livePrompt.trim()) return
+    setIsApplyingPrompt(true)
+    setActivePresetId(null)
+    try {
+      await setLivePrompt(buildScenePrompt(livePrompt), enhancePrompt)
+    } finally {
+      setIsApplyingPrompt(false)
+    }
+  }, [isVip, isConnected, isApplyingPrompt, livePrompt, enhancePrompt, setLivePrompt])
 
   const handleModeChange = useCallback((mode: 'auto' | 'local' | 'cloud') => {
     // Si PC gamer, ignorer tout changement et rester en local
@@ -389,13 +453,6 @@ export default function DashboardPage() {
   }
 
   const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND && swapConsent
-
-  const quickTools = [
-    { href: '/dashboard/voice-swap', label: 'Voice Swap', icon: AudioLines, color: '#8b5cf6' },
-    { href: '/dashboard/voice-translator', label: 'Voice Traducteur', icon: Languages, color: '#3b82f6' },
-    { href: '/dashboard/photo-video', label: 'Photos → Vidéo', icon: ImageIcon, color: '#f97316' },
-    { href: '/dashboard/video-translation', label: 'Traduction Vidéo', icon: Film, color: '#8b5cf6' },
-  ]
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -451,9 +508,18 @@ export default function DashboardPage() {
       {/* Status bar */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-hairline bg-muted px-5 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-2">
-          {isConnected ? <Wifi className="h-4 w-4 text-primary" /> : <WifiOff className="h-4 w-4 text-text-faint" />}
-          <span className={`text-sm font-medium ${isConnected ? 'text-primary' : 'text-muted-foreground'}`}>
-            {isConnected ? 'Connexion excellente' : 'Connexion prête'}
+          {isConnected ? (
+            <Wifi className={`h-4 w-4 ${QUALITY_UI[connectionQuality ?? 'good'].color}`} />
+          ) : (
+            <WifiOff className="h-4 w-4 text-text-faint" />
+          )}
+          <span
+            className={`text-sm font-medium ${isConnected ? QUALITY_UI[connectionQuality ?? 'good'].color : 'text-muted-foreground'}`}
+            title={isConnected && qualityFactor ? `Facteur limitant : ${qualityFactor}` : undefined}
+          >
+            {isConnected
+              ? QUALITY_UI[connectionQuality ?? 'good'].label
+              : 'Connexion prête'}
           </span>
         </div>
         <div className="hidden h-4 w-px bg-muted sm:block" />
@@ -465,11 +531,13 @@ export default function DashboardPage() {
         <div className="hidden h-4 w-px bg-muted sm:block" />
         <div className="flex items-center gap-2 text-sm">
           <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-            {renderQuality === 'ultra' ? '4K' : renderQuality === 'hd' ? 'HD' : 'SD'}
+            {isConnected ? (activeResolution === '1080p' ? '1080p' : '720p') : renderQuality === 'ultra' ? '4K' : renderQuality === 'hd' ? 'HD' : 'SD'}
           </span>
           <span className="text-muted-foreground">Qualité :</span>
           <span className="font-medium text-foreground">
-            {renderQuality === 'ultra' ? 'Ultra HD' : renderQuality === 'hd' ? 'HD' : 'Standard'}
+            {isConnected
+              ? activeResolution === '1080p' ? 'Full HD 1080p' : 'HD 720p'
+              : renderQuality === 'ultra' ? 'Ultra HD' : renderQuality === 'hd' ? 'HD' : 'Standard'}
           </span>
         </div>
         <div className="hidden h-4 w-px bg-muted sm:block" />
@@ -478,7 +546,34 @@ export default function DashboardPage() {
           <span className="text-muted-foreground">Latence :</span>
           <span className="font-medium text-foreground">{stats.latency || 120} ms</span>
         </div>
+        {isConnected && (
+          <>
+            <div className="hidden h-4 w-px bg-muted sm:block" />
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="h-4 w-4 text-primary" />
+              <span className="text-muted-foreground">Direct :</span>
+              <span className="font-mono font-medium text-foreground tabular-nums">
+                {formatDuration(elapsedSeconds)}
+              </span>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* File d'attente Lucy 2.5 : affichee quand les serveurs sont satures */}
+      {queuePosition && queuePosition.position > 0 && (
+        <div className="flex items-center gap-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
+          <Loader2 className="h-5 w-5 shrink-0 animate-spin text-yellow-500" />
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              File d&apos;attente : position {queuePosition.position} sur {queuePosition.queueSize}
+            </p>
+            <p className="mt-0.5 text-xs text-foreground/60">
+              Les serveurs sont très demandés. Ta session démarre dès qu&apos;une place se libère.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Rappel : c'est la vraie version premium */}
       <div className="flex items-start gap-3 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-transparent p-4">
@@ -634,31 +729,6 @@ export default function DashboardPage() {
 
           </div>
 
-          {/* Outils rapides ChapCam */}
-          <div className="rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-foreground/50">
-              Outils rapides ChapCam
-            </p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {quickTools.map(tool => (
-                <Link
-                  key={tool.href}
-                  href={tool.href}
-                  className="group flex items-center gap-2.5 rounded-xl border border-hairline bg-black/30 px-3 py-2.5 transition-all duration-200 hover:-translate-y-0.5 hover:border-hairline-strong"
-                >
-                  <span
-                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                    style={{ backgroundColor: `${tool.color}22` }}
-                  >
-                    <tool.icon className="h-4 w-4" style={{ color: tool.color }} />
-                  </span>
-                  <span className="flex-1 truncate text-xs font-medium text-foreground">{tool.label}</span>
-                  <ArrowRight className="h-3.5 w-3.5 shrink-0 text-foreground/30 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground/60" />
-                </Link>
-              ))}
-            </div>
-          </div>
-
           {/* Avatars */}
           <div className="grid gap-4 md:grid-cols-[260px_1fr]">
             {/* Avatar selectionne */}
@@ -734,6 +804,178 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Studio Lucy 2.5 : prompts en direct (reserve VIP PRO / VIP DEBOUT) */}
+          <div className="relative mb-4 overflow-hidden rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <p className="text-sm font-semibold text-foreground">Studio CHAPCAM</p>
+                <span className="rounded-full bg-gradient-to-r from-primary to-[#8b5cf6] px-2 py-0.5 text-[10px] font-bold text-black">
+                  VIP
+                </span>
+              </div>
+              {isVip && (
+                <span className="flex items-center gap-1 text-[11px] text-foreground/50">
+                  <Crown className="h-3.5 w-3.5 text-primary" />
+                  Sans watermark
+                </span>
+              )}
+            </div>
+
+            <p className="mb-3 text-xs leading-relaxed text-foreground/50">
+              Transforme ta scène en direct : décors, styles, effets et arrière-plans changent
+              instantanément pendant le live, sans couper la caméra.
+            </p>
+
+            {/* Qualite HD 1080p (VIP) + codec avance */}
+            <div className="mb-4 space-y-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
+              <button
+                type="button"
+                disabled={!isVip || isConnected}
+                onClick={() => setHdEnabled(v => !v)}
+                className="flex w-full items-center justify-between disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <span className="flex items-center gap-2 text-left">
+                  <Maximize2 className="h-4 w-4 text-yellow-500" />
+                  <span className="flex flex-col">
+                    <span className="text-sm font-semibold text-foreground">Qualité Full HD 1080p</span>
+                    <span className="text-[11px] text-foreground/50">
+                      Image ultra nette. Réservé VIP. Choix à faire avant de démarrer.
+                    </span>
+                  </span>
+                </span>
+                <span
+                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${hdEnabled && isVip ? 'bg-yellow-500' : 'bg-hairline-strong'}`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${hdEnabled && isVip ? 'translate-x-5' : 'translate-x-0.5'}`}
+                  />
+                </span>
+              </button>
+
+              <div className="flex items-center justify-between gap-3">
+                <label htmlFor="codec-select" className="text-xs text-foreground/60">
+                  Codec vidéo (avancé)
+                </label>
+                <select
+                  id="codec-select"
+                  value={videoCodec}
+                  disabled={!isVip || isConnected}
+                  onChange={e => setVideoCodec(e.target.value as typeof videoCodec)}
+                  className="rounded-lg border border-hairline bg-black/40 px-2.5 py-1.5 text-xs font-medium text-foreground outline-none focus:border-yellow-500/50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <option value="">Auto</option>
+                  <option value="h264">H.264 (compatible)</option>
+                  <option value="vp9">VP9 (net)</option>
+                  <option value="vp8">VP8</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Presets par categorie */}
+            <div className="space-y-3">
+              {LUCY_PRESET_CATEGORIES.map(category => (
+                <div key={category.id}>
+                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
+                    {category.label}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {category.presets.map(preset => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        disabled={!isVip || !isConnected || isApplyingPrompt}
+                        onClick={() => handleApplyPreset(preset.id, preset.prompt)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                          activePresetId === preset.id
+                            ? 'border-primary bg-primary/15 text-primary shadow-[0_0_16px_rgba(0,255,136,0.25)]'
+                            : 'border-hairline text-foreground/70 hover:border-primary/40 hover:text-foreground'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Prompt libre + Enhance */}
+            <div className="mt-4 space-y-2">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
+                Prompt personnalisé
+              </label>
+              <textarea
+                value={livePrompt}
+                onChange={e => setLivePromptText(e.target.value)}
+                disabled={!isVip}
+                rows={2}
+                placeholder="Ex: dans un manoir gothique éclairé aux bougies, style cinématique..."
+                className="w-full resize-none rounded-xl border border-hairline bg-background/60 p-3 text-sm text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+              />
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  type="button"
+                  disabled={!isVip}
+                  onClick={() => setEnhancePrompt(v => !v)}
+                  className="flex items-center gap-1.5 text-xs text-foreground/60 transition-colors hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <span
+                    className={`flex h-4 w-4 items-center justify-center rounded border ${
+                      enhancePrompt ? 'border-primary bg-primary' : 'border-hairline-strong'
+                    }`}
+                  >
+                    {enhancePrompt && <Check className="h-3 w-3 text-black" />}
+                  </span>
+                  Enhance (améliore le prompt)
+                </button>
+                <button
+                  type="button"
+                  disabled={!isVip || !isConnected || isApplyingPrompt || !livePrompt.trim()}
+                  onClick={handleApplyFreePrompt}
+                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-[#8b5cf6] px-4 py-2 text-xs font-bold text-black transition-all hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {isApplyingPrompt ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Wand2 className="h-3.5 w-3.5" />
+                  )}
+                  Appliquer
+                </button>
+              </div>
+            </div>
+
+            {isVip && !isConnected && (
+              <p className="mt-3 flex items-center gap-1.5 text-[11px] text-foreground/40">
+                <AlertCircle className="h-3.5 w-3.5" />
+                Démarre le Live Swap pour appliquer des scènes en direct.
+              </p>
+            )}
+
+            {/* Verrou upsell pour les comptes non-VIP */}
+            {!isVip && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 rounded-2xl bg-background/80 p-6 text-center backdrop-blur-sm">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-r from-primary to-[#8b5cf6]">
+                  <Lock className="h-6 w-6 text-black" />
+                </span>
+                <div>
+                  <p className="text-sm font-bold text-foreground">Fonctionnalité VIP</p>
+                  <p className="mt-1 text-xs leading-relaxed text-foreground/60">
+                    Débloque les prompts Lucy 2.5 en direct et le rendu sans watermark avec
+                    VIP PRO ou VIP DEBOUT.
+                  </p>
+                </div>
+                <Link
+                  href="/dashboard/plans"
+                  className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-[#8b5cf6] px-5 py-2.5 text-sm font-bold text-black transition-all hover:shadow-[0_0_24px_rgba(139,92,246,0.45)]"
+                >
+                  <Crown className="h-4 w-4" />
+                  Passer VIP
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Certification d'usage responsable (avant demarrage) */}

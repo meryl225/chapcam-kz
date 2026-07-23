@@ -15,6 +15,18 @@ export function useLucy21() {
   const [connectionState, setConnectionState] = useState('disconnected')
   const [error, setError] = useState<string | null>(null)
 
+  // --- Retour temps reel Lucy 2.5 ---
+  // Secondes de generation ecoulees, remontees precisement par le serveur.
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
+  // Verdict de qualite reseau : 'good' | 'fair' | 'poor' | 'critical' | null.
+  const [connectionQuality, setConnectionQuality] = useState<string | null>(null)
+  // Facteur limitant (latence, bande passante, pertes...), pour l'info-bulle.
+  const [qualityFactor, setQualityFactor] = useState<string | null>(null)
+  // Position dans la file d'attente quand les serveurs sont satures.
+  const [queuePosition, setQueuePosition] = useState<{ position: number; queueSize: number } | null>(null)
+  // Resolution reellement active (720p ou 1080p) pour l'afficher a l'ecran.
+  const [activeResolution, setActiveResolution] = useState<'720p' | '1080p'>('720p')
+
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const realtimeClientRef = useRef<any>(null)
@@ -81,13 +93,29 @@ export function useLucy21() {
     setIsConnecting(false)
     setConnectionState('disconnected')
     setError(null)
+    setElapsedSeconds(0)
+    setConnectionQuality(null)
+    setQualityFactor(null)
+    setQueuePosition(null)
   }, [])
 
-  const connect = useCallback(async (avatarImageUrl: string) => {
+  const connect = useCallback(async (
+    avatarImageUrl: string,
+    options?: {
+      // true = 1080p (reserve VIP cote page). Sinon 720p.
+      hd?: boolean
+      // Codec video prefere : h264 (compatibilite max), vp8, vp9 (meilleure compression).
+      codec?: 'h264' | 'vp8' | 'vp9'
+    },
+  ) => {
     disconnect()
     setIsConnecting(true)
     setError(null)
     setConnectionState('connecting')
+
+    const useHd = options?.hd === true
+    const resolution: '720p' | '1080p' = useHd ? '1080p' : '720p'
+    setActiveResolution(resolution)
 
     try {
       // Verifier les points disponibles avant de commencer.
@@ -110,8 +138,16 @@ export function useLucy21() {
 
       let stream: MediaStream
       try {
+        // Capture en 1080p pour le mode HD (VIP), sinon 720p. On demande la
+        // resolution "ideale" pour degrader proprement si la camera ne suit pas.
+        const camWidth = useHd ? 1920 : 1280
+        const camHeight = useHd ? 1080 : 720
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 1280, height: 720, frameRate: 30 }
+          video: {
+            width: { ideal: camWidth },
+            height: { ideal: camHeight },
+            frameRate: { ideal: 30 },
+          },
         })
       } catch (camError: any) {
         if (camError.name === 'NotAllowedError') {
@@ -160,7 +196,26 @@ export function useLucy21() {
         // tracks) eteint reellement la camera. L'effet miroir "selfie" est
         // reproduit en pur CSS (scaleX(-1)) sur les deux videos de la page.
         mirror: false,
-        resolution: '720p',
+        // Resolution : 1080p en mode HD (VIP), 720p sinon.
+        resolution,
+        // Codec video prefere si fourni (sinon negociation par defaut du SDK).
+        ...(options?.codec ? { preferredVideoCodec: options.codec } : {}),
+
+        // Qualite reseau en direct : verdict lisse + facteur limitant.
+        onConnectionQuality: (report: any) => {
+          setConnectionQuality(report?.quality ?? null)
+          setQualityFactor(
+            report?.limitingFactor && report.limitingFactor !== 'none'
+              ? report.limitingFactor
+              : null,
+          )
+        },
+        // Position dans la file d'attente quand les serveurs sont satures.
+        onQueuePosition: (qp: any) => {
+          setQueuePosition(
+            qp ? { position: qp.position, queueSize: qp.queueSize } : null,
+          )
+        },
 
         // IMPORTANT : on passe l'avatar (image + prompt) via `initialState`.
         // Ainsi le SDK applique l'etat initial pendant le handshake de
@@ -209,6 +264,35 @@ export function useLucy21() {
       // La facturation demarre via markLive() (1ere vraie image).
       realtimeClient.on('connectionChange', (state: string) => {
         setConnectionState(state)
+      })
+
+      // Timer PRECIS de generation : le serveur remonte les secondes reellement
+      // consommees. Bien plus fiable que notre estimation locale pour afficher
+      // la duree et caler les points.
+      realtimeClient.on('generationTick', (tick: { seconds: number }) => {
+        if (typeof tick?.seconds === 'number') setElapsedSeconds(tick.seconds)
+      })
+
+      // Fin de session cote serveur : on connait la RAISON (solde epuise,
+      // inactivite, erreur serveur...) pour afficher un message clair.
+      realtimeClient.on('generationEnded', (ended: { seconds: number; reason: string }) => {
+        const reason = ended?.reason || ''
+        const friendly =
+          /quota|credit|point|balance|insufficient/i.test(reason)
+            ? 'Session terminee : points epuises.'
+            : /idle|inactiv|timeout/i.test(reason)
+              ? 'Session terminee pour inactivite.'
+              : /server|internal|error/i.test(reason)
+                ? 'Session interrompue par le serveur. Reessaie dans un instant.'
+                : 'Session de transformation terminee.'
+        setError(friendly)
+        disconnect()
+      })
+
+      // Alerte reseau (evenement brut) : on garde le dernier verdict a jour meme
+      // si onConnectionQuality n'a pas encore ete appele.
+      realtimeClient.on('connectionQuality', (report: any) => {
+        setConnectionQuality(report?.quality ?? null)
       })
 
       // Garde-fou : si aucune image transformee n'arrive en 20s, on coupe et on
@@ -269,6 +353,27 @@ export function useLucy21() {
     }
   }, [])
 
+  // Appliquer un prompt Lucy 2.5 A CHAUD pendant le live (decor, style, effets,
+  // arriere-plans...) sans couper la session ni la camera. C'est la
+  // fonctionnalite phare de Lucy 2.5 : le rendu change en direct.
+  // Reserve aux offres VIP cote UI ; ici on expose juste la capacite technique.
+  const setLivePrompt = useCallback(async (prompt: string, enhance = true) => {
+    const client = realtimeClientRef.current
+    if (!client || !prompt.trim()) return
+    try {
+      // setPrompt(text, { enhance }) est l'API temps reel du SDK Decart.
+      await client.setPrompt(prompt.trim(), { enhance })
+    } catch (err) {
+      console.error('[Lucy 2.5] Erreur application prompt live:', err)
+      // Repli : certaines versions du SDK n'exposent que set().
+      try {
+        await client.set({ prompt: prompt.trim(), enhance })
+      } catch (err2) {
+        console.error('[Lucy 2.5] Repli set() echoue:', err2)
+      }
+    }
+  }, [])
+
   return {
     isConnected,
     isConnecting,
@@ -279,5 +384,12 @@ export function useLucy21() {
     connect,
     disconnect,
     updateAvatar,
+    setLivePrompt,
+    // Retour temps reel Lucy 2.5
+    elapsedSeconds,
+    connectionQuality,
+    qualityFactor,
+    queuePosition,
+    activeResolution,
   }
 }
