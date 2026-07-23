@@ -808,7 +808,7 @@ export default function DashboardPage() {
 
           {/* Bloc de controle compact (Studio + certification + bouton Live Swap) :
               largeur reduite et centree pour manipuler facilement puis valider. */}
-          <div className="mx-auto w-full max-w-xl">
+          <div className="mx-auto w-full max-w-md">
           {/* Studio Lucy 2.5 : prompts en direct (reserve VIP PRO / VIP DEBOUT) */}
           <div className="relative mb-4 w-full overflow-hidden rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
             <div className="mb-3 flex items-center justify-between">
