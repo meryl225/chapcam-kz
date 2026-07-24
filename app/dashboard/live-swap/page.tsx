@@ -414,12 +414,13 @@ export default function DashboardPage() {
     setIsApplyingPrompt(true)
     setActivePresetId(presetId)
     try {
-      // On repasse l'avatar actif pour conserver le swap pendant le changement de scene.
-      await setLivePrompt(buildScenePrompt(presetPrompt), enhancePrompt, selectedAvatar?.url)
+      // Le swap est conserve via l'intention de swap incluse dans le prompt
+      // (l'avatar de reference reste memorise cote serveur, on ne le renvoie pas).
+      await setLivePrompt(buildScenePrompt(presetPrompt), enhancePrompt)
     } finally {
       setIsApplyingPrompt(false)
     }
-  }, [isVip, isConnected, isApplyingPrompt, enhancePrompt, setLivePrompt, selectedAvatar])
+  }, [isVip, isConnected, isApplyingPrompt, enhancePrompt, setLivePrompt])
 
   // Appliquer un prompt libre saisi par l'utilisateur VIP.
   const handleApplyFreePrompt = useCallback(async () => {
@@ -427,12 +428,12 @@ export default function DashboardPage() {
     setIsApplyingPrompt(true)
     setActivePresetId(null)
     try {
-      // On repasse l'avatar actif pour conserver le swap pendant le changement de scene.
-      await setLivePrompt(buildScenePrompt(livePrompt), enhancePrompt, selectedAvatar?.url)
+      // Le swap est conserve via l'intention de swap incluse dans le prompt.
+      await setLivePrompt(buildScenePrompt(livePrompt), enhancePrompt)
     } finally {
       setIsApplyingPrompt(false)
     }
-  }, [isVip, isConnected, isApplyingPrompt, livePrompt, enhancePrompt, setLivePrompt, selectedAvatar])
+  }, [isVip, isConnected, isApplyingPrompt, livePrompt, enhancePrompt, setLivePrompt])
 
   const handleModeChange = useCallback((mode: 'auto' | 'local' | 'cloud') => {
     // Si PC gamer, ignorer tout changement et rester en local
