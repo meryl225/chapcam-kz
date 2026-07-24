@@ -52,8 +52,8 @@ export const LUCY_PRESET_CATEGORIES: LucyPresetCategory[] = [
       { id: 'studio', label: 'Studio photo', prompt: 'Place the person in a professional photo studio with a clean seamless backdrop and soft studio lighting.' },
       { id: 'office', label: 'Bureau chic', prompt: 'Set the scene in a modern upscale office with elegant lighting and a professional look.' },
       { id: 'street', label: 'Rue urbaine', prompt: 'Place the person on a vibrant city street at dusk with neon signs and cinematic lighting.' },
-      { id: 'hotel', label: 'Hôtel de luxe', prompt: 'Set the scene in a luxury hotel lobby with marble floors, chandeliers, and elegant warm lighting.' },
-      { id: 'airport', label: 'Aéroport', prompt: 'Place the person in a modern airport terminal with large windows, planes in the background and bright daylight.' },
+      { id: 'hotel', label: 'Hôtel de luxe', prompt: 'Completely replace the entire background and environment with a grand luxury hotel lobby: polished marble floors, large crystal chandeliers, golden columns, and elegant warm lighting.' },
+      { id: 'airport', label: 'Aéroport', prompt: 'Completely replace the entire background and environment with a modern airport terminal: huge floor-to-ceiling windows, airplanes visible on the tarmac outside, rows of seats and bright daylight.' },
     ],
   },
   {
