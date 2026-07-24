@@ -31,6 +31,10 @@ export function useLucy21() {
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const realtimeClientRef = useRef<any>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  // Reference serveur reutilisable de l'avatar (client.files.upload().id).
+  // Permet de RENVOYER l'image de reference a chaque changement de scene sans
+  // re-uploader les octets : c'est ce qui conserve le face swap en direct.
+  const avatarRefIdRef = useRef<string | null>(null)
   // Garde-fou : la session n'est consideree "active" (et donc facturee cote
   // page) qu'a la 1ere vraie image transformee recue, JAMAIS pendant la chauffe
   // du modele (ecran noir). Evite de debiter le client pour rien.
@@ -50,6 +54,7 @@ export function useLucy21() {
       connectTimeoutRef.current = null
     }
     firstFrameRef.current = false
+    avatarRefIdRef.current = null
 
     // 1. Fermer la session Decart (arrete la facturation cote serveur)
     if (realtimeClientRef.current) {
@@ -169,6 +174,21 @@ export function useLucy21() {
 
       const client = createDecartClient({ apiKey: clientToken })
 
+      // Upload de l'avatar en reference serveur reutilisable. On recupere un
+      // `ref.id` (file_...) que l'on renverra a CHAQUE changement de scene pour
+      // que le face swap persiste sans re-uploader les octets. Si l'upload
+      // echoue, on retombe sur l'envoi direct du blob.
+      let avatarImageRef: string | Blob = avatarBlob
+      try {
+        const uploaded = await client.files.upload(avatarBlob)
+        if (uploaded?.id) {
+          avatarRefIdRef.current = uploaded.id
+          avatarImageRef = uploaded.id
+        }
+      } catch (uploadErr) {
+        console.error('[Lucy 2.5] Upload avatar (files.upload) echoue, fallback blob:', uploadErr)
+      }
+
       // Marque la session reellement active : appele UNIQUEMENT a la 1ere vraie
       // image transformee. C'est ce qui declenche la facturation cote page
       // (l'effet de facturation est cale sur isConnected). Tant qu'on est en
@@ -224,7 +244,7 @@ export function useLucy21() {
         // "WebSocket is not open" (l'etat LiveKit est "connected" mais la
         // WebSocket de signalisation ne l'est pas encore).
         initialState: {
-          image: avatarBlob,
+          image: avatarImageRef,
           prompt: {
             text: 'Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.',
             enhance: true,
@@ -339,12 +359,28 @@ export function useLucy21() {
 
   // Changer d'avatar a chaud, sans couper la session Decart en cours.
   const updateAvatar = useCallback(async (avatarImageUrl: string) => {
-    if (!realtimeClientRef.current) return
+    const client = realtimeClientRef.current
+    if (!client) return
     try {
       const avatarRes = await fetch(avatarImageUrl)
       const avatarBlob = await avatarRes.blob()
-      await realtimeClientRef.current.set({
-        image: avatarBlob,
+
+      // On uploade le nouvel avatar en reference serveur reutilisable et on met
+      // a jour avatarRefIdRef pour que les changements de scene suivants
+      // conservent CE nouvel avatar.
+      let imageRef: string | Blob = avatarBlob
+      try {
+        const uploaded = await client.files.upload(avatarBlob)
+        if (uploaded?.id) {
+          avatarRefIdRef.current = uploaded.id
+          imageRef = uploaded.id
+        }
+      } catch (uploadErr) {
+        console.error('[Lucy 2.5] Upload nouvel avatar echoue, fallback blob:', uploadErr)
+      }
+
+      await client.set({
+        image: imageRef,
         prompt: "Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.",
         enhance: true,
       })
@@ -361,23 +397,26 @@ export function useLucy21() {
     const client = realtimeClientRef.current
     if (!client || !prompt.trim()) return
 
-    // On envoie UNIQUEMENT le texte du prompt (scene + intention de swap).
-    // L'image de reference de l'avatar est deja memorisee cote serveur via
-    // `initialState.image` lors de connect() et persiste toute la session :
-    // il ne FAUT PAS la renvoyer ici. La reinjecter a chaque scene faisait
-    // dominer l'image de reference et empechait le decor/style/effet de
-    // s'appliquer. Le swap reste conserve grace a l'intention de swap incluse
-    // dans le texte (voir BASE_SWAP_INTENT).
+    // CORRECTIF FACE SWAP : d'apres la doc du SDK Decart, pour changer la scene
+    // TOUT EN conservant le swap, il faut RENVOYER l'image de reference en meme
+    // temps que le nouveau prompt -> `set({ image, prompt })`. Avec `setPrompt`
+    // seul, le modele perd la reference et reaffiche la personne reelle.
+    // On reutilise le `ref.id` uploade au connect (leger, pas de re-upload).
+    const avatarRef = avatarRefIdRef.current
     try {
-      // setPrompt(text, { enhance }) est l'API temps reel du SDK Decart.
-      await client.setPrompt(prompt.trim(), { enhance })
+      if (avatarRef) {
+        await client.set({ image: avatarRef, prompt: prompt.trim(), enhance })
+      } else {
+        // Pas de reference disponible : on met au moins le prompt a jour.
+        await client.setPrompt(prompt.trim(), { enhance })
+      }
     } catch (err) {
       console.error('[Lucy 2.5] Erreur application prompt live:', err)
-      // Repli : certaines versions du SDK n'exposent que set().
+      // Repli : envoyer juste le texte si set({image,prompt}) echoue.
       try {
-        await client.set({ prompt: prompt.trim(), enhance })
+        await client.setPrompt(prompt.trim(), { enhance })
       } catch (err2) {
-        console.error('[Lucy 2.5] Repli set() echoue:', err2)
+        console.error('[Lucy 2.5] Repli setPrompt() echoue:', err2)
       }
     }
   }, [])
