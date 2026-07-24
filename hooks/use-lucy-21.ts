@@ -357,43 +357,27 @@ export function useLucy21() {
   // arriere-plans...) sans couper la session ni la camera. C'est la
   // fonctionnalite phare de Lucy 2.5 : le rendu change en direct.
   // Reserve aux offres VIP cote UI ; ici on expose juste la capacite technique.
-  const setLivePrompt = useCallback(async (prompt: string, enhance = true, avatarImageUrl?: string) => {
+  const setLivePrompt = useCallback(async (prompt: string, enhance = true) => {
     const client = realtimeClientRef.current
     if (!client || !prompt.trim()) return
 
-    // IMPORTANT : on renvoie l'image de reference de l'avatar EN MEME TEMPS que
-    // le nouveau prompt de scene. Sans cela, changer de decor/fond faisait
-    // "oublier" le swap au modele, qui reaffichait alors la personne reelle.
-    // En reattachant l'avatar a chaque scene, le visage swappe est conserve.
-    let avatarBlob: Blob | null = null
-    if (avatarImageUrl) {
-      try {
-        const avatarRes = await fetch(avatarImageUrl)
-        avatarBlob = await avatarRes.blob()
-      } catch (e) {
-        console.error('[Lucy 2.5] Impossible de recharger l\'avatar de reference:', e)
-      }
-    }
-
+    // On envoie UNIQUEMENT le texte du prompt (scene + intention de swap).
+    // L'image de reference de l'avatar est deja memorisee cote serveur via
+    // `initialState.image` lors de connect() et persiste toute la session :
+    // il ne FAUT PAS la renvoyer ici. La reinjecter a chaque scene faisait
+    // dominer l'image de reference et empechait le decor/style/effet de
+    // s'appliquer. Le swap reste conserve grace a l'intention de swap incluse
+    // dans le texte (voir BASE_SWAP_INTENT).
     try {
-      if (avatarBlob) {
-        // set() applique image de reference + prompt en une seule mise a jour.
-        await client.set({ image: avatarBlob, prompt: prompt.trim(), enhance })
-      } else {
-        // Pas d'avatar fourni : on met juste le prompt a jour.
-        await client.setPrompt(prompt.trim(), { enhance })
-      }
+      // setPrompt(text, { enhance }) est l'API temps reel du SDK Decart.
+      await client.setPrompt(prompt.trim(), { enhance })
     } catch (err) {
       console.error('[Lucy 2.5] Erreur application prompt live:', err)
-      // Repli : certaines versions du SDK n'exposent que set() / setPrompt().
+      // Repli : certaines versions du SDK n'exposent que set().
       try {
-        if (avatarBlob) {
-          await client.setPrompt(prompt.trim(), { enhance })
-        } else {
-          await client.set({ prompt: prompt.trim(), enhance })
-        }
+        await client.set({ prompt: prompt.trim(), enhance })
       } catch (err2) {
-        console.error('[Lucy 2.5] Repli echoue:', err2)
+        console.error('[Lucy 2.5] Repli set() echoue:', err2)
       }
     }
   }, [])
