@@ -13,15 +13,15 @@ export function isVipPlan(plan: string | null | undefined): boolean {
 }
 
 /**
- * Rappel d'identite COURT, ajoute EN FIN de prompt.
- * Volontairement leger : place en tete, la consigne "Full body swap, replace
- * the person..." dominait le prompt et le modele ignorait le changement de
- * decor/fond. En mettant la scene en premier et ce rappel bref a la fin, le
- * changement de decor/style/fond est reellement pris en compte tout en gardant
- * la personne de l'avatar de reference.
+ * Rappel de swap ajoute EN FIN de prompt (apres la scene).
+ * La scene est placee en premier pour que le decor/fond change reellement,
+ * MAIS l'instruction de swap doit rester ferme sinon le modele "oublie"
+ * l'avatar et reaffiche la personne reelle. On combine cet appel avec le
+ * renvoi de l'image de reference a chaque changement de scene (voir
+ * setLivePrompt), ce qui garantit que le visage swappe est conserve.
  */
 export const BASE_SWAP_INTENT =
-  'Keep the same person from the reference image, natural movements and expressions.'
+  'Full body swap: always replace the person with the one in the reference image, keeping their exact face, identity and body, with natural movements and expressions.'
 
 export interface LucyPreset {
   id: string
