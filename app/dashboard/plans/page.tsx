@@ -7,7 +7,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
-import { ChapCamPcPromo } from '@/components/chapcam-pc-promo'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 import { PaymentBadgePopup } from '@/components/payment-badge-popup'
 
@@ -88,15 +87,6 @@ function PlansContent() {
             {error}
           </div>
         )}
-
-        {/* Offre ChapCam PC (logiciel a vie) - mise en avant au-dessus des offres a credit */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-10"
-        >
-          <ChapCamPcPromo />
-        </motion.div>
 
         {/* Annonce ChapCam 2.0 : les recharges concernent le nouveau logiciel */}
         <motion.div
