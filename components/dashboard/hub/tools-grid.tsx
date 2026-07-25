@@ -1,11 +1,10 @@
 import Link from 'next/link'
-import { Zap, Languages, ImageIcon, Film, Monitor, Smartphone, ArrowRight } from 'lucide-react'
+import { Zap, Languages, ImageIcon, Film, Smartphone, ArrowRight } from 'lucide-react'
 import {
   LiveSwapPreview,
   VoiceTranslatorPreview,
   PhotoVideoPreview,
   VideoTranslationPreview,
-  DesktopPCPreview,
   EsimPreview,
 } from '@/components/dashboard/hub/tool-previews'
 
@@ -33,16 +32,6 @@ const tools: Tool[] = [
     gradient: 'linear-gradient(135deg, rgba(0,255,136,0.18), rgba(34,211,238,0.12) 55%, rgba(139,92,246,0.10))',
     Preview: LiveSwapPreview,
     featured: true,
-  },
-  {
-    href: '/dashboard/chapcam-pc',
-    icon: Monitor,
-    title: 'ChapCam PC',
-    description: 'Le logiciel ChapCam sur ton PC, sans cloud. Achat unique, licence à vie.',
-    badge: 'NEW',
-    accent: '#00ff88',
-    gradient: 'linear-gradient(135deg, rgba(0,255,136,0.16), rgba(20,184,166,0.10))',
-    Preview: DesktopPCPreview,
   },
   {
     href: '/numbers',

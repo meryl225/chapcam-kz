@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { ChapCamPcPromo } from "@/components/chapcam-pc-promo"
 
 // Statut du logo (watermark) par forfait :
 // - "with"   : rendu AVEC logo ChapCam (Starter, Standard)
@@ -135,16 +134,6 @@ export function PricingSection() {
           <p className="text-gray-400 mt-4 text-lg">
             2 points = 1 seconde de transformation du visage et corps entier
           </p>
-        </motion.div>
-
-        {/* Offre ChapCam PC (logiciel a vie) - mise en avant au-dessus des offres a credit */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mb-12"
-        >
-          <ChapCamPcPromo />
         </motion.div>
 
         {/* Annonce ChapCam 2.0 : les offres de recharge concernent le nouveau logiciel */}
