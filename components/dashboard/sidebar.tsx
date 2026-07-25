@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, Monitor, AudioLines, Globe, ChevronRight, Crown } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, AudioLines, Globe, ChevronRight, Crown } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -233,15 +233,6 @@ function SidebarContent({
                     badge="Live"
                     tone="blue"
                     active={pathname === '/dashboard/live-swap'}
-                  />
-                  <FeaturedLink
-                    href="/dashboard/chapcam-pc"
-                    icon={Monitor}
-                    title="ChapCam PC"
-                    subtitle="Windows · licence à vie"
-                    badge="À vie"
-                    tone="green"
-                    active={pathname === '/dashboard/chapcam-pc'}
                   />
                   <FeaturedLink
                     href="/chapsim"
