@@ -17,7 +17,46 @@ export async function POST(request: NextRequest) {
 
     // sendBeacon envoie un Blob JSON : on parse defensivement.
     const body = await request.json().catch(() => ({}))
-    const { pointsToDeduct, sessionDuration } = body
+    const {
+      pointsToDeduct,
+      sessionDuration,
+      // Champs specifiques a l'enregistrement d'UNE session complete (a l'arret du swap).
+      saveSession,
+      avatarId,
+      avatarName,
+      framesProcessed,
+      startedAt,
+    } = body
+
+    // === Enregistrement d'une session complete ===
+    // Appele UNE SEULE FOIS a la fin d'un swap (pas a chaque synchronisation).
+    // Ecrit une ligne swap_sessions avec avatar, duree totale, points consommes
+    // et frames, pour que la page Statistiques soit claire et exacte.
+    if (saveSession) {
+      const duration = Math.max(0, Math.floor(sessionDuration || 0))
+      // Rien a enregistrer pour une session vide (swap coupe instantanement).
+      if (duration <= 0) {
+        return NextResponse.json({ success: true, skipped: true })
+      }
+      const admin = createAdminClient()
+      const endedAt = new Date()
+      const startedAtDate = startedAt ? new Date(startedAt) : new Date(endedAt.getTime() - duration * 1000)
+      const { error: sessionError } = await admin.from('swap_sessions').insert({
+        user_id: user.id,
+        avatar_id: avatarId ?? null,
+        avatar_name: avatarName ?? null,
+        duration_seconds: duration,
+        points_used: Math.max(0, Math.floor(pointsToDeduct || duration * POINTS_PER_SECOND)),
+        frames_processed: Math.max(0, Math.floor(framesProcessed || 0)),
+        started_at: startedAtDate.toISOString(),
+        ended_at: endedAt.toISOString(),
+      })
+      if (sessionError) {
+        console.error('[Points] Save session error:', sessionError)
+        return NextResponse.json({ success: false, error: 'Erreur enregistrement session' }, { status: 500 })
+      }
+      return NextResponse.json({ success: true })
+    }
 
     // Calculer les points a deduire
     const points = Math.max(0, Math.floor(pointsToDeduct || (sessionDuration * POINTS_PER_SECOND) || 0))
@@ -80,12 +119,10 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Enregistrer la session de swap
-    await admin.from('swap_sessions').insert({
-      user_id: user.id,
-      duration_seconds: sessionDuration || Math.floor(pointsDeducted / POINTS_PER_SECOND),
-      points_used: pointsDeducted,
-    })
+    // NB : on n'enregistre PLUS de ligne swap_sessions ici. Cette route est
+    // appelee toutes les ~10s pour deduire les points ; enregistrer a chaque
+    // fois creait des dizaines de fausses "sessions" de 10s. L'historique est
+    // desormais ecrit UNE fois par swap via la branche saveSession ci-dessus.
 
     return NextResponse.json({
       success: true,

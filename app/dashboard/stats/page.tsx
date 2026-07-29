@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import { Zap, Clock, Monitor, User, BarChart2 } from 'lucide-react'
+import { Zap, Clock, Coins, User, BarChart2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   BarChart,
@@ -24,7 +24,7 @@ interface Session {
   started_at: string
   ended_at: string | null
   duration_seconds: number | null
-  frames_processed: number | null
+  points_used: number | null
 }
 
 interface ChartData {
@@ -82,7 +82,7 @@ export default function StatsPage() {
   const [sessions, setSessions] = useState<Session[]>([])
   const [totalSessions, setTotalSessions] = useState(0)
   const [totalMinutes, setTotalMinutes] = useState(0)
-  const [totalFrames, setTotalFrames] = useState(0)
+  const [totalPoints, setTotalPoints] = useState(0)
   const [favoriteAvatar, setFavoriteAvatar] = useState<string | null>(null)
   const [chartData, setChartData] = useState<ChartData[]>([])
   const router = useRouter()
@@ -117,8 +117,8 @@ export default function StatsPage() {
       const minutes = sessionsList.reduce((acc, s) => acc + (s.duration_seconds || 0) / 60, 0)
       setTotalMinutes(minutes)
 
-      const frames = sessionsList.reduce((acc, s) => acc + (s.frames_processed || 0), 0)
-      setTotalFrames(frames)
+      const points = sessionsList.reduce((acc, s) => acc + (s.points_used || 0), 0)
+      setTotalPoints(points)
 
       // Find favorite avatar
       const avatarCounts: Record<string, number> = {}
@@ -222,11 +222,11 @@ export default function StatsPage() {
           <p className="mt-1 text-xs uppercase tracking-widest text-text-faint">MINUTES SWAPPEES</p>
         </div>
 
-        {/* Frames */}
+        {/* Points consommes */}
         <div className="rounded-2xl border border-hairline bg-card p-6">
-          <Monitor className="h-6 w-6 text-[#3b82f6]" />
-          <p className="mt-3 text-4xl font-black text-foreground">{totalFrames.toLocaleString()}</p>
-          <p className="mt-1 text-xs uppercase tracking-widest text-text-faint">FRAMES TRAITEES</p>
+          <Coins className="h-6 w-6 text-[#3b82f6]" />
+          <p className="mt-3 text-4xl font-black text-foreground">{totalPoints.toLocaleString()}</p>
+          <p className="mt-1 text-xs uppercase tracking-widest text-text-faint">POINTS CONSOMMES</p>
         </div>
 
         {/* Favorite Avatar */}
@@ -304,18 +304,23 @@ export default function StatsPage() {
               <tr className="border-b border-hairline">
                 <th className="p-4 text-left text-xs uppercase tracking-widest text-text-faint">AVATAR</th>
                 <th className="p-4 text-left text-xs uppercase tracking-widest text-text-faint">DUREE</th>
-                <th className="p-4 text-left text-xs uppercase tracking-widest text-text-faint">FRAMES</th>
+                <th className="p-4 text-left text-xs uppercase tracking-widest text-text-faint">CONSOMME</th>
                 <th className="p-4 text-left text-xs uppercase tracking-widest text-text-faint">DATE</th>
               </tr>
             </thead>
             <tbody>
               {sessions.slice(0, 10).map((session) => {
                 const duration = session.duration_seconds || 0
+                const points = session.points_used || 0
+                const minutes = points / 120 // 120 points = 1 minute (2 pts/s)
                 return (
                   <tr key={session.id} className="border-b border-hairline transition-colors hover:bg-muted">
                     <td className="p-4 font-medium text-foreground">{session.avatar_name || 'Sans nom'}</td>
                     <td className="p-4 text-muted-foreground">{formatDuration(duration)}</td>
-                    <td className="p-4 text-muted-foreground">{(session.frames_processed || 0).toLocaleString()}</td>
+                    <td className="p-4 text-muted-foreground">
+                      <span className="font-medium text-foreground">{minutes.toFixed(1)} min</span>
+                      <span className="ml-2 text-xs text-text-faint">{points.toLocaleString()} pts</span>
+                    </td>
                     <td className="p-4 text-text-faint">{formatRelative(session.started_at)}</td>
                   </tr>
                 )
