@@ -69,6 +69,7 @@ export default function DashboardPage() {
   const pointsUsedRef = useRef(0)        // total points consommes ce swap
   const pendingSyncRef = useRef(0)       // points consommes NON encore envoyes au serveur
   const remainingRef = useRef(0)         // solde restant estime (pour couper a 0)
+  const sessionStartRef = useRef<string | null>(null) // horodatage ISO du debut du swap en cours
   // Certification d'usage responsable, requise avant chaque demarrage de swap.
   const [swapConsent, setSwapConsent] = useState(false)
 
@@ -323,12 +324,42 @@ export default function DashboardPage() {
         setIsSyncingPoints(false)
       }
     }
+
+    // On capture les totaux de CE swap avant tout reset.
+    const sessionSeconds = durationRef.current
+    const sessionPoints = pointsUsedRef.current
+    const startedAt = sessionStartRef.current
+    // Empeche un double enregistrement (l'arret manuel + l'epuisement peuvent
+    // tous deux appeler cette fonction).
+    sessionStartRef.current = null
+
+    // Enregistre UNE session complete dans l'historique (avatar, duree, points).
+    if (sessionSeconds > 0) {
+      try {
+        await fetch('/api/points', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          keepalive: true,
+          body: JSON.stringify({
+            saveSession: true,
+            avatarId: selectedAvatar?.id ?? null,
+            avatarName: selectedAvatar?.name ?? null,
+            sessionDuration: sessionSeconds,
+            pointsToDeduct: sessionPoints,
+            startedAt,
+          }),
+        })
+      } catch (err) {
+        console.error('Erreur enregistrement session:', err)
+      }
+    }
+
     // Reset des compteurs de session
     setPointsUsed(0)
     setDuration(0)
     pointsUsedRef.current = 0
     durationRef.current = 0
-  }, [disconnect, isSyncingPoints, syncPendingPoints])
+  }, [disconnect, isSyncingPoints, syncPendingPoints, selectedAvatar])
 
   // === TRACKING UTILISATEURS ACTIFS ===
   useEffect(() => {
@@ -381,6 +412,7 @@ export default function DashboardPage() {
     pointsUsedRef.current = 0
     pendingSyncRef.current = 0
     remainingRef.current = userPoints
+    sessionStartRef.current = new Date().toISOString()
     // 1080p uniquement pour les VIP ayant laisse le HD active ; codec avance optionnel.
     await connect(selectedAvatar.url, {
       hd: isVip && hdEnabled,
