@@ -3,7 +3,25 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Shield, RefreshCw, Activity } from 'lucide-react'
+import { Shield, RefreshCw, Activity, MapPin } from 'lucide-react'
+
+// Convertit un code pays ISO ("FR") en nom francais ("France").
+const regionNames = typeof Intl !== 'undefined' && 'DisplayNames' in Intl
+  ? new Intl.DisplayNames(['fr'], { type: 'region' })
+  : null
+function countryName(code: string): string {
+  if (!code || code === 'Inconnu') return 'Inconnu'
+  try {
+    return regionNames?.of(code) ?? code
+  } catch {
+    return code
+  }
+}
+
+interface CountryCount {
+  country: string
+  count: number
+}
 
 export default function AdminStatsPage() {
   const [stats, setStats] = useState({
@@ -15,6 +33,8 @@ export default function AdminStatsPage() {
   })
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [countries, setCountries] = useState<CountryCount[]>([])
+  const [totalLocated, setTotalLocated] = useState(0)
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
@@ -23,9 +43,12 @@ export default function AdminStatsPage() {
     try {
       // Tout passe par l'API serveur (service_role) : les inscriptions sont
       // dans auth.users, illisible cote navigateur avec la cle anon.
-      const res = await fetch('/api/admin/stats', { cache: 'no-store' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
+      const [statsRes, geoRes] = await Promise.all([
+        fetch('/api/admin/stats', { cache: 'no-store' }),
+        fetch('/api/admin/geo', { cache: 'no-store' }),
+      ])
+      if (!statsRes.ok) throw new Error(`HTTP ${statsRes.status}`)
+      const data = await statsRes.json()
       setStats({
         totalUsers: data.totalUsers || 0,
         todayRegistrations: data.todayRegistrations || 0,
@@ -33,6 +56,11 @@ export default function AdminStatsPage() {
         activeSwaps: data.activeSwaps || 0,
         activeSubscriptions: data.activeSubscriptions || 0,
       })
+      if (geoRes.ok) {
+        const geo = await geoRes.json()
+        setCountries(geo.countries || [])
+        setTotalLocated(geo.totalLocated || 0)
+      }
       setLastUpdated(new Date())
     } catch (error) {
       console.error('Erreur chargement stats:', error)
@@ -117,6 +145,50 @@ export default function AdminStatsPage() {
             <p className="text-7xl font-bold text-purple-400 mt-4">{stats.activeSubscriptions}</p>
             <p className="text-sm text-gray-500 mt-3">avec points restants</p>
           </div>
+        </div>
+
+        {/* Repartition par pays (localisation approximative par IP) */}
+        <div className="mt-6 bg-[#111] border border-gray-800 rounded-3xl p-8">
+          <div className="flex items-center gap-3 mb-6">
+            <MapPin className="w-6 h-6 text-[#00ff88]" />
+            <div>
+              <p className="text-xl font-bold text-white">Répartition par pays</p>
+              <p className="text-sm text-gray-500">
+                {totalLocated.toLocaleString()} utilisateur(s) localisé(s) • approximatif par IP
+              </p>
+            </div>
+          </div>
+
+          {countries.length === 0 ? (
+            <p className="text-gray-500">
+              Aucune donnée de localisation pour l&apos;instant. Les positions apparaîtront ici
+              dès que des utilisateurs visiteront le tableau de bord sur l&apos;app déployée.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {countries.map(({ country, count }) => {
+                const pct = totalLocated > 0 ? Math.round((count / totalLocated) * 100) : 0
+                return (
+                  <div key={country} className="flex items-center gap-4">
+                    <span className="w-40 shrink-0 truncate text-sm text-gray-300">
+                      {countryName(country)}
+                      <span className="ml-1.5 text-xs text-gray-600">{country}</span>
+                    </span>
+                    <div className="h-3 flex-1 overflow-hidden rounded-full bg-gray-800">
+                      <div
+                        className="h-full rounded-full bg-[#00ff88]"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="w-20 shrink-0 text-right text-sm font-medium text-white">
+                      {count.toLocaleString()}
+                      <span className="ml-1 text-xs text-gray-500">{pct}%</span>
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         <div className="mt-10 flex flex-wrap gap-4">

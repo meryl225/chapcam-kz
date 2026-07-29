@@ -1,5 +1,8 @@
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getRequestGeo } from '@/lib/geo'
 import { DashboardSidebar, PlanGuardBanner } from '@/components/dashboard/sidebar'
 import { TelegramSupport } from '@/components/telegram-support'
 import { ChapCam2Announcement } from '@/components/dashboard/chapcam-2-announcement'
@@ -42,6 +45,32 @@ export default async function DashboardLayout({
   if (userError || !user) {
     redirect('/auth/login')
   }
+
+  // Localisation approximative (pays/ville) fournie par l'edge Vercel.
+  // On lit les en-tetes pendant la requete, puis on enregistre APRES la reponse
+  // via after() pour ne PAS ralentir l'affichage du dashboard.
+  const geo = await getRequestGeo()
+  const userId = user.id
+  after(async () => {
+    if (!geo.country) return // pas de donnee (local/preview) -> on n'ecrit rien
+    try {
+      const admin = createAdminClient()
+      await admin.from('user_geo').upsert(
+        {
+          user_id: userId,
+          country: geo.country,
+          region: geo.region,
+          city: geo.city,
+          latitude: geo.latitude,
+          longitude: geo.longitude,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id' },
+      )
+    } catch (e) {
+      console.error('[geo] Enregistrement position echoue:', e)
+    }
+  })
 
   // Fetch subscription data avec points
   const { data: subscription } = await supabase
