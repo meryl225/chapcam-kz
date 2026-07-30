@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, Suspense } from 'react'
-import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette } from 'lucide-react'
+import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -267,6 +267,29 @@ function PlansContent() {
                           ? 'Retrait du logo inclus, active automatiquement'
                           : 'Retrait du logo active par notre equipe'}
                       </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Cadeau physique offert (uniquement VIP DEBOUT) */}
+                {isVipDebout && (
+                  <div className="mt-6 flex items-center gap-4 rounded-2xl border border-amber-400/50 bg-amber-400/10 p-4">
+                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-black/40">
+                      <Image
+                        src="/images/voice-changer-i9.png"
+                        alt="Appareil changeur de voix i9 offert avec l'offre VIP DEBOUT"
+                        width={64}
+                        height={64}
+                        className="max-h-full max-w-full object-contain"
+                      />
+                    </div>
+                    <div>
+                      <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-black">
+                        <Gift className="h-3 w-3" />
+                        Cadeau inclus
+                      </div>
+                      <p className="text-sm font-bold text-foreground">Changeur de voix i9 offert</p>
+                      <p className="text-xs text-muted-foreground">Boîtier + accessoires livrés</p>
                     </div>
                   </div>
                 )}

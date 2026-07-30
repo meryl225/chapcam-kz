@@ -96,7 +96,6 @@ const plans = [
     discount: 25,
     currency: "FCFA",
     features: [
-      "Appareil changeur de voix i9 offert (livré avec accessoires)",
       "Transformation du visage et corps entier",
       "7 200 points (60 min)",
       "Rendu Full HD 1080p sans logo",
