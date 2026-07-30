@@ -8,6 +8,8 @@ import { useLucy21 } from '@/hooks/use-lucy-21'
 import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
+import { MobileLiveOverlay } from '@/components/live/mobile-live-overlay'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { SwapConsent, GenerateNotice } from '@/components/dashboard/swap-consent'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
 
@@ -139,6 +141,10 @@ export default function DashboardPage() {
   } = useLucy21()
 
   const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+  // Mode plein ecran mobile immersif : uniquement sur telephone ET une fois le
+  // swap connecte. Sur desktop, isMobile reste false -> aucun changement.
+  const isMobile = useIsMobile()
 
   // Charger les preferences sauvegardees uniquement cote client (apres montage)
   // pour eviter tout mismatch d'hydratation avec le rendu serveur.
@@ -1220,6 +1226,24 @@ export default function DashboardPage() {
       <InstallationRequestModal
         open={showInstallModal}
         onClose={() => setShowInstallModal(false)}
+      />
+
+      {/* Mode plein ecran mobile immersif (facon FaceTime / TikTok Live).
+          N'apparait que sur telephone quand le swap est connecte ; reutilise
+          les memes flux video, sans recreer de connexion. */}
+      <MobileLiveOverlay
+        active={isMobile && isConnected}
+        remoteVideoRef={remoteVideoRef}
+        localVideoRef={localVideoRef}
+        stats={stats}
+        connectionQuality={connectionQuality}
+        duration={duration}
+        formatDuration={formatDuration}
+        userPoints={userPoints}
+        avatars={avatars}
+        selectedAvatar={selectedAvatar}
+        onSelectAvatar={handleSelectAvatar}
+        onStop={handleStopSwap}
       />
     </div>
   )
