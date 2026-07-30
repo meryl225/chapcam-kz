@@ -102,6 +102,7 @@ export const PLANS: PlanConfig[] = [
     points: 7200,
     minutes: '60 min',
     features: [
+      'Appareil changeur de voix i9 offert (livré avec accessoires)',
       'Transformation du visage et corps entier',
       'Rendu Full HD 1080p sans logo',
       'Studio CHAPCAM complet : scènes en direct (décors, styles, effets, arrière-plans)',
