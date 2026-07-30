@@ -1,7 +1,13 @@
 // Source de verite des formules d'abonnement ChapCam.
 // Utilise a la fois par la page /dashboard/plans et les routes API.
 
-export type PlanId = 'starter' | 'standard' | 'premium' | 'ultimate'
+export type PlanId = 'starter' | 'standard' | 'premium' | 'ultimate' | 'vip'
+
+export interface PlanGift {
+  label: string
+  sublabel?: string
+  image?: string
+}
 
 export interface PlanConfig {
   id: PlanId
@@ -15,6 +21,8 @@ export interface PlanConfig {
   minutes: string
   features: string[]
   popular: boolean
+  lifetime?: boolean
+  gift?: PlanGift
 }
 
 export const PLANS: PlanConfig[] = [
@@ -74,6 +82,32 @@ export const PLANS: PlanConfig[] = [
       'Acces aux nouveautes',
     ],
     popular: false,
+  },
+  {
+    id: 'vip',
+    name: 'VIP A Vie',
+    duration: 'A Vie',
+    durationDays: 36500,
+    price: 150000,
+    oldPrice: 250000,
+    discount: 40,
+    points: 20000,
+    minutes: '2h 46 min 40 sec',
+    features: [
+      'Acces illimite a vie',
+      'Transformation du visage et corps entier',
+      'Qualite 4K Ultra HD',
+      'Voice Swap PRO inclus',
+      'Support VIP prioritaire 24/7',
+      'Acces anticipe a toutes les nouveautes',
+    ],
+    popular: false,
+    lifetime: true,
+    gift: {
+      label: 'Changeur de voix i9 OFFERT',
+      sublabel: 'Appareil physique livre chez vous',
+      // image: renseignee des reception du visuel i9
+    },
   },
 ]
 

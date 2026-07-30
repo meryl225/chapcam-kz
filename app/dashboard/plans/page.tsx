@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useRef, Suspense } from 'react'
-import { Check, Crown, Clock, Sparkles, Loader2, CreditCard } from 'lucide-react'
+import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Gift } from 'lucide-react'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
@@ -127,19 +128,28 @@ function PlansContent() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={`relative flex flex-col rounded-3xl border bg-card p-8 transition-all hover:border-primary ${
-                  plan.popular
-                    ? 'scale-[1.03] border-primary shadow-2xl shadow-primary/20'
-                    : 'border-gray-800'
+                  plan.lifetime
+                    ? 'scale-[1.03] border-amber-400 shadow-2xl shadow-amber-400/20'
+                    : plan.popular
+                      ? 'scale-[1.03] border-primary shadow-2xl shadow-primary/20'
+                      : 'border-gray-800'
                 }`}
               >
                 <div className="absolute -right-3 -top-3 rounded-full bg-red-500 px-3 py-1.5 text-xs font-bold text-white shadow-lg">
                   -{plan.discount}%
                 </div>
 
-                {plan.popular && (
+                {plan.popular && !plan.lifetime && (
                   <div className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-primary px-6 py-1 text-sm font-bold text-black">
                     <Crown className="h-4 w-4" />
                     MEILLEUR CHOIX
+                  </div>
+                )}
+
+                {plan.lifetime && (
+                  <div className="absolute -top-4 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full bg-amber-400 px-6 py-1 text-sm font-bold text-black">
+                    <Crown className="h-4 w-4" />
+                    OFFRE A VIE
                   </div>
                 )}
 
@@ -171,6 +181,37 @@ function PlansContent() {
                     {plan.points.toLocaleString()} points ({plan.minutes})
                   </li>
                 </ul>
+
+                {plan.gift && (
+                  <div className="mt-6 flex items-center gap-4 rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-400/15 to-amber-500/5 p-4">
+                    {plan.gift.image ? (
+                      <div className="relative h-16 w-16 flex-shrink-0">
+                        <Image
+                          src={plan.gift.image || "/placeholder.svg"}
+                          alt={plan.gift.label}
+                          fill
+                          sizes="64px"
+                          className="object-contain"
+                        />
+                      </div>
+                    ) : (
+                      <span className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl bg-amber-400/20">
+                        <Gift className="h-7 w-7 text-amber-400" />
+                      </span>
+                    )}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-black">
+                          Cadeau
+                        </span>
+                        <span className="text-sm font-bold text-amber-300">{plan.gift.label}</span>
+                      </div>
+                      {plan.gift.sublabel && (
+                        <p className="mt-1 text-xs text-muted-foreground">{plan.gift.sublabel}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <button
                   onClick={() => startCheckout(plan.id)}
