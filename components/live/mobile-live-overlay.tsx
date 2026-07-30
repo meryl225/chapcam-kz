@@ -13,7 +13,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Square, RefreshCw, Settings, X, Check, Plus } from 'lucide-react'
+import { Square, RefreshCw, Settings, X, Check, Plus, Minimize2 } from 'lucide-react'
 import Link from 'next/link'
 
 interface Avatar {
@@ -37,6 +37,8 @@ interface MobileLiveOverlayProps {
   selectedAvatar: Avatar | null
   onSelectAvatar: (avatar: Avatar) => void
   onStop: () => void
+  /** Optionnel : replier le plein ecran SANS arreter le swap (bouton desktop). */
+  onExitFullscreen?: () => void
 }
 
 // Couleur du point de qualite reseau selon le verdict du moteur.
@@ -61,6 +63,7 @@ export function MobileLiveOverlay({
   selectedAvatar,
   onSelectAvatar,
   onStop,
+  onExitFullscreen,
 }: MobileLiveOverlayProps) {
   const fsRemoteRef = useRef<HTMLVideoElement | null>(null)
   const fsLocalRef = useRef<HTMLVideoElement | null>(null)
@@ -204,6 +207,17 @@ export function MobileLiveOverlay({
           className="absolute right-4 flex flex-col items-end gap-2"
           style={{ top: 'calc(env(safe-area-inset-top, 0px) + 1rem)' }}
         >
+          {/* Bouton "reduire" : uniquement quand ouvert manuellement (desktop). */}
+          {onExitFullscreen && (
+            <button
+              onClick={() => { onExitFullscreen(); revealControls() }}
+              className="flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 text-white backdrop-blur-md transition-transform active:scale-90"
+              aria-label="Quitter le plein écran"
+            >
+              <Minimize2 className="h-4 w-4" />
+              <span className="text-xs font-medium">Réduire</span>
+            </button>
+          )}
           <div className="flex items-center gap-3 rounded-full border border-white/15 bg-black/40 px-3.5 py-2 text-white backdrop-blur-md">
             <span className="flex items-center gap-1.5 text-xs font-semibold">
               <span className={`h-2 w-2 rounded-full ${quality.color}`} />

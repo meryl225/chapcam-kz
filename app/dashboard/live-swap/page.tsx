@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock, ChevronDown } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock, ChevronDown, Smartphone } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
@@ -145,6 +145,8 @@ export default function DashboardPage() {
   // Mode plein ecran mobile immersif : uniquement sur telephone ET une fois le
   // swap connecte. Sur desktop, isMobile reste false -> aucun changement.
   const isMobile = useIsMobile()
+  // Plein ecran declenche manuellement via le bouton (utile desktop/tablette).
+  const [manualFullscreen, setManualFullscreen] = useState(false)
 
   // Charger les preferences sauvegardees uniquement cote client (apres montage)
   // pour eviter tout mismatch d'hydratation avec le rendu serveur.
@@ -710,6 +712,17 @@ export default function DashboardPage() {
                       </span>
                     </>
                   )}
+                  {isConnected && (
+                    <button
+                      onClick={() => setManualFullscreen(true)}
+                      aria-label="Mode plein écran immersif"
+                      title="Mode plein écran immersif (façon mobile)"
+                      className="flex h-7 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 text-primary transition-colors hover:bg-primary/20"
+                    >
+                      <Smartphone className="h-3.5 w-3.5" />
+                      <span className="text-[11px] font-medium">Plein écran</span>
+                    </button>
+                  )}
                   <button
                     onClick={toggleCamFullscreen}
                     aria-label={isCamFullscreen ? 'Réduire la caméra' : 'Agrandir la caméra'}
@@ -1232,7 +1245,7 @@ export default function DashboardPage() {
           N'apparait que sur telephone quand le swap est connecte ; reutilise
           les memes flux video, sans recreer de connexion. */}
       <MobileLiveOverlay
-        active={isMobile && isConnected}
+        active={isConnected && (isMobile || manualFullscreen)}
         remoteVideoRef={remoteVideoRef}
         localVideoRef={localVideoRef}
         stats={stats}
@@ -1244,6 +1257,7 @@ export default function DashboardPage() {
         selectedAvatar={selectedAvatar}
         onSelectAvatar={handleSelectAvatar}
         onStop={handleStopSwap}
+        onExitFullscreen={manualFullscreen ? () => setManualFullscreen(false) : undefined}
       />
     </div>
   )
