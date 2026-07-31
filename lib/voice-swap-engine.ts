@@ -125,6 +125,12 @@ export class VoiceSwapEngine {
   private playQueueTime = 0
   private bufferedMs = 0
   private underruns = 0
+  // Tampon anti-coupure ADAPTATIF : part de tuning.jitterBufferMs et augmente
+  // quand des coupures (underruns) surviennent, puis redescend quand c'est
+  // stable. Absorbe les variations de latence reseau d'ElevenLabs -> moins de
+  // trous dans la voix en appel direct.
+  private dynamicJitterMs = 0
+  private lastUnderrunTs = 0
 
   private running = false
   private metricsTimer: ReturnType<typeof setInterval> | null = null
@@ -395,21 +401,41 @@ export class VoiceSwapEngine {
     const float = pcm16ToFloat32(pcmBuf)
     const durationS = float.length / TARGET_SAMPLE_RATE
 
+    // Fondu d'entree/sortie (~8 ms) sur chaque segment. Les segments STS sont
+    // convertis independamment : sans fondu, leurs bords produisent des "clics"
+    // audibles aux jonctions, percus comme une voix hachee/sale. Le fondu lisse
+    // ces transitions sans alterer le contenu vocal.
+    const fadeLen = Math.min(Math.floor(TARGET_SAMPLE_RATE * 0.008), Math.floor(float.length / 2))
+    for (let i = 0; i < fadeLen; i++) {
+      const g = i / fadeLen
+      float[i] *= g
+      float[float.length - 1 - i] *= g
+    }
+
     const audioBuf = this.playCtx.createBuffer(1, float.length, TARGET_SAMPLE_RATE)
     audioBuf.getChannelData(0).set(float)
     const src = this.playCtx.createBufferSource()
     src.buffer = audioBuf
     src.connect(this.playDest)
 
+    // Tampon anti-coupure adaptatif : on l'initialise au reglage du preset.
+    if (this.dynamicJitterMs === 0) this.dynamicJitterMs = this.tuning.jitterBufferMs
+
     const nowT = this.playCtx.currentTime
-    const jitterS = this.tuning.jitterBufferMs / 1000
-    // Si la file est vide (retard pris), on ne repart PAS pile a "maintenant" :
-    // on ajoute une petite avance (jitter buffer) pour absorber les variations
-    // de latence reseau et eviter que le segment suivant arrive trop tard
-    // (ce qui creait des trous/coupures dans la voix).
+    // Si la file est vide (retard pris) = coupure. On augmente le tampon pour
+    // absorber la prochaine variation reseau, puis on repart avec cette avance.
     if (this.playQueueTime < nowT) {
-      if (this.playQueueTime > 0) this.underruns += 1
-      this.playQueueTime = nowT + jitterS
+      if (this.playQueueTime > 0) {
+        this.underruns += 1
+        this.lastUnderrunTs = nowT
+        // +60 ms par coupure, plafonne a 500 ms (evite une latence excessive).
+        this.dynamicJitterMs = Math.min(this.dynamicJitterMs + 60, 500)
+      }
+      this.playQueueTime = nowT + this.dynamicJitterMs / 1000
+    } else if (nowT - this.lastUnderrunTs > 8 && this.dynamicJitterMs > this.tuning.jitterBufferMs) {
+      // 8 s sans coupure : on reduit doucement le tampon pour regagner en latence.
+      this.dynamicJitterMs = Math.max(this.dynamicJitterMs - 20, this.tuning.jitterBufferMs)
+      this.lastUnderrunTs = nowT
     }
     src.start(this.playQueueTime)
     this.playQueueTime += durationS
