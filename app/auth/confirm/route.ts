@@ -1,74 +1,39 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import type { EmailOtpType } from '@supabase/supabase-js'
 
-// Route serveur qui etablit une session a partir d'un lien de recuperation
-// (mot de passe oublie) ou de confirmation d'email. Elle gere les DEUX formats
-// de lien Supabase :
-//   - token_hash + type  -> verifyOtp (recommande, fonctionne cross-device)
-//   - code               -> exchangeCodeForSession (flux PKCE)
-// puis pose les cookies de session AVANT de rediriger vers la page de saisie du
-// nouveau mot de passe. Sans cette etape, updateUser() echoue avec
-// "Auth session missing!".
+// IMPORTANT : cette route NE verifie PLUS le token cote serveur.
+//
+// Pourquoi ? Deux raisons critiques :
+//  1) Verifier un token de recuperation sur un GET serveur le "consomme". Or
+//     WhatsApp, Gmail et les antivirus PRE-OUVRENT les liens pour generer un
+//     apercu -> le jeton a usage unique etait brule avant le vrai clic
+//     (erreur "otp_expired" / "Auth session missing").
+//  2) Les liens PKCE (token prefixe "pkce_") exigent un cookie "code verifier"
+//     present uniquement dans le navigateur d'origine -> echec cross-device
+//     (lien ouvert sur telephone, autre navigateur...) et 500 cote serveur.
+//
+// La verification est donc faite cote NAVIGATEUR (JS) sur /auth/reset-password :
+// les bots d'apercu n'executent pas de JS, le jeton n'est donc jamais consomme
+// avant le vrai clic de l'utilisateur. Cette route se contente de transferer
+// tous les parametres (token_hash, type, code, erreurs) vers cette page.
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url)
+  try {
+    const { searchParams, origin } = new URL(request.url)
 
-  const token_hash = searchParams.get('token_hash')
-  const type = searchParams.get('type') as EmailOtpType | null
-  const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/auth/update-password'
+    // Le "next" historique pointait vers /auth/update-password ; on force
+    // desormais la page cliente unique /auth/reset-password qui gere tout.
+    const target = new URL('/auth/reset-password', origin)
 
-  // Erreur renvoyee directement par Supabase (lien deja consomme / expire).
-  const errorCode = searchParams.get('error_code')
-  const errorDescription = searchParams.get('error_description')
-  if (errorCode) {
-    const reason = errorCode === 'otp_expired' ? 'expired' : 'invalid'
-    return NextResponse.redirect(
-      `${origin}/auth/update-password?reset_error=${reason}&msg=${encodeURIComponent(errorDescription ?? '')}`,
-    )
-  }
-
-  const cookieStore = await cookies()
-  const supabase = createServerClient(
-    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://ojmzqokffbptmcktnwdy.supabase.co',
-    process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll()
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            )
-          } catch {
-            // Ignore
-          }
-        },
-      },
-    },
-  )
-
-  // Cas 1 : lien avec token_hash (verifyOtp) — le plus fiable, cross-device.
-  if (token_hash && type) {
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash })
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
+    // On recopie tous les parametres utiles tels quels.
+    for (const key of ['token_hash', 'type', 'code', 'error', 'error_code', 'error_description']) {
+      const value = searchParams.get(key)
+      if (value) target.searchParams.set(key, value)
     }
-    return NextResponse.redirect(`${origin}/auth/update-password?reset_error=expired`)
-  }
 
-  // Cas 2 : lien avec code (flux PKCE).
-  if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      return NextResponse.redirect(`${origin}${next}`)
-    }
-    return NextResponse.redirect(`${origin}/auth/update-password?reset_error=expired`)
+    return NextResponse.redirect(target.toString())
+  } catch {
+    // En dernier recours, on renvoie vers la page de reset qui affichera
+    // proprement l'ecran "lien expire" + renvoi.
+    const { origin } = new URL(request.url)
+    return NextResponse.redirect(`${origin}/auth/reset-password?error_code=invalid`)
   }
-
-  // Aucun parametre exploitable.
-  return NextResponse.redirect(`${origin}/auth/update-password?reset_error=invalid`)
 }
