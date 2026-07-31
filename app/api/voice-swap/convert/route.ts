@@ -54,13 +54,15 @@ export async function POST(request: Request) {
 
   const apiKey = getApiKey()
   if (!apiKey) {
-    return NextResponse.json({ ok: false, error: 'Cle API ElevenLabs manquante.' }, { status: 200 })
+    // 500 (et non 200) pour que le moteur remonte l'erreur au lieu de jouer la
+    // reponse JSON comme si c'etait de l'audio (source de "voix pas nette").
+    return NextResponse.json({ ok: false, error: 'Cle API ElevenLabs manquante cote serveur.' }, { status: 500 })
   }
 
   const url = new URL(request.url)
   const voiceId = url.searchParams.get('voiceId') || ''
   if (!voiceId) {
-    return NextResponse.json({ ok: false, error: 'Aucune voix cible selectionnee.' }, { status: 200 })
+    return NextResponse.json({ ok: false, error: 'Aucune voix cible selectionnee.' }, { status: 400 })
   }
 
   // --- Reglages issus du mode de streaming (valides et bornes cote serveur) ---
@@ -97,7 +99,7 @@ export async function POST(request: Request) {
 
   const pcm = Buffer.from(await request.arrayBuffer())
   if (pcm.length === 0) {
-    return NextResponse.json({ ok: false, error: 'Segment vide.' }, { status: 200 })
+    return NextResponse.json({ ok: false, error: 'Segment vide.' }, { status: 400 })
   }
 
   const t0 = Date.now()
@@ -133,8 +135,8 @@ export async function POST(request: Request) {
     if (!res.ok || !res.body) {
       const detail = await res.text().catch(() => '')
       return NextResponse.json(
-        { ok: false, error: `ElevenLabs HTTP ${res.status} ${detail.slice(0, 120)}` },
-        { status: 200 },
+        { ok: false, error: `ElevenLabs HTTP ${res.status} ${detail.slice(0, 160)}` },
+        { status: 502 },
       )
     }
 
@@ -160,6 +162,6 @@ export async function POST(request: Request) {
       },
     })
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 200 })
+    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 502 })
   }
 }
