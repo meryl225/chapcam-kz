@@ -15,8 +15,12 @@ export async function POST(request: NextRequest) {
 
     // Generer le lien de reinitialisation via Supabase
     const supabase = await createClient()
+    // On redirige vers /auth/confirm (route serveur) qui echange le code/token
+    // contre une session AVANT d'afficher le formulaire. Indispensable au flux
+    // PKCE : sinon updateUser() s'execute sans session ("Auth session missing").
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://chapcam.com'
     const { data, error: supabaseError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'https://chapcam.com'}/auth/update-password`,
+      redirectTo: `${appUrl}/auth/confirm?next=/auth/update-password`,
     })
 
     if (supabaseError) {
