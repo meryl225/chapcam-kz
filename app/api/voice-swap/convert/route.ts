@@ -162,6 +162,6 @@ export async function POST(request: Request) {
       },
     })
   } catch (e) {
-    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 200 })
+    return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 502 })
   }
 }
