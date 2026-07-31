@@ -19,16 +19,28 @@ export default function UpdatePasswordPage() {
   const supabase = createClient()
 
   const [sessionReady, setSessionReady] = useState(false)
+  const [linkExpired, setLinkExpired] = useState(false)
 
   useEffect(() => {
-    // Le lien de reinitialisation ramene ici avec la session soit dans le hash
-    // (#access_token=...&type=recovery), soit via un code (?code=...). Supabase
-    // met un court instant a etablir la session : on ecoute donc les evenements
-    // d'auth plutot que d'appeler getSession() immediatement (ce qui affichait
-    // un faux message "lien invalide").
+    // 1) Erreur explicite renvoyee par /auth/confirm ou par Supabase (lien deja
+    //    consomme / expire). On l'affiche clairement + on propose un renvoi.
+    const params = new URLSearchParams(window.location.search)
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+    const resetError = params.get('reset_error') || hashParams.get('error_code')
+    if (resetError) {
+      setLinkExpired(true)
+      setError(
+        "Ce lien de reinitialisation n'est plus valide (deja utilise ou expire). Demandez-en un nouveau ci-dessous.",
+      )
+      return
+    }
+
+    // 2) La session est etablie par /auth/confirm (cookies) ou via le hash.
+    //    On ecoute les evenements d'auth plutot que d'appeler getSession()
+    //    immediatement (ce qui affichait un faux message "lien invalide").
     let settled = false
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: unknown) => {
       if (session) {
         settled = true
         setSessionReady(true)
@@ -49,18 +61,42 @@ export default function UpdatePasswordPage() {
     }
     check()
 
-    // Si rien n'est etabli au bout de 3s, le lien est probablement invalide/expire
+    // Si rien n'est etabli au bout de 4s, le lien est probablement invalide/expire
     const timeout = setTimeout(() => {
       if (!settled) {
-        setError("Le lien de reinitialisation est invalide ou a expire. Veuillez redemander un nouveau lien.")
+        setLinkExpired(true)
+        setError("Le lien de reinitialisation est invalide ou a expire. Demandez-en un nouveau ci-dessous.")
       }
-    }, 3000)
+    }, 4000)
 
     return () => {
       subscription.unsubscribe()
       clearTimeout(timeout)
     }
   }, [supabase.auth])
+
+  // Renvoi d'un nouveau lien de reinitialisation.
+  const [resendEmail, setResendEmail] = useState("")
+  const [resendLoading, setResendLoading] = useState(false)
+  const [resendDone, setResendDone] = useState(false)
+
+  const handleResend = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!resendEmail) return
+    setResendLoading(true)
+    try {
+      await fetch('/api/email/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resendEmail }),
+      })
+      setResendDone(true)
+    } catch {
+      setResendDone(true) // message neutre volontaire (on ne revele pas l'existence de l'email)
+    } finally {
+      setResendLoading(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -146,6 +182,56 @@ export default function UpdatePasswordPage() {
                 </button>
               </Link>
             </motion.div>
+          ) : linkExpired ? (
+            <div className="py-2">
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 bg-red-500/15 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <AlertCircle className="w-8 h-8 text-red-400" />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Lien expire</h2>
+                <p className="text-gray-400 text-sm">
+                  {error || "Ce lien n'est plus valide. Recevez-en un nouveau."}
+                </p>
+              </div>
+
+              {resendDone ? (
+                <div className="text-center p-4 bg-[#00ff88]/10 border border-[#00ff88]/30 rounded-xl">
+                  <CheckCircle className="w-6 h-6 text-[#00ff88] mx-auto mb-2" />
+                  <p className="text-sm text-gray-300">
+                    Si cet email existe, un nouveau lien vient d&apos;etre envoye. Pensez a verifier vos spams,
+                    et ouvrez le lien directement dans votre navigateur.
+                  </p>
+                </div>
+              ) : (
+                <form onSubmit={handleResend} className="space-y-4">
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
+                    <input
+                      type="email"
+                      value={resendEmail}
+                      onChange={(e) => setResendEmail(e.target.value)}
+                      className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl py-4 pl-12 pr-4 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#00ff88]/50 focus:border-transparent transition-all"
+                      placeholder="Votre adresse email"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={resendLoading}
+                    className="w-full py-4 bg-[#00ff88] text-black font-bold rounded-xl hover:bg-[#00dd77] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {resendLoading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                        Envoi...
+                      </>
+                    ) : (
+                      "Recevoir un nouveau lien"
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
           ) : (
             <>
               <div className="text-center mb-8">
