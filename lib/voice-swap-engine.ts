@@ -365,6 +365,15 @@ export class VoiceSwapEngine {
         this.cb.onError?.(data.error || `Conversion HTTP ${res.status}`)
         return
       }
+      // Securite : ne jouer QUE de l'audio binaire. Si le serveur renvoie du
+      // JSON (erreur soft en statut 200), on remonte l'erreur au lieu de jouer
+      // les octets JSON comme du PCM (ce qui produisait un bruit/voix sale).
+      const contentType = res.headers.get('Content-Type') || ''
+      if (!contentType.includes('application/octet-stream')) {
+        const data = await res.json().catch(() => ({}))
+        this.cb.onError?.(data.error || 'Reponse de conversion invalide (audio attendu).')
+        return
+      }
       const remaining = res.headers.get('X-Seconds-Remaining')
       if (remaining !== null) this.cb.onSecondsRemaining?.(Number(remaining))
       const buf = await res.arrayBuffer()
