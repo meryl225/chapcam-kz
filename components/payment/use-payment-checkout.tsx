@@ -2,7 +2,7 @@
 
 import { useCallback, useState, type ReactNode } from 'react'
 import Image from 'next/image'
-import { ChevronRight, CreditCard, Loader2, ShieldCheck, X, Zap } from 'lucide-react'
+import { ChevronRight, CreditCard, Loader2, ShieldCheck, X, Zap, Headphones, Lock, BadgeCheck, Plus } from 'lucide-react'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 
@@ -92,60 +92,84 @@ export function usePaymentCheckout() {
     <>
       {inAppUrl && <InAppBrowserNotice url={inAppUrl} onClose={() => setInAppUrl(null)} />}
       {chooser && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-md overflow-hidden rounded-2xl border border-hairline bg-card shadow-2xl">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-md duration-300 animate-in fade-in-0">
+          <div className="relative my-auto w-full max-w-md overflow-hidden rounded-[24px] border border-white/10 bg-[#0b0e14] text-white shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)] duration-300 animate-in zoom-in-95 fade-in-0">
+            {/* Halo bleu decoratif en haut */}
+            <div className="pointer-events-none absolute -top-24 left-1/2 h-56 w-72 -translate-x-1/2 rounded-full bg-[#2f6bff]/25 blur-3xl" />
+            <div className="pointer-events-none absolute inset-0 rounded-[24px] ring-1 ring-inset ring-white/5" />
+
             <button
               onClick={close}
               disabled={!!pendingKey}
-              className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/60 backdrop-blur transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
               aria-label="Fermer"
             >
-              <X className="h-5 w-5" />
+              <X className="h-4 w-4" />
             </button>
 
             {/* En-tete */}
-            <div className="border-b border-hairline px-6 pb-5 pt-6">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <ShieldCheck className="h-5 w-5" />
-              </span>
-              <h3 className="mt-3 pr-8 text-lg font-bold text-foreground">Finalisez votre paiement</h3>
-              <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Zap className="h-3.5 w-3.5 shrink-0 text-primary" />
-                Compte credite automatiquement des la confirmation.
+            <div className="relative px-6 pb-6 pt-8 sm:px-8">
+              <div className="relative flex h-16 w-16 items-center justify-center">
+                <span className="absolute inset-0 rounded-full bg-[#2f6bff]/20 blur-lg" />
+                <span className="absolute inset-0 rounded-full border border-[#2f6bff]/40" />
+                <span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8] text-white shadow-lg shadow-[#2f6bff]/40">
+                  <ShieldCheck className="h-6 w-6" />
+                </span>
+              </div>
+              <h3 className="mt-5 pr-8 text-2xl font-bold leading-tight tracking-tight text-balance">
+                Finalisez votre{' '}
+                <span className="bg-gradient-to-r from-[#60a5fa] to-[#3b82f6] bg-clip-text text-transparent">
+                  paiement
+                </span>
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-white/50 text-pretty">
+                Votre compte sera crédité automatiquement dès la confirmation du paiement.
               </p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/80">
+                  <Zap className="h-3.5 w-3.5 text-[#60a5fa]" />
+                  Rapide
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  100% Sécurisé
+                </span>
+              </div>
             </div>
 
-            <div className="px-6 pb-6 pt-5">
+            <div className="relative px-6 pb-6 sm:px-8">
               {error && (
-                <p className="mb-4 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <p className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
                   {error}
                 </p>
               )}
 
-              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-text-faint">
-                Choisissez une methode
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                Choisissez une méthode de paiement
               </p>
 
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3.5">
                 {/* PayDunya : mobile money / carte */}
                 <button
                   onClick={() => pay('paydunya')}
                   disabled={!!pendingKey}
-                  className="group relative flex items-center gap-4 rounded-xl border border-hairline bg-muted/30 p-4 text-left transition-all hover:border-primary hover:bg-muted hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-60"
+                  className="group relative flex items-center gap-4 rounded-[20px] border border-[#2f6bff]/30 bg-gradient-to-br from-[#111726] to-[#0d1220] p-4 text-left shadow-[0_0_0_1px_rgba(47,107,255,0.04)] transition-all duration-200 hover:border-[#3b82f6]/70 hover:shadow-[0_10px_40px_-12px_rgba(47,107,255,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] disabled:opacity-60"
                 >
-                  <span className="absolute -top-2 left-4 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground shadow-sm">
-                    Recommande
+                  <span className="absolute -top-2.5 left-4 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#3b82f6] to-[#2563eb] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg shadow-[#2f6bff]/40">
+                    <BadgeCheck className="h-3 w-3" />
+                    Recommandé
                   </span>
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3b82f6]/20 to-[#1d4ed8]/10 text-[#60a5fa] ring-1 ring-inset ring-[#3b82f6]/20">
                     {pendingMethod === 'paydunya' ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <Loader2 className="h-6 w-6 animate-spin" />
                     ) : (
-                      <CreditCard className="h-5 w-5" />
+                      <CreditCard className="h-6 w-6" />
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block font-semibold text-foreground">Mobile Money ou Carte</span>
-                    <span className="mt-2 flex flex-wrap items-center gap-1.5">
+                    <span className="block text-base font-semibold text-white">Mobile Money ou Carte</span>
+                    <span className="mt-0.5 block text-xs text-white/45">Paiement rapide et sécurisé</span>
+                    <span className="mt-2.5 flex flex-wrap items-center gap-1.5">
                       {[
                         { src: '/images/wave-logo.png', alt: 'Wave' },
                         { src: '/images/orange-money-logo.png', alt: 'Orange Money' },
@@ -154,55 +178,79 @@ export function usePaymentCheckout() {
                       ].map((logo) => (
                         <span
                           key={logo.alt}
-                          className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-md bg-white ring-1 ring-hairline"
+                          className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-white/10"
                         >
-                          <Image src={logo.src} alt={logo.alt} width={20} height={20} className="h-5 w-5 object-contain" />
+                          <Image src={logo.src} alt={logo.alt} width={22} height={22} className="h-5 w-5 object-contain" />
                         </span>
                       ))}
-                      <span className="text-xs text-muted-foreground">+ carte bancaire</span>
+                      <span className="ml-0.5 inline-flex items-center gap-1 text-xs font-medium text-[#60a5fa]">
+                        <Plus className="h-3 w-3" />
+                        Carte bancaire
+                      </span>
                     </span>
                   </span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-primary" />
+                  <ChevronRight className="h-5 w-5 shrink-0 text-white/30 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#60a5fa]" />
                 </button>
 
                 {/* NOWPayments : crypto (seule option crypto active) */}
                 <button
                   onClick={() => pay('nowpayments')}
                   disabled={!!pendingKey}
-                  className="group flex items-center gap-4 rounded-xl border border-hairline bg-muted/30 p-4 text-left transition-all hover:border-[#f7931a] hover:bg-muted hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f7931a] disabled:opacity-60"
+                  className="group flex items-center gap-4 rounded-[20px] border border-white/10 bg-gradient-to-br from-[#111726] to-[#0d1220] p-4 text-left transition-all duration-200 hover:border-[#f7931a]/60 hover:shadow-[0_10px_40px_-12px_rgba(247,147,26,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f7931a] disabled:opacity-60"
                 >
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-[#f7931a]/15 text-[#f7931a]">
+                  <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#f7931a]/20 to-[#9333ea]/15 text-[#f7931a] ring-1 ring-inset ring-[#f7931a]/20">
                     {pendingMethod === 'nowpayments' ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <Loader2 className="h-6 w-6 animate-spin" />
                     ) : (
-                      <Image src="/images/bitcoin-logo.png" alt="Crypto" width={28} height={28} className="h-7 w-7 object-contain" />
+                      <Image src="/images/bitcoin-logo.png" alt="Crypto" width={30} height={30} className="h-8 w-8 object-contain" />
                     )}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <span className="font-semibold text-foreground">Cryptomonnaie</span>
-                      <span className="rounded-full bg-[#f7931a]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#f7931a]">
+                      <span className="text-base font-semibold text-white">Cryptomonnaie</span>
+                      <span className="rounded-full bg-[#7c3aed]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#c4b5fd]">
                         En EUR
                       </span>
                     </span>
-                    <span className="mt-1 block text-sm text-muted-foreground">
-                      Bitcoin, USDT, ETH et 200+ cryptos acceptees
+                    <span className="mt-1 block text-sm text-white/45">
+                      Bitcoin, USDT, ETH et 200+ cryptos acceptées
                     </span>
                   </span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-[#f7931a]" />
+                  <ChevronRight className="h-5 w-5 shrink-0 text-white/30 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#f7931a]" />
                 </button>
               </div>
 
-              {/* Gages de confiance */}
-              <div className="mt-5 flex items-center justify-center gap-4 border-t border-hairline pt-4 text-xs text-text-faint">
-                <span className="flex items-center gap-1.5">
-                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                  100% securise
+              {/* Gages de confiance - footer 3 colonnes */}
+              <div className="mt-5 grid grid-cols-3 gap-2 rounded-[20px] border border-white/10 bg-white/[0.03] p-4">
+                {[
+                  { icon: ShieldCheck, color: 'text-emerald-400', title: 'Paiement 100% sécurisé', sub: 'Vos données protégées' },
+                  { icon: Zap, color: 'text-[#60a5fa]', title: 'Activation instantanée', sub: 'Crédit immédiat' },
+                  { icon: Headphones, color: 'text-[#c4b5fd]', title: 'Support 24/7', sub: 'Nous sommes là pour vous' },
+                ].map((item) => (
+                  <div key={item.title} className="flex flex-col items-center gap-1.5 text-center">
+                    <item.icon className={`h-5 w-5 ${item.color}`} />
+                    <span className="text-[11px] font-semibold leading-tight text-white/85 text-pretty">{item.title}</span>
+                    <span className="text-[10px] leading-tight text-white/35 text-pretty">{item.sub}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Barre plateforme verifiee */}
+              <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+                <span className="flex items-center gap-2.5">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/50">
+                    <Lock className="h-4 w-4" />
+                  </span>
+                  <span className="text-[11px] leading-tight text-white/45 text-pretty">
+                    Vos données sont protégées par un chiffrement de niveau bancaire.
+                  </span>
                 </span>
-                <span className="h-3 w-px bg-hairline" />
-                <span className="flex items-center gap-1.5">
-                  <Zap className="h-3.5 w-3.5 text-primary" />
-                  Activation instantanee
+                <span className="flex shrink-0 items-center gap-1.5">
+                  <BadgeCheck className="h-4 w-4 text-[#3b82f6]" />
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-[11px] font-semibold text-white">chapcam.com</span>
+                    <span className="text-[10px] text-emerald-400">Plateforme vérifiée</span>
+                  </span>
                 </span>
               </div>
             </div>
