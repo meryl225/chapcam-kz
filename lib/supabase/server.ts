@@ -25,3 +25,30 @@ export async function createClient() {
     },
   })
 }
+
+// Client dedie a la generation du lien "mot de passe oublie".
+// flowType: 'implicit' => le token du mail n'est PAS prefixe "pkce_" et ne
+// necessite donc AUCUN cookie "code verifier". Le lien fonctionne ainsi depuis
+// n'importe quel appareil / navigateur (cross-device), et peut etre verifie
+// cote navigateur via verifyOtp sur /auth/reset-password.
+export async function createResetClient() {
+  const cookieStore = await cookies()
+
+  return createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { flowType: 'implicit' },
+    cookies: {
+      getAll() {
+        return cookieStore.getAll()
+      },
+      setAll(cookiesToSet) {
+        try {
+          cookiesToSet.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          )
+        } catch {
+          // Ignore
+        }
+      },
+    },
+  })
+}

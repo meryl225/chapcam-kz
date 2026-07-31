@@ -37,12 +37,11 @@ export default function ResetPasswordPage() {
       return
     }
 
-    // 2) Sinon, on attend que la session soit etablie. Avec le flux PKCE, le
-    //    client @supabase/ssr echange automatiquement le ?code=... present dans
-    //    l'URL (detectSessionInUrl). On ECOUTE l'evenement plutot que d'appeler
-    //    getSession() immediatement (ce qui donnait un faux "lien invalide").
     let settled = false
+    let cancelled = false
 
+    // On ecoute l'etablissement de la session (utile pour le flux ?code= /
+    // hash #access_token, gere automatiquement par detectSessionInUrl).
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: unknown) => {
       if (session) {
         settled = true
@@ -51,25 +50,52 @@ export default function ResetPasswordPage() {
       }
     })
 
-    const check = async () => {
+    // 2) Cas principal : lien avec ?token_hash=...&type=recovery.
+    //    On verifie le jeton ICI, dans le NAVIGATEUR. Les bots d'apercu
+    //    (WhatsApp, antivirus) n'executent pas ce JS -> le jeton n'est jamais
+    //    consomme avant le vrai clic de l'utilisateur. verifyOtp fonctionne
+    //    cross-device (aucun cookie "verifier" requis, contrairement au PKCE).
+    const tokenHash = search.get('token_hash') || hash.get('token_hash')
+    const otpType = (search.get('type') || hash.get('type')) as 'recovery' | 'email' | null
+
+    const run = async () => {
+      if (tokenHash && otpType) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          type: otpType,
+          token_hash: tokenHash,
+        })
+        if (cancelled) return
+        if (verifyError) {
+          setLinkExpired(true)
+          setError("Ce lien n'est plus valide (deja utilise ou expire). Demandez-en un nouveau ci-dessous.")
+        } else {
+          settled = true
+          setSessionReady(true)
+          setError(null)
+        }
+        return
+      }
+
+      // 3) Sinon, filet : session deja presente (ex. flux ?code=).
       const { data: { session } } = await supabase.auth.getSession()
-      if (session) {
+      if (session && !cancelled) {
         settled = true
         setSessionReady(true)
         setError(null)
       }
     }
-    check()
+    run()
 
-    // Filet de securite : si aucune session au bout de 4s, le lien est mort.
+    // Filet de securite : si aucune session au bout de 6s, le lien est mort.
     const timeout = setTimeout(() => {
-      if (!settled) {
+      if (!settled && !cancelled) {
         setLinkExpired(true)
         setError('Le lien de reinitialisation est invalide ou a expire. Demandez-en un nouveau ci-dessous.')
       }
-    }, 4000)
+    }, 6000)
 
     return () => {
+      cancelled = true
       subscription.unsubscribe()
       clearTimeout(timeout)
     }
