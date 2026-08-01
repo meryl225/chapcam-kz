@@ -15,6 +15,7 @@ import { getLiveOffer, type LiveOffer } from '@/lib/live-offers'
 import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
 import { getPcOffer, getDesktopDownloadUrl, getDesktopDownloadUrlMac, type PcOffer } from '@/lib/pc-offer'
 import { getVoiceOffer, type VoiceOffer } from '@/lib/voice-offers'
+import { getPhotoVideoOffer, type PhotoVideoOffer } from '@/lib/photo-video-offers'
 import { createPcLicense } from '@/lib/pc-license'
 import { grantLiveWindow } from '@/lib/live-access'
 import {
@@ -209,7 +210,7 @@ export interface PurchaseInput {
 
 export interface PurchaseResult {
   ok: boolean
-  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'numbers_wallet' | null
+  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'numbers_wallet' | null
   userLinked: boolean
   message: string
   licenseKey?: string
@@ -263,8 +264,9 @@ export async function creditPurchase(
   const installOffer: InstallOffer | undefined = getInstallOffer(input.productId)
   const pcOffer: PcOffer | undefined = getPcOffer(input.productId)
   const voiceOffer: VoiceOffer | undefined = getVoiceOffer(input.productId)
+  const photoOffer: PhotoVideoOffer | undefined = getPhotoVideoOffer(input.productId)
 
-  if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer) {
+  if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer) {
     return { ok: false, kind: null, userLinked: false, message: `Produit inconnu : ${input.productId}` }
   }
 
@@ -305,7 +307,7 @@ export async function creditPurchase(
   if (!userId) {
     return {
       ok: false,
-      kind: installOffer ? 'installation' : liveOffer ? 'live' : voiceOffer ? 'voice' : 'plan',
+      kind: installOffer ? 'installation' : liveOffer ? 'live' : voiceOffer ? 'voice' : photoOffer ? 'photo' : 'plan',
       userLinked: false,
       message: `Aucun compte ChapCam ne correspond a ${input.email}.`,
     }
@@ -350,6 +352,17 @@ export async function creditPurchase(
       kind: 'voice',
       userLinked: true,
       message: `${voiceOffer.name} credite (${Math.round(secondsRemaining / 60)} min disponibles).`,
+    }
+  }
+
+  if (photoOffer) {
+    // Credite le solde de credits Studio Photo en Video (1 credit = 1 video 30s).
+    const balance = await addPhotoVideoCredits(userId, photoOffer.credits)
+    return {
+      ok: true,
+      kind: 'photo',
+      userLinked: true,
+      message: `${photoOffer.name} credite (${balance} videos disponibles).`,
     }
   }
 

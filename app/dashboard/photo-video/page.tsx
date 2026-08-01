@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
+import { CreditPacksSection } from "@/components/photo-video/credit-packs-section"
 
 interface Voice {
   voice_id: string
@@ -716,6 +717,9 @@ export default function PhotoVideoPage() {
           </div>
         </div>
       </div>
+
+      {/* Achat de credits video (sans forfait Live Swap requis) */}
+      <CreditPacksSection />
     </div>
   )
 }
