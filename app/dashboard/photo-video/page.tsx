@@ -323,23 +323,24 @@ export default function PhotoVideoPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 p-2 pl-4">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/20">
+            <Clapperboard className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs font-medium text-muted-foreground">Crédits vidéo (30s)</span>
+            <span className="text-xl font-bold text-foreground">{remaining ?? "—"}</span>
+          </div>
           <button
             type="button"
             onClick={() => {
               document.getElementById("recharger-credits")?.scrollIntoView({ behavior: "smooth", block: "start" })
             }}
-            className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+            className="ml-1 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
             Recharger
           </button>
-          <div className="flex items-center gap-2 rounded-full border border-hairline bg-card px-4 py-2">
-            <Clapperboard className="h-4 w-4 text-primary" />
-            <span className="hidden text-sm text-muted-foreground sm:inline">Vidéos 30s restantes</span>
-            <span className="text-sm text-muted-foreground sm:hidden">Solde</span>
-            <span className="text-base font-bold text-foreground">{remaining ?? "-"}</span>
-          </div>
         </div>
       </div>
 
