@@ -1,9 +1,23 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-// Cout en points d'une generation photo -> video (HeyGen Avatar IV).
-// Operation couteuse cote HeyGen : on facture 100 points par video.
-const POINTS_PER_VIDEO = 100
+// --- Tarification photo -> video (HeyGen Avatar IV) ---
+// Cout HeyGen mesure : ~0,067 $/seconde (base securisee 4 $/min). A 1 point =
+// 20 FCFA (~0,033 $), le seuil de rentabilite est ~2 points/seconde. On applique
+// une marge x4 => 8 POINTS PAR SECONDE de video.
+const POINTS_PER_SECOND = 8
+// La duree finale n'est connue qu'apres generation : on l'ESTIME depuis la
+// longueur du texte. La parole FR fait ~14 caracteres/seconde.
+const CHARS_PER_SECOND = 14
+// Duree maximale autorisee par video.
+const MAX_SECONDS = 60
+const MAX_SCRIPT_CHARS = MAX_SECONDS * CHARS_PER_SECOND // ~840 caracteres
+
+// Estime la duree (en secondes) d'un script et le cout en points associe.
+function estimateCost(script: string): { seconds: number; points: number } {
+  const seconds = Math.min(MAX_SECONDS, Math.max(2, Math.ceil(script.length / CHARS_PER_SECOND)))
+  return { seconds, points: seconds * POINTS_PER_SECOND }
+}
 
 const HEYGEN_API = "https://api.heygen.com"
 const HEYGEN_UPLOAD = "https://upload.heygen.com/v1/asset"
@@ -41,12 +55,18 @@ export async function POST(request: NextRequest) {
     if (!voiceId) {
       return NextResponse.json({ error: "Aucune voix selectionnee." }, { status: 400 })
     }
-    if (script.length > 1500) {
-      return NextResponse.json({ error: "Le prompt est trop long (max 1500 caracteres)." }, { status: 400 })
+    if (script.length > MAX_SCRIPT_CHARS) {
+      return NextResponse.json(
+        { error: `Le prompt est trop long (max ${MAX_SCRIPT_CHARS} caracteres, soit ~${MAX_SECONDS}s de video).` },
+        { status: 400 },
+      )
     }
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: "Photo trop volumineuse (max 10 Mo)." }, { status: 400 })
     }
+
+    // Cout estime depuis la longueur du texte (facturation proportionnelle).
+    const { seconds: estimatedSeconds, points: pointsCost } = estimateCost(script)
 
     // Verifier les points AVANT tout appel HeyGen.
     const { data: profile, error: profileError } = await supabase
@@ -58,9 +78,9 @@ export async function POST(request: NextRequest) {
     if (profileError || !profile) {
       return NextResponse.json({ error: "Profil utilisateur non trouve" }, { status: 404 })
     }
-    if (profile.points < POINTS_PER_VIDEO) {
+    if (profile.points < pointsCost) {
       return NextResponse.json(
-        { error: "Points insuffisants", points_required: POINTS_PER_VIDEO, points_available: profile.points },
+        { error: "Points insuffisants", points_required: pointsCost, points_available: profile.points },
         { status: 402 },
       )
     }
@@ -112,17 +132,19 @@ export async function POST(request: NextRequest) {
     }
 
     // 3) Deduire les points seulement apres succes de la creation.
-    await supabase.from("profiles").update({ points: profile.points - POINTS_PER_VIDEO }).eq("id", user.id)
+    await supabase.from("profiles").update({ points: profile.points - pointsCost }).eq("id", user.id)
     await supabase.from("swap_transactions").insert({
       user_id: user.id,
-      points_used: POINTS_PER_VIDEO,
+      points_used: pointsCost,
       status: "processing",
     })
 
     return NextResponse.json({
       success: true,
       video_id: videoId,
-      points_remaining: profile.points - POINTS_PER_VIDEO,
+      points_used: pointsCost,
+      estimated_seconds: estimatedSeconds,
+      points_remaining: profile.points - pointsCost,
     })
   } catch (error) {
     console.error("[HeyGen PhotoVideo Error]", error)
