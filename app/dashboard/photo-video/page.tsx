@@ -80,15 +80,16 @@ export default function PhotoVideoPage() {
 
   const busy = status === "uploading" || status === "processing"
 
-  // Tarification proportionnelle : 8 points/seconde, duree estimee depuis la
-  // longueur du texte (~14 caracteres/seconde). La duree choisie (30s ou 60s)
-  // plafonne la longueur du prompt. +50 points si clonage de voix.
+  // Tarification proportionnelle : 2 points/seconde (aligne sur les forfaits),
+  // duree estimee depuis la longueur du texte (~14 caracteres/seconde). La duree
+  // choisie (30s ou 60s) plafonne la longueur du prompt. +50 points si clonage.
   const CHARS_PER_SECOND = 14
+  const POINTS_PER_SECOND = 2
   const MAX_SCRIPT_CHARS = duration * CHARS_PER_SECOND
   const CLONE_POINTS = 50
   const usingClone = voiceMode === "clone" && !!voiceSample
   const estimatedSeconds = Math.min(duration, Math.max(2, Math.ceil(prompt.length / CHARS_PER_SECOND)))
-  const estimatedPoints = estimatedSeconds * 8 + (usingClone ? CLONE_POINTS : 0)
+  const estimatedPoints = estimatedSeconds * POINTS_PER_SECOND + (usingClone ? CLONE_POINTS : 0)
 
   // Auth + points + voices
   useEffect(() => {

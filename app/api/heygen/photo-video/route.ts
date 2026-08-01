@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
 // --- Tarification photo -> video (HeyGen Avatar IV) ---
-// Cout HeyGen mesure : ~0,067 $/seconde (base securisee 4 $/min). A 1 point =
-// 20 FCFA (~0,033 $), le seuil de rentabilite est ~2 points/seconde. On applique
-// une marge x4 => 8 POINTS PAR SECONDE de video.
-const POINTS_PER_SECOND = 8
+// Cout HeyGen mesure : ~0,026 $/seconde (base securisee 4 $/min = 0,067 $/s).
+// A 1 point = 20 FCFA (~0,033 $), on facture 2 POINTS PAR SECONDE de video.
+// Cette valeur est alignee sur les forfaits (minutes annoncees = points / 2).
+const POINTS_PER_SECOND = 2
 // La duree finale n'est connue qu'apres generation : on l'ESTIME depuis la
 // longueur du texte. La parole FR fait ~14 caracteres/seconde.
 const CHARS_PER_SECOND = 14
