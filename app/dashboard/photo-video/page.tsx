@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Upload, X, Sparkles, Loader2, ImageIcon, Download, Wand2, Play, Mic, Square, Trash2 } from "lucide-react"
+import { Upload, X, Sparkles, Loader2, ImageIcon, Download, Wand2, Play, Mic, Square, Trash2, ChevronDown, SlidersHorizontal } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -65,6 +65,7 @@ export default function PhotoVideoPage() {
   const [voiceId, setVoiceId] = useState<string>("")
   const [gestures, setGestures] = useState<string[]>([])
   const [expressiveness, setExpressiveness] = useState<string>("medium")
+  const [showOptions, setShowOptions] = useState(false)
 
   // Clonage de voix : mode ("preset" = voix HeyGen, "clone" = ta voix) + echantillon.
   const [voiceMode, setVoiceMode] = useState<"preset" | "clone">("preset")
@@ -394,7 +395,7 @@ export default function PhotoVideoPage() {
                     : "border-hairline-strong bg-secondary text-foreground hover:border-white/40"
                 }`}
               >
-                Ma voix (+{CLONE_POINTS} pts)
+                Clonage de voix (+{CLONE_POINTS})
               </button>
             </div>
 
@@ -484,58 +485,81 @@ export default function PhotoVideoPage() {
             )}
           </div>
 
-          {/* Gestes */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-muted-foreground">
-              4. Gestes <span className="text-text-faint">(optionnel — plusieurs possibles)</span>
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {GESTURES.map((g) => {
-                const active = gestures.includes(g.value)
-                return (
-                  <button
-                    key={g.value}
-                    type="button"
-                    onClick={() => !busy && toggleGesture(g.value)}
-                    disabled={busy}
-                    aria-pressed={active}
-                    className={`rounded-full border px-3 py-1.5 text-sm transition-colors disabled:opacity-50 ${
-                      active
-                        ? "border-primary bg-primary text-black font-medium"
-                        : "border-hairline-strong bg-secondary text-foreground hover:border-white/40"
-                    }`}
-                  >
-                    {g.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+          {/* Options avancees (repliable) : gestes + expressivite */}
+          <div className="rounded-lg border border-hairline bg-card">
+            <button
+              type="button"
+              onClick={() => setShowOptions((v) => !v)}
+              className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-foreground"
+              aria-expanded={showOptions}
+            >
+              <span className="flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4 text-muted-foreground" />
+                Options
+                {gestures.length > 0 && (
+                  <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-black">
+                    {gestures.length}
+                  </span>
+                )}
+              </span>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${showOptions ? "rotate-180" : ""}`} />
+            </button>
 
-          {/* Expressivite */}
-          <div>
-            <label className="mb-2 block text-sm font-medium text-muted-foreground">5. Expressivité</label>
-            <div className="flex gap-2">
-              {EXPRESSIVENESS.map((e) => {
-                const active = expressiveness === e.value
-                return (
-                  <button
-                    key={e.value}
-                    type="button"
-                    onClick={() => !busy && setExpressiveness(e.value)}
-                    disabled={busy}
-                    aria-pressed={active}
-                    className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
-                      active
-                        ? "border-primary bg-primary text-black font-medium"
-                        : "border-hairline-strong bg-secondary text-foreground hover:border-white/40"
-                    }`}
-                  >
-                    {e.label}
-                  </button>
-                )
-              })}
-            </div>
+            {showOptions && (
+              <div className="space-y-4 border-t border-hairline px-4 py-4">
+                {/* Gestes */}
+                <div>
+                  <p className="mb-2 text-sm text-muted-foreground">Gestes <span className="text-text-faint">(plusieurs possibles)</span></p>
+                  <div className="flex flex-wrap gap-2">
+                    {GESTURES.map((g) => {
+                      const active = gestures.includes(g.value)
+                      return (
+                        <button
+                          key={g.value}
+                          type="button"
+                          onClick={() => !busy && toggleGesture(g.value)}
+                          disabled={busy}
+                          aria-pressed={active}
+                          className={`rounded-full border px-3 py-1.5 text-sm transition-colors disabled:opacity-50 ${
+                            active
+                              ? "border-primary bg-primary text-black font-medium"
+                              : "border-hairline-strong bg-secondary text-foreground hover:border-white/40"
+                          }`}
+                        >
+                          {g.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Expressivite */}
+                <div>
+                  <p className="mb-2 text-sm text-muted-foreground">Expressivité</p>
+                  <div className="flex gap-2">
+                    {EXPRESSIVENESS.map((e) => {
+                      const active = expressiveness === e.value
+                      return (
+                        <button
+                          key={e.value}
+                          type="button"
+                          onClick={() => !busy && setExpressiveness(e.value)}
+                          disabled={busy}
+                          aria-pressed={active}
+                          className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                            active
+                              ? "border-primary bg-primary text-black font-medium"
+                              : "border-hairline-strong bg-secondary text-foreground hover:border-white/40"
+                          }`}
+                        >
+                          {e.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* CTA */}
