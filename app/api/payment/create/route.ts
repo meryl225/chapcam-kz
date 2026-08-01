@@ -6,6 +6,7 @@ import { getLiveOffer } from '@/lib/live-offers'
 import { getInstallOffer } from '@/lib/install-offer'
 import { getPcOffer } from '@/lib/pc-offer'
 import { getVoiceOffer } from '@/lib/voice-offers'
+import { getPhotoVideoOffer } from '@/lib/photo-video-offers'
 import { paydunyaHeaders } from '@/lib/fulfillment'
 
 export const runtime = 'nodejs'
@@ -43,7 +44,8 @@ export async function POST(request: NextRequest) {
     const installOffer = getInstallOffer(productId)
     const pcOffer = getPcOffer(productId)
     const voiceOffer = getVoiceOffer(productId)
-    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer) {
+    const photoOffer = getPhotoVideoOffer(productId)
+    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer) {
       return NextResponse.json({ success: false, error: 'Produit inconnu.' }, { status: 400 })
     }
 
@@ -55,8 +57,10 @@ export async function POST(request: NextRequest) {
           ? installOffer.price
           : pcOffer
             ? pcOffer.price
-            : voiceOffer!.price
-    const kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' = plan
+            : voiceOffer
+              ? voiceOffer.price
+              : photoOffer!.price
+    const kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' = plan
       ? 'plan'
       : liveOffer
         ? 'live'
@@ -64,7 +68,9 @@ export async function POST(request: NextRequest) {
           ? 'installation'
           : pcOffer
             ? 'pc'
-            : 'voice'
+            : voiceOffer
+              ? 'voice'
+              : 'photo'
     const label = plan
       ? `Formule ${plan.name} (${plan.points} points, ${plan.duration})`
       : liveOffer
@@ -73,7 +79,9 @@ export async function POST(request: NextRequest) {
           ? installOffer.name
           : pcOffer
             ? `${pcOffer.name} (licence a vie)`
-            : `${voiceOffer!.name} (${voiceOffer!.minutes} min de voix)`
+            : voiceOffer
+              ? `${voiceOffer.name} (${voiceOffer.minutes} min de voix)`
+              : `${photoOffer!.name} (${photoOffer!.credits} videos de 30s)`
 
     const headers = paydunyaHeaders()
     if (!headers) {

@@ -55,7 +55,6 @@ const navItems: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'DASHBOARD', color: '#34d399' },
   { href: '/dashboard/voice-swap', icon: AudioLines, label: 'VOICE SWAP', badge: 'PRO', color: '#ef4444' },
   { href: '/dashboard/voice-translator', icon: Languages, label: 'VOICE TRADUCTEUR', badge: 'NEW', color: '#38bdf8' },
-  { href: '/dashboard/photo-video', icon: ImageIcon, label: 'PHOTOS EN VIDEO', badge: 'NEW', color: '#f59e0b' },
   { href: '/dashboard/video-translation', icon: Film, label: 'TRADUCTION VIDEO', badge: 'NEW', color: '#8b5cf6' },
   { href: '/dashboard/avatars', icon: Users, label: 'MES AVATARS', color: '#22d3ee' },
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES', color: '#4ade80' },
@@ -271,6 +270,20 @@ function SidebarContent({
                 </span>
               )}
             </Link>
+            {/* Vedette : Studio Photo en Video, mis en avant juste sous Voice Swap */}
+            {item.href === '/dashboard/voice-swap' && (
+              <div className="mb-2 mt-2">
+                <FeaturedLink
+                  href="/dashboard/photo-video"
+                  icon={ImageIcon}
+                  title="Photos en Vidéo"
+                  subtitle="Anime ta photo : elle parle avec ta voix"
+                  badge="New"
+                  tone="green"
+                  active={pathname === '/dashboard/photo-video'}
+                />
+              </div>
+            )}
             </div>
           )
         })}

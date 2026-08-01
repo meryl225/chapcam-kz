@@ -19,6 +19,9 @@ export interface PlanConfig {
   discount: number
   points: number
   minutes: string
+  // Quota "Studio Photo en Video" inclus dans le forfait Live Swap : nombre de
+  // videos photo->parlante que l'utilisateur peut generer par periode d'abonnement.
+  photoVideoQuota: number
   features: string[]
   popular: boolean
   // Forfait mis en avant (agrandi + halo). Reserve a Premium et VIP PRO.
@@ -39,6 +42,7 @@ export const PLANS: PlanConfig[] = [
     discount: 17,
     points: 500,
     minutes: '4 min 10 sec',
+    photoVideoQuota: 2,
     features: ['Transformation du visage et corps entier', 'Qualite HD'],
     popular: false,
     highlight: false,
@@ -55,6 +59,7 @@ export const PLANS: PlanConfig[] = [
     discount: 23,
     points: 2500,
     minutes: '20 min 50 sec',
+    photoVideoQuota: 5,
     features: [
       'Transformation du visage et corps entier',
       'Rendu sans logo ChapCam inclus',
@@ -77,6 +82,7 @@ export const PLANS: PlanConfig[] = [
     discount: 23,
     points: 4250,
     minutes: '35 min 25 sec',
+    photoVideoQuota: 8,
     features: [
       'Transformation du visage et corps entier',
       'Rendu Full HD 1080p sans logo',
@@ -101,6 +107,7 @@ export const PLANS: PlanConfig[] = [
     discount: 25,
     points: 7200,
     minutes: '60 min',
+    photoVideoQuota: 10,
     features: [
       'Transformation du visage et corps entier',
       'Rendu Full HD 1080p sans logo',
@@ -137,4 +144,21 @@ export const PROXY_QUOTA_GB: Record<PlanId, number> = {
 export function proxyQuotaForPlan(planId: string | null | undefined): number {
   if (!planId) return 0
   return PROXY_QUOTA_GB[planId as PlanId] ?? 0
+}
+
+// --- Quota "Studio Photo en Video" par forfait Live Swap ---
+// Nombre de videos photo->parlante incluses par periode d'abonnement (2 a 10).
+// Decouple des points/minutes du Live Swap : la photo-video ne consomme PAS de points.
+export const PHOTO_VIDEO_QUOTA: Record<PlanId, number> = {
+  starter: 2,
+  standard: 3,
+  premium: 5,
+  ultimate: 8,
+  vipdebout: 10,
+}
+
+/** Quota photo-video accordé par un forfait. Retourne 0 si forfait inconnu/absent. */
+export function photoVideoQuotaForPlan(planId: string | null | undefined): number {
+  if (!planId) return 0
+  return PHOTO_VIDEO_QUOTA[planId as PlanId] ?? 0
 }
