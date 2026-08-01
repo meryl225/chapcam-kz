@@ -104,9 +104,12 @@ export default function PhotoVideoPage() {
         if (qRes.ok) {
           setRemaining(qJson.remaining ?? 0)
           setPlanName(qJson.plan ?? null)
+        } else {
+          // Ne jamais laisser le spinner tourner indefiniment en cas d'erreur.
+          setRemaining(0)
         }
       } catch {
-        // silencieux
+        setRemaining(0)
       }
 
       try {
