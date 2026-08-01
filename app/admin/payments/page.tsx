@@ -19,6 +19,8 @@ import {
   AlertTriangle,
   RotateCcw,
   Megaphone,
+  Monitor,
+  Zap,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -73,6 +75,9 @@ interface Stats {
   installTotal: number
   installPaid: number
   installRevenue: number
+  offerRevenue: number
+  pcRevenue: number
+  otherRevenue: number
   totalRevenue: number
   paydunyaToday: number
   paydunyaCreditedToday: number
@@ -234,12 +239,22 @@ export default function AdminPaymentsPage() {
 
         {/* Stats */}
         {stats && (
-          <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard icon={Users} label="Clients credites" value={stats.total.toString()} color="text-white" />
-            <StatCard icon={CheckCircle2} label="Abonnements actifs" value={stats.active.toString()} color="text-[#00ff88]" />
-            <StatCard icon={Wrench} label="Demandes install." value={`${stats.installPaid}/${stats.installTotal}`} color="text-white" />
-            <StatCard icon={Wallet} label="Revenu total" value={`${stats.totalRevenue.toLocaleString()} F`} color="text-[#00ff88]" />
-          </div>
+          <>
+            <div className="mb-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <StatCard icon={Users} label="Clients credites" value={stats.total.toString()} color="text-white" />
+              <StatCard icon={CheckCircle2} label="Abonnements actifs" value={stats.active.toString()} color="text-[#00ff88]" />
+              <StatCard icon={Wrench} label="Demandes install." value={`${stats.installPaid}/${stats.installTotal}`} color="text-white" />
+              <StatCard icon={Wallet} label="Revenu total" value={`${stats.totalRevenue.toLocaleString()} F`} color="text-[#00ff88]" />
+            </div>
+
+            {/* Ventilation du revenu total par source */}
+            <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <StatCard icon={Zap} label="Forfaits Live Swap" value={`${stats.subRevenue.toLocaleString()} F`} color="text-[#00ff88]" />
+              <StatCard icon={Monitor} label="Licences PC" value={`${(stats.pcRevenue ?? 0).toLocaleString()} F`} color="text-[#00d4ff]" />
+              <StatCard icon={Wallet} label="Autres achats" value={`${(stats.otherRevenue ?? 0).toLocaleString()} F`} color="text-white" />
+              <StatCard icon={Wrench} label="Installations" value={`${stats.installRevenue.toLocaleString()} F`} color="text-white" />
+            </div>
+          </>
         )}
 
         {/* Tabs */}
