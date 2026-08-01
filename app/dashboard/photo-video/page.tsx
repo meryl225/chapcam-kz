@@ -54,15 +54,13 @@ export default function PhotoVideoPage() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [loading, setLoading] = useState(true)
-  // Quota Studio Photo en Video inclus dans le forfait Live Swap actif.
-  const [quota, setQuota] = useState<number | null>(null)
+  // Solde de credits Studio Photo en Video (1 credit = 1 video de 30s).
   const [remaining, setRemaining] = useState<number | null>(null)
   const [planName, setPlanName] = useState<string | null>(null)
 
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [prompt, setPrompt] = useState("")
-  const [duration, setDuration] = useState<30 | 60>(30)
   const [voices, setVoices] = useState<Voice[]>([])
   const [voiceId, setVoiceId] = useState<string>("")
   const [gestures, setGestures] = useState<string[]>([])
@@ -83,11 +81,11 @@ export default function PhotoVideoPage() {
 
   const busy = status === "uploading" || status === "processing"
 
-  // La photo-video est incluse dans le forfait (quota), elle ne consomme pas de
-  // points. La duree choisie (30s ou 60s) plafonne la longueur du prompt.
+  // Les videos font 30 SECONDES (1 credit = 1 video de 30s). La longueur du
+  // prompt est bornee en consequence (~14 caracteres/seconde).
   const CHARS_PER_SECOND = 14
-  const MAX_SCRIPT_CHARS = duration * CHARS_PER_SECOND
-  const estimatedSeconds = Math.min(duration, Math.max(2, Math.ceil(prompt.length / CHARS_PER_SECOND)))
+  const VIDEO_SECONDS = 30
+  const MAX_SCRIPT_CHARS = VIDEO_SECONDS * CHARS_PER_SECOND
   const noQuota = remaining !== null && remaining <= 0
 
   // Auth + points + voices
@@ -98,12 +96,11 @@ export default function PhotoVideoPage() {
         router.push("/auth/login")
         return
       }
-      // Quota Studio Photo en Video (depuis le forfait Live Swap actif).
+      // Solde de credits Studio Photo en Video (depuis le forfait actif).
       try {
         const qRes = await fetch("/api/heygen/photo-video?info=quota")
         const qJson = await qRes.json()
         if (qRes.ok) {
-          setQuota(qJson.quota ?? 0)
           setRemaining(qJson.remaining ?? 0)
           setPlanName(qJson.plan ?? null)
         }
@@ -252,8 +249,7 @@ export default function PhotoVideoPage() {
           toast({ title: "Aucun forfait actif", description: json.error, variant: "destructive" })
         } else if (res.status === 402 && json.code === "quota_exhausted") {
           setRemaining(0)
-          if (typeof json.quota === "number") setQuota(json.quota)
-          toast({ title: "Quota epuise", description: json.error, variant: "destructive" })
+          toast({ title: "Credits epuises", description: json.error, variant: "destructive" })
         } else {
           toast({ title: "Erreur", description: json.error || "Impossible de lancer la generation.", variant: "destructive" })
         }
@@ -261,7 +257,6 @@ export default function PhotoVideoPage() {
       }
 
       if (typeof json.remaining === "number") setRemaining(json.remaining)
-      if (typeof json.quota === "number") setQuota(json.quota)
       setStatus("processing")
       startPolling(json.video_id, json.clone_voice_id ?? null)
       toast({ title: "Generation lancee", description: "Cela peut prendre 1 a 3 minutes..." })
@@ -329,10 +324,8 @@ export default function PhotoVideoPage() {
         </div>
         <div className="flex items-center gap-2 rounded-full border border-hairline bg-card px-4 py-2">
           <Clapperboard className="h-4 w-4 text-primary" />
-          <span className="text-sm text-muted-foreground">Vidéos incluses</span>
-          <span className="text-base font-bold text-foreground">
-            {remaining ?? "-"}{quota ? ` / ${quota}` : ""}
-          </span>
+          <span className="text-sm text-muted-foreground">Vidéos 30s restantes</span>
+          <span className="text-base font-bold text-foreground">{remaining ?? "-"}</span>
         </div>
       </div>
 
@@ -404,37 +397,10 @@ export default function PhotoVideoPage() {
               disabled={busy}
             />
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">Durée max</span>
-                <div className="flex gap-1.5">
-                  {[30, 60].map((d) => {
-                    const active = duration === d
-                    return (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => {
-                          if (busy) return
-                          setDuration(d as 30 | 60)
-                          setPrompt((p) => p.slice(0, d * CHARS_PER_SECOND))
-                        }}
-                        disabled={busy}
-                        aria-pressed={active}
-                        className={`rounded-full border px-3 py-1 text-xs transition-colors disabled:opacity-50 ${
-                          active
-                            ? "border-primary bg-primary text-primary-foreground font-medium"
-                            : "border-hairline-strong bg-secondary text-foreground hover:border-primary/50"
-                        }`}
-                      >
-                        {d === 30 ? "30s" : "1 min"}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <span className="text-xs text-text-faint">
-                ~{estimatedSeconds}s · {prompt.length}/{MAX_SCRIPT_CHARS}
+              <span className="rounded-full border border-hairline-strong bg-secondary px-3 py-1 text-xs font-medium text-foreground">
+                Vidéo de 30s
               </span>
+              <span className="text-xs text-text-faint">{prompt.length}/{MAX_SCRIPT_CHARS}</span>
             </div>
           </section>
 
@@ -711,12 +677,12 @@ export default function PhotoVideoPage() {
                 {noQuota && (
                   <div className="mt-4 rounded-2xl border border-hairline-strong bg-muted p-4 text-center">
                     <p className="text-sm text-muted-foreground">
-                      {quota
-                        ? `Tu as utilisé tes ${quota} vidéos incluses dans ce forfait.`
-                        : "Aucun forfait Live Swap actif."}
+                      {planName
+                        ? "Tu as utilisé toutes tes vidéos incluses. Recharge un forfait pour en obtenir plus."
+                        : "Aucun forfait actif. Achète un forfait pour recevoir tes vidéos de 30s."}
                     </p>
                     <a href="/dashboard/plans" className="mt-2 inline-block text-sm font-semibold text-primary hover:underline">
-                      Renouveler ou changer de forfait
+                      Voir les forfaits
                     </a>
                   </div>
                 )}
@@ -730,7 +696,7 @@ export default function PhotoVideoPage() {
                 ) : status === "processing" ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Génération...</>
                 ) : (
-                  <><Wand2 className="mr-2 h-5 w-5" /> {noQuota ? "Quota épuisé" : "Générer la vidéo"}</>
+                  <><Wand2 className="mr-2 h-5 w-5" /> {noQuota ? "Crédits épuisés" : "Générer la vidéo"}</>
                 )}
               </Button>
               </>

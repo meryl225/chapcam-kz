@@ -9,7 +9,8 @@
 import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ADMIN_EMAIL } from '@/lib/admin-auth'
-import { getPlan, type PlanConfig } from '@/lib/plans'
+import { getPlan, photoVideoQuotaForPlan, type PlanConfig } from '@/lib/plans'
+import { addPhotoVideoCredits } from '@/lib/photo-video-quota'
 import { getLiveOffer, type LiveOffer } from '@/lib/live-offers'
 import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
 import { getPcOffer, getDesktopDownloadUrl, getDesktopDownloadUrlMac, type PcOffer } from '@/lib/pc-offer'
@@ -137,6 +138,17 @@ export async function activateSubscription(
   } else {
     const { error } = await admin.from('subscriptions').insert(subPayload)
     if (error) console.error('[fulfillment] Erreur insert subscription:', error.message)
+  }
+
+  // Crediter les credits "Studio Photo en Video" (1 credit = 1 video de 30s).
+  // S'accumule au solde existant, comme les points Live Swap.
+  const videoCredits = photoVideoQuotaForPlan(plan.id)
+  if (videoCredits > 0) {
+    try {
+      await addPhotoVideoCredits(userId, videoCredits)
+    } catch (e) {
+      console.error('[fulfillment] Erreur credit photo-video:', (e as Error).message)
+    }
   }
 
   return { now, end }

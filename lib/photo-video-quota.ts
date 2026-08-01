@@ -2,13 +2,12 @@ import 'server-only'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 
 // ============================================================
-// Suivi du quota "Studio Photo en Video" (Neon).
-// L'authentification vit dans Supabase, mais — comme le portefeuille
-// ChapCam Numbers — le journal d'usage de la photo-video vit dans Neon.
-// Le quota est calcule par periode d'abonnement : on compte les videos
-// generees depuis la date de debut du forfait Live Swap actif de l'utilisateur.
-// (subscriptions.start_date est reinitialise a chaque achat/renouvellement,
-//  donc le quota repart a neuf a chaque forfait.)
+// Solde de credits "Studio Photo en Video" (Neon).
+// 1 credit = 1 video de 30 secondes. Les credits sont attribues au moment ou
+// les points Live Swap sont credites (a l'achat/renouvellement d'un forfait) et
+// s'ACCUMULENT. C'est un solde SEPARE des points Live Swap.
+// L'auth vit dans Supabase mais — comme le portefeuille ChapCam Numbers — le
+// solde photo-video vit dans Neon.
 // ============================================================
 
 let _client: NeonQueryFunction<false, false> | null = null
@@ -24,35 +23,57 @@ const sql: NeonQueryFunction<false, false> = ((...args: unknown[]) =>
   // @ts-expect-error — relais transparent vers le client Neon (tagged template + appels).
   getClient()(...args)) as NeonQueryFunction<false, false>
 
-// Cree la table de journal si elle n'existe pas (idempotent, execute a la volee).
+// Cree la table de credits si elle n'existe pas (idempotent, execute a la volee).
 let _ensured = false
 async function ensureTable(): Promise<void> {
   if (_ensured) return
   await sql`
-    CREATE TABLE IF NOT EXISTS photo_video_log (
-      id BIGSERIAL PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      video_id TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    CREATE TABLE IF NOT EXISTS photo_video_credits (
+      user_id TEXT PRIMARY KEY,
+      balance INTEGER NOT NULL DEFAULT 0,
+      total_credited INTEGER NOT NULL DEFAULT 0,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `
-  await sql`CREATE INDEX IF NOT EXISTS photo_video_log_user_idx ON photo_video_log (user_id, created_at)`
   _ensured = true
 }
 
-/** Compte les videos generees par l'utilisateur depuis une date donnee. */
-export async function countGenerationsSince(userId: string, since: Date): Promise<number> {
+/** Retourne le solde de credits video ET si une ligne existe deja pour ce user. */
+export async function getPhotoVideoBalance(
+  userId: string,
+): Promise<{ balance: number; exists: boolean }> {
   await ensureTable()
   const rows = (await sql`
-    SELECT COUNT(*)::int AS n
-    FROM photo_video_log
-    WHERE user_id = ${userId} AND created_at >= ${since.toISOString()}
-  `) as { n: number }[]
-  return rows[0]?.n ?? 0
+    SELECT balance FROM photo_video_credits WHERE user_id = ${userId} LIMIT 1
+  `) as { balance: number }[]
+  if (rows.length === 0) return { balance: 0, exists: false }
+  return { balance: Number(rows[0].balance), exists: true }
 }
 
-/** Journalise une generation reussie (consomme 1 unite de quota). */
-export async function logGeneration(userId: string, videoId: string): Promise<void> {
+/** Ajoute des credits au solde (upsert, accumulation). Retourne le nouveau solde. */
+export async function addPhotoVideoCredits(userId: string, amount: number): Promise<number> {
   await ensureTable()
-  await sql`INSERT INTO photo_video_log (user_id, video_id) VALUES (${userId}, ${videoId})`
+  if (amount <= 0) return (await getPhotoVideoBalance(userId)).balance
+  const rows = (await sql`
+    INSERT INTO photo_video_credits (user_id, balance, total_credited, updated_at)
+    VALUES (${userId}, ${amount}, ${amount}, now())
+    ON CONFLICT (user_id) DO UPDATE SET
+      balance = photo_video_credits.balance + ${amount},
+      total_credited = photo_video_credits.total_credited + ${amount},
+      updated_at = now()
+    RETURNING balance
+  `) as { balance: number }[]
+  return Number(rows[0].balance)
+}
+
+/** Deduit 1 credit (1 video de 30s). Retourne le solde restant, ou -1 si vide. */
+export async function deductPhotoVideoCredit(userId: string): Promise<number> {
+  await ensureTable()
+  const rows = (await sql`
+    UPDATE photo_video_credits
+    SET balance = balance - 1, updated_at = now()
+    WHERE user_id = ${userId} AND balance > 0
+    RETURNING balance
+  `) as { balance: number }[]
+  return rows.length === 0 ? -1 : Number(rows[0].balance)
 }

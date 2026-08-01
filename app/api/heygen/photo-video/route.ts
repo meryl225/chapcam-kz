@@ -1,20 +1,34 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { photoVideoQuotaForPlan } from "@/lib/plans"
-import { countGenerationsSince, logGeneration } from "@/lib/photo-video-quota"
+import { getPhotoVideoBalance, addPhotoVideoCredits, deductPhotoVideoCredit } from "@/lib/photo-video-quota"
 
 // --- Studio Photo en Video (HeyGen Avatar IV) ---
 // La photo-video est DECOUPLEE des points/minutes du Live Swap : elle est
-// incluse dans les forfaits sous forme de QUOTA (2 a 10 videos selon le forfait).
-// La parole FR fait ~14 caracteres/seconde -> on borne la longueur du texte.
+// incluse dans les forfaits sous forme de CREDITS (1 credit = 1 video de 30s).
+// Les videos font 30 SECONDES : on borne la longueur du texte en consequence.
+// La parole FR fait ~14 caracteres/seconde.
 const CHARS_PER_SECOND = 14
-// Duree maximale autorisee par video.
-const MAX_SECONDS = 60
-const MAX_SCRIPT_CHARS = MAX_SECONDS * CHARS_PER_SECOND // ~840 caracteres
+// Duree fixe par video : 30 secondes.
+const MAX_SECONDS = 30
+const MAX_SCRIPT_CHARS = MAX_SECONDS * CHARS_PER_SECOND // ~420 caracteres
 
 // Estime la duree (en secondes) d'un script (pour l'affichage/plafonnement).
 function estimateSeconds(script: string): number {
   return Math.min(MAX_SECONDS, Math.max(2, Math.ceil(script.length / CHARS_PER_SECOND)))
+}
+
+// Seed unique : les abonnes existants (achat avant les credits) recoivent le
+// quota de leur forfait actif la premiere fois qu'ils utilisent le Studio.
+async function ensureCreditsForActiveSub(
+  userId: string,
+  planId: string,
+): Promise<number> {
+  const { balance, exists } = await getPhotoVideoBalance(userId)
+  if (exists) return balance
+  const quota = photoVideoQuotaForPlan(planId)
+  if (quota <= 0) return 0
+  return addPhotoVideoCredits(userId, quota)
 }
 
 const HEYGEN_API = "https://api.heygen.com"
@@ -77,36 +91,31 @@ export async function POST(request: NextRequest) {
 
     const estimatedSeconds = estimateSeconds(script)
 
-    // Verifier le QUOTA photo-video AVANT tout appel HeyGen.
-    // Quota = celui du forfait Live Swap actif ; usage = videos generees depuis
-    // le debut du forfait (start_date, reinitialise a chaque achat).
+    // Verifier le SOLDE DE CREDITS photo-video AVANT tout appel HeyGen.
+    // 1 credit = 1 video de 30s. Les credits sont attribues a l'achat d'un
+    // forfait. On seed une seule fois les abonnes existants (achat anterieur).
     const { data: sub } = await supabase
       .from("subscriptions")
-      .select("plan, start_date, end_date, is_active")
+      .select("plan, end_date, is_active")
       .eq("user_id", user.id)
       .eq("is_active", true)
       .order("end_date", { ascending: false })
       .limit(1)
       .maybeSingle()
 
-    const nowMs = Date.now()
-    const subActive = !!sub && !!sub.end_date && new Date(sub.end_date).getTime() > nowMs
-    const quota = subActive ? photoVideoQuotaForPlan(sub!.plan) : 0
-    if (!subActive || quota <= 0) {
-      return NextResponse.json(
-        { error: "Aucun forfait Live Swap actif. Achete un forfait pour utiliser le Studio Photo en Video.", code: "no_plan" },
-        { status: 402 },
-      )
-    }
-    const periodStart = sub!.start_date ? new Date(sub!.start_date) : new Date(0)
-    const used = await countGenerationsSince(user.id, periodStart)
-    if (used >= quota) {
+    const subActive = !!sub && !!sub.end_date && new Date(sub.end_date).getTime() > Date.now()
+    const balance = subActive
+      ? await ensureCreditsForActiveSub(user.id, sub!.plan)
+      : (await getPhotoVideoBalance(user.id)).balance
+
+    if (balance <= 0) {
       return NextResponse.json(
         {
-          error: `Quota Studio Photo en Video epuise (${used}/${quota}). Renouvelle ou passe a un forfait superieur.`,
-          code: "quota_exhausted",
-          quota,
-          used,
+          error: subActive
+            ? "Credits Studio Photo en Video epuises. Renouvelle ou passe a un forfait superieur."
+            : "Aucun forfait actif. Achete un forfait pour recevoir tes videos Studio Photo en Video.",
+          code: subActive ? "quota_exhausted" : "no_plan",
+          balance: 0,
         },
         { status: 402 },
       )
@@ -219,8 +228,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 3) Consommer 1 unite de quota seulement apres succes de la creation.
-    await logGeneration(user.id, String(videoId))
+    // 3) Deduire 1 credit (1 video de 30s) seulement apres succes de la creation.
+    const remaining = await deductPhotoVideoCredit(user.id)
 
     return NextResponse.json({
       success: true,
@@ -229,9 +238,7 @@ export async function POST(request: NextRequest) {
       // fois la video terminee (le supprimer avant ferait echouer la video).
       clone_voice_id: cloneVoiceId,
       estimated_seconds: estimatedSeconds,
-      quota,
-      used: used + 1,
-      remaining: quota - (used + 1),
+      remaining: Math.max(0, remaining),
     })
   } catch (error) {
     console.error("[HeyGen PhotoVideo Error]", error)
@@ -258,11 +265,11 @@ export async function GET(request: NextRequest) {
 
     const params = new URL(request.url).searchParams
 
-    // Mode "quota" : renvoie le quota Studio Photo en Video de l'utilisateur.
+    // Mode "quota" : renvoie le solde de credits Studio Photo en Video.
     if (params.get("info") === "quota") {
       const { data: sub } = await supabase
         .from("subscriptions")
-        .select("plan, start_date, end_date, is_active")
+        .select("plan, end_date, is_active")
         .eq("user_id", user.id)
         .eq("is_active", true)
         .order("end_date", { ascending: false })
@@ -270,18 +277,13 @@ export async function GET(request: NextRequest) {
         .maybeSingle()
 
       const subActive = !!sub && !!sub.end_date && new Date(sub.end_date).getTime() > Date.now()
-      const quota = subActive ? photoVideoQuotaForPlan(sub!.plan) : 0
-      let used = 0
-      if (subActive && quota > 0) {
-        const periodStart = sub!.start_date ? new Date(sub!.start_date) : new Date(0)
-        used = await countGenerationsSince(user.id, periodStart)
-      }
+      const balance = subActive
+        ? await ensureCreditsForActiveSub(user.id, sub!.plan)
+        : (await getPhotoVideoBalance(user.id)).balance
       return NextResponse.json({
         success: true,
         plan: subActive ? sub!.plan : null,
-        quota,
-        used,
-        remaining: Math.max(0, quota - used),
+        remaining: Math.max(0, balance),
       })
     }
 

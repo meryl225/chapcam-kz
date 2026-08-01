@@ -307,7 +307,7 @@ function PlansContent() {
                   </li>
                   <li className="flex items-center gap-3 rounded-xl bg-primary/10 px-3 py-2 font-medium text-foreground">
                     <Clapperboard className="h-5 w-5 flex-shrink-0 text-primary" />
-                    Studio Photo en Vidéo : {plan.photoVideoQuota} vidéos incluses
+                    Studio Photo en Vidéo : {plan.photoVideoQuota} vidéos de 30s incluses
                   </li>
                 </ul>
 
