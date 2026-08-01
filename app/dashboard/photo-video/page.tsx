@@ -368,9 +368,9 @@ export default function PhotoVideoPage() {
             </div>
 
             {/* Duree maximale de la video */}
-            <div className="mt-3">
-              <p className="mb-2 text-sm text-muted-foreground">Durée maximale</p>
-              <div className="flex gap-2">
+            <div className="mt-3 flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Durée max</span>
+              <div className="flex gap-1.5">
                 {[30, 60].map((d) => {
                   const active = duration === d
                   return (
@@ -384,13 +384,13 @@ export default function PhotoVideoPage() {
                       }}
                       disabled={busy}
                       aria-pressed={active}
-                      className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                      className={`rounded-full border px-3 py-1 text-xs transition-colors disabled:opacity-50 ${
                         active
                           ? "border-primary bg-primary text-black font-medium"
                           : "border-hairline-strong bg-secondary text-foreground hover:border-white/40"
                       }`}
                     >
-                      {d === 30 ? "30 secondes" : "1 minute"}
+                      {d === 30 ? "30 s" : "1 min"}
                     </button>
                   )
                 })}
