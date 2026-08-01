@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, Suspense } from 'react'
-import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift } from 'lucide-react'
+import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift, Clapperboard } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -304,6 +304,10 @@ function PlansContent() {
                   <li className="flex items-center gap-3">
                     <Check className="h-5 w-5 flex-shrink-0 text-emerald-400" />
                     {plan.points.toLocaleString()} points ({plan.minutes})
+                  </li>
+                  <li className="flex items-center gap-3 rounded-xl bg-primary/10 px-3 py-2 font-medium text-foreground">
+                    <Clapperboard className="h-5 w-5 flex-shrink-0 text-primary" />
+                    Studio Photo en Vidéo : {plan.photoVideoQuota} vidéos incluses
                   </li>
                 </ul>
 
