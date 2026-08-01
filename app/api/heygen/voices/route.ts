@@ -55,8 +55,18 @@ export async function GET() {
       return 2
     }
 
+    // Certaines entrees HeyGen ont un "name" qui est en fait un nom de fichier
+    // brut (ex: "1860cfb5-....mov") ou un UUID : on les ecarte pour un menu propre.
+    const isReadableName = (name: string) => {
+      const n = (name || "").trim()
+      if (!n) return false
+      if (/\.(mov|mp4|wav|mp3|m4a|webm)$/i.test(n)) return false
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}/i.test(n)) return false
+      return true
+    }
+
     const filtered = voices
-      .filter((v) => v.voice_id && rank(v.language) < 2)
+      .filter((v) => v.voice_id && rank(v.language) < 2 && isReadableName(v.name))
       .map((v) => ({
         voice_id: v.voice_id,
         name: v.name,
