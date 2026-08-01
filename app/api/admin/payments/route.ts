@@ -113,17 +113,10 @@ export async function GET() {
       .not('credit_kind', 'is', null)
       .not('credit_kind', 'in', '("plan","installation")')
 
-    // On distingue les licences PC (credit_kind = 'pc') des autres achats
-    // (credits photo-video, minutes voix, acces live, recharges numeros...).
-    const pcRevenue = (offerRows || [])
-      .filter((r) => r.credit_kind === 'pc')
-      .reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
-
-    const otherRevenue = (offerRows || [])
-      .filter((r) => r.credit_kind !== 'pc')
-      .reduce((sum, r) => sum + (Number(r.amount) || 0), 0)
-
-    const offerRevenue = pcRevenue + otherRevenue
+    const offerRevenue = (offerRows || []).reduce(
+      (sum, r) => sum + (Number(r.amount) || 0),
+      0,
+    )
 
     return NextResponse.json({
       clients,
@@ -163,8 +156,6 @@ export async function GET() {
         installPaid: paidInstalls.length,
         installRevenue,
         offerRevenue,
-        pcRevenue,
-        otherRevenue,
         totalRevenue: subRevenue + installRevenue + offerRevenue,
         paydunyaToday: paydunyaTodayCount,
         paydunyaCreditedToday: paydunyaCreditedTodayCount,
