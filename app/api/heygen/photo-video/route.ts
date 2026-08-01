@@ -253,11 +253,6 @@ export async function POST(request: NextRequest) {
 // GET : recupere le statut d'une video (?video_id=...)
 export async function GET(request: NextRequest) {
   try {
-    const apiKey = getApiKey()
-    if (!apiKey) {
-      return NextResponse.json({ error: "Cle API HeyGen manquante cote serveur." }, { status: 500 })
-    }
-
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
@@ -267,6 +262,7 @@ export async function GET(request: NextRequest) {
     const params = new URL(request.url).searchParams
 
     // Mode "quota" : renvoie le solde de credits Studio Photo en Video.
+    // Independant de HeyGen : ne doit JAMAIS dependre de la cle API HeyGen.
     if (params.get("info") === "quota") {
       const { data: sub } = await supabase
         .from("subscriptions")
@@ -286,6 +282,12 @@ export async function GET(request: NextRequest) {
         plan: subActive ? sub!.plan : null,
         remaining: Math.max(0, balance),
       })
+    }
+
+    // Le statut video necessite HeyGen : on verifie la cle ici seulement.
+    const apiKey = getApiKey()
+    if (!apiKey) {
+      return NextResponse.json({ error: "Cle API HeyGen manquante cote serveur." }, { status: 500 })
     }
 
     const videoId = params.get("video_id")
