@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Upload, X, Sparkles, Loader2, ImageIcon, Download, Wand2, Play } from "lucide-react"
+import { Upload, X, Sparkles, Loader2, ImageIcon, Download, Wand2, Play, Mic, Square, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -66,6 +66,15 @@ export default function PhotoVideoPage() {
   const [gestures, setGestures] = useState<string[]>([])
   const [expressiveness, setExpressiveness] = useState<string>("medium")
 
+  // Clonage de voix : mode ("preset" = voix HeyGen, "clone" = ta voix) + echantillon.
+  const [voiceMode, setVoiceMode] = useState<"preset" | "clone">("preset")
+  const [voiceSample, setVoiceSample] = useState<File | null>(null)
+  const [voiceSampleUrl, setVoiceSampleUrl] = useState<string | null>(null)
+  const [recording, setRecording] = useState(false)
+  const mediaRecRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<Blob[]>([])
+  const audioInputRef = useRef<HTMLInputElement>(null)
+
   const [status, setStatus] = useState<Status>("idle")
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
@@ -73,9 +82,12 @@ export default function PhotoVideoPage() {
 
   // Tarification proportionnelle : 8 points/seconde, duree estimee depuis la
   // longueur du texte (~14 caracteres/seconde), plafonnee a 60 secondes.
+  // +50 points si l'utilisateur clone sa propre voix.
   const MAX_SCRIPT_CHARS = 840
+  const CLONE_POINTS = 50
+  const usingClone = voiceMode === "clone" && !!voiceSample
   const estimatedSeconds = Math.min(60, Math.max(2, Math.ceil(prompt.length / 14)))
-  const estimatedPoints = estimatedSeconds * 8
+  const estimatedPoints = estimatedSeconds * 8 + (usingClone ? CLONE_POINTS : 0)
 
   // Auth + points + voices
   useEffect(() => {
@@ -122,11 +134,58 @@ export default function PhotoVideoPage() {
     setStatus("idle")
   }, [toast])
 
-  const startPolling = useCallback((videoId: string) => {
+  const onSelectAudio = useCallback((f: File | undefined) => {
+    if (!f) return
+    if (!f.type.startsWith("audio/")) {
+      toast({ title: "Format invalide", description: "Fichier audio uniquement (MP3, WAV, M4A...)", variant: "destructive" })
+      return
+    }
+    if (f.size > 15 * 1024 * 1024) {
+      toast({ title: "Fichier trop volumineux", description: "Max 15 Mo", variant: "destructive" })
+      return
+    }
+    setVoiceSample(f)
+    setVoiceSampleUrl(URL.createObjectURL(f))
+  }, [toast])
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const rec = new MediaRecorder(stream)
+      chunksRef.current = []
+      rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      rec.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" })
+        const ext = (rec.mimeType || "audio/webm").includes("mp4") ? "mp4" : "webm"
+        const f = new File([blob], `voix.${ext}`, { type: blob.type })
+        setVoiceSample(f)
+        setVoiceSampleUrl(URL.createObjectURL(blob))
+        stream.getTracks().forEach((t) => t.stop())
+      }
+      mediaRecRef.current = rec
+      rec.start()
+      setRecording(true)
+    } catch {
+      toast({ title: "Micro indisponible", description: "Autorise l'accès au micro pour enregistrer ta voix.", variant: "destructive" })
+    }
+  }, [toast])
+
+  const stopRecording = useCallback(() => {
+    mediaRecRef.current?.stop()
+    setRecording(false)
+  }, [])
+
+  const clearVoiceSample = () => {
+    setVoiceSample(null)
+    setVoiceSampleUrl(null)
+  }
+
+  const startPolling = useCallback((videoId: string, cloneVoiceId: string | null) => {
     if (pollRef.current) clearInterval(pollRef.current)
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/heygen/photo-video?video_id=${encodeURIComponent(videoId)}`)
+        const cloneParam = cloneVoiceId ? `&clone_voice_id=${encodeURIComponent(cloneVoiceId)}` : ""
+        const res = await fetch(`/api/heygen/photo-video?video_id=${encodeURIComponent(videoId)}${cloneParam}`)
         const json = await res.json()
         if (json.status === "completed" && json.video_url) {
           if (pollRef.current) clearInterval(pollRef.current)
@@ -145,8 +204,16 @@ export default function PhotoVideoPage() {
   }, [toast])
 
   const handleGenerate = async () => {
-    if (!file || !prompt.trim() || !voiceId) {
-      toast({ title: "Champs manquants", description: "Ajoute une photo, un prompt et choisis une voix.", variant: "destructive" })
+    if (!file || !prompt.trim()) {
+      toast({ title: "Champs manquants", description: "Ajoute une photo et un prompt.", variant: "destructive" })
+      return
+    }
+    if (voiceMode === "preset" && !voiceId) {
+      toast({ title: "Voix manquante", description: "Choisis une voix ou clone la tienne.", variant: "destructive" })
+      return
+    }
+    if (voiceMode === "clone" && !voiceSample) {
+      toast({ title: "Extrait vocal manquant", description: "Enregistre ou importe un extrait de ta voix (10-30s).", variant: "destructive" })
       return
     }
     setStatus("uploading")
@@ -155,7 +222,11 @@ export default function PhotoVideoPage() {
       const fd = new FormData()
       fd.append("file", file)
       fd.append("script", prompt.trim())
-      fd.append("voice_id", voiceId)
+      if (voiceMode === "clone" && voiceSample) {
+        fd.append("voice_sample", voiceSample)
+      } else {
+        fd.append("voice_id", voiceId)
+      }
       if (gestures.length > 0) fd.append("motion_prompt", gestures.join(", "))
       fd.append("expressiveness", expressiveness)
 
@@ -176,7 +247,7 @@ export default function PhotoVideoPage() {
 
       setPoints(json.points_remaining)
       setStatus("processing")
-      startPolling(json.video_id)
+      startPolling(json.video_id, json.clone_voice_id ?? null)
       toast({ title: "Generation lancee", description: "Cela peut prendre 1 a 3 minutes..." })
     } catch {
       setStatus("idle")
@@ -193,6 +264,8 @@ export default function PhotoVideoPage() {
     setPreviewUrl(null)
     setPrompt("")
     setGestures([])
+    setVoiceSample(null)
+    setVoiceSampleUrl(null)
     setVideoUrl(null)
     setStatus("idle")
     if (pollRef.current) clearInterval(pollRef.current)
@@ -295,23 +368,119 @@ export default function PhotoVideoPage() {
           {/* Voix */}
           <div>
             <label className="mb-2 block text-sm font-medium text-muted-foreground">3. Voix</label>
-            {voices.length === 0 ? (
-              <p className="rounded-lg border border-hairline bg-card p-3 text-sm text-muted-foreground">
-                Aucune voix disponible. Vérifie la configuration HeyGen.
-              </p>
+            {/* Choix du mode : voix HeyGen ou clonage de sa propre voix */}
+            <div className="mb-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => !busy && setVoiceMode("preset")}
+                disabled={busy}
+                aria-pressed={voiceMode === "preset"}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                  voiceMode === "preset"
+                    ? "border-primary bg-primary text-black font-medium"
+                    : "border-hairline-strong bg-secondary text-foreground hover:border-white/40"
+                }`}
+              >
+                Voix ChapCam
+              </button>
+              <button
+                type="button"
+                onClick={() => !busy && setVoiceMode("clone")}
+                disabled={busy}
+                aria-pressed={voiceMode === "clone"}
+                className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                  voiceMode === "clone"
+                    ? "border-primary bg-primary text-black font-medium"
+                    : "border-hairline-strong bg-secondary text-foreground hover:border-white/40"
+                }`}
+              >
+                Ma voix (+{CLONE_POINTS} pts)
+              </button>
+            </div>
+
+            {voiceMode === "preset" ? (
+              voices.length === 0 ? (
+                <p className="rounded-lg border border-hairline bg-card p-3 text-sm text-muted-foreground">
+                  Aucune voix disponible. Vérifie la configuration HeyGen.
+                </p>
+              ) : (
+                <Select value={voiceId} onValueChange={setVoiceId} disabled={busy}>
+                  <SelectTrigger className="border-hairline bg-secondary text-foreground">
+                    <SelectValue placeholder="Choisir une voix..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {voices.map((v) => (
+                      <SelectItem key={v.voice_id} value={v.voice_id}>
+                        {v.name} — {v.language} ({v.gender})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )
             ) : (
-              <Select value={voiceId} onValueChange={setVoiceId} disabled={busy}>
-                <SelectTrigger className="border-hairline bg-secondary text-foreground">
-                  <SelectValue placeholder="Choisir une voix..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-72">
-                  {voices.map((v) => (
-                    <SelectItem key={v.voice_id} value={v.voice_id}>
-                      {v.name} — {v.language} ({v.gender})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="rounded-lg border border-hairline bg-card p-4">
+                {voiceSampleUrl ? (
+                  <div className="space-y-3">
+                    <audio src={voiceSampleUrl} controls className="w-full" />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={clearVoiceSample}
+                      disabled={busy}
+                      className="w-full border-hairline-strong text-foreground hover:bg-muted"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" /> Recommencer
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Enregistre ou importe <strong>10 à 30 secondes</strong> de ta voix (parle clairement, sans bruit).
+                    </p>
+                    <div className="flex gap-2">
+                      {recording ? (
+                        <Button
+                          type="button"
+                          onClick={stopRecording}
+                          className="flex-1 bg-red-500 text-white hover:bg-red-600"
+                        >
+                          <Square className="mr-2 h-4 w-4" /> Arrêter
+                        </Button>
+                      ) : (
+                        <Button
+                          type="button"
+                          onClick={startRecording}
+                          disabled={busy}
+                          className="flex-1 bg-primary text-black hover:bg-primary/90"
+                        >
+                          <Mic className="mr-2 h-4 w-4" /> Enregistrer
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => audioInputRef.current?.click()}
+                        disabled={busy || recording}
+                        className="flex-1 border-hairline-strong text-foreground hover:bg-muted"
+                      >
+                        <Upload className="mr-2 h-4 w-4" /> Importer
+                      </Button>
+                    </div>
+                    {recording && (
+                      <p className="flex items-center gap-2 text-sm text-red-500">
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" /> Enregistrement en cours...
+                      </p>
+                    )}
+                    <input
+                      ref={audioInputRef}
+                      type="file"
+                      accept="audio/*"
+                      onChange={(e) => onSelectAudio(e.target.files?.[0])}
+                      className="hidden"
+                    />
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -372,7 +541,13 @@ export default function PhotoVideoPage() {
           {/* CTA */}
           <Button
             onClick={handleGenerate}
-            disabled={busy || !file || !prompt.trim() || !voiceId}
+            disabled={
+              busy ||
+              !file ||
+              !prompt.trim() ||
+              (voiceMode === "preset" && !voiceId) ||
+              (voiceMode === "clone" && !voiceSample)
+            }
             className="w-full bg-primary font-semibold text-black hover:bg-primary/90 disabled:opacity-50"
           >
             {status === "uploading" ? (
