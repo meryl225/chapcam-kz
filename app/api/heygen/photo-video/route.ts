@@ -45,6 +45,11 @@ export async function POST(request: NextRequest) {
     const file = form.get("file") as File | null
     const script = (form.get("script") as string | null)?.trim() || ""
     const voiceId = (form.get("voice_id") as string | null)?.trim() || ""
+    // Gestes / mouvements de l'avatar (bisou, cheveux, clin d'oeil...) decrits
+    // en anglais pour HeyGen, et niveau d'expressivite (low | medium | high).
+    const motionPrompt = (form.get("motion_prompt") as string | null)?.trim() || ""
+    const expressivenessRaw = (form.get("expressiveness") as string | null)?.trim() || ""
+    const expressiveness = ["low", "medium", "high"].includes(expressivenessRaw) ? expressivenessRaw : ""
 
     if (!file) {
       return NextResponse.json({ error: "Photo manquante." }, { status: 400 })
@@ -103,16 +108,21 @@ export async function POST(request: NextRequest) {
     }
 
     // 2) Creation de la video (Avatar IV, type image = photo qui parle)
+    const payload: Record<string, unknown> = {
+      type: "image",
+      script,
+      voice_id: voiceId,
+      image: { type: "asset_id", asset_id: assetId },
+      title: "ChapCam",
+    }
+    // Gestes (motion_prompt) et expressivite : uniquement s'ils sont fournis.
+    if (motionPrompt) payload.motion_prompt = motionPrompt
+    if (expressiveness) payload.expressiveness = expressiveness
+
     const createRes = await fetch(`${HEYGEN_API}/v3/videos`, {
       method: "POST",
       headers: { "X-Api-Key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        type: "image",
-        script,
-        voice_id: voiceId,
-        image: { type: "asset_id", asset_id: assetId },
-        title: "ChapCam",
-      }),
+      body: JSON.stringify(payload),
     })
     const createJson = await createRes.json().catch(() => null)
 

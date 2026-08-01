@@ -27,6 +27,27 @@ type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 
 const ACCENT = "#f97316"
 
+// Gestes proposes : libelle FR (affiche) -> description anglaise (HeyGen).
+// On peut en selectionner plusieurs ; elles sont combinees dans motion_prompt.
+const GESTURES: { label: string; value: string }[] = [
+  { label: "Bisou", value: "blow a kiss" },
+  { label: "Clin d'oeil", value: "wink" },
+  { label: "Toucher les cheveux", value: "touch and play with hair" },
+  { label: "Sourire", value: "smile warmly" },
+  { label: "Coucou de la main", value: "wave hello with hand" },
+  { label: "Rire", value: "laugh happily" },
+  { label: "Signe de la paix", value: "make a peace sign with fingers" },
+  { label: "Hocher la tete", value: "nod head" },
+  { label: "Envoyer un coeur", value: "make a heart with hands" },
+  { label: "Pouce en l'air", value: "thumbs up" },
+]
+
+const EXPRESSIVENESS: { label: string; value: string }[] = [
+  { label: "Douce", value: "low" },
+  { label: "Naturelle", value: "medium" },
+  { label: "Intense", value: "high" },
+]
+
 export default function PhotoVideoPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -42,11 +63,19 @@ export default function PhotoVideoPage() {
   const [prompt, setPrompt] = useState("")
   const [voices, setVoices] = useState<Voice[]>([])
   const [voiceId, setVoiceId] = useState<string>("")
+  const [gestures, setGestures] = useState<string[]>([])
+  const [expressiveness, setExpressiveness] = useState<string>("medium")
 
   const [status, setStatus] = useState<Status>("idle")
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
   const busy = status === "uploading" || status === "processing"
+
+  // Tarification proportionnelle : 8 points/seconde, duree estimee depuis la
+  // longueur du texte (~14 caracteres/seconde), plafonnee a 60 secondes.
+  const MAX_SCRIPT_CHARS = 840
+  const estimatedSeconds = Math.min(60, Math.max(2, Math.ceil(prompt.length / 14)))
+  const estimatedPoints = estimatedSeconds * 8
 
   // Auth + points + voices
   useEffect(() => {
@@ -127,6 +156,8 @@ export default function PhotoVideoPage() {
       fd.append("file", file)
       fd.append("script", prompt.trim())
       fd.append("voice_id", voiceId)
+      if (gestures.length > 0) fd.append("motion_prompt", gestures.join(", "))
+      fd.append("expressiveness", expressiveness)
 
       const res = await fetch("/api/heygen/photo-video", { method: "POST", body: fd })
       const json = await res.json()
@@ -153,10 +184,15 @@ export default function PhotoVideoPage() {
     }
   }
 
+  const toggleGesture = (value: string) => {
+    setGestures((prev) => (prev.includes(value) ? prev.filter((g) => g !== value) : [...prev, value]))
+  }
+
   const reset = () => {
     setFile(null)
     setPreviewUrl(null)
     setPrompt("")
+    setGestures([])
     setVideoUrl(null)
     setStatus("idle")
     if (pollRef.current) clearInterval(pollRef.current)
@@ -247,10 +283,13 @@ export default function PhotoVideoPage() {
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="Ex : Salut à tous, bienvenue sur mon live TikTok ! Aujourd'hui on parle de..."
               className="min-h-28 resize-none border-hairline bg-secondary text-foreground"
-              maxLength={1500}
+              maxLength={MAX_SCRIPT_CHARS}
               disabled={busy}
             />
-            <p className="mt-1 text-right text-xs text-text-faint">{prompt.length}/1500</p>
+            <div className="mt-1 flex items-center justify-between text-xs">
+              <span className="text-text-faint">~{estimatedSeconds}s de vidéo</span>
+              <span className="text-text-faint">{prompt.length}/{MAX_SCRIPT_CHARS}</span>
+            </div>
           </div>
 
           {/* Voix */}
@@ -276,6 +315,60 @@ export default function PhotoVideoPage() {
             )}
           </div>
 
+          {/* Gestes */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-muted-foreground">
+              4. Gestes <span className="text-text-faint">(optionnel — plusieurs possibles)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {GESTURES.map((g) => {
+                const active = gestures.includes(g.value)
+                return (
+                  <button
+                    key={g.value}
+                    type="button"
+                    onClick={() => !busy && toggleGesture(g.value)}
+                    disabled={busy}
+                    aria-pressed={active}
+                    className={`rounded-full border px-3 py-1.5 text-sm transition-colors disabled:opacity-50 ${
+                      active
+                        ? "border-primary bg-primary text-black font-medium"
+                        : "border-hairline-strong bg-secondary text-foreground hover:border-white/40"
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Expressivite */}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-muted-foreground">5. Expressivité</label>
+            <div className="flex gap-2">
+              {EXPRESSIVENESS.map((e) => {
+                const active = expressiveness === e.value
+                return (
+                  <button
+                    key={e.value}
+                    type="button"
+                    onClick={() => !busy && setExpressiveness(e.value)}
+                    disabled={busy}
+                    aria-pressed={active}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                      active
+                        ? "border-primary bg-primary text-black font-medium"
+                        : "border-hairline-strong bg-secondary text-foreground hover:border-white/40"
+                    }`}
+                  >
+                    {e.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* CTA */}
           <Button
             onClick={handleGenerate}
@@ -287,7 +380,7 @@ export default function PhotoVideoPage() {
             ) : status === "processing" ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Génération en cours...</>
             ) : (
-              <><Wand2 className="mr-2 h-4 w-4" /> Générer la vidéo (100 points)</>
+              <><Wand2 className="mr-2 h-4 w-4" /> Générer la vidéo ({estimatedPoints} points)</>
             )}
           </Button>
         </div>
