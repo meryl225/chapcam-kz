@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Upload, X, Sparkles, Loader2, Download, Wand2, Play, Mic, Square, Trash2, ChevronDown, SlidersHorizontal, Check, Clapperboard } from "lucide-react"
+import { Upload, X, Sparkles, Loader2, Download, Wand2, Play, Mic, Square, Trash2, ChevronDown, SlidersHorizontal, Check, Clapperboard, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -323,10 +323,23 @@ export default function PhotoVideoPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 rounded-full border border-hairline bg-card px-4 py-2">
-          <Clapperboard className="h-4 w-4 text-primary" />
-          <span className="text-sm text-muted-foreground">Vidéos 30s restantes</span>
-          <span className="text-base font-bold text-foreground">{remaining ?? "-"}</span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              document.getElementById("recharger-credits")?.scrollIntoView({ behavior: "smooth", block: "start" })
+            }}
+            className="flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Recharger
+          </button>
+          <div className="flex items-center gap-2 rounded-full border border-hairline bg-card px-4 py-2">
+            <Clapperboard className="h-4 w-4 text-primary" />
+            <span className="hidden text-sm text-muted-foreground sm:inline">Vidéos 30s restantes</span>
+            <span className="text-sm text-muted-foreground sm:hidden">Solde</span>
+            <span className="text-base font-bold text-foreground">{remaining ?? "-"}</span>
+          </div>
         </div>
       </div>
 
@@ -719,7 +732,9 @@ export default function PhotoVideoPage() {
       </div>
 
       {/* Achat de credits video (sans forfait Live Swap requis) */}
-      <CreditPacksSection />
+      <div id="recharger-credits" className="scroll-mt-8">
+        <CreditPacksSection />
+      </div>
     </div>
   )
 }
