@@ -96,14 +96,15 @@ export async function POST(request: NextRequest) {
     // forfait. On seed une seule fois les abonnes existants (achat anterieur).
     const { data: sub } = await supabase
       .from("subscriptions")
-      .select("plan, end_date, is_active")
+      .select("plan, end_date, expires_at, is_active")
       .eq("user_id", user.id)
       .eq("is_active", true)
-      .order("end_date", { ascending: false })
       .limit(1)
       .maybeSingle()
 
-    const subActive = !!sub && !!sub.end_date && new Date(sub.end_date).getTime() > Date.now()
+    // Certains abonnements portent end_date, d'autres expires_at : on tolere les deux.
+    const subEnd = sub?.end_date ?? sub?.expires_at ?? null
+    const subActive = !!sub && !!subEnd && new Date(subEnd).getTime() > Date.now()
     const balance = subActive
       ? await ensureCreditsForActiveSub(user.id, sub!.plan)
       : (await getPhotoVideoBalance(user.id)).balance
@@ -269,14 +270,14 @@ export async function GET(request: NextRequest) {
     if (params.get("info") === "quota") {
       const { data: sub } = await supabase
         .from("subscriptions")
-        .select("plan, end_date, is_active")
+        .select("plan, end_date, expires_at, is_active")
         .eq("user_id", user.id)
         .eq("is_active", true)
-        .order("end_date", { ascending: false })
         .limit(1)
         .maybeSingle()
 
-      const subActive = !!sub && !!sub.end_date && new Date(sub.end_date).getTime() > Date.now()
+      const subEnd = sub?.end_date ?? sub?.expires_at ?? null
+      const subActive = !!sub && !!subEnd && new Date(subEnd).getTime() > Date.now()
       const balance = subActive
         ? await ensureCreditsForActiveSub(user.id, sub!.plan)
         : (await getPhotoVideoBalance(user.id)).balance

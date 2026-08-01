@@ -329,7 +329,11 @@ export default function PhotoVideoPage() {
           </div>
           <div className="flex flex-col leading-tight">
             <span className="text-xs font-medium text-muted-foreground">Crédits vidéo (30s)</span>
-            <span className="text-xl font-bold text-foreground">{remaining ?? "—"}</span>
+            {remaining === null ? (
+              <Loader2 className="mt-1 h-4 w-4 animate-spin text-primary" aria-label="Chargement du solde" />
+            ) : (
+              <span className="text-xl font-bold text-foreground">{remaining}</span>
+            )}
           </div>
           <button
             type="button"
