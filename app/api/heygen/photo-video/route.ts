@@ -1,24 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { photoVideoQuotaForPlan } from "@/lib/plans"
+import { countGenerationsSince, logGeneration } from "@/lib/photo-video-quota"
 
-// --- Tarification photo -> video (HeyGen Avatar IV) ---
-// Cout HeyGen mesure : ~0,026 $/seconde (base securisee 4 $/min = 0,067 $/s).
-// A 1 point = 20 FCFA (~0,033 $), on facture 2 POINTS PAR SECONDE de video.
-// Cette valeur est alignee sur les forfaits (minutes annoncees = points / 2).
-const POINTS_PER_SECOND = 2
-// La duree finale n'est connue qu'apres generation : on l'ESTIME depuis la
-// longueur du texte. La parole FR fait ~14 caracteres/seconde.
+// --- Studio Photo en Video (HeyGen Avatar IV) ---
+// La photo-video est DECOUPLEE des points/minutes du Live Swap : elle est
+// incluse dans les forfaits sous forme de QUOTA (2 a 10 videos selon le forfait).
+// La parole FR fait ~14 caracteres/seconde -> on borne la longueur du texte.
 const CHARS_PER_SECOND = 14
 // Duree maximale autorisee par video.
 const MAX_SECONDS = 60
 const MAX_SCRIPT_CHARS = MAX_SECONDS * CHARS_PER_SECOND // ~840 caracteres
-// Surcout du clonage de voix (operation premium) : +50 points par clone.
-const CLONE_POINTS = 50
 
-// Estime la duree (en secondes) d'un script et le cout en points associe.
-function estimateCost(script: string): { seconds: number; points: number } {
-  const seconds = Math.min(MAX_SECONDS, Math.max(2, Math.ceil(script.length / CHARS_PER_SECOND)))
-  return { seconds, points: seconds * POINTS_PER_SECOND }
+// Estime la duree (en secondes) d'un script (pour l'affichage/plafonnement).
+function estimateSeconds(script: string): number {
+  return Math.min(MAX_SECONDS, Math.max(2, Math.ceil(script.length / CHARS_PER_SECOND)))
 }
 
 const HEYGEN_API = "https://api.heygen.com"
@@ -79,24 +75,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Echantillon vocal trop volumineux (max 15 Mo)." }, { status: 400 })
     }
 
-    // Cout estime depuis la longueur du texte (facturation proportionnelle),
-    // + surcout du clonage de voix si un echantillon est fourni.
-    const { seconds: estimatedSeconds, points: videoPoints } = estimateCost(script)
-    const pointsCost = videoPoints + (useClone ? CLONE_POINTS : 0)
+    const estimatedSeconds = estimateSeconds(script)
 
-    // Verifier les points AVANT tout appel HeyGen.
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("points")
-      .eq("id", user.id)
-      .single()
+    // Verifier le QUOTA photo-video AVANT tout appel HeyGen.
+    // Quota = celui du forfait Live Swap actif ; usage = videos generees depuis
+    // le debut du forfait (start_date, reinitialise a chaque achat).
+    const { data: sub } = await supabase
+      .from("subscriptions")
+      .select("plan, start_date, end_date, is_active")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .order("end_date", { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-    if (profileError || !profile) {
-      return NextResponse.json({ error: "Profil utilisateur non trouve" }, { status: 404 })
-    }
-    if (profile.points < pointsCost) {
+    const nowMs = Date.now()
+    const subActive = !!sub && !!sub.end_date && new Date(sub.end_date).getTime() > nowMs
+    const quota = subActive ? photoVideoQuotaForPlan(sub!.plan) : 0
+    if (!subActive || quota <= 0) {
       return NextResponse.json(
-        { error: "Points insuffisants", points_required: pointsCost, points_available: profile.points },
+        { error: "Aucun forfait Live Swap actif. Achete un forfait pour utiliser le Studio Photo en Video.", code: "no_plan" },
+        { status: 402 },
+      )
+    }
+    const periodStart = sub!.start_date ? new Date(sub!.start_date) : new Date(0)
+    const used = await countGenerationsSince(user.id, periodStart)
+    if (used >= quota) {
+      return NextResponse.json(
+        {
+          error: `Quota Studio Photo en Video epuise (${used}/${quota}). Renouvelle ou passe a un forfait superieur.`,
+          code: "quota_exhausted",
+          quota,
+          used,
+        },
         { status: 402 },
       )
     }
@@ -208,13 +219,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 3) Deduire les points seulement apres succes de la creation.
-    await supabase.from("profiles").update({ points: profile.points - pointsCost }).eq("id", user.id)
-    await supabase.from("swap_transactions").insert({
-      user_id: user.id,
-      points_used: pointsCost,
-      status: "processing",
-    })
+    // 3) Consommer 1 unite de quota seulement apres succes de la creation.
+    await logGeneration(user.id, String(videoId))
 
     return NextResponse.json({
       success: true,
@@ -222,9 +228,10 @@ export async function POST(request: NextRequest) {
       // Le client renverra cet id a la route GET pour supprimer le clone une
       // fois la video terminee (le supprimer avant ferait echouer la video).
       clone_voice_id: cloneVoiceId,
-      points_used: pointsCost,
       estimated_seconds: estimatedSeconds,
-      points_remaining: profile.points - pointsCost,
+      quota,
+      used: used + 1,
+      remaining: quota - (used + 1),
     })
   } catch (error) {
     console.error("[HeyGen PhotoVideo Error]", error)
@@ -250,6 +257,34 @@ export async function GET(request: NextRequest) {
     }
 
     const params = new URL(request.url).searchParams
+
+    // Mode "quota" : renvoie le quota Studio Photo en Video de l'utilisateur.
+    if (params.get("info") === "quota") {
+      const { data: sub } = await supabase
+        .from("subscriptions")
+        .select("plan, start_date, end_date, is_active")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .order("end_date", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      const subActive = !!sub && !!sub.end_date && new Date(sub.end_date).getTime() > Date.now()
+      const quota = subActive ? photoVideoQuotaForPlan(sub!.plan) : 0
+      let used = 0
+      if (subActive && quota > 0) {
+        const periodStart = sub!.start_date ? new Date(sub!.start_date) : new Date(0)
+        used = await countGenerationsSince(user.id, periodStart)
+      }
+      return NextResponse.json({
+        success: true,
+        plan: subActive ? sub!.plan : null,
+        quota,
+        used,
+        remaining: Math.max(0, quota - used),
+      })
+    }
+
     const videoId = params.get("video_id")
     const cloneVoiceId = params.get("clone_voice_id")
     if (!videoId) {

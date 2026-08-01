@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Upload, X, Sparkles, Loader2, Download, Wand2, Play, Mic, Square, Trash2, ChevronDown, SlidersHorizontal, Check, Clapperboard, Coins } from "lucide-react"
+import { Upload, X, Sparkles, Loader2, Download, Wand2, Play, Mic, Square, Trash2, ChevronDown, SlidersHorizontal, Check, Clapperboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -54,7 +54,10 @@ export default function PhotoVideoPage() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [loading, setLoading] = useState(true)
-  const [points, setPoints] = useState<number | null>(null)
+  // Quota Studio Photo en Video inclus dans le forfait Live Swap actif.
+  const [quota, setQuota] = useState<number | null>(null)
+  const [remaining, setRemaining] = useState<number | null>(null)
+  const [planName, setPlanName] = useState<string | null>(null)
 
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -80,16 +83,12 @@ export default function PhotoVideoPage() {
 
   const busy = status === "uploading" || status === "processing"
 
-  // Tarification proportionnelle : 2 points/seconde (aligne sur les forfaits),
-  // duree estimee depuis la longueur du texte (~14 caracteres/seconde). La duree
-  // choisie (30s ou 60s) plafonne la longueur du prompt. +50 points si clonage.
+  // La photo-video est incluse dans le forfait (quota), elle ne consomme pas de
+  // points. La duree choisie (30s ou 60s) plafonne la longueur du prompt.
   const CHARS_PER_SECOND = 14
-  const POINTS_PER_SECOND = 2
   const MAX_SCRIPT_CHARS = duration * CHARS_PER_SECOND
-  const CLONE_POINTS = 50
-  const usingClone = voiceMode === "clone" && !!voiceSample
   const estimatedSeconds = Math.min(duration, Math.max(2, Math.ceil(prompt.length / CHARS_PER_SECOND)))
-  const estimatedPoints = estimatedSeconds * POINTS_PER_SECOND + (usingClone ? CLONE_POINTS : 0)
+  const noQuota = remaining !== null && remaining <= 0
 
   // Auth + points + voices
   useEffect(() => {
@@ -99,8 +98,18 @@ export default function PhotoVideoPage() {
         router.push("/auth/login")
         return
       }
-      const { data: profile } = await supabase.from("profiles").select("points").eq("id", user.id).single()
-      setPoints(profile?.points ?? 0)
+      // Quota Studio Photo en Video (depuis le forfait Live Swap actif).
+      try {
+        const qRes = await fetch("/api/heygen/photo-video?info=quota")
+        const qJson = await qRes.json()
+        if (qRes.ok) {
+          setQuota(qJson.quota ?? 0)
+          setRemaining(qJson.remaining ?? 0)
+          setPlanName(qJson.plan ?? null)
+        }
+      } catch {
+        // silencieux
+      }
 
       try {
         const res = await fetch("/api/heygen/voices")
@@ -239,15 +248,20 @@ export default function PhotoVideoPage() {
         setStatus("idle")
         if (res.status === 402 && json.code === "heygen_no_credit") {
           toast({ title: "Service indisponible", description: json.error, variant: "destructive" })
-        } else if (res.status === 402) {
-          toast({ title: "Points insuffisants", description: `Il te faut ${json.points_required} points (tu en as ${json.points_available}).`, variant: "destructive" })
+        } else if (res.status === 402 && json.code === "no_plan") {
+          toast({ title: "Aucun forfait actif", description: json.error, variant: "destructive" })
+        } else if (res.status === 402 && json.code === "quota_exhausted") {
+          setRemaining(0)
+          if (typeof json.quota === "number") setQuota(json.quota)
+          toast({ title: "Quota epuise", description: json.error, variant: "destructive" })
         } else {
           toast({ title: "Erreur", description: json.error || "Impossible de lancer la generation.", variant: "destructive" })
         }
         return
       }
 
-      setPoints(json.points_remaining)
+      if (typeof json.remaining === "number") setRemaining(json.remaining)
+      if (typeof json.quota === "number") setQuota(json.quota)
       setStatus("processing")
       startPolling(json.video_id, json.clone_voice_id ?? null)
       toast({ title: "Generation lancee", description: "Cela peut prendre 1 a 3 minutes..." })
@@ -277,7 +291,7 @@ export default function PhotoVideoPage() {
   const photoDone = !!file
   const promptDone = !!prompt.trim()
   const voiceDone = voiceMode === "preset" ? !!voiceId : !!voiceSample
-  const canGenerate = photoDone && promptDone && voiceDone && !busy
+  const canGenerate = photoDone && promptDone && voiceDone && !busy && !noQuota
 
   if (loading) {
     return (
@@ -314,9 +328,11 @@ export default function PhotoVideoPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 rounded-full border border-hairline bg-card px-4 py-2">
-          <Coins className="h-4 w-4 text-primary" />
-          <span className="text-sm text-muted-foreground">Solde</span>
-          <span className="text-base font-bold text-foreground">{points ?? "-"}</span>
+          <Clapperboard className="h-4 w-4 text-primary" />
+          <span className="text-sm text-muted-foreground">Vidéos incluses</span>
+          <span className="text-base font-bold text-foreground">
+            {remaining ?? "-"}{quota ? ` / ${quota}` : ""}
+          </span>
         </div>
       </div>
 
@@ -457,7 +473,7 @@ export default function PhotoVideoPage() {
                     : "border-hairline-strong bg-secondary text-foreground hover:border-primary/50"
                 }`}
               >
-                Clonage de voix (+{CLONE_POINTS})
+                Clonage de voix
               </button>
             </div>
 
@@ -691,6 +707,19 @@ export default function PhotoVideoPage() {
                 Réessayer
               </Button>
             ) : (
+              <>
+                {noQuota && (
+                  <div className="mt-4 rounded-2xl border border-hairline-strong bg-muted p-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      {quota
+                        ? `Tu as utilisé tes ${quota} vidéos incluses dans ce forfait.`
+                        : "Aucun forfait Live Swap actif."}
+                    </p>
+                    <a href="/dashboard/plans" className="mt-2 inline-block text-sm font-semibold text-primary hover:underline">
+                      Renouveler ou changer de forfait
+                    </a>
+                  </div>
+                )}
               <Button
                 onClick={handleGenerate}
                 disabled={!canGenerate}
@@ -701,9 +730,10 @@ export default function PhotoVideoPage() {
                 ) : status === "processing" ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Génération...</>
                 ) : (
-                  <><Wand2 className="mr-2 h-5 w-5" /> Générer · {estimatedPoints} pts</>
+                  <><Wand2 className="mr-2 h-5 w-5" /> {noQuota ? "Quota épuisé" : "Générer la vidéo"}</>
                 )}
               </Button>
+              </>
             )}
           </div>
 
