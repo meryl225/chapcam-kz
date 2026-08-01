@@ -61,6 +61,7 @@ export default function PhotoVideoPage() {
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [prompt, setPrompt] = useState("")
+  const [duration, setDuration] = useState<30 | 60>(30)
   const [voices, setVoices] = useState<Voice[]>([])
   const [voiceId, setVoiceId] = useState<string>("")
   const [gestures, setGestures] = useState<string[]>([])
@@ -82,12 +83,13 @@ export default function PhotoVideoPage() {
   const busy = status === "uploading" || status === "processing"
 
   // Tarification proportionnelle : 8 points/seconde, duree estimee depuis la
-  // longueur du texte (~14 caracteres/seconde), plafonnee a 60 secondes.
-  // +50 points si l'utilisateur clone sa propre voix.
-  const MAX_SCRIPT_CHARS = 840
+  // longueur du texte (~14 caracteres/seconde). La duree choisie (30s ou 60s)
+  // plafonne la longueur du prompt. +50 points si clonage de voix.
+  const CHARS_PER_SECOND = 14
+  const MAX_SCRIPT_CHARS = duration * CHARS_PER_SECOND
   const CLONE_POINTS = 50
   const usingClone = voiceMode === "clone" && !!voiceSample
-  const estimatedSeconds = Math.min(60, Math.max(2, Math.ceil(prompt.length / 14)))
+  const estimatedSeconds = Math.min(duration, Math.max(2, Math.ceil(prompt.length / CHARS_PER_SECOND)))
   const estimatedPoints = estimatedSeconds * 8 + (usingClone ? CLONE_POINTS : 0)
 
   // Auth + points + voices
@@ -363,6 +365,36 @@ export default function PhotoVideoPage() {
             <div className="mt-1 flex items-center justify-between text-xs">
               <span className="text-text-faint">~{estimatedSeconds}s de vidéo</span>
               <span className="text-text-faint">{prompt.length}/{MAX_SCRIPT_CHARS}</span>
+            </div>
+
+            {/* Duree maximale de la video */}
+            <div className="mt-3">
+              <p className="mb-2 text-sm text-muted-foreground">Durée maximale</p>
+              <div className="flex gap-2">
+                {[30, 60].map((d) => {
+                  const active = duration === d
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => {
+                        if (busy) return
+                        setDuration(d as 30 | 60)
+                        setPrompt((p) => p.slice(0, d * CHARS_PER_SECOND))
+                      }}
+                      disabled={busy}
+                      aria-pressed={active}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                        active
+                          ? "border-primary bg-primary text-black font-medium"
+                          : "border-hairline-strong bg-secondary text-foreground hover:border-white/40"
+                      }`}
+                    >
+                      {d === 30 ? "30 secondes" : "1 minute"}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           </div>
 
