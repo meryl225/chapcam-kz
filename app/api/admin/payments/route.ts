@@ -101,6 +101,23 @@ export async function GET() {
     const paydunyaCreditedTodayCount = creditedTodayCountRes.count ?? 0
     const paydunyaFailedCount = failedCountRes.count ?? 0
 
+    // Revenu des achats HORS abonnement (credits photo-video, minutes voix,
+    // acces live, licences PC, recharges wallet...) : ils sont enregistres
+    // dans payment_logs mais n'existent pas dans la table subscriptions.
+    // On exclut 'plan' (deja compte via subscriptions.amount) et 'installation'
+    // (deja compte via installation_requests) pour ne rien compter deux fois.
+    const { data: offerRows } = await admin
+      .from('payment_logs')
+      .select('amount, credit_kind')
+      .eq('credited', true)
+      .not('credit_kind', 'is', null)
+      .not('credit_kind', 'in', '("plan","installation")')
+
+    const offerRevenue = (offerRows || []).reduce(
+      (sum, r) => sum + (Number(r.amount) || 0),
+      0,
+    )
+
     return NextResponse.json({
       clients,
       installations: installList.map((i) => ({
@@ -138,7 +155,8 @@ export async function GET() {
         installTotal: installList.length,
         installPaid: paidInstalls.length,
         installRevenue,
-        totalRevenue: subRevenue + installRevenue,
+        offerRevenue,
+        totalRevenue: subRevenue + installRevenue + offerRevenue,
         paydunyaToday: paydunyaTodayCount,
         paydunyaCreditedToday: paydunyaCreditedTodayCount,
         paydunyaFailed: paydunyaFailedCount,
