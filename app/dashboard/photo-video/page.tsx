@@ -426,7 +426,7 @@ export default function PhotoVideoPage() {
                             : "border-hairline-strong bg-secondary text-foreground hover:border-primary/50"
                         }`}
                       >
-                        {d === 30 ? "30 s" : "1 min"}
+                        {d === 30 ? "30s" : "1 min"}
                       </button>
                     )
                   })}
