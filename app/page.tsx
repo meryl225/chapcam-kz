@@ -22,6 +22,9 @@ const AvailableCountriesSection = dynamic(() =>
 const PricingSection = dynamic(() =>
   import("@/components/pricing-section").then((m) => m.PricingSection),
 )
+const PhotoVideoPricingSection = dynamic(() =>
+  import("@/components/photo-video-pricing-section").then((m) => m.PhotoVideoPricingSection),
+)
 const FAQSection = dynamic(() =>
   import("@/components/faq-section").then((m) => m.FAQSection),
 )
@@ -69,6 +72,7 @@ export default function Home() {
         <HowItWorksSection />
         <AvailableCountriesSection />
         <PricingSection />
+        <PhotoVideoPricingSection />
         <FAQSection />
         <TutorialSection />
         <FounderSection />
