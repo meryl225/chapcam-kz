@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
+import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import { SecurityProvider } from '@/components/security-provider'
 import { ThemeProvider } from '@/components/theme-provider'
@@ -28,6 +29,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className="bg-background" suppressHydrationWarning>
+      <head>
+        {/* Google AdSense : validation de la propriete du site + diffusion des annonces.
+            Injecte sur toutes les pages, dans le <head>, comme demande par AdSense. */}
+        <Script
+          id="google-adsense"
+          async
+          strategy="afterInteractive"
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3679882038307653"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="font-sans antialiased">
         <ThemeProvider
           attribute="class"
