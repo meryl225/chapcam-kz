@@ -184,12 +184,21 @@ export async function POST(request: NextRequest) {
     }
 
     // 2) Creation de la video (Avatar IV, type image = photo qui parle)
+    // IMPORTANT (cadrage) : sans ces parametres, HeyGen recadre par defaut
+    // (fit "cover") et zoome sur le visage -> tete/haut du corps COUPES.
+    // - aspect_ratio "9:16" : format vertical TikTok annonce dans l'UI.
+    // - fit "contain" : le sujet ENTIER tient dans le cadre (jamais coupe) ;
+    //   d'eventuelles bandes de fond sont ajoutees plutot que de rogner.
+    // - resolution "1080p" : rendu net et clair.
     const payload: Record<string, unknown> = {
       type: "image",
       script,
       voice_id: effectiveVoiceId,
       image: { type: "asset_id", asset_id: assetId },
       title: "ChapCam",
+      aspect_ratio: "9:16",
+      fit: "contain",
+      resolution: "1080p",
     }
     // Gestes (motion_prompt) et expressivite : uniquement s'ils sont fournis.
     if (motionPrompt) payload.motion_prompt = motionPrompt
