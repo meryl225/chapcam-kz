@@ -92,13 +92,13 @@ function addSecurityHeaders(
   // Content Security Policy
   response.headers.set('Content-Security-Policy', [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://vercel.live",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://vercel.live https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.googleadservices.com https://adservice.google.com https://*.google.com https://www.googletagservices.com https://*.adtrafficquality.google",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https: http:",
     "media-src 'self' blob: https:",
-    "connect-src 'self' https://*.supabase.co https://*.decart.ai https://*.fal.ai https://*.livekit.io wss://*.livekit.cloud https://api.paydunya.com https://*.vercel.app https://*.proxy.runpod.net wss://*.proxy.runpod.net https://*.trycloudflare.com wss://*.trycloudflare.com wss:",
-    "frame-src 'self' https://vercel.live",
+    "connect-src 'self' https://*.supabase.co https://*.decart.ai https://*.fal.ai https://*.livekit.io wss://*.livekit.cloud https://api.paydunya.com https://*.vercel.app https://*.proxy.runpod.net wss://*.proxy.runpod.net https://*.trycloudflare.com wss://*.trycloudflare.com wss: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.doubleclick.net https://*.adtrafficquality.google",
+    "frame-src 'self' https://vercel.live https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.google.com https://*.googlesyndication.com https://*.adtrafficquality.google",
     "worker-src 'self' blob:",
   ].join('; '))
   
