@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Gift } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Gift, Clapperboard } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -26,6 +26,7 @@ const plans = [
       "500 points (4 min 10 sec)",
       "Qualite HD 1080p"
     ],
+    photoVideos: 2,
     validity: "Valable 24 heures",
     color: "#00d4ff",
     bgGradient: "from-cyan-500/20 to-blue-600/5",
@@ -50,6 +51,7 @@ const plans = [
       "Qualite 4K Ultra HD",
       "Support prioritaire"
     ],
+    photoVideos: 5,
     validity: "Valable 3 mois",
     color: "#22c55e",
     bgGradient: "from-green-500/20 to-green-600/5",
@@ -78,6 +80,7 @@ const plans = [
       "Support VIP 24/7",
       "Acces aux nouveautes en avant-premiere"
     ],
+    photoVideos: 8,
     validity: "Valable 1 an",
     color: "#f97316",
     bgGradient: "from-orange-500/20 to-yellow-500/5",
@@ -105,6 +108,7 @@ const plans = [
       "Support VIP prioritaire 24/7",
       "Acces anticipe a toutes les nouveautes"
     ],
+    photoVideos: 15,
     validity: "Valable 1 an",
     color: "#2563eb",
     bgGradient: "from-blue-500/20 to-blue-700/5",
@@ -303,7 +307,7 @@ export function PricingSection() {
                   </div>
                 )}
 
-                <ul className="space-y-4 mb-10 text-gray-300">
+                <ul className="space-y-4 mb-6 text-gray-300">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <Check className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
@@ -311,6 +315,14 @@ export function PricingSection() {
                     </li>
                   ))}
                 </ul>
+
+                {/* Studio Photo en Video inclus dans le forfait Live Swap */}
+                <div className="mb-8 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+                  <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
+                  <p className="text-sm font-semibold text-emerald-300 leading-snug">
+                    Studio Photo en Vidéo : {plan.photoVideos} vidéos de 30s incluses
+                  </p>
+                </div>
 
                 <Link href={`/dashboard/plans?plan=${plan.id}`}>
                   <Button 
