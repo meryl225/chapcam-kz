@@ -238,7 +238,7 @@ export default function AdminPaymentsPage() {
             <StatCard icon={Users} label="Clients credites" value={stats.total.toString()} color="text-white" />
             <StatCard icon={CheckCircle2} label="Abonnements actifs" value={stats.active.toString()} color="text-[#00ff88]" />
             <StatCard icon={Wrench} label="Demandes install." value={`${stats.installPaid}/${stats.installTotal}`} color="text-white" />
-            <StatCard icon={Wallet} label="Revenu total" value={`${stats.totalRevenue.toLocaleString()} F`} color="text-[#00ff88]" />
+            <StatCard icon={Wallet} label="Revenu abonnements" value={`${stats.subRevenue.toLocaleString()} F`} color="text-[#00ff88]" />
           </div>
         )}
 
