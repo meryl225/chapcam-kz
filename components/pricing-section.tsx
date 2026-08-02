@@ -2,10 +2,9 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Gift, Clapperboard, ArrowRight } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Gift, Clapperboard } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { PHOTO_VIDEO_OFFERS } from "@/lib/photo-video-offers"
 
 // Statut du logo (watermark) par forfait :
 // - "with"   : rendu AVEC logo ChapCam (Starter, Standard)
@@ -27,6 +26,7 @@ const plans = [
       "500 points (4 min 10 sec)",
       "Qualite HD 1080p"
     ],
+    photoVideos: 2,
     validity: "Valable 24 heures",
     color: "#00d4ff",
     bgGradient: "from-cyan-500/20 to-blue-600/5",
@@ -51,6 +51,7 @@ const plans = [
       "Qualite 4K Ultra HD",
       "Support prioritaire"
     ],
+    photoVideos: 5,
     validity: "Valable 3 mois",
     color: "#22c55e",
     bgGradient: "from-green-500/20 to-green-600/5",
@@ -79,6 +80,7 @@ const plans = [
       "Support VIP 24/7",
       "Acces aux nouveautes en avant-premiere"
     ],
+    photoVideos: 8,
     validity: "Valable 1 an",
     color: "#f97316",
     bgGradient: "from-orange-500/20 to-yellow-500/5",
@@ -106,6 +108,7 @@ const plans = [
       "Support VIP prioritaire 24/7",
       "Acces anticipe a toutes les nouveautes"
     ],
+    photoVideos: 15,
     validity: "Valable 1 an",
     color: "#2563eb",
     bgGradient: "from-blue-500/20 to-blue-700/5",
@@ -304,7 +307,7 @@ export function PricingSection() {
                   </div>
                 )}
 
-                <ul className="space-y-4 mb-10 text-gray-300">
+                <ul className="space-y-4 mb-6 text-gray-300">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <Check className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
@@ -312,6 +315,14 @@ export function PricingSection() {
                     </li>
                   ))}
                 </ul>
+
+                {/* Studio Photo en Video inclus dans le forfait Live Swap */}
+                <div className="mb-8 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+                  <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
+                  <p className="text-sm font-semibold text-emerald-300 leading-snug">
+                    Studio Photo en Vidéo : {plan.photoVideos} vidéos de 30s incluses
+                  </p>
+                </div>
 
                 <Link href={`/dashboard/plans?plan=${plan.id}`}>
                   <Button 
@@ -328,90 +339,6 @@ export function PricingSection() {
             )
           })}
         </div>
-
-        {/* Studio Photo en Video : packs de credits achetables SANS forfait Live Swap */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mt-20 rounded-3xl border border-emerald-500/30 bg-gradient-to-b from-emerald-500/[0.07] to-transparent p-6 md:p-10"
-        >
-          <div className="mb-8 text-center">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-emerald-400">
-              <Clapperboard className="h-4 w-4" />
-              Nouveau · Studio Photo en Video
-            </div>
-            <h3 className="text-3xl font-black text-white md:text-4xl text-balance">
-              Anime ta photo, elle se met a parler
-            </h3>
-            <p className="mx-auto mt-3 max-w-2xl text-pretty text-gray-400 leading-relaxed">
-              Pas besoin de forfait Live Swap. Achete directement des credits video :
-              1 credit = 1 video parlante de 30 secondes, avec voix ChapCam ou clonage de ta voix.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {PHOTO_VIDEO_OFFERS.map((offer, index) => {
-              const pricePerVideo = Math.round(offer.price / offer.credits)
-              return (
-                <motion.div
-                  key={offer.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  className={`relative flex flex-col rounded-3xl border bg-[#111] p-8 transition-all duration-300 ${
-                    offer.highlight
-                      ? "border-2 border-emerald-500 shadow-[0_0_50px_rgba(16,185,129,0.25)] lg:scale-105 z-10"
-                      : "border border-white/10 hover:border-white/30"
-                  }`}
-                >
-                  {offer.highlight && (
-                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-[#00ff88] px-5 py-1 text-sm font-bold text-black shadow-lg">
-                      <Star className="h-4 w-4" />
-                      POPULAIRE
-                    </div>
-                  )}
-
-                  <div className="mb-4 mt-2 font-bold text-white text-xl">{offer.name}</div>
-
-                  <div className="mb-1 flex items-baseline gap-2">
-                    <span className="text-5xl font-black text-[#00ff88]">{offer.credits}</span>
-                    <span className="text-lg text-gray-400">videos de 30s</span>
-                  </div>
-                  <p className="text-2xl font-bold text-white">
-                    {offer.price.toLocaleString("fr-FR")} <span className="text-lg text-gray-400">FCFA</span>
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    soit {pricePerVideo.toLocaleString("fr-FR")} FCFA / video
-                  </p>
-
-                  <ul className="mt-6 mb-8 flex flex-1 flex-col gap-4 text-gray-300">
-                    {offer.features.map((feature) => (
-                      <li key={feature} className="flex items-start gap-3">
-                        <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-400" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Link href="/dashboard/photo-video">
-                    <Button
-                      className={`w-full py-6 text-base font-bold rounded-2xl transition-all ${
-                        offer.highlight
-                          ? "bg-[#00ff88] text-black hover:bg-[#00dd77]"
-                          : "bg-white text-black hover:bg-gray-200"
-                      }`}
-                    >
-                      Acheter des videos
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                </motion.div>
-              )
-            })}
-          </div>
-        </motion.div>
 
         {/* Urgency Message */}
         <motion.div
