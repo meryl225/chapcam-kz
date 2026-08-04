@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminRequest } from '@/lib/admin-auth'
+import { sendInstallationConfirmationEmail } from '@/lib/email'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -69,13 +70,51 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
     const id = String(body?.id || '').trim()
-    const status = String(body?.status || '').trim()
+    const action = String(body?.action || '').trim()
 
-    if (!id || !['pending', 'done', 'cancelled'].includes(status)) {
+    if (!id) {
       return NextResponse.json({ error: 'Parametres invalides.' }, { status: 400 })
     }
 
     const admin = createAdminClient()
+
+    // Action "confirm" : envoyer au client un email de prise en compte
+    // (l'invitant a nous appeler ou nous ecrire sur WhatsApp).
+    if (action === 'confirm') {
+      const { data: request, error: fetchError } = await admin
+        .from('installation_requests')
+        .select('email, full_name')
+        .eq('id', id)
+        .single()
+
+      if (fetchError || !request) {
+        console.error('[admin/installations] Demande introuvable:', fetchError?.message)
+        return NextResponse.json({ error: 'Demande introuvable.' }, { status: 404 })
+      }
+      if (!request.email) {
+        return NextResponse.json(
+          { error: 'Aucune adresse email pour ce client.' },
+          { status: 400 },
+        )
+      }
+
+      const result = await sendInstallationConfirmationEmail(request.email, request.full_name)
+      if (!result.success) {
+        return NextResponse.json(
+          { error: "Echec de l'envoi de l'email. Reessayez." },
+          { status: 500 },
+        )
+      }
+
+      return NextResponse.json({ message: `Email de confirmation envoye a ${request.email}.` })
+    }
+
+    // Sinon : changement de statut classique.
+    const status = String(body?.status || '').trim()
+    if (!['pending', 'done', 'cancelled'].includes(status)) {
+      return NextResponse.json({ error: 'Parametres invalides.' }, { status: 400 })
+    }
+
     const { error } = await admin
       .from('installation_requests')
       .update({ status })
