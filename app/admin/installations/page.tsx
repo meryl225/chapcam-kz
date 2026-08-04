@@ -12,6 +12,7 @@ import {
   MapPin,
   Phone,
   Mail,
+  MailCheck,
   Smartphone,
   ArrowLeft,
 } from 'lucide-react'
@@ -57,6 +58,7 @@ export default function AdminInstallationsPage() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('pending')
   const [actioningId, setActioningId] = useState<string | null>(null)
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null)
 
   const load = useCallback(async () => {
@@ -109,6 +111,28 @@ export default function AdminInstallationsPage() {
       setToast({ type: 'err', msg: 'Erreur de connexion' })
     } finally {
       setActioningId(null)
+    }
+  }
+
+  // Confirme la prise en compte : envoie l'email au client (appel / WhatsApp).
+  const handleConfirm = async (id: string) => {
+    setConfirmingId(id)
+    try {
+      const res = await fetch('/api/admin/installations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'confirm' }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setToast({ type: 'ok', msg: data.message || 'Email de confirmation envoye' })
+      } else {
+        setToast({ type: 'err', msg: data.error || 'Erreur' })
+      }
+    } catch {
+      setToast({ type: 'err', msg: 'Erreur de connexion' })
+    } finally {
+      setConfirmingId(null)
     }
   }
 
@@ -281,7 +305,22 @@ export default function AdminInstallationsPage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex gap-2 lg:flex-col xl:flex-row">
+                  <div className="flex flex-wrap gap-2 lg:flex-col xl:flex-row">
+                    {r.email && r.status !== 'cancelled' && (
+                      <button
+                        onClick={() => handleConfirm(r.id)}
+                        disabled={confirmingId === r.id}
+                        title="Envoyer un email de prise en compte au client"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#2563eb] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1d4ed8] disabled:opacity-60"
+                      >
+                        {confirmingId === r.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <MailCheck className="h-4 w-4" />
+                        )}
+                        Confirmer
+                      </button>
+                    )}
                     {r.status !== 'done' && (
                       <button
                         onClick={() => handleAction(r.id, 'done')}

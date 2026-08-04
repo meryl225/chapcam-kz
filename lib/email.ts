@@ -922,3 +922,102 @@ export async function sendBatchEmails(
 
   return results
 }
+
+// -----------------------------------------------------------------------------
+// Confirmation de prise en compte d'une demande d'installation.
+// Envoye au client depuis l'admin des installations : sa demande est prise en
+// compte et on l'invite a nous joindre par telephone ou WhatsApp pour planifier
+// l'installation de ChapCam.
+// -----------------------------------------------------------------------------
+const SUPPORT_PHONE_DISPLAY = '+225 05 55 56 01 89'
+const SUPPORT_PHONE_TEL = '+2250555560189'
+const SUPPORT_WHATSAPP_URL = 'https://wa.me/2250555560189'
+
+export async function sendInstallationConfirmationEmail(to: string, clientName?: string | null) {
+  const client = await getResendClient()
+  if (!client) {
+    console.warn('[Email] Email non configure - confirmation installation ignoree')
+    return { success: false, error: 'Email service not configured' }
+  }
+
+  const name = (clientName || '').trim() || 'cher client'
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: 'ChapCam - Votre demande d\'installation a ete prise en compte',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+            <tr>
+              <td style="text-align: center; padding-bottom: 30px;">
+                <img src="https://chapcam.com/favicon.jpg" alt="ChapCam" width="80" height="80" style="border-radius: 16px;">
+              </td>
+            </tr>
+            <tr>
+              <td style="background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%); border-radius: 16px; padding: 40px; border: 1px solid #222;">
+                <div style="text-align: center; margin-bottom: 20px;">
+                  <div style="display: inline-block; background: #00ff8820; border-radius: 50%; padding: 16px;">
+                    <span style="font-size: 32px;">&#10003;</span>
+                  </div>
+                </div>
+                <h1 style="color: #00ff88; margin: 0 0 20px 0; font-size: 24px; text-align: center;">Demande prise en compte !</h1>
+                <p style="color: #ffffff; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                  Bonjour <strong>${name}</strong>,
+                </p>
+                <p style="color: #cccccc; font-size: 16px; line-height: 1.6; margin: 0 0 20px 0;">
+                  Votre demande d'installation de ChapCam a bien ete <strong>prise en compte</strong> par notre equipe.
+                  Pour planifier et finaliser l'installation, merci de nous contacter directement :
+                </p>
+
+                <div style="background: #111111; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #333;">
+                  <p style="color: #ffffff; font-size: 16px; margin: 0 0 16px 0;">
+                    &#128222; Appelez-nous au :
+                    <a href="tel:${SUPPORT_PHONE_TEL}" style="color: #00ff88; text-decoration: none; font-weight: bold;">${SUPPORT_PHONE_DISPLAY}</a>
+                  </p>
+                  <div style="text-align: center; margin-top: 8px;">
+                    <a href="${SUPPORT_WHATSAPP_URL}" style="display: inline-block; background: #25D366; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: bold; font-size: 16px;">
+                      Nous ecrire sur WhatsApp
+                    </a>
+                  </div>
+                </div>
+
+                <p style="color: #cccccc; font-size: 14px; line-height: 1.6; margin: 20px 0 0 0;">
+                  Notre equipe vous accompagnera pas a pas pour installer ChapCam sur vos applications
+                  (WhatsApp, Telegram, Teams, Zoom...).
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="text-align: center; padding-top: 30px;">
+                <p style="color: #666666; font-size: 12px; margin: 0;">
+                  ChapCam - Face Swap en Temps Reel<br>
+                  <a href="https://chapcam.com" style="color: #00ff88; text-decoration: none;">chapcam.com</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `,
+    })
+
+    if (error) {
+      console.error('[Email] Erreur envoi confirmation installation:', error)
+      return { success: false, error }
+    }
+
+    console.log('[Email] Confirmation installation envoyee:', data?.id)
+    return { success: true, id: data?.id }
+  } catch (error) {
+    console.error('[Email] Exception confirmation installation:', error)
+    return { success: false, error }
+  }
+}
