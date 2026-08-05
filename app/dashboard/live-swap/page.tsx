@@ -61,8 +61,9 @@ export default function DashboardPage() {
   // Sections repliables : desencombrer la page pour tout voir d'un coup.
   const [studioOpen, setStudioOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // Qualite HD 1080p : reservee VIP, activee par defaut pour eux.
-  const [hdEnabled, setHdEnabled] = useState(true)
+  // Qualite HD 1080p : reservee VIP. DESACTIVEE par defaut -> tous les forfaits
+  // demarrent en 720p (2 pts/s). Le VIP doit l'activer manuellement (4 pts/s).
+  const [hdEnabled, setHdEnabled] = useState(false)
   // Codec video prefere (avance) : undefined = negociation par defaut du SDK.
   const [videoCodec, setVideoCodec] = useState<'h264' | 'vp8' | 'vp9' | ''>('')
   const [duration, setDuration] = useState(0)
@@ -918,9 +919,16 @@ export default function DashboardPage() {
                 <span className="flex items-center gap-2 text-left">
                   <Maximize2 className="h-4 w-4 text-yellow-500" />
                   <span className="flex flex-col">
-                    <span className="text-sm font-semibold text-foreground">Qualité Full HD 1080p</span>
+                    <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      Qualité Full HD 1080p
+                      <span className="rounded bg-yellow-500/15 px-1.5 py-0.5 text-[10px] font-bold text-yellow-500">
+                        {POINTS_PER_SECOND_HD} pts/s
+                      </span>
+                    </span>
                     <span className="text-[11px] text-foreground/50">
-                      Image ultra nette. Réservé VIP. Choix à faire avant de démarrer.
+                      {hdEnabled && isVip
+                        ? `Image ultra nette (1080p) — ${POINTS_PER_SECOND_HD} points/s.`
+                        : `Par défaut : 720p à ${POINTS_PER_SECOND_SD} pts/s. Activez le 1080p (${POINTS_PER_SECOND_HD} pts/s). Réservé VIP.`}
                     </span>
                   </span>
                 </span>
