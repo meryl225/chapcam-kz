@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/ssr'
 import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock, ChevronDown, Smartphone } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
+import { pointsPerSecond, POINTS_PER_SECOND_SD, POINTS_PER_SECOND_HD } from '@/lib/swap-pricing'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
 import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
 import { MobileLiveOverlay } from '@/components/live/mobile-live-overlay'
@@ -16,7 +17,9 @@ import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPref
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
 
-const POINTS_PER_SECOND = 2
+// Tarif de base (720p). Le tarif reel par tick depend de la resolution active
+// et est lu depuis rateRef (voir plus bas) : 2 pts/s en 720p, 3 pts/s en 1080p.
+const POINTS_PER_SECOND = POINTS_PER_SECOND_SD
 
 // Libelle + couleur par verdict de qualite reseau (Lucy 2.5).
 const QUALITY_UI: Record<string, { label: string; color: string }> = {
@@ -72,6 +75,9 @@ export default function DashboardPage() {
   const pendingSyncRef = useRef(0)       // points consommes NON encore envoyes au serveur
   const remainingRef = useRef(0)         // solde restant estime (pour couper a 0)
   const sessionStartRef = useRef<string | null>(null) // horodatage ISO du debut du swap en cours
+  // Tarif points/seconde du swap en cours (2 en 720p, 3 en 1080p VIP). En ref
+  // pour eviter toute closure perimee dans les intervalles / handlers de flush.
+  const rateRef = useRef(POINTS_PER_SECOND_SD)
   // Certification d'usage responsable, requise avant chaque demarrage de swap.
   const [swapConsent, setSwapConsent] = useState(false)
 
@@ -139,6 +145,12 @@ export default function DashboardPage() {
     queuePosition,
     activeResolution,
   } = useLucy21()
+
+  // Le tarif suit la resolution reellement active : 3 pts/s en 1080p (VIP),
+  // 2 pts/s en 720p. Mis a jour des que Decart confirme la resolution.
+  useEffect(() => {
+    rateRef.current = pointsPerSecond(activeResolution)
+  }, [activeResolution])
 
   const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
@@ -246,7 +258,9 @@ export default function DashboardPage() {
         keepalive: true, // permet a la requete d'aboutir meme si l'onglet se ferme
         body: JSON.stringify({
           pointsToDeduct: chunk,
-          sessionDuration: Math.max(1, Math.round(chunk / POINTS_PER_SECOND)),
+          sessionDuration: Math.max(1, Math.round(chunk / rateRef.current)),
+          // Derive de rateRef (ref toujours a jour) pour eviter une closure perimee.
+          resolution: rateRef.current >= POINTS_PER_SECOND_HD ? '1080p' : '720p',
         }),
       })
       const data = await res.json().catch(() => null)
@@ -272,10 +286,11 @@ export default function DashboardPage() {
     if (!isConnected) return
     const SYNC_EVERY_SECONDS = 10
     const interval = setInterval(() => {
+      const rate = rateRef.current // 2 pts/s (720p) ou 3 pts/s (1080p VIP)
       durationRef.current += 1
-      pointsUsedRef.current += POINTS_PER_SECOND
-      pendingSyncRef.current += POINTS_PER_SECOND
-      remainingRef.current = Math.max(0, remainingRef.current - POINTS_PER_SECOND)
+      pointsUsedRef.current += rate
+      pendingSyncRef.current += rate
+      remainingRef.current = Math.max(0, remainingRef.current - rate)
 
       setDuration(durationRef.current)
       setPointsUsed(pointsUsedRef.current)
@@ -304,7 +319,8 @@ export default function DashboardPage() {
       try {
         const blob = new Blob([JSON.stringify({
           pointsToDeduct: chunk,
-          sessionDuration: Math.max(1, Math.round(chunk / POINTS_PER_SECOND)),
+          sessionDuration: Math.max(1, Math.round(chunk / rateRef.current)),
+          resolution: rateRef.current >= POINTS_PER_SECOND_HD ? '1080p' : '720p',
         })], { type: 'application/json' })
         navigator.sendBeacon?.('/api/points', blob)
       } catch {
@@ -354,6 +370,7 @@ export default function DashboardPage() {
             avatarName: selectedAvatar?.name ?? null,
             sessionDuration: sessionSeconds,
             pointsToDeduct: sessionPoints,
+            resolution: rateRef.current >= POINTS_PER_SECOND_HD ? '1080p' : '720p',
             startedAt,
           }),
         })
@@ -547,6 +564,18 @@ export default function DashboardPage() {
             <Coins className="w-4 h-4 text-yellow-500" />
             <span className="text-foreground font-bold">{userPoints.toLocaleString()}</span>
             <span className="text-muted-foreground text-sm">points</span>
+            {isConnected && (
+              <span
+                className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                  activeResolution === '1080p'
+                    ? 'bg-yellow-500/15 text-yellow-500'
+                    : 'bg-primary/15 text-primary'
+                }`}
+                title={activeResolution === '1080p' ? 'Tarif Full HD 1080p' : 'Tarif HD 720p'}
+              >
+                {pointsPerSecond(activeResolution)} pts/s
+              </span>
+            )}
           </div>
         </div>
       </div>

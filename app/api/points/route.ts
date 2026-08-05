@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-
-// 2 points = 1 seconde
-const POINTS_PER_SECOND = 2
+import { pointsPerSecond } from '@/lib/swap-pricing'
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,6 +18,9 @@ export async function POST(request: NextRequest) {
     const {
       pointsToDeduct,
       sessionDuration,
+      // Resolution reelle du swap ('720p' | '1080p') : sert a facturer le HD
+      // plus cher et a valider cote serveur le nombre de points demande.
+      resolution,
       // Champs specifiques a l'enregistrement d'UNE session complete (a l'arret du swap).
       saveSession,
       avatarId,
@@ -27,6 +28,9 @@ export async function POST(request: NextRequest) {
       framesProcessed,
       startedAt,
     } = body
+
+    // Tarif points/seconde attendu pour cette resolution (2 en 720p, 3 en 1080p).
+    const rate = pointsPerSecond(resolution)
 
     // === Enregistrement d'une session complete ===
     // Appele UNE SEULE FOIS a la fin d'un swap (pas a chaque synchronisation).
@@ -46,7 +50,14 @@ export async function POST(request: NextRequest) {
         avatar_id: avatarId ?? null,
         avatar_name: avatarName ?? null,
         duration_seconds: duration,
-        points_used: Math.max(0, Math.floor(pointsToDeduct || duration * POINTS_PER_SECOND)),
+        // On borne les points enregistres au max theorique (duree x tarif) pour
+        // qu'un client ne puisse pas gonfler l'historique. Le HD (1080p) est
+        // facture au tarif plus eleve. Le ratio points_used/duration_seconds
+        // permettra ensuite de distinguer une session HD (3 pts/s) d'une SD (2).
+        points_used: Math.max(0, Math.min(
+          Math.floor(pointsToDeduct || duration * rate),
+          duration * rate,
+        )),
         frames_processed: Math.max(0, Math.floor(framesProcessed || 0)),
         started_at: startedAtDate.toISOString(),
         ended_at: endedAt.toISOString(),
@@ -58,8 +69,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true })
     }
 
-    // Calculer les points a deduire
-    const points = Math.max(0, Math.floor(pointsToDeduct || (sessionDuration * POINTS_PER_SECOND) || 0))
+    // Calculer les points a deduire, en VALIDANT cote serveur : on ne debite
+    // jamais plus que le max theorique (duree x tarif de la resolution). Ainsi
+    // un client ne peut pas forger un pointsToDeduct arbitraire. On garde une
+    // petite marge (1 palier) pour absorber les arrondis de synchronisation.
+    const requested = Math.floor(pointsToDeduct || (sessionDuration * rate) || 0)
+    const maxAllowed = sessionDuration > 0
+      ? Math.floor(sessionDuration * rate) + rate
+      : requested
+    const points = Math.max(0, Math.min(requested, maxAllowed))
     if (points <= 0) {
       return NextResponse.json({ success: false, error: 'Rien a deduire' }, { status: 400 })
     }
