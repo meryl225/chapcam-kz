@@ -18,7 +18,7 @@ const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
 
 // Tarif de base (720p). Le tarif reel par tick depend de la resolution active
-// et est lu depuis rateRef (voir plus bas) : 2 pts/s en 720p, 3 pts/s en 1080p.
+// et est lu depuis rateRef (voir plus bas) : 2 pts/s en 720p, 4 pts/s en 1080p.
 const POINTS_PER_SECOND = POINTS_PER_SECOND_SD
 
 // Libelle + couleur par verdict de qualite reseau (Lucy 2.5).
@@ -75,7 +75,7 @@ export default function DashboardPage() {
   const pendingSyncRef = useRef(0)       // points consommes NON encore envoyes au serveur
   const remainingRef = useRef(0)         // solde restant estime (pour couper a 0)
   const sessionStartRef = useRef<string | null>(null) // horodatage ISO du debut du swap en cours
-  // Tarif points/seconde du swap en cours (2 en 720p, 3 en 1080p VIP). En ref
+  // Tarif points/seconde du swap en cours (2 en 720p, 4 en 1080p VIP). En ref
   // pour eviter toute closure perimee dans les intervalles / handlers de flush.
   const rateRef = useRef(POINTS_PER_SECOND_SD)
   // Certification d'usage responsable, requise avant chaque demarrage de swap.
@@ -146,7 +146,7 @@ export default function DashboardPage() {
     activeResolution,
   } = useLucy21()
 
-  // Le tarif suit la resolution reellement active : 3 pts/s en 1080p (VIP),
+  // Le tarif suit la resolution reellement active : 4 pts/s en 1080p (VIP),
   // 2 pts/s en 720p. Mis a jour des que Decart confirme la resolution.
   useEffect(() => {
     rateRef.current = pointsPerSecond(activeResolution)
@@ -286,7 +286,7 @@ export default function DashboardPage() {
     if (!isConnected) return
     const SYNC_EVERY_SECONDS = 10
     const interval = setInterval(() => {
-      const rate = rateRef.current // 2 pts/s (720p) ou 3 pts/s (1080p VIP)
+      const rate = rateRef.current // 2 pts/s (720p) ou 4 pts/s (1080p VIP)
       durationRef.current += 1
       pointsUsedRef.current += rate
       pendingSyncRef.current += rate

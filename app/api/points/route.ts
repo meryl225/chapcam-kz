@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       startedAt,
     } = body
 
-    // Tarif points/seconde attendu pour cette resolution (2 en 720p, 3 en 1080p).
+    // Tarif points/seconde attendu pour cette resolution (2 en 720p, 4 en 1080p).
     const rate = pointsPerSecond(resolution)
 
     // === Enregistrement d'une session complete ===
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         // On borne les points enregistres au max theorique (duree x tarif) pour
         // qu'un client ne puisse pas gonfler l'historique. Le HD (1080p) est
         // facture au tarif plus eleve. Le ratio points_used/duration_seconds
-        // permettra ensuite de distinguer une session HD (3 pts/s) d'une SD (2).
+        // permettra ensuite de distinguer une session HD (4 pts/s) d'une SD (2).
         points_used: Math.max(0, Math.min(
           Math.floor(pointsToDeduct || duration * rate),
           duration * rate,
