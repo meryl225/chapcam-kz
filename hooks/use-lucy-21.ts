@@ -27,6 +27,17 @@ export function useLucy21() {
   // Resolution reellement active (720p ou 1080p) pour l'afficher a l'ecran.
   const [activeResolution, setActiveResolution] = useState<'720p' | '1080p'>('720p')
 
+  // --- Diagnostic reseau (preflight + in-session) ---
+  // Transport WebRTC negocie : 'udp' (direct, ideal), 'relay' (via TURN, +latence),
+  // 'failed' (aucun chemin -> c'est l'origine du "could not establish pc connection").
+  const [networkTransport, setNetworkTransport] = useState<'udp' | 'relay' | 'failed' | null>(null)
+  // RTT reseau mesure au preflight, pour afficher une latence reelle avant de connecter.
+  const [preflightRttMs, setPreflightRttMs] = useState<number | null>(null)
+  // Latence de bout en bout live (RTT) exposee par les stats WebRTC en session.
+  const [liveRttMs, setLiveRttMs] = useState<number | null>(null)
+  // FPS reellement rendu par le flux transforme (indicateur de fluidite reelle).
+  const [liveFps, setLiveFps] = useState<number | null>(null)
+
   const localVideoRef = useRef<HTMLVideoElement>(null)
   const remoteVideoRef = useRef<HTMLVideoElement>(null)
   const realtimeClientRef = useRef<any>(null)
@@ -102,6 +113,10 @@ export function useLucy21() {
     setConnectionQuality(null)
     setQualityFactor(null)
     setQueuePosition(null)
+    setNetworkTransport(null)
+    setPreflightRttMs(null)
+    setLiveRttMs(null)
+    setLiveFps(null)
   }, [])
 
   const connect = useCallback(async (
@@ -123,38 +138,65 @@ export function useLucy21() {
     setActiveResolution(resolution)
 
     try {
-      // Verifier les points disponibles avant de commencer.
-      // Il suffit d'avoir au moins 1 palier de points (5s) pour demarrer ;
-      // le client pourra ensuite swaper jusqu'a epuisement total du solde.
-      const pointsRes = await fetch('/api/points')
-      const pointsData = await pointsRes.json().catch(() => null)
+      // ------------------------------------------------------------------
+      // DEMARRAGE PARALLELE (optimisation latence de connexion)
+      // ------------------------------------------------------------------
+      // Avant, ces 4 etapes s'enchainaient sequentiellement : on additionnait
+      // la latence reseau de chacune (points -> token -> camera -> avatar) avant
+      // meme de lancer le WebRTC. On les lance desormais EN PARALLELE : le temps
+      // de demarrage devient celui de la plus lente, pas la somme. La camera
+      // (autorisation navigateur) est generalement le facteur limitant, et elle
+      // tourne pendant que les fetch reseau se font.
+      const camWidth = useHd ? 1920 : 1280
+      const camHeight = useHd ? 1080 : 720
 
-      const minToStart = POINTS_PER_SECOND * DEDUCTION_INTERVAL // 10 points = 5s
-      if (!pointsData?.success || (pointsData?.points ?? 0) < minToStart) {
-        throw new Error('Points insuffisants. Recharge ton compte pour utiliser le swap.')
-      }
+      const pointsPromise = fetch('/api/points')
+        .then((r) => r.json())
+        .catch(() => null)
 
-      const tokenRes = await fetch('/api/decart-token')
-      const tokenData = await tokenRes.json().catch(() => null)
-      const clientToken = tokenData?.token
-      if (!tokenRes.ok || !clientToken) {
-        throw new Error('Service de transformation indisponible pour le moment. Reessaie dans un instant.')
-      }
+      const tokenPromise = fetch('/api/decart-token')
+        .then(async (r) => ({ ok: r.ok, data: await r.json().catch(() => null) }))
+        .catch(() => ({ ok: false, data: null as any }))
 
-      let stream: MediaStream
-      try {
-        // Capture en 1080p pour le mode HD (VIP), sinon 720p. On demande la
-        // resolution "ideale" pour degrader proprement si la camera ne suit pas.
-        const camWidth = useHd ? 1920 : 1280
-        const camHeight = useHd ? 1080 : 720
-        stream = await navigator.mediaDevices.getUserMedia({
+      const cameraPromise = navigator.mediaDevices
+        .getUserMedia({
           video: {
             width: { ideal: camWidth },
             height: { ideal: camHeight },
             frameRate: { ideal: 30 },
           },
         })
-      } catch (camError: any) {
+        .then((s) => ({ stream: s as MediaStream, error: null as any }))
+        .catch((e) => ({ stream: null as any, error: e }))
+
+      const avatarPromise = fetch(avatarImageUrl)
+        .then((r) => r.blob())
+        .catch(() => null)
+
+      const [pointsData, tokenResult, cameraResult, avatarBlob] = await Promise.all([
+        pointsPromise,
+        tokenPromise,
+        cameraPromise,
+        avatarPromise,
+      ])
+
+      // 1) Points : au moins 1 palier (5s) pour demarrer.
+      const minToStart = POINTS_PER_SECOND * DEDUCTION_INTERVAL // 10 points = 5s
+      if (!pointsData?.success || (pointsData?.points ?? 0) < minToStart) {
+        cameraResult.stream?.getTracks().forEach((t: MediaStreamTrack) => t.stop())
+        throw new Error('Points insuffisants. Recharge ton compte pour utiliser le swap.')
+      }
+
+      // 2) Token de transformation.
+      const clientToken = tokenResult?.data?.token
+      if (!tokenResult?.ok || !clientToken) {
+        cameraResult.stream?.getTracks().forEach((t: MediaStreamTrack) => t.stop())
+        throw new Error('Service de transformation indisponible pour le moment. Reessaie dans un instant.')
+      }
+
+      // 3) Camera : messages d'erreur clairs selon la cause.
+      if (cameraResult.error || !cameraResult.stream) {
+        const camError = cameraResult.error || { name: '', message: 'inconnue' }
         if (camError.name === 'NotAllowedError') {
           throw new Error('Acces camera refuse. Autorise ChapCam a acceder a ta camera dans les parametres du navigateur.')
         } else if (camError.name === 'NotFoundError') {
@@ -162,17 +204,53 @@ export function useLucy21() {
         } else if (camError.name === 'NotReadableError') {
           throw new Error('Camera deja utilisee par une autre application. Ferme les autres apps utilisant la camera.')
         } else {
-          throw new Error('Impossible de demarrer la camera: ' + camError.message)
+          throw new Error('Impossible de demarrer la camera: ' + (camError.message || 'erreur inconnue'))
         }
+      }
+      const stream: MediaStream = cameraResult.stream
+
+      // 4) Avatar de reference.
+      if (!avatarBlob) {
+        stream.getTracks().forEach((t: MediaStreamTrack) => t.stop())
+        throw new Error("Impossible de charger l'avatar de reference. Reessaie.")
       }
 
       streamRef.current = stream
       if (localVideoRef.current) localVideoRef.current.srcObject = stream
 
-      const avatarRes = await fetch(avatarImageUrl)
-      const avatarBlob = await avatarRes.blob()
-
       const client = createDecartClient({ apiKey: clientToken })
+
+      // ------------------------------------------------------------------
+      // PREFLIGHT RESEAU (corrige "could not establish pc connection")
+      // ------------------------------------------------------------------
+      // On teste la joignabilite WebRTC AVANT de lancer la vraie session : un
+      // mini peer connection jetable contre un STUN public, sans cout ni
+      // session. On sait ainsi immediatement si le reseau bloque le WebRTC
+      // (pare-feu / UDP bloque / NAT symetrique -> transport 'failed'), au lieu
+      // d'attendre 20s pour tomber sur le message cryptique "could not
+      // establish pc connection". Si le preflight lui-meme echoue, on n'annule
+      // PAS la connexion (il peut y avoir un faux negatif) : on tente quand meme.
+      try {
+        const report = await client.realtime.checkConnectivity({ iceGatherTimeoutMs: 4000 })
+        const transport = report?.metrics?.transport ?? null
+        setNetworkTransport(transport as any)
+        setPreflightRttMs(
+          typeof report?.metrics?.rttMs === 'number' ? Math.round(report.metrics.rttMs) : null,
+        )
+
+        if (transport === 'failed' || report?.quality === 'critical') {
+          stream.getTracks().forEach((t: MediaStreamTrack) => t.stop())
+          throw new Error(
+            'Connexion impossible : ton reseau bloque la video temps reel (pare-feu, VPN ou reseau d\'entreprise). '
+              + 'Essaie un autre reseau (partage de connexion mobile) ou desactive ton VPN, puis reessaie.',
+          )
+        }
+      } catch (preflightErr: any) {
+        // Si c'est notre erreur "reseau bloque", on la propage telle quelle.
+        if (preflightErr?.message?.startsWith('Connexion impossible')) throw preflightErr
+        // Sinon (echec du preflight lui-meme) : on log et on continue quand meme.
+        console.warn('[Lucy 2.5] Preflight indisponible, on tente la connexion directe:', preflightErr)
+      }
 
       // Upload de l'avatar en reference serveur reutilisable. On recupere un
       // `ref.id` (file_...) que l'on renverra a CHAQUE changement de scene pour
@@ -221,7 +299,9 @@ export function useLucy21() {
         // Codec video prefere si fourni (sinon negociation par defaut du SDK).
         ...(options?.codec ? { preferredVideoCodec: options.codec } : {}),
 
-        // Qualite reseau en direct : verdict lisse + facteur limitant.
+        // Qualite reseau en direct : verdict lisse + facteur limitant + metriques
+        // reelles (RTT, FPS). Ces metriques permettent d'afficher une latence et
+        // une fluidite VRAIES a l'ecran, et de comprendre ce qui bride le rendu.
         onConnectionQuality: (report: any) => {
           setConnectionQuality(report?.quality ?? null)
           setQualityFactor(
@@ -229,6 +309,11 @@ export function useLucy21() {
               ? report.limitingFactor
               : null,
           )
+          const m = report?.metrics
+          if (m) {
+            if (typeof m.rttMs === 'number') setLiveRttMs(Math.round(m.rttMs))
+            if (typeof m.fps === 'number') setLiveFps(Math.round(m.fps))
+          }
         },
         // Position dans la file d'attente quand les serveurs sont satures.
         onQueuePosition: (qp: any) => {
@@ -313,6 +398,18 @@ export function useLucy21() {
       // si onConnectionQuality n'a pas encore ete appele.
       realtimeClient.on('connectionQuality', (report: any) => {
         setConnectionQuality(report?.quality ?? null)
+        const m = report?.metrics
+        if (m) {
+          if (typeof m.rttMs === 'number') setLiveRttMs(Math.round(m.rttMs))
+          if (typeof m.fps === 'number') setLiveFps(Math.round(m.fps))
+        }
+      })
+
+      // Diagnostic de performance du SDK : decompose le temps de demarrage par
+      // phase (signalisation, negociation ICE, 1ere image...). On le logge pour
+      // reperer precisement quelle phase est lente si la connexion traine.
+      realtimeClient.on('diagnostic', (evt: any) => {
+        console.log('[Lucy 2.5][diagnostic]', evt?.phase ?? evt?.type ?? '', evt)
       })
 
       // Garde-fou : si aucune image transformee n'arrive en 20s, on coupe et on
@@ -438,5 +535,10 @@ export function useLucy21() {
     qualityFactor,
     queuePosition,
     activeResolution,
+    // Diagnostic reseau (preflight + live)
+    networkTransport,
+    preflightRttMs,
+    liveRttMs,
+    liveFps,
   }
 }
