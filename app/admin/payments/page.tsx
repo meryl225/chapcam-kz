@@ -106,6 +106,9 @@ export default function AdminPaymentsPage() {
   const [installFilter, setInstallFilter] = useState<'all' | 'paid' | 'pending'>('all')
   const [error, setError] = useState<string | null>(null)
   const [recrediting, setRecrediting] = useState<string | null>(null)
+  // Recherche PayDunya globale (toute la base, pas seulement les 200 charges)
+  const [remoteLogs, setRemoteLogs] = useState<PaydunyaLog[] | null>(null)
+  const [searchingRemote, setSearchingRemote] = useState(false)
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
@@ -155,6 +158,41 @@ export default function AdminPaymentsPage() {
     load()
   }, [load])
 
+  // Sur l'onglet PayDunya, une recherche interroge TOUTE la base (pas
+  // seulement les 200 paiements deja charges). Debounce de 350ms.
+  useEffect(() => {
+    if (tab !== 'paydunya') {
+      setRemoteLogs(null)
+      return
+    }
+    const q = search.trim()
+    if (q.length < 2) {
+      setRemoteLogs(null)
+      setSearchingRemote(false)
+      return
+    }
+    setSearchingRemote(true)
+    const ctrl = new AbortController()
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/admin/payments/search?q=${encodeURIComponent(q)}`, {
+          cache: 'no-store',
+          signal: ctrl.signal,
+        })
+        const data = await res.json()
+        if (res.ok) setRemoteLogs(data.paydunyaLogs || [])
+      } catch {
+        // ignore (abort ou reseau) : on retombe sur le filtrage local
+      } finally {
+        setSearchingRemote(false)
+      }
+    }, 350)
+    return () => {
+      clearTimeout(t)
+      ctrl.abort()
+    }
+  }, [search, tab])
+
   const filteredClients = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return clients
@@ -183,6 +221,10 @@ export default function AdminPaymentsPage() {
   const filteredLogs = useMemo(() => {
     const q = search.trim().toLowerCase()
     if (!q) return paydunyaLogs
+    // Recherche active : on privilegie les resultats serveur (toute la base).
+    if (remoteLogs !== null) return remoteLogs
+    // Repli : filtrage local sur les 200 deja charges (le temps que la
+    // requete serveur reponde).
     return paydunyaLogs.filter(
       (l) =>
         l.email?.toLowerCase().includes(q) ||
@@ -190,7 +232,7 @@ export default function AdminPaymentsPage() {
         l.token?.toLowerCase().includes(q) ||
         l.transactionId?.toLowerCase().includes(q),
     )
-  }, [paydunyaLogs, search])
+  }, [paydunyaLogs, search, remoteLogs])
 
   return (
     <div className="min-h-screen bg-[#050505] px-4 py-8 md:px-8">
@@ -295,6 +337,23 @@ export default function AdminPaymentsPage() {
             }
             className="w-full rounded-xl border border-white/10 bg-[#111] py-3 pl-12 pr-4 text-white placeholder-gray-600 outline-none transition-colors focus:border-[#00ff88]"
           />
+          {tab === 'paydunya' && search.trim().length >= 2 && (
+            <p className="mt-2 flex items-center gap-1.5 pl-1 text-xs text-gray-500">
+              {searchingRemote ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#00ff88]" />
+                  Recherche dans toute la base…
+                </>
+              ) : (
+                <>
+                  <Search className="h-3.5 w-3.5 text-[#00ff88]" />
+                  {remoteLogs !== null
+                    ? `${remoteLogs.length} resultat(s) dans toute la base (max 100)`
+                    : 'Recherche globale (toute la base des paiements)'}
+                </>
+              )}
+            </p>
+          )}
         </div>
 
         {error && (

@@ -3,7 +3,19 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { Activity, ArrowLeft, RefreshCw, Clock, Zap, Users, Crown } from 'lucide-react'
+import {
+  Activity,
+  ArrowLeft,
+  RefreshCw,
+  Clock,
+  Zap,
+  Users,
+  Crown,
+  Scale,
+  CheckCircle2,
+  AlertTriangle,
+  ShieldAlert,
+} from 'lucide-react'
 
 type Period = 'today' | 'yesterday' | '7d' | '30d' | 'all'
 
@@ -57,6 +69,8 @@ export default function AdminConsumptionPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  // Reconciliation : chiffre releve manuellement dans le dashboard Decart.
+  const [decartInput, setDecartInput] = useState('')
 
   const load = useCallback(async (p: Period) => {
     setRefreshing(true)
@@ -184,6 +198,105 @@ export default function AdminConsumptionPage() {
             </p>
           </div>
         </div>
+
+        {/* Reconciliation Decart : points factures (ChapCam) vs usage GPU (Decart) */}
+        {(() => {
+          const billed = totals?.points ?? 0
+          const decart = Number(decartInput.replace(/[^\d]/g, ''))
+          const hasInput = decartInput.trim() !== '' && decart > 0 && billed > 0
+          const gap = hasInput ? decart - billed : 0
+          const ratio = hasInput ? decart / billed : 0
+          const gapPct = hasInput ? (gap / billed) * 100 : 0
+
+          // Seuils : Decart > ChapCam est NORMAL (chauffe GPU + HD non factures).
+          // - ratio <= 1.7  : ecart faible, tout va bien
+          // - 1.7 < ratio <= 2.2 : ecart eleve mais explicable (beaucoup de HD / reconnexions)
+          // - ratio > 2.2   : anormal -> a investiguer (fuite, abus, bug de facturation)
+          // - ratio < 1     : Decart < facture -> incoherent (tu factures plus que le GPU)
+          let level: 'ok' | 'warn' | 'danger' | 'weird' = 'ok'
+          if (hasInput) {
+            if (ratio < 1) level = 'weird'
+            else if (ratio > 2.2) level = 'danger'
+            else if (ratio > 1.7) level = 'warn'
+            else level = 'ok'
+          }
+
+          const styles = {
+            ok: { border: 'border-[#00ff88]/40', bg: 'bg-[#00ff88]/10', text: 'text-[#00ff88]', Icon: CheckCircle2 },
+            warn: { border: 'border-orange-400/40', bg: 'bg-orange-400/10', text: 'text-orange-300', Icon: AlertTriangle },
+            danger: { border: 'border-red-500/50', bg: 'bg-red-500/10', text: 'text-red-400', Icon: ShieldAlert },
+            weird: { border: 'border-yellow-400/40', bg: 'bg-yellow-400/10', text: 'text-yellow-300', Icon: AlertTriangle },
+          }[level]
+          const StatusIcon = styles.Icon
+
+          const verdict = {
+            ok: "Ecart normal. La difference s'explique par la chauffe GPU et le HD non factures. Rien d'anormal.",
+            warn: "Ecart eleve mais plausible (beaucoup de sessions HD/VIP ou de reconnexions). A surveiller.",
+            danger: "Ecart anormalement eleve. A investiguer : sessions HD massives, reconnexions en boucle, ou fuite/abus possible.",
+            weird: "Decart facture MOINS que toi : tu factures plus de points que le temps GPU reel. Verifie ta regle de facturation.",
+          }[level]
+
+          return (
+            <div className="mb-8 rounded-2xl border border-gray-800 bg-[#111] p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <Scale className="h-5 w-5 text-[#00ff88]" />
+                <h2 className="font-semibold text-white">Reconciliation avec Decart</h2>
+              </div>
+              <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-end">
+                {/* Facture ChapCam (auto) */}
+                <div className="rounded-xl border border-gray-800 bg-[#0a0a0a] p-4">
+                  <p className="text-xs text-gray-500">Points factures (ChapCam)</p>
+                  <p className="mt-1 text-2xl font-bold text-[#00ff88]">
+                    {billed.toLocaleString('fr-FR')}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-600">
+                    {PERIODS.find((p) => p.id === period)?.label} - temps utile facture
+                  </p>
+                </div>
+
+                {/* Saisie Decart */}
+                <div className="rounded-xl border border-gray-800 bg-[#0a0a0a] p-4">
+                  <label htmlFor="decart" className="text-xs text-gray-500">
+                    Usage releve sur Decart
+                  </label>
+                  <input
+                    id="decart"
+                    type="text"
+                    inputMode="numeric"
+                    value={decartInput}
+                    onChange={(e) => setDecartInput(e.target.value)}
+                    placeholder="ex: 29694"
+                    className="mt-1 w-full rounded-lg border border-gray-700 bg-[#111] px-3 py-2 text-2xl font-bold text-white outline-none focus:border-[#00ff88]"
+                  />
+                  <p className="mt-1 text-xs text-gray-600">a saisir manuellement (dashboard Decart)</p>
+                </div>
+              </div>
+
+              {hasInput && (
+                <div className={`mt-4 rounded-xl border ${styles.border} ${styles.bg} p-4`}>
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                    <div className={`flex items-center gap-2 font-semibold ${styles.text}`}>
+                      <StatusIcon className="h-5 w-5" />
+                      Ratio Decart / facture : {ratio.toFixed(2)}x
+                    </div>
+                    <div className="text-sm text-gray-300">
+                      Ecart : <span className="font-semibold">+{gap.toLocaleString('fr-FR')}</span> pts
+                      ({gapPct >= 0 ? '+' : ''}
+                      {gapPct.toFixed(0)}%)
+                    </div>
+                  </div>
+                  <p className={`mt-2 text-sm ${styles.text}`}>{verdict}</p>
+                </div>
+              )}
+              {!hasInput && (
+                <p className="mt-4 text-sm text-gray-500">
+                  Saisis le chiffre affiche par Decart pour comparer automatiquement et detecter
+                  tout ecart anormal.
+                </p>
+              )}
+            </div>
+          )
+        })()}
 
         {/* Tableau des consommateurs */}
         <div className="overflow-hidden rounded-2xl border border-gray-800 bg-[#111]">
