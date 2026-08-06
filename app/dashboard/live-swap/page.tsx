@@ -908,39 +908,9 @@ export default function DashboardPage() {
             <div className="grid gap-5 lg:grid-cols-2">
               {/* Colonne gauche : reglages qualite + prompt personnalise */}
               <div className="space-y-4">
-            {/* Qualite HD 1080p (VIP) + codec avance */}
+            {/* Codec video avance (le choix de resolution 720p/1080p est desormais
+                un menu deroulant place juste au-dessus du bouton Demarrer). */}
             <div className="space-y-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
-              <button
-                type="button"
-                disabled={!isVip || isConnected}
-                onClick={() => setHdEnabled(v => !v)}
-                className="flex w-full items-center justify-between disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <span className="flex items-center gap-2 text-left">
-                  <Maximize2 className="h-4 w-4 text-yellow-500" />
-                  <span className="flex flex-col">
-                    <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                      Qualité Full HD 1080p
-                      <span className="rounded bg-yellow-500/15 px-1.5 py-0.5 text-[10px] font-bold text-yellow-500">
-                        {POINTS_PER_SECOND_HD} pts/s
-                      </span>
-                    </span>
-                    <span className="text-[11px] text-foreground/50">
-                      {hdEnabled && isVip
-                        ? `Image ultra nette (1080p) — ${POINTS_PER_SECOND_HD} points/s.`
-                        : `Par défaut : 720p à ${POINTS_PER_SECOND_SD} pts/s. Activez le 1080p (${POINTS_PER_SECOND_HD} pts/s). Réservé VIP.`}
-                    </span>
-                  </span>
-                </span>
-                <span
-                  className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${hdEnabled && isVip ? 'bg-yellow-500' : 'bg-hairline-strong'}`}
-                >
-                  <span
-                    className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${hdEnabled && isVip ? 'translate-x-5' : 'translate-x-0.5'}`}
-                  />
-                </span>
-              </button>
-
               <div className="flex items-center justify-between gap-3">
                 <label htmlFor="codec-select" className="text-xs text-foreground/60">
                   Codec vidéo (avancé)
@@ -1066,6 +1036,34 @@ export default function DashboardPage() {
                 </Link>
               </div>
             )}
+          </div>
+
+          {/* Selecteur de resolution (720p / 1080p) — choix manuel, cout affiche.
+              Par defaut 720p pour tous. Le 1080p (4 pts/s) est reserve VIP. */}
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-hairline bg-black/40 px-4 py-3">
+            <span className="flex items-center gap-2">
+              <Maximize2 className="h-4 w-4 text-primary" />
+              <span className="flex flex-col">
+                <span className="text-sm font-semibold text-foreground">Résolution</span>
+                <span className="text-[11px] text-foreground/50">
+                  {hdEnabled && isVip
+                    ? `1080p Full HD — ${POINTS_PER_SECOND_HD} pts/s`
+                    : `720p — ${POINTS_PER_SECOND_SD} pts/s${isVip ? '' : ' (1080p réservé VIP)'}`}
+                </span>
+              </span>
+            </span>
+            <select
+              aria-label="Choisir la résolution du live swap"
+              value={hdEnabled && isVip ? '1080p' : '720p'}
+              disabled={isConnected}
+              onChange={e => setHdEnabled(e.target.value === '1080p')}
+              className="rounded-lg border border-hairline bg-black/60 px-3 py-2 text-sm font-bold text-foreground outline-none focus:border-primary/60 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <option value="720p">720p · {POINTS_PER_SECOND_SD} pts/s</option>
+              <option value="1080p" disabled={!isVip}>
+                1080p · {POINTS_PER_SECOND_HD} pts/s{isVip ? '' : ' (VIP)'}
+              </option>
+            </select>
           </div>
 
           {/* Certification d'usage responsable (avant demarrage) */}
