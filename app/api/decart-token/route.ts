@@ -67,7 +67,9 @@ export async function GET() {
 
     // 5. Creer un token ephemere avec restrictions
     const token = await client.tokens.create({
-      expiresIn: 600, // 10 minutes max
+      expiresIn: 300, // 5 min : reduit de moitie l'exposition GPU si le client cesse de
+                      // synchroniser, sans casser les usages tardifs (upload avatar,
+                      // changement de scene) qui reutilisent ce token pendant la session.
       allowedModels: ['lucy-2.5', 'lucy-2.1'],
       allowedOrigins: [
         'https://chapcam.com',
