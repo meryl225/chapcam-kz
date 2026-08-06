@@ -138,6 +138,14 @@ export function useLucy21() {
       const tokenData = await tokenRes.json().catch(() => null)
       const clientToken = tokenData?.token
       if (!tokenRes.ok || !clientToken) {
+        // Afficher la vraie raison renvoyee par le serveur (abonnement inactif,
+        // points insuffisants, plafond quotidien...) plutot qu'un message
+        // generique de "service indisponible" qui laisse croire a une panne.
+        // Seul un 5xx (vraie indisponibilite) garde le message generique.
+        const serverMsg = typeof tokenData?.error === 'string' ? tokenData.error : null
+        if (serverMsg && tokenRes.status < 500) {
+          throw new Error(serverMsg)
+        }
         throw new Error('Service de transformation indisponible pour le moment. Reessaie dans un instant.')
       }
 

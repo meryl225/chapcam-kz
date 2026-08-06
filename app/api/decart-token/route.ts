@@ -30,7 +30,9 @@ export async function GET() {
     const msg =
       access.reason === 'insufficient_points'
         ? 'Points insuffisants. Recharge ton compte pour utiliser le swap.'
-        : "Aucun abonnement actif. Souscris ou recharge pour utiliser le swap."
+        : access.reason === 'expired'
+          ? 'Ton abonnement a expire et le delai pour utiliser tes points restants est depasse. Renouvelle pour continuer.'
+          : "Aucun abonnement actif. Souscris ou recharge pour utiliser le swap."
     console.warn(
       `[Decart Token] REFUS user=${user.id} reason=${access.reason} ` +
       `points=${access.points} plan=${access.plan}`
