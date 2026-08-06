@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pointsPerSecond } from '@/lib/swap-pricing'
+import { trackGPUUsage } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
   try {
@@ -80,6 +81,19 @@ export async function POST(request: NextRequest) {
     const points = Math.max(0, Math.min(requested, maxAllowed))
     if (points <= 0) {
       return NextResponse.json({ success: false, error: 'Rien a deduire' }, { status: 400 })
+    }
+
+    // Cap quotidien de GPU (2h/jour/compte) : on comptabilise le temps reellement
+    // ecoule sur cette sync (~10s) puis on coupe le swap si le plafond est atteint.
+    // C'est ce qui rend le garde-fou effectif (l'emission du token ne comptait 0s).
+    const elapsed = Math.max(0, Math.min(Math.floor(sessionDuration || 0), 60))
+    const gpu = trackGPUUsage(user.id, elapsed)
+    if (!gpu.allowed) {
+      console.warn(`[Points] CAP quotidien atteint user=${user.id} used=${gpu.totalUsed}s`)
+      return NextResponse.json(
+        { success: false, error: 'Limite quotidienne de swap atteinte (2h). Reessaie demain.', code: 'daily_cap', depleted: true },
+        { status: 429 }
+      )
     }
 
     // ...mais on ecrit avec le service_role (RLS verrouille les ecritures via la
