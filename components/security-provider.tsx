@@ -101,7 +101,6 @@ export function obfuscateApiUrl(url: string): string {
   if (process.env.NODE_ENV === 'production') {
     const mappings: Record<string, string> = {
       '/api/decart-token': '/api/v1/token',
-      '/api/decart-session': '/api/v1/session',
       '/api/swap/cloud': '/api/v1/transform',
       '/api/faceswap/stream': '/api/v1/stream',
     }

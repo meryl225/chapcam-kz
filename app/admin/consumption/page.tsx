@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   AlertTriangle,
   ShieldAlert,
+  KeyRound,
+  Database,
 } from 'lucide-react'
 
 type Period = 'today' | 'yesterday' | '7d' | '30d' | 'all'
@@ -33,6 +35,23 @@ interface ConsumptionData {
   period: Period
   totals: { users: number; sessions: number; points: number; seconds: number }
   users: ConsumptionUser[]
+}
+
+interface ReconUser {
+  email: string | null
+  plan: string | null
+  issued: number
+  used: number
+  wasted: number
+  wastePct: number
+}
+
+interface ReconData {
+  configured: boolean
+  period: Period
+  totals?: { issued: number; used: number; wasted: number; wastePct: number }
+  wasted?: { email: string | null; plan: string | null; createdAt: string }[]
+  users?: ReconUser[]
 }
 
 const PERIODS: { id: Period; label: string }[] = [
@@ -71,14 +90,21 @@ export default function AdminConsumptionPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   // Reconciliation : chiffre releve manuellement dans le dashboard Decart.
   const [decartInput, setDecartInput] = useState('')
+  // Reconciliation automatique : tokens Decart emis vs sessions facturees.
+  const [recon, setRecon] = useState<ReconData | null>(null)
 
   const load = useCallback(async (p: Period) => {
     setRefreshing(true)
     try {
-      const res = await fetch(`/api/admin/consumption?period=${p}`, { cache: 'no-store' })
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const json = (await res.json()) as ConsumptionData
+      // Consommation + reconciliation automatique en parallele.
+      const [consRes, reconRes] = await Promise.all([
+        fetch(`/api/admin/consumption?period=${p}`, { cache: 'no-store' }),
+        fetch(`/api/admin/reconciliation?period=${p}`, { cache: 'no-store' }),
+      ])
+      if (!consRes.ok) throw new Error(`HTTP ${consRes.status}`)
+      const json = (await consRes.json()) as ConsumptionData
       setData(json)
+      if (reconRes.ok) setRecon((await reconRes.json()) as ReconData)
       setLastUpdated(new Date())
     } catch (err) {
       console.error('Erreur chargement consommation:', err)
@@ -293,6 +319,127 @@ export default function AdminConsumptionPage() {
                   Saisis le chiffre affiche par Decart pour comparer automatiquement et detecter
                   tout ecart anormal.
                 </p>
+              )}
+            </div>
+          )
+        })()}
+
+        {/* Reconciliation automatique : tokens Decart emis vs sessions facturees */}
+        {(() => {
+          if (!recon) return null
+
+          // Table de logs pas encore creee : guider vers le script SQL.
+          if (!recon.configured) {
+            return (
+              <div className="mb-8 rounded-2xl border border-gray-800 bg-[#111] p-5">
+                <div className="mb-3 flex items-center gap-2">
+                  <KeyRound className="h-5 w-5 text-[#00ff88]" />
+                  <h2 className="font-semibold text-white">Reconciliation automatique des tokens</h2>
+                </div>
+                <div className="flex items-start gap-3 rounded-xl border border-yellow-400/30 bg-yellow-400/10 p-4">
+                  <Database className="mt-0.5 h-5 w-5 shrink-0 text-yellow-300" />
+                  <div className="text-sm text-yellow-200">
+                    <p className="font-semibold">Journal des tokens non active.</p>
+                    <p className="mt-1 text-yellow-200/80">
+                      Execute le script{' '}
+                      <code className="rounded bg-black/40 px-1.5 py-0.5 font-mono text-xs">
+                        scripts/decart-token-logs.sql
+                      </code>{' '}
+                      dans le SQL Editor de Supabase pour enregistrer chaque token Decart emis et
+                      activer la detection automatique de gaspillage.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          }
+
+          const t = recon.totals!
+          const pct = t.wastePct
+          // Seuils de gaspillage (tokens emis sans session facturee) :
+          // <= 15% normal (annulations avant stream), 15-35% a surveiller, > 35% anormal.
+          let level: 'ok' | 'warn' | 'danger' = 'ok'
+          if (pct > 35) level = 'danger'
+          else if (pct > 15) level = 'warn'
+
+          const styles = {
+            ok: { border: 'border-[#00ff88]/40', bg: 'bg-[#00ff88]/10', text: 'text-[#00ff88]', Icon: CheckCircle2 },
+            warn: { border: 'border-orange-400/40', bg: 'bg-orange-400/10', text: 'text-orange-300', Icon: AlertTriangle },
+            danger: { border: 'border-red-500/50', bg: 'bg-red-500/10', text: 'text-red-400', Icon: ShieldAlert },
+          }[level]
+          const StatusIcon = styles.Icon
+          const verdict = {
+            ok: "Gaspillage faible. La plupart des tokens emis donnent lieu a une session facturee. Aucune fuite detectee.",
+            warn: "Gaspillage moyen. Beaucoup de tokens emis sans session derriere (annulations ou reconnexions). A surveiller.",
+            danger: "Gaspillage eleve : de nombreux tokens sont emis sans session facturee. A investiguer (abus, script, ou fuite de tokens).",
+          }[level]
+
+          return (
+            <div className="mb-8 rounded-2xl border border-gray-800 bg-[#111] p-5">
+              <div className="mb-4 flex items-center gap-2">
+                <KeyRound className="h-5 w-5 text-[#00ff88]" />
+                <h2 className="font-semibold text-white">Reconciliation automatique des tokens</h2>
+                <span className="text-xs text-gray-500">tokens Decart emis vs sessions facturees</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="rounded-xl border border-gray-800 bg-[#0a0a0a] p-4">
+                  <p className="text-xs text-gray-500">Tokens emis</p>
+                  <p className="mt-1 text-2xl font-bold text-white">{t.issued.toLocaleString('fr-FR')}</p>
+                </div>
+                <div className="rounded-xl border border-gray-800 bg-[#0a0a0a] p-4">
+                  <p className="text-xs text-gray-500">Avec session facturee</p>
+                  <p className="mt-1 text-2xl font-bold text-[#00ff88]">{t.used.toLocaleString('fr-FR')}</p>
+                </div>
+                <div className="rounded-xl border border-gray-800 bg-[#0a0a0a] p-4">
+                  <p className="text-xs text-gray-500">Sans session (gaspilles)</p>
+                  <p className={`mt-1 text-2xl font-bold ${t.wasted > 0 ? styles.text : 'text-[#00ff88]'}`}>
+                    {t.wasted.toLocaleString('fr-FR')}
+                  </p>
+                </div>
+              </div>
+
+              {t.issued > 0 && (
+                <div className={`mt-4 rounded-xl border ${styles.border} ${styles.bg} p-4`}>
+                  <div className={`flex items-center gap-2 font-semibold ${styles.text}`}>
+                    <StatusIcon className="h-5 w-5" />
+                    Taux de gaspillage : {pct.toFixed(0)}%
+                  </div>
+                  <p className={`mt-2 text-sm ${styles.text}`}>{verdict}</p>
+                </div>
+              )}
+              {t.issued === 0 && (
+                <p className="mt-4 text-sm text-gray-500">
+                  Aucun token emis sur cette periode.
+                </p>
+              )}
+
+              {/* Comptes avec le plus de tokens gaspilles */}
+              {recon.users && recon.users.filter((u) => u.wasted > 0).length > 0 && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-medium text-gray-400">
+                    Comptes a surveiller (tokens sans session)
+                  </p>
+                  <div className="space-y-1.5">
+                    {recon.users
+                      .filter((u) => u.wasted > 0)
+                      .slice(0, 8)
+                      .map((u, i) => (
+                        <div
+                          key={i}
+                          className="flex items-center justify-between rounded-lg border border-gray-800 bg-[#0a0a0a] px-3 py-2 text-sm"
+                        >
+                          <span className="truncate text-gray-200">{u.email || 'Inconnu'}</span>
+                          <span className="ml-3 shrink-0 text-gray-400">
+                            <span className={u.wastePct > 50 ? 'font-semibold text-red-400' : ''}>
+                              {u.wasted}
+                            </span>
+                            <span className="text-gray-600"> / {u.issued} tokens</span>
+                          </span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
               )}
             </div>
           )
