@@ -28,6 +28,8 @@ export interface LucyPreset {
   label: string
   /** Modificateur de scene ajoute au prompt de base. */
   prompt: string
+  /** Image d'apercu (dans /public/scenes) pour les scenes selectionnables. */
+  image?: string
 }
 
 export interface LucyPresetCategory {
@@ -46,14 +48,14 @@ export const LUCY_PRESET_CATEGORIES: LucyPresetCategory[] = [
     id: 'decor',
     label: 'Décors',
     presets: [
-      { id: 'nightclub', label: 'Boîte de nuit', prompt: 'Set the scene in a luxury nightclub with colorful neon lights, bokeh, and a party atmosphere.' },
-      { id: 'beach', label: 'Plage tropicale', prompt: 'Place the person on a sunny tropical beach with palm trees, turquoise water and warm golden light.' },
-      { id: 'penthouse', label: 'Penthouse', prompt: 'Set the scene in a luxury penthouse at night with a city skyline through large windows.' },
-      { id: 'studio', label: 'Studio photo', prompt: 'Place the person in a professional photo studio with a clean seamless backdrop and soft studio lighting.' },
-      { id: 'office', label: 'Bureau chic', prompt: 'Set the scene in a modern upscale office with elegant lighting and a professional look.' },
-      { id: 'street', label: 'Rue urbaine', prompt: 'Place the person on a vibrant city street at dusk with neon signs and cinematic lighting.' },
-      { id: 'hotel', label: 'Hôtel de luxe', prompt: 'Completely replace the entire background and environment with a grand luxury hotel lobby: polished marble floors, large crystal chandeliers, golden columns, and elegant warm lighting.' },
-      { id: 'airport', label: 'Aéroport', prompt: 'Completely replace the entire background and environment with a modern airport terminal: huge floor-to-ceiling windows, airplanes visible on the tarmac outside, rows of seats and bright daylight.' },
+      { id: 'nightclub', label: 'Boîte de nuit', image: '/scenes/nightclub.png', prompt: 'Set the scene in a luxury nightclub with colorful neon lights, bokeh, and a party atmosphere.' },
+      { id: 'beach', label: 'Plage tropicale', image: '/scenes/beach.png', prompt: 'Place the person on a sunny tropical beach with palm trees, turquoise water and warm golden light.' },
+      { id: 'penthouse', label: 'Penthouse', image: '/scenes/penthouse.png', prompt: 'Set the scene in a luxury penthouse at night with a city skyline through large windows.' },
+      { id: 'studio', label: 'Studio photo', image: '/scenes/studio.png', prompt: 'Place the person in a professional photo studio with a clean seamless backdrop and soft studio lighting.' },
+      { id: 'office', label: 'Bureau chic', image: '/scenes/office.png', prompt: 'Set the scene in a modern upscale office with elegant lighting and a professional look.' },
+      { id: 'street', label: 'Rue urbaine', image: '/scenes/street.png', prompt: 'Place the person on a vibrant city street at dusk with neon signs and cinematic lighting.' },
+      { id: 'hotel', label: 'Hôtel de luxe', image: '/scenes/hotel.png', prompt: 'Completely replace the entire background and environment with a grand luxury hotel lobby: polished marble floors, large crystal chandeliers, golden columns, and elegant warm lighting.' },
+      { id: 'airport', label: 'Aéroport', image: '/scenes/airport.png', prompt: 'Completely replace the entire background and environment with a modern airport terminal: huge floor-to-ceiling windows, airplanes visible on the tarmac outside, rows of seats and bright daylight.' },
     ],
   },
   {
@@ -84,12 +86,12 @@ export const LUCY_PRESET_CATEGORIES: LucyPresetCategory[] = [
     id: 'background',
     label: 'Arrière-plans',
     presets: [
-      { id: 'blur', label: 'Flou bokeh', prompt: 'Replace the background with a soft blurred bokeh background, keeping the person sharp.' },
-      { id: 'gradient', label: 'Dégradé studio', prompt: 'Replace the background with a smooth studio gradient in complementary colors.' },
-      { id: 'space', label: 'Espace', prompt: 'Replace the background with a stunning outer space scene full of stars and nebulae.' },
-      { id: 'nature', label: 'Nature', prompt: 'Replace the background with a lush green nature landscape and soft daylight.' },
-      { id: 'green', label: 'Fond vert', prompt: 'Replace the background with a clean solid chroma-key green screen.' },
-      { id: 'city', label: 'Skyline nuit', prompt: 'Replace the background with a glowing night city skyline with bokeh lights.' },
+      { id: 'blur', label: 'Flou bokeh', image: '/scenes/blur.png', prompt: 'Replace the background with a soft blurred bokeh background, keeping the person sharp.' },
+      { id: 'gradient', label: 'Dégradé studio', image: '/scenes/gradient.png', prompt: 'Replace the background with a smooth studio gradient in complementary colors.' },
+      { id: 'space', label: 'Espace', image: '/scenes/space.png', prompt: 'Replace the background with a stunning outer space scene full of stars and nebulae.' },
+      { id: 'nature', label: 'Nature', image: '/scenes/nature.png', prompt: 'Replace the background with a lush green nature landscape and soft daylight.' },
+      { id: 'green', label: 'Fond vert', image: '/scenes/green.png', prompt: 'Replace the background with a clean solid chroma-key green screen.' },
+      { id: 'city', label: 'Skyline nuit', image: '/scenes/city.png', prompt: 'Replace the background with a glowing night city skyline with bokeh lights.' },
     ],
   },
 ]

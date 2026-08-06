@@ -79,6 +79,31 @@ interface Stats {
   paydunyaFailed: number
 }
 
+interface AuditRow {
+  id: string
+  email: string
+  plan: string
+  planName: string
+  amount: number
+  points: number
+  maxPoints: number
+  active: boolean
+  expired: boolean
+  startDate: string | null
+  expiresAt: string | null
+  proofs: string[]
+  verdict: 'verified' | 'gift' | 'unverified'
+}
+
+interface AuditStats {
+  totalPaid: number
+  verified: number
+  gift: number
+  unverified: number
+  unverifiedActive: number
+  unverifiedAmount: number
+}
+
 function fmtDate(d: string | null) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -99,7 +124,12 @@ export default function AdminPaymentsPage() {
   const [installations, setInstallations] = useState<Installation[]>([])
   const [paydunyaLogs, setPaydunyaLogs] = useState<PaydunyaLog[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
-  const [tab, setTab] = useState<'abonnements' | 'installations' | 'paydunya'>('abonnements')
+  const [tab, setTab] = useState<'abonnements' | 'installations' | 'paydunya' | 'audit'>('abonnements')
+  const [audit, setAudit] = useState<AuditRow[]>([])
+  const [auditStats, setAuditStats] = useState<AuditStats | null>(null)
+  const [auditLoading, setAuditLoading] = useState(false)
+  const [auditLoaded, setAuditLoaded] = useState(false)
+  const [auditFilter, setAuditFilter] = useState<'unverified' | 'gift' | 'verified' | 'all'>('unverified')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [search, setSearch] = useState('')
@@ -154,9 +184,35 @@ export default function AdminPaymentsPage() {
     [load],
   )
 
+  const loadAudit = useCallback(async (force = false) => {
+    if (auditLoaded && !force) return
+    setAuditLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/admin/payments/audit', { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || "Erreur de chargement de l'audit.")
+        return
+      }
+      setAudit(data.audited || [])
+      setAuditStats(data.stats || null)
+      setAuditLoaded(true)
+    } catch {
+      setError('Erreur de connexion.')
+    } finally {
+      setAuditLoading(false)
+    }
+  }, [auditLoaded])
+
   useEffect(() => {
     load()
   }, [load])
+
+  // Charge l'audit la premiere fois qu'on ouvre l'onglet (donnees lourdes).
+  useEffect(() => {
+    if (tab === 'audit') loadAudit()
+  }, [tab, loadAudit])
 
   // Sur l'onglet PayDunya, une recherche interroge TOUTE la base (pas
   // seulement les 200 paiements deja charges). Debounce de 350ms.
@@ -217,6 +273,15 @@ export default function AdminPaymentsPage() {
   }, [installations, search, installFilter])
 
   const paidInstallsCount = useMemo(() => installations.filter((i) => i.paid).length, [installations])
+
+  const filteredAudit = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return audit.filter((a) => {
+      if (auditFilter !== 'all' && a.verdict !== auditFilter) return false
+      if (!q) return true
+      return a.email?.toLowerCase().includes(q) || a.planName?.toLowerCase().includes(q)
+    })
+  }, [audit, auditFilter, search])
 
   const filteredLogs = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -295,6 +360,9 @@ export default function AdminPaymentsPage() {
           <TabButton active={tab === 'paydunya'} onClick={() => setTab('paydunya')}>
             Paiements PayDunya ({paydunyaLogs.length})
           </TabButton>
+          <TabButton active={tab === 'audit'} onClick={() => setTab('audit')}>
+            Audit paiements{auditStats ? ` (${auditStats.unverified})` : ''}
+          </TabButton>
         </div>
 
         {/* Stats PayDunya (onglet dedie) */}
@@ -303,6 +371,34 @@ export default function AdminPaymentsPage() {
             <StatCard icon={Receipt} label="Recus aujourd'hui" value={stats.paydunyaToday.toString()} color="text-white" />
             <StatCard icon={CheckCircle2} label="Credites aujourd'hui" value={stats.paydunyaCreditedToday.toString()} color="text-[#00ff88]" />
             <StatCard icon={AlertTriangle} label="Echecs de credit" value={stats.paydunyaFailed.toString()} color="text-red-400" />
+          </div>
+        )}
+
+        {/* Stats Audit (onglet dedie) */}
+        {tab === 'audit' && auditStats && (
+          <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <StatCard icon={Wallet} label="Abonnements payants" value={auditStats.totalPaid.toString()} color="text-white" />
+            <StatCard icon={CheckCircle2} label="Verifies (payes)" value={auditStats.verified.toString()} color="text-[#00ff88]" />
+            <StatCard icon={Users} label="Dons admin" value={auditStats.gift.toString()} color="text-[#00d4ff]" />
+            <StatCard icon={AlertTriangle} label="Sans preuve" value={auditStats.unverified.toString()} color={auditStats.unverified > 0 ? 'text-red-400' : 'text-[#00ff88]'} />
+          </div>
+        )}
+
+        {/* Sous-filtre Audit */}
+        {tab === 'audit' && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            <SubFilterButton active={auditFilter === 'unverified'} onClick={() => setAuditFilter('unverified')}>
+              Sans preuve ({auditStats?.unverified ?? 0})
+            </SubFilterButton>
+            <SubFilterButton active={auditFilter === 'gift'} onClick={() => setAuditFilter('gift')}>
+              Dons admin ({auditStats?.gift ?? 0})
+            </SubFilterButton>
+            <SubFilterButton active={auditFilter === 'verified'} onClick={() => setAuditFilter('verified')}>
+              Verifies ({auditStats?.verified ?? 0})
+            </SubFilterButton>
+            <SubFilterButton active={auditFilter === 'all'} onClick={() => setAuditFilter('all')}>
+              Tous ({auditStats?.totalPaid ?? 0})
+            </SubFilterButton>
           </div>
         )}
 
@@ -333,7 +429,9 @@ export default function AdminPaymentsPage() {
                 ? 'Rechercher par email ou formule...'
                 : tab === 'installations'
                   ? 'Rechercher par nom, email, tel, ville...'
-                  : 'Rechercher par email, produit, token...'
+                  : tab === 'audit'
+                    ? 'Rechercher un abonnement par email ou formule...'
+                    : 'Rechercher par email, produit, token...'
             }
             className="w-full rounded-xl border border-white/10 bg-[#111] py-3 pl-12 pr-4 text-white placeholder-gray-600 outline-none transition-colors focus:border-[#00ff88]"
           />
@@ -470,6 +568,74 @@ export default function AdminPaymentsPage() {
             ))}
           </div>
         )
+        ) : tab === 'audit' ? (
+          auditLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+            </div>
+          ) : filteredAudit.length === 0 ? (
+            <EmptyState
+              text={
+                auditFilter === 'unverified'
+                  ? 'Aucun abonnement sans preuve de paiement. Tout est en regle.'
+                  : 'Aucun abonnement dans cette categorie.'
+              }
+            />
+          ) : (
+            <div className="space-y-3">
+              {filteredAudit.map((a) => {
+                const badge =
+                  a.verdict === 'unverified'
+                    ? { label: 'Sans preuve', cls: 'border-red-500/30 bg-red-500/15 text-red-400' }
+                    : a.verdict === 'gift'
+                      ? { label: 'Don admin', cls: 'border-[#00d4ff]/30 bg-[#00d4ff]/15 text-[#00d4ff]' }
+                      : { label: 'Verifie', cls: 'border-[#00ff88]/30 bg-[#00ff88]/15 text-[#00ff88]' }
+                return (
+                  <div
+                    key={a.id}
+                    className={`flex flex-col gap-3 rounded-2xl border bg-[#111] p-5 transition-colors sm:flex-row sm:items-center sm:justify-between ${
+                      a.verdict === 'unverified' ? 'border-red-500/40' : 'border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-semibold text-white">{a.email || 'Inconnu'}</span>
+                        <span className={`rounded-full border px-2.5 py-0.5 text-xs font-bold ${badge.cls}`}>
+                          {badge.label}
+                        </span>
+                        <span
+                          className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                            a.active
+                              ? 'border-[#00ff88]/30 bg-[#00ff88]/10 text-[#00ff88]'
+                              : 'border-gray-500/30 bg-gray-500/10 text-gray-400'
+                          }`}
+                        >
+                          {a.active ? 'Actif' : 'Expire'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {a.planName} · {a.amount.toLocaleString()} FCFA · cree le {fmtDate(a.startDate)}
+                      </p>
+                      <p className="mt-1.5 inline-flex items-center gap-1.5 text-xs">
+                        {a.proofs.length > 0 ? (
+                          <span className="text-gray-400">Preuve : {a.proofs.join(', ')}</span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-red-400">
+                            <AlertTriangle className="h-3.5 w-3.5" />
+                            Aucune trace de paiement, de demande approuvee ni de don admin
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <div className="text-right text-xs text-gray-600">
+                      <p>Points : {a.points.toLocaleString()}/{a.maxPoints.toLocaleString()}</p>
+                      <p>Expire le {fmtDate(a.expiresAt)}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
         ) : filteredLogs.length === 0 ? (
           <EmptyState text="Aucun paiement PayDunya enregistre." />
         ) : (

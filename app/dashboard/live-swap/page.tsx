@@ -978,30 +978,80 @@ export default function DashboardPage() {
 
               {/* Colonne droite : presets par categorie */}
               <div className="space-y-3">
-                {LUCY_PRESET_CATEGORIES.map(category => (
-                  <div key={category.id}>
-                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
-                      {category.label}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {category.presets.map(preset => (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          disabled={!isVip || !isConnected || isApplyingPrompt}
-                          onClick={() => handleApplyPreset(preset.id, preset.prompt)}
-                          className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
-                            activePresetId === preset.id
-                              ? 'border-primary bg-primary/15 text-primary shadow-[0_0_16px_rgba(0,255,136,0.25)]'
-                              : 'border-hairline text-foreground/70 hover:border-primary/40 hover:text-foreground'
-                          }`}
-                        >
-                          {preset.label}
-                        </button>
-                      ))}
+                {LUCY_PRESET_CATEGORIES.map(category => {
+                  // Une categorie est "visuelle" si ses presets ont une image d'apercu
+                  // (Decors, Arriere-plans) -> grille de cartes photo. Sinon (Styles,
+                  // Effets) -> pastilles compactes, ce sont des filtres.
+                  const isVisual = category.presets.some(p => p.image)
+                  return (
+                    <div key={category.id}>
+                      <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
+                        {category.label}
+                      </p>
+                      {isVisual ? (
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {category.presets.map(preset => {
+                            const isActive = activePresetId === preset.id
+                            const disabled = !isVip || !isConnected || isApplyingPrompt
+                            return (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                disabled={disabled}
+                                onClick={() => handleApplyPreset(preset.id, preset.prompt)}
+                                title={preset.label}
+                                className={`group relative aspect-video overflow-hidden rounded-xl border text-left transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                                  isActive
+                                    ? 'border-primary shadow-[0_0_16px_rgba(0,255,136,0.35)]'
+                                    : 'border-hairline hover:border-primary/50'
+                                }`}
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={preset.image || '/placeholder.svg'}
+                                  alt={preset.label}
+                                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                />
+                                <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+                                <span className="absolute inset-x-0 bottom-0 p-2 text-[11px] font-semibold leading-tight text-white">
+                                  {preset.label}
+                                </span>
+                                {isActive && (
+                                  <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-black">
+                                    <Check className="h-3 w-3" />
+                                  </span>
+                                )}
+                                {isApplyingPrompt && isActive && (
+                                  <span className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                  </span>
+                                )}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {category.presets.map(preset => (
+                            <button
+                              key={preset.id}
+                              type="button"
+                              disabled={!isVip || !isConnected || isApplyingPrompt}
+                              onClick={() => handleApplyPreset(preset.id, preset.prompt)}
+                              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                                activePresetId === preset.id
+                                  ? 'border-primary bg-primary/15 text-primary shadow-[0_0_16px_rgba(0,255,136,0.25)]'
+                                  : 'border-hairline text-foreground/70 hover:border-primary/40 hover:text-foreground'
+                              }`}
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
 
