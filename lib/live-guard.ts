@@ -59,12 +59,16 @@ export async function checkLiveAccess(userId: string): Promise<LiveGuardResult> 
   }
 
   // Abonnement expire : fenetre de grace. Le client peut consommer ses points
-  // restants pendant GRACE_DAYS apres l'expiration, puis c'est bloque.
+  // restants pendant GRACE_DAYS apres l'expiration, puis c'est bloque ET les
+  // points non utilises sont definitivement remis a zero (expiration paresseuse).
   let inGrace = false
   if (isExpired) {
     const daysSinceExpiry = expiresMs !== null ? (now - expiresMs) / 86_400_000 : Infinity
     if (daysSinceExpiry > GRACE_DAYS) {
-      return { allowed: false, points, plan, isActive: false, reason: 'expired' }
+      if (points > 0) {
+        await supabase.from('subscriptions').update({ points: 0 }).eq('user_id', userId)
+      }
+      return { allowed: false, points: 0, plan, isActive: false, reason: 'expired' }
     }
     inGrace = true
   }

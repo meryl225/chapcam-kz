@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pointsPerSecond } from '@/lib/swap-pricing'
 import { trackGPUUsage } from '@/lib/rate-limit'
+import { GRACE_DAYS } from '@/lib/live-guard'
 
 export async function POST(request: NextRequest) {
   try {
@@ -199,11 +200,23 @@ export async function GET() {
     }
 
     // Verifier si l'abonnement est expire
-    const isExpired = subscription.expires_at && new Date(subscription.expires_at) < new Date()
-    
+    const expiresMs = subscription.expires_at ? new Date(subscription.expires_at).getTime() : null
+    const isExpired = expiresMs !== null && expiresMs < Date.now()
+
+    // Fenetre de grace de GRACE_DAYS : passe ce delai, les points non utilises
+    // sont definitivement remis a zero (meme regle que le verrou de swap).
+    let points = subscription.points || 0
+    if (isExpired && expiresMs !== null) {
+      const daysSinceExpiry = (Date.now() - expiresMs) / 86_400_000
+      if (daysSinceExpiry > GRACE_DAYS && points > 0) {
+        await supabase.from('subscriptions').update({ points: 0 }).eq('user_id', user.id)
+        points = 0
+      }
+    }
+
     return NextResponse.json({
       success: true,
-      points: subscription.points || 0,
+      points,
       maxPoints: subscription.max_points || 0,
       plan: subscription.plan || 'free',
       isActive: subscription.is_active && !isExpired,
