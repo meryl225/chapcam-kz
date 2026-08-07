@@ -171,9 +171,9 @@ export function photoVideoQuotaForPlan(planId: string | null | undefined): numbe
 export const MOTION_VIDEO_QUOTA: Record<PlanId, number> = {
   starter: 0,
   standard: 0,
-  premium: 2,
-  ultimate: 4,
-  vipdebout: 6,
+  premium: 1,
+  ultimate: 2,
+  vipdebout: 3,
 }
 
 /** Quota Motion Control accordé par un forfait. Retourne 0 si inconnu/absent. */
