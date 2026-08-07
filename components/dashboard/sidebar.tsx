@@ -282,6 +282,15 @@ function SidebarContent({
                   tone="green"
                   active={pathname === '/dashboard/photo-video'}
                 />
+                <FeaturedLink
+                  href="/dashboard/motion"
+                  icon={Film}
+                  title="Motion"
+                  subtitle="Anime ta photo en clip avec mouvement de caméra"
+                  badge="New"
+                  tone="purple"
+                  active={pathname === '/dashboard/motion'}
+                />
               </div>
             )}
             </div>
