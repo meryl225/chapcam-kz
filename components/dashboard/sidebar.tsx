@@ -184,8 +184,8 @@ function SidebarContent({
       <div className="px-5 pb-4 pt-6">
         <Link href="/dashboard" className="group flex items-center gap-3">
           {/* Tuile de marque */}
-          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-emerald-400 shadow-lg shadow-primary/30 transition-transform duration-200 group-hover:scale-105">
-            <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-xl">
+          <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-emerald-400 shadow-lg shadow-primary/30 ring-2 ring-primary/20 transition-transform duration-200 group-hover:scale-105">
+            <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-full">
               <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
             </span>
             <Zap className="h-6 w-6 text-black" strokeWidth={2.5} />
