@@ -8,6 +8,7 @@ import { getPcOffer } from '@/lib/pc-offer'
 import { getVoiceOffer } from '@/lib/voice-offers'
 import { getPhotoVideoOffer } from '@/lib/photo-video-offers'
 import { getMotionOffer } from '@/lib/motion-offers'
+import { getTranslationOffer } from '@/lib/translation-offers'
 import { paydunyaHeaders } from '@/lib/fulfillment'
 
 export const runtime = 'nodejs'
@@ -47,7 +48,8 @@ export async function POST(request: NextRequest) {
     const voiceOffer = getVoiceOffer(productId)
     const photoOffer = getPhotoVideoOffer(productId)
     const motionOffer = getMotionOffer(productId)
-    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer) {
+    const translationOffer = getTranslationOffer(productId)
+    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer) {
       return NextResponse.json({ success: false, error: 'Produit inconnu.' }, { status: 400 })
     }
 
@@ -63,8 +65,10 @@ export async function POST(request: NextRequest) {
               ? voiceOffer.price
               : photoOffer
                 ? photoOffer.price
-                : motionOffer!.price
-    const kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' = plan
+                : motionOffer
+                  ? motionOffer.price
+                  : translationOffer!.price
+    const kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' | 'translation' = plan
       ? 'plan'
       : liveOffer
         ? 'live'
@@ -76,7 +80,9 @@ export async function POST(request: NextRequest) {
               ? 'voice'
               : photoOffer
                 ? 'photo'
-                : 'motion'
+                : motionOffer
+                  ? 'motion'
+                  : 'translation'
     const label = plan
       ? `Formule ${plan.name} (${plan.points} points, ${plan.duration})`
       : liveOffer
@@ -89,7 +95,9 @@ export async function POST(request: NextRequest) {
               ? `${voiceOffer.name} (${voiceOffer.minutes} min de voix)`
               : photoOffer
                 ? `${photoOffer.name} (${photoOffer.credits} videos de 30s)`
-                : `${motionOffer!.name} (${motionOffer!.credits} clips Motion de 10s)`
+                : motionOffer
+                  ? `${motionOffer.name} (${motionOffer.credits} clips Motion de 10s)`
+                  : `${translationOffer!.name} (${translationOffer!.credits} traductions vidéo)`
 
     const headers = paydunyaHeaders()
     if (!headers) {

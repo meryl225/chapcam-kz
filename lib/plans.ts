@@ -185,3 +185,25 @@ export function motionQuotaForPlan(planId: string | null | undefined): number {
 // Duree maximale (secondes) d'un clip Motion Control = duree de la video de
 // reference. Plafonnee pour borner le cout fal par generation.
 export const MOTION_MAX_SECONDS = 10
+
+// --- Quota "Traduction Video" (HeyGen video-translation) par forfait ---
+// La traduction video coute cher (~1200 F/min Rapide, ~2400 F/min Precision).
+// Les quotas inclus sont petits (comme Motion) pour proteger la marge. Chaque
+// credit = 1 video traduite <= 60s dans 1 langue (mode Rapide ; Precision = 2).
+export const TRANSLATION_QUOTA: Record<PlanId, number> = {
+  starter: 0,
+  standard: 0,
+  premium: 1,
+  ultimate: 2,
+  vipdebout: 3,
+}
+
+/** Quota Traduction Video accordé par un forfait. Retourne 0 si inconnu/absent. */
+export function translationQuotaForPlan(planId: string | null | undefined): number {
+  if (!planId) return 0
+  return TRANSLATION_QUOTA[planId as PlanId] ?? 0
+}
+
+// Duree maximale (secondes) de la video source d'une traduction. Plafonnee pour
+// borner le cout HeyGen (facture a la seconde) par credit.
+export const TRANSLATION_MAX_SECONDS = 60
