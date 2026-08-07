@@ -18,9 +18,8 @@ type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 
 // Modeles (mappes sur les tiers DoP cote API). Presente facon Higgsfield.
 const MODELS: { value: string; label: string; credits: number }[] = [
-  { value: "turbo", label: "Motion Turbo", credits: 18 },
   { value: "standard", label: "Motion Standard", credits: 28 },
-  { value: "lite", label: "Motion Lite", credits: 12 },
+  { value: "pro", label: "Motion Pro", credits: 45 },
 ]
 const QUALITIES = ["720p", "1080p"] as const
 
@@ -50,7 +49,7 @@ export default function MotionPage() {
 
   const busy = status === "uploading" || status === "processing"
   const MAX_PROMPT = 500
-  const activeModel = MODELS.find((m) => m.value === model) ?? MODELS[1]
+  const activeModel = MODELS.find((m) => m.value === model) ?? MODELS[0]
 
   useEffect(() => {
     async function init() {
@@ -96,19 +95,21 @@ export default function MotionPage() {
       toast({ title: "Format invalide", description: "Vidéo uniquement (MP4, MOV...)", variant: "destructive" })
       return
     }
-    if (f.size > 50 * 1024 * 1024) {
-      toast({ title: "Vidéo trop volumineuse", description: "Max 50 Mo", variant: "destructive" })
+    if (f.size > 100 * 1024 * 1024) {
+      toast({ title: "Vidéo trop volumineuse", description: "Max 100 Mo", variant: "destructive" })
       return
     }
     setRefVideo(f)
     setRefVideoUrl(URL.createObjectURL(f))
   }, [toast])
 
-  const startPolling = useCallback((requestId: string) => {
+  // Le poll interroge la bonne route selon le mode utilise (motion-transfer fal
+  // vs image->video Higgsfield), transmis via `endpoint`.
+  const startPolling = useCallback((requestId: string, endpoint: string) => {
     if (pollRef.current) clearInterval(pollRef.current)
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`/api/motion?request_id=${encodeURIComponent(requestId)}`)
+        const res = await fetch(`${endpoint}?request_id=${encodeURIComponent(requestId)}${endpoint.includes("control") ? `&model=${model}` : ""}`)
         const json = await res.json()
         if (json.status === "completed" && json.video_url) {
           if (pollRef.current) clearInterval(pollRef.current)
@@ -124,15 +125,52 @@ export default function MotionPage() {
         // retry au prochain tick
       }
     }, 5000)
-  }, [toast])
+  }, [toast, model])
 
   const handleGenerate = async () => {
     if (!file) {
-      toast({ title: "Photo manquante", description: "Ajoute une image sujet pour démarrer.", variant: "destructive" })
+      toast({ title: "Image manquante", description: "Ajoute une image sujet pour démarrer.", variant: "destructive" })
       return
     }
+
+    // MODE 1 : Motion Control REEL — une video de reference est fournie.
+    // On transfere son mouvement sur l'image via Kling Motion Control (fal.ai).
+    if (refVideo) {
+      setStatus("uploading")
+      setVideoUrl(null)
+      try {
+        const fd = new FormData()
+        fd.append("image", file)
+        fd.append("video", refVideo)
+        fd.append("prompt", prompt.trim())
+        fd.append("model", model === "pro" ? "pro" : "standard")
+        fd.append("orientation", "video")
+        fd.append("keep_sound", "false")
+
+        const res = await fetch("/api/motion/control", { method: "POST", body: fd })
+        const json = await res.json()
+        if (!res.ok) {
+          setStatus("idle")
+          toast({
+            title: res.status === 402 ? "Service indisponible" : "Erreur",
+            description: json.error || "Impossible de lancer le transfert de mouvement.",
+            variant: "destructive",
+          })
+          return
+        }
+        setStatus("processing")
+        startPolling(json.request_id, "/api/motion/control")
+        toast({ title: "Transfert de mouvement lancé", description: "Cela peut prendre 2 à 5 minutes..." })
+      } catch {
+        setStatus("idle")
+        toast({ title: "Erreur réseau", description: "Réessaie dans un instant.", variant: "destructive" })
+      }
+      return
+    }
+
+    // MODE 2 : Animation par prompt/presets (image -> video Higgsfield).
     if (!prompt.trim() && selectedMotions.length === 0) {
-      toast({ title: "Décris le mouvement", description: "Ajoute un prompt ou choisis un preset de mouvement.", variant: "destructive" })
+      toast({ title: "Décris le mouvement", description: "Ajoute une vidéo de référence, un prompt, ou choisis un preset.", variant: "destructive" })
       return
     }
     setStatus("uploading")
@@ -141,7 +179,7 @@ export default function MotionPage() {
       const fd = new FormData()
       fd.append("file", file)
       fd.append("prompt", prompt.trim() || "subtle natural motion, cinematic")
-      fd.append("model", model)
+      fd.append("model", model === "pro" ? "standard" : model)
       fd.append("quality", quality)
       fd.append("enhance", String(enhance))
       if (selectedMotions.length > 0) fd.append("motions", JSON.stringify(selectedMotions))
@@ -160,7 +198,7 @@ export default function MotionPage() {
       }
 
       setStatus("processing")
-      startPolling(json.request_id)
+      startPolling(json.request_id, "/api/motion")
       toast({ title: "Génération lancée", description: "Cela peut prendre 1 à 3 minutes..." })
     } catch {
       setStatus("idle")
@@ -185,7 +223,8 @@ export default function MotionPage() {
     setRefVideoUrl(null)
   }
 
-  const canGenerate = !!file && (!!prompt.trim() || selectedMotions.length > 0) && !busy
+  // Generation possible si : image + (video de reference OU prompt OU preset).
+  const canGenerate = !!file && (!!refVideo || !!prompt.trim() || selectedMotions.length > 0) && !busy
 
   if (loading) {
     return (
@@ -296,15 +335,21 @@ export default function MotionPage() {
                     <p className="mt-0.5 flex items-center gap-1 text-[10px] text-white/40"><Upload className="h-3 w-3" /> Importer</p>
                   </>
                 )}
-                <input ref={refInputRef} type="file" accept="video/*" onChange={(e) => onSelectRef(e.target.files?.[0])} className="hidden" />
+                <input ref={refInputRef} type="file" accept="video/mp4,video/quicktime,video/webm" onChange={(e) => onSelectRef(e.target.files?.[0])} className="hidden" />
               </div>
-              <p className="mt-1.5 text-center text-[11px] text-amber-400/70">Bientôt</p>
+              <p className="mt-1.5 text-center text-[11px] text-white/40">Optionnel</p>
             </div>
           </div>
 
-          {/* Note honnete sur le moteur actuel */}
-          <div className="rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-[11px] leading-relaxed text-amber-200/80">
-            Le transfert de mouvement depuis une vidéo arrive bientôt. Pour l&apos;instant, le moteur anime ton image sujet à partir du prompt et des presets ci-dessous.
+          {/* Explication des 2 modes selon la presence d'une video de reference */}
+          <div className={`rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors ${
+            refVideo ? "border-[#c6f542]/30 bg-[#c6f542]/5 text-[#c6f542]" : "border-white/10 bg-white/[0.03] text-white/50"
+          }`}>
+            {refVideo ? (
+              <>Mode transfert de mouvement : le personnage de ton image reproduira les mouvements de la vidéo de référence (Kling Motion Control).</>
+            ) : (
+              <>Ajoute une vidéo de référence pour transférer son mouvement, ou laisse vide et décris le mouvement au prompt pour une simple animation.</>
+            )}
           </div>
 
           {/* Prompt */}
@@ -336,7 +381,7 @@ export default function MotionPage() {
           {/* Ligne Model */}
           <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
             <div className="px-3 pt-2.5 text-[11px] font-medium uppercase tracking-wide text-white/40">Model</div>
-            <div className="grid grid-cols-3 gap-1 p-2">
+            <div className="grid grid-cols-2 gap-1 p-2">
               {MODELS.map((m) => (
                 <button
                   key={m.value}
