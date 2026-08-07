@@ -9,8 +9,9 @@
 import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ADMIN_EMAIL } from '@/lib/admin-auth'
-import { getPlan, photoVideoQuotaForPlan, type PlanConfig } from '@/lib/plans'
+import { getPlan, photoVideoQuotaForPlan, motionQuotaForPlan, type PlanConfig } from '@/lib/plans'
 import { addPhotoVideoCredits } from '@/lib/photo-video-quota'
+import { addMotionCredits } from '@/lib/motion-quota'
 import { getLiveOffer, type LiveOffer } from '@/lib/live-offers'
 import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
 import { getPcOffer, getDesktopDownloadUrl, getDesktopDownloadUrlMac, type PcOffer } from '@/lib/pc-offer'
@@ -149,6 +150,17 @@ export async function activateSubscription(
       await addPhotoVideoCredits(userId, videoCredits)
     } catch (e) {
       console.error('[fulfillment] Erreur credit photo-video:', (e as Error).message)
+    }
+  }
+
+  // Crediter les credits "Motion Control" (1 credit = 1 clip de 10s max).
+  // Quota volontairement petit (motion-transfer plus couteux). S'accumule.
+  const motionCredits = motionQuotaForPlan(plan.id)
+  if (motionCredits > 0) {
+    try {
+      await addMotionCredits(userId, motionCredits)
+    } catch (e) {
+      console.error('[fulfillment] Erreur credit motion:', (e as Error).message)
     }
   }
 

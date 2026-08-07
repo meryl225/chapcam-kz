@@ -46,9 +46,13 @@ export default function MotionPage() {
 
   const [status, setStatus] = useState<Status>("idle")
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  // Solde de credits Motion (null = pas encore charge).
+  const [credits, setCredits] = useState<number | null>(null)
 
   const busy = status === "uploading" || status === "processing"
   const MAX_PROMPT = 500
+  // Duree max d'un clip = duree de la video de reference (borne le cout fal).
+  const MOTION_MAX_SECONDS = 10
   const activeModel = MODELS.find((m) => m.value === model) ?? MODELS[0]
 
   useEffect(() => {
@@ -59,11 +63,16 @@ export default function MotionPage() {
         return
       }
       try {
-        const res = await fetch("/api/motion?info=motions")
-        const json = await res.json()
-        if (res.ok && Array.isArray(json.motions)) setMotions(json.motions)
+        const [mRes, cRes] = await Promise.all([
+          fetch("/api/motion?info=motions"),
+          fetch("/api/motion/control?info=quota"),
+        ])
+        const mJson = await mRes.json()
+        if (mRes.ok && Array.isArray(mJson.motions)) setMotions(mJson.motions)
+        const cJson = await cRes.json()
+        if (cRes.ok) setCredits(Math.max(0, Number(cJson.remaining) || 0))
       } catch {
-        // presets optionnels
+        // presets/solde optionnels
       }
       setLoading(false)
     }
@@ -91,16 +100,38 @@ export default function MotionPage() {
 
   const onSelectRef = useCallback((f: File | undefined) => {
     if (!f) return
-    if (!f.type.startsWith("video/")) {
-      toast({ title: "Format invalide", description: "Vidéo uniquement (MP4, MOV...)", variant: "destructive" })
+    if (!["video/mp4", "video/quicktime", "video/webm"].includes(f.type)) {
+      toast({ title: "Format invalide", description: "MP4, MOV ou WebM uniquement", variant: "destructive" })
       return
     }
-    if (f.size > 100 * 1024 * 1024) {
-      toast({ title: "Vidéo trop volumineuse", description: "Max 100 Mo", variant: "destructive" })
+    if (f.size > 30 * 1024 * 1024) {
+      toast({ title: "Vidéo trop volumineuse", description: "Max 30 Mo (une vidéo de 10s est légère)", variant: "destructive" })
       return
     }
-    setRefVideo(f)
-    setRefVideoUrl(URL.createObjectURL(f))
+    // Verifier la DUREE : le clip genere = la duree de la reference, plafonnee a
+    // 10s pour borner le cout. On lit les metadonnees avant d'accepter le fichier.
+    const url = URL.createObjectURL(f)
+    const probe = document.createElement("video")
+    probe.preload = "metadata"
+    probe.onloadedmetadata = () => {
+      const dur = probe.duration
+      if (Number.isFinite(dur) && dur > MOTION_MAX_SECONDS + 0.5) {
+        URL.revokeObjectURL(url)
+        toast({
+          title: "Vidéo trop longue",
+          description: `La vidéo de référence doit durer ${MOTION_MAX_SECONDS}s maximum (la tienne fait ${Math.round(dur)}s). Découpe-la puis réessaie.`,
+          variant: "destructive",
+        })
+        return
+      }
+      setRefVideo(f)
+      setRefVideoUrl(url)
+    }
+    probe.onerror = () => {
+      URL.revokeObjectURL(url)
+      toast({ title: "Vidéo illisible", description: "Impossible de lire cette vidéo. Essaie un autre fichier.", variant: "destructive" })
+    }
+    probe.src = url
   }, [toast])
 
   // Le poll interroge la bonne route selon le mode utilise (motion-transfer fal
@@ -136,6 +167,15 @@ export default function MotionPage() {
     // MODE 1 : Motion Control REEL — une video de reference est fournie.
     // On transfere son mouvement sur l'image via Kling Motion Control (fal.ai).
     if (refVideo) {
+      // Garde-fou UX : bloquer si le solde de credits Motion est vide.
+      if (credits !== null && credits <= 0) {
+        toast({
+          title: "Crédits Motion épuisés",
+          description: "Passe à un forfait Premium, VIP PRO ou VIP DEBOUT pour obtenir des crédits Motion Control.",
+          variant: "destructive",
+        })
+        return
+      }
       setStatus("uploading")
       setVideoUrl(null)
       try {
@@ -151,13 +191,16 @@ export default function MotionPage() {
         const json = await res.json()
         if (!res.ok) {
           setStatus("idle")
-          toast({
-            title: res.status === 402 ? "Service indisponible" : "Erreur",
-            description: json.error || "Impossible de lancer le transfert de mouvement.",
-            variant: "destructive",
-          })
+          if (res.status === 402) {
+            // Solde epuise / pas de forfait : synchroniser l'affichage a 0.
+            if (json.code === "quota_exhausted" || json.code === "no_plan") setCredits(0)
+            toast({ title: "Crédits Motion épuisés", description: json.error, variant: "destructive" })
+          } else {
+            toast({ title: "Erreur", description: json.error || "Impossible de lancer le transfert de mouvement.", variant: "destructive" })
+          }
           return
         }
+        if (typeof json.remaining === "number") setCredits(json.remaining)
         setStatus("processing")
         startPolling(json.request_id, "/api/motion/control")
         toast({ title: "Transfert de mouvement lancé", description: "Cela peut prendre 2 à 5 minutes..." })
@@ -337,7 +380,7 @@ export default function MotionPage() {
                 )}
                 <input ref={refInputRef} type="file" accept="video/mp4,video/quicktime,video/webm" onChange={(e) => onSelectRef(e.target.files?.[0])} className="hidden" />
               </div>
-              <p className="mt-1.5 text-center text-[11px] text-white/40">Optionnel</p>
+              <p className="mt-1.5 text-center text-[11px] text-white/40">Optionnel · {MOTION_MAX_SECONDS}s max</p>
             </div>
           </div>
 
@@ -346,10 +389,20 @@ export default function MotionPage() {
             refVideo ? "border-[#c6f542]/30 bg-[#c6f542]/5 text-[#c6f542]" : "border-white/10 bg-white/[0.03] text-white/50"
           }`}>
             {refVideo ? (
-              <>Mode transfert de mouvement : le personnage de ton image reproduira les mouvements de la vidéo de référence (Kling Motion Control).</>
+              <>Mode transfert de mouvement : le personnage de ton image reproduira les mouvements de la vidéo de référence (Kling Motion Control). Le clip généré dure comme la référence, {MOTION_MAX_SECONDS}s maximum.</>
             ) : (
-              <>Ajoute une vidéo de référence pour transférer son mouvement, ou laisse vide et décris le mouvement au prompt pour une simple animation.</>
+              <>Ajoute une vidéo de référence ({MOTION_MAX_SECONDS}s max) pour transférer son mouvement, ou laisse vide et décris le mouvement au prompt pour une simple animation.</>
             )}
+          </div>
+
+          {/* Solde de credits Motion */}
+          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+            <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-white/40">
+              <Film className="h-3.5 w-3.5" /> Crédits Motion
+            </span>
+            <span className={`text-sm font-bold ${credits !== null && credits <= 0 ? "text-red-400" : "text-[#c6f542]"}`}>
+              {credits === null ? "…" : credits}
+            </span>
           </div>
 
           {/* Prompt */}

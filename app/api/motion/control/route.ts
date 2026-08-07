@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { fal } from "@fal-ai/client"
+import { motionQuotaForPlan } from "@/lib/plans"
+import { getMotionBalance, addMotionCredits, deductMotionCredit } from "@/lib/motion-quota"
 
 // --- Motion Control REEL (Kling Motion Control via fal.ai) ---
 // C'est le moteur EXACT que Higgsfield expose dans son UI "Motion Control" :
@@ -24,9 +26,40 @@ const MODELS: Record<string, string> = {
 const DEFAULT_MODEL = "standard"
 
 const MAX_IMAGE = 10 * 1024 * 1024 // 10 Mo
-const MAX_VIDEO = 100 * 1024 * 1024 // 100 Mo
+const MAX_VIDEO = 30 * 1024 * 1024 // 30 Mo (une video de reference <=10s est legere)
+
+// Seed unique : un abonne actif recoit le quota Motion de son forfait la
+// premiere fois qu'il utilise la fonctionnalite (comme la photo-video).
+async function ensureCreditsForActiveSub(userId: string, planId: string): Promise<number> {
+  const { balance, exists } = await getMotionBalance(userId)
+  if (exists) return balance
+  const quota = motionQuotaForPlan(planId)
+  if (quota <= 0) return 0
+  return addMotionCredits(userId, quota)
+}
+
+// Recupere l'abonnement actif + le solde Motion effectif (avec seed si besoin).
+async function resolveBalance(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<{ balance: number; subActive: boolean; plan: string | null }> {
+  const { data: sub } = await supabase
+    .from("subscriptions")
+    .select("plan, end_date, expires_at, is_active")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .limit(1)
+    .maybeSingle()
+  const subEnd = sub?.end_date ?? sub?.expires_at ?? null
+  const subActive = !!sub && !!subEnd && new Date(subEnd).getTime() > Date.now()
+  const balance = subActive
+    ? await ensureCreditsForActiveSub(userId, sub!.plan)
+    : (await getMotionBalance(userId)).balance
+  return { balance, subActive, plan: subActive ? sub!.plan : null }
+}
 
 // GET : statut d'une generation fal (?request_id=...&model=standard|pro)
+// ou solde de credits Motion (?info=quota).
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -35,6 +68,13 @@ export async function GET(request: NextRequest) {
   }
 
   const params = new URL(request.url).searchParams
+
+  // Mode "quota" : solde de credits Motion (independant de fal).
+  if (params.get("info") === "quota") {
+    const { balance, plan } = await resolveBalance(supabase, user.id)
+    return NextResponse.json({ success: true, plan, remaining: Math.max(0, balance) })
+  }
+
   const requestId = params.get("request_id")
   const modelKey = params.get("model") === "pro" ? "pro" : "standard"
   const model = MODELS[modelKey]
@@ -106,7 +146,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Image trop volumineuse (max 10 Mo)." }, { status: 400 })
     }
     if (video.size > MAX_VIDEO) {
-      return NextResponse.json({ error: "Video trop volumineuse (max 100 Mo)." }, { status: 400 })
+      return NextResponse.json({ error: "Video de reference trop volumineuse (max 30 Mo / ~10s)." }, { status: 400 })
+    }
+
+    // Verifier le SOLDE de credits Motion AVANT tout appel fal (protege la marge).
+    const { balance, subActive } = await resolveBalance(supabase, user.id)
+    if (balance <= 0) {
+      return NextResponse.json(
+        {
+          error: subActive
+            ? "Credits Motion Control epuises. Passe a un forfait superieur pour en obtenir plus."
+            : "Aucun forfait actif incluant le Motion Control. Choisis Premium, VIP PRO ou VIP DEBOUT.",
+          code: subActive ? "quota_exhausted" : "no_plan",
+          remaining: 0,
+        },
+        { status: 402 },
+      )
     }
 
     const model = MODELS[modelKey] || MODELS[DEFAULT_MODEL]
@@ -125,11 +180,15 @@ export async function POST(request: NextRequest) {
 
     const { request_id } = await fal.queue.submit(model, { input })
 
+    // Deduire 1 credit UNIQUEMENT apres une soumission fal reussie.
+    const remaining = await deductMotionCredit(user.id)
+
     return NextResponse.json({
       success: true,
       request_id,
       model: modelKey,
       status: "queued",
+      remaining: Math.max(0, remaining),
     })
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Erreur serveur"
