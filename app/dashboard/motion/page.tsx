@@ -6,6 +6,7 @@ import { Upload, X, Loader2, Download, Play, Sparkles, ChevronRight, Film, Image
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
+import { MotionCreditPacksSection } from "@/components/motion/credit-packs-section"
 
 interface Motion {
   id: string
@@ -587,6 +588,11 @@ export default function MotionPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Packs de credits Motion (achat sans forfait) */}
+      <div className="px-4 pb-10 lg:px-6">
+        <MotionCreditPacksSection />
       </div>
     </div>
   )

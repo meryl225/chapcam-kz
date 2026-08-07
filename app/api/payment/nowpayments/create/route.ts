@@ -8,6 +8,7 @@ import { getInstallOffer } from '@/lib/install-offer'
 import { getPcOffer } from '@/lib/pc-offer'
 import { getVoiceOffer } from '@/lib/voice-offers'
 import { getPhotoVideoOffer } from '@/lib/photo-video-offers'
+import { getMotionOffer } from '@/lib/motion-offers'
 import { createNowInvoice, nowpaymentsConfigured, prefixedInvoiceId } from '@/lib/nowpayments'
 
 export const runtime = 'nodejs'
@@ -50,7 +51,8 @@ export async function POST(request: NextRequest) {
     const pcOffer = getPcOffer(productId)
     const voiceOffer = getVoiceOffer(productId)
     const photoOffer = getPhotoVideoOffer(productId)
-    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer) {
+    const motionOffer = getMotionOffer(productId)
+    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer) {
       return NextResponse.json({ success: false, error: 'Produit inconnu.' }, { status: 400 })
     }
 
@@ -64,7 +66,9 @@ export async function POST(request: NextRequest) {
             ? pcOffer.price
             : voiceOffer
               ? voiceOffer.price
-              : photoOffer!.price
+              : photoOffer
+                ? photoOffer.price
+                : motionOffer!.price
 
     // Identifiant unique qui nous relie a la demande (renvoye tel quel par
     // NOWPayments dans order_id de l'IPN et du GET payment).
