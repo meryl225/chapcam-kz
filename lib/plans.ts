@@ -162,3 +162,26 @@ export function photoVideoQuotaForPlan(planId: string | null | undefined): numbe
   if (!planId) return 0
   return PHOTO_VIDEO_QUOTA[planId as PlanId] ?? 0
 }
+
+// --- Quota "Motion Control" (Kling via fal.ai) par forfait Live Swap ---
+// Le motion-transfer coute CHER (~760 F/clip de 10s cote fal), bien plus que la
+// photo-video. Les quotas inclus sont donc VOLONTAIREMENT petits pour proteger
+// la marge : chaque clip fait au maximum 10 secondes (plafond serveur/ client).
+// Reserve aux forfaits de valeur (Starter/Standard n'en incluent pas).
+export const MOTION_VIDEO_QUOTA: Record<PlanId, number> = {
+  starter: 0,
+  standard: 0,
+  premium: 1,
+  ultimate: 2,
+  vipdebout: 3,
+}
+
+/** Quota Motion Control accordé par un forfait. Retourne 0 si inconnu/absent. */
+export function motionQuotaForPlan(planId: string | null | undefined): number {
+  if (!planId) return 0
+  return MOTION_VIDEO_QUOTA[planId as PlanId] ?? 0
+}
+
+// Duree maximale (secondes) d'un clip Motion Control = duree de la video de
+// reference. Plafonnee pour borner le cout fal par generation.
+export const MOTION_MAX_SECONDS = 10

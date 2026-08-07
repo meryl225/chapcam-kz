@@ -9,8 +9,10 @@
 import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ADMIN_EMAIL } from '@/lib/admin-auth'
-import { getPlan, photoVideoQuotaForPlan, type PlanConfig } from '@/lib/plans'
+import { getPlan, photoVideoQuotaForPlan, motionQuotaForPlan, type PlanConfig } from '@/lib/plans'
 import { addPhotoVideoCredits } from '@/lib/photo-video-quota'
+import { addMotionCredits } from '@/lib/motion-quota'
+import { getMotionOffer, type MotionOffer } from '@/lib/motion-offers'
 import { getLiveOffer, type LiveOffer } from '@/lib/live-offers'
 import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
 import { getPcOffer, getDesktopDownloadUrl, getDesktopDownloadUrlMac, type PcOffer } from '@/lib/pc-offer'
@@ -152,6 +154,17 @@ export async function activateSubscription(
     }
   }
 
+  // Crediter les credits "Motion Control" (1 credit = 1 clip de 10s max).
+  // Quota volontairement petit (motion-transfer plus couteux). S'accumule.
+  const motionCredits = motionQuotaForPlan(plan.id)
+  if (motionCredits > 0) {
+    try {
+      await addMotionCredits(userId, motionCredits)
+    } catch (e) {
+      console.error('[fulfillment] Erreur credit motion:', (e as Error).message)
+    }
+  }
+
   return { now, end }
 }
 
@@ -210,7 +223,7 @@ export interface PurchaseInput {
 
 export interface PurchaseResult {
   ok: boolean
-  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'numbers_wallet' | null
+  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' | 'numbers_wallet' | null
   userLinked: boolean
   message: string
   licenseKey?: string
@@ -265,8 +278,9 @@ export async function creditPurchase(
   const pcOffer: PcOffer | undefined = getPcOffer(input.productId)
   const voiceOffer: VoiceOffer | undefined = getVoiceOffer(input.productId)
   const photoOffer: PhotoVideoOffer | undefined = getPhotoVideoOffer(input.productId)
+  const motionOffer: MotionOffer | undefined = getMotionOffer(input.productId)
 
-  if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer) {
+  if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer) {
     return { ok: false, kind: null, userLinked: false, message: `Produit inconnu : ${input.productId}` }
   }
 
@@ -307,7 +321,7 @@ export async function creditPurchase(
   if (!userId) {
     return {
       ok: false,
-      kind: installOffer ? 'installation' : liveOffer ? 'live' : voiceOffer ? 'voice' : photoOffer ? 'photo' : 'plan',
+      kind: installOffer ? 'installation' : liveOffer ? 'live' : voiceOffer ? 'voice' : photoOffer ? 'photo' : motionOffer ? 'motion' : 'plan',
       userLinked: false,
       message: `Aucun compte ChapCam ne correspond a ${input.email}.`,
     }
@@ -363,6 +377,17 @@ export async function creditPurchase(
       kind: 'photo',
       userLinked: true,
       message: `${photoOffer.name} credite (${balance} videos disponibles).`,
+    }
+  }
+
+  if (motionOffer) {
+    // Credite le solde de credits Motion Control (1 credit = 1 clip de 10s max).
+    const balance = await addMotionCredits(userId, motionOffer.credits)
+    return {
+      ok: true,
+      kind: 'motion',
+      userLinked: true,
+      message: `${motionOffer.name} credite (${balance} clips disponibles).`,
     }
   }
 
