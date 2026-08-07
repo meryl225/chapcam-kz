@@ -62,6 +62,10 @@ export async function POST(request: NextRequest) {
     const motionPrompt = (form.get("motion_prompt") as string | null)?.trim() || ""
     const expressivenessRaw = (form.get("expressiveness") as string | null)?.trim() || ""
     const expressiveness = ["low", "medium", "high"].includes(expressivenessRaw) ? expressivenessRaw : ""
+    // Vitesse d'elocution (0.5-2.0). Un debit legerement plus lent (~0.95)
+    // sonne souvent plus naturel/humain. Applique aussi a l'apercu vocal.
+    const speedRaw = Number(form.get("speed"))
+    const speed = Number.isFinite(speedRaw) ? Math.min(2, Math.max(0.5, speedRaw)) : 1.0
     // Echantillon vocal optionnel : si fourni, on clone la voix de l'utilisateur
     // le temps de la generation (clone jetable), puis on la supprime.
     const voiceSample = form.get("voice_sample") as File | null
@@ -203,6 +207,9 @@ export async function POST(request: NextRequest) {
     // Gestes (motion_prompt) et expressivite : uniquement s'ils sont fournis.
     if (motionPrompt) payload.motion_prompt = motionPrompt
     if (expressiveness) payload.expressiveness = expressiveness
+    // Vitesse d'elocution : dans voice_settings (structure validee cote HeyGen).
+    // On ne l'ajoute que si differente du defaut, pour rester conservateur.
+    if (speed !== 1.0) payload.voice_settings = { speed }
 
     const createRes = await fetch(`${HEYGEN_API}/v3/videos`, {
       method: "POST",

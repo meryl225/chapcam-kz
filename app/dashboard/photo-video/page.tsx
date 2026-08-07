@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Upload, X, Sparkles, Loader2, Download, Wand2, Play, Mic, Square, Trash2, ChevronDown, SlidersHorizontal, Check, Clapperboard, Plus } from "lucide-react"
+import { Upload, X, Sparkles, Loader2, Download, Wand2, Play, Mic, Square, Trash2, ChevronDown, SlidersHorizontal, Check, Clapperboard, Plus, Volume2, Gauge } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -47,6 +47,13 @@ const EXPRESSIVENESS: { label: string; value: string }[] = [
   { label: "Intense", value: "high" },
 ]
 
+// Vitesse d'elocution : un debit legerement plus lent sonne plus naturel.
+const SPEEDS: { label: string; value: number }[] = [
+  { label: "Posé", value: 0.9 },
+  { label: "Naturel", value: 1.0 },
+  { label: "Énergique", value: 1.1 },
+]
+
 export default function PhotoVideoPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -67,6 +74,12 @@ export default function PhotoVideoPage() {
   const [gestures, setGestures] = useState<string[]>([])
   const [expressiveness, setExpressiveness] = useState<string>("medium")
   const [showOptions, setShowOptions] = useState(false)
+  // Vitesse d'elocution (0.9 = pose, 1.0 = naturel, 1.1 = energique).
+  const [speed, setSpeed] = useState<number>(1.0)
+  // Apercu vocal : etat de generation + URL audio du texte lu par la voix choisie.
+  const [previewing, setPreviewing] = useState(false)
+  const [previewUrlAudio, setPreviewUrlAudio] = useState<string | null>(null)
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null)
 
   // Clonage de voix : mode ("preset" = voix HeyGen, "clone" = ta voix) + echantillon.
   const [voiceMode, setVoiceMode] = useState<"preset" | "clone">("preset")
@@ -130,6 +143,11 @@ export default function PhotoVideoPage() {
     }
   }, [router, supabase])
 
+  // L'apercu vocal devient obsolete si le texte, la voix ou la vitesse changent.
+  useEffect(() => {
+    setPreviewUrlAudio(null)
+  }, [prompt, voiceId, speed])
+
   const onSelectFile = useCallback((f: File | undefined) => {
     if (!f) return
     if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) {
@@ -192,6 +210,40 @@ export default function PhotoVideoPage() {
     setVoiceSampleUrl(null)
   }
 
+  // Ecouter un apercu : genere l'audio du texte exact avec la voix + vitesse
+  // choisies (meme moteur que la video -> l'apercu correspond au rendu final).
+  const handlePreviewVoice = useCallback(async () => {
+    if (!prompt.trim()) {
+      toast({ title: "Texte manquant", description: "Écris d'abord le texte à dire.", variant: "destructive" })
+      return
+    }
+    if (!voiceId) {
+      toast({ title: "Voix manquante", description: "Choisis une voix ChapCam pour l'aperçu.", variant: "destructive" })
+      return
+    }
+    setPreviewing(true)
+    setPreviewUrlAudio(null)
+    try {
+      const res = await fetch("/api/heygen/voice-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: prompt.trim(), voice_id: voiceId, speed }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.audio_url) {
+        toast({ title: "Aperçu indisponible", description: json.error || "Impossible de générer l'aperçu.", variant: "destructive" })
+        return
+      }
+      setPreviewUrlAudio(json.audio_url)
+      // Laisser le DOM monter l'element <audio> avant de lancer la lecture.
+      setTimeout(() => previewAudioRef.current?.play().catch(() => {}), 100)
+    } catch {
+      toast({ title: "Erreur réseau", description: "Réessaie dans un instant.", variant: "destructive" })
+    } finally {
+      setPreviewing(false)
+    }
+  }, [prompt, voiceId, speed, toast])
+
   const startPolling = useCallback((videoId: string, cloneVoiceId: string | null) => {
     if (pollRef.current) clearInterval(pollRef.current)
     pollRef.current = setInterval(async () => {
@@ -241,6 +293,7 @@ export default function PhotoVideoPage() {
       }
       if (gestures.length > 0) fd.append("motion_prompt", gestures.join(", "))
       fd.append("expressiveness", expressiveness)
+      fd.append("speed", String(speed))
 
       const res = await fetch("/api/heygen/photo-video", { method: "POST", body: fd })
       const json = await res.json()
@@ -549,6 +602,64 @@ export default function PhotoVideoPage() {
                 )}
               </div>
             )}
+
+            {/* Vitesse d'elocution : un debit un peu plus lent sonne plus humain. */}
+            <div className="mt-4">
+              <p className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <Gauge className="h-4 w-4" /> Vitesse de la voix
+              </p>
+              <div className="flex gap-2">
+                {SPEEDS.map((s) => {
+                  const active = speed === s.value
+                  return (
+                    <button
+                      key={s.value}
+                      type="button"
+                      onClick={() => !busy && setSpeed(s.value)}
+                      disabled={busy}
+                      aria-pressed={active}
+                      className={`flex-1 rounded-lg border px-3 py-2 text-sm transition-colors disabled:opacity-50 ${
+                        active
+                          ? "border-primary bg-primary text-primary-foreground font-medium"
+                          : "border-hairline-strong bg-secondary text-foreground hover:border-primary/50"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Apercu vocal : ecouter le texte lu par la voix AVANT la video. */}
+            {voiceMode === "preset" && (
+              <div className="mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePreviewVoice}
+                  disabled={busy || previewing || !prompt.trim() || !voiceId}
+                  className="w-full border-primary/40 text-foreground hover:bg-primary/10"
+                >
+                  {previewing ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Génération de l&apos;aperçu...</>
+                  ) : (
+                    <><Volume2 className="mr-2 h-4 w-4 text-primary" /> Écouter un aperçu de la voix</>
+                  )}
+                </Button>
+                {previewUrlAudio && (
+                  <audio
+                    ref={previewAudioRef}
+                    src={previewUrlAudio}
+                    controls
+                    className="mt-3 w-full"
+                  />
+                )}
+                <p className="mt-2 text-xs text-text-faint">
+                  L&apos;aperçu utilise la même voix que la vidéo finale — ce que tu entends, c&apos;est ce que tu obtiendras.
+                </p>
+              </div>
+            )}
           </section>
 
           {/* Options avancees (repliable) : gestes + expressivite */}
@@ -734,6 +845,21 @@ export default function PhotoVideoPage() {
               <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> Photo de face, visage bien visible et éclairé</li>
               <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> Un seul visage sur la photo</li>
               <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> Un texte clair et naturel à prononcer</li>
+            </ul>
+          </div>
+
+          {/* Techniques pour une voix humaine (anti-robotique) */}
+          <div className="mt-4 rounded-2xl border border-hairline bg-card p-4">
+            <p className="mb-2 flex items-center gap-2 text-sm font-medium text-foreground">
+              <Volume2 className="h-4 w-4 text-primary" /> Pour une voix vraiment humaine
+            </p>
+            <ul className="space-y-1.5 text-xs text-muted-foreground">
+              <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> Ponctue : les virgules et points créent des pauses naturelles</li>
+              <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> Écris comme tu parles : phrases courtes, mots simples</li>
+              <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> Utilise « ... » pour un suspense, « ! » et « ? » pour l&apos;intonation</li>
+              <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> Évite les MAJUSCULES et sigles : ils sont lus de façon mécanique</li>
+              <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> Vitesse « Posé » = ton plus posé et confiant</li>
+              <li className="flex gap-2"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" /> Le plus humain : clone ta propre voix (onglet « Clonage »)</li>
             </ul>
           </div>
         </div>
