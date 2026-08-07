@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Upload, X, Loader2, Download, Check, Clapperboard, Wand2, Film, Sparkles } from "lucide-react"
+import { Upload, X, Loader2, Download, Play, Sparkles, ChevronRight, Film, ImageIcon, Video, BookOpen, History } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
@@ -16,34 +16,41 @@ interface Motion {
 
 type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 
-// Modeles proposes : vitesse vs qualite. Valeurs = allowlist de la route API.
-const MODELS: { value: string; label: string; hint: string }[] = [
-  { value: "turbo", label: "Turbo", hint: "Rapide" },
-  { value: "standard", label: "Standard", hint: "Equilibre" },
-  { value: "lite", label: "Lite", hint: "Economique" },
+// Modeles (mappes sur les tiers DoP cote API). Presente facon Higgsfield.
+const MODELS: { value: string; label: string; credits: number }[] = [
+  { value: "turbo", label: "Motion Turbo", credits: 18 },
+  { value: "standard", label: "Motion Standard", credits: 28 },
+  { value: "lite", label: "Motion Lite", credits: 12 },
 ]
+const QUALITIES = ["720p", "1080p"] as const
 
 export default function MotionPage() {
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createClient()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const imgInputRef = useRef<HTMLInputElement>(null)
+  const refInputRef = useRef<HTMLInputElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [refVideo, setRefVideo] = useState<File | null>(null)
+  const [refVideoUrl, setRefVideoUrl] = useState<string | null>(null)
   const [prompt, setPrompt] = useState("")
-  const [model, setModel] = useState("turbo")
+  const [model, setModel] = useState("standard")
+  const [quality, setQuality] = useState<(typeof QUALITIES)[number]>("720p")
   const [enhance, setEnhance] = useState(true)
   const [motions, setMotions] = useState<Motion[]>([])
   const [selectedMotions, setSelectedMotions] = useState<string[]>([])
+  const [showLibrary, setShowLibrary] = useState(false)
 
   const [status, setStatus] = useState<Status>("idle")
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
 
   const busy = status === "uploading" || status === "processing"
   const MAX_PROMPT = 500
+  const activeModel = MODELS.find((m) => m.value === model) ?? MODELS[1]
 
   useEffect(() => {
     async function init() {
@@ -57,7 +64,7 @@ export default function MotionPage() {
         const json = await res.json()
         if (res.ok && Array.isArray(json.motions)) setMotions(json.motions)
       } catch {
-        // silencieux : les presets sont optionnels
+        // presets optionnels
       }
       setLoading(false)
     }
@@ -67,7 +74,7 @@ export default function MotionPage() {
     }
   }, [router, supabase])
 
-  const onSelectFile = useCallback((f: File | undefined) => {
+  const onSelectImage = useCallback((f: File | undefined) => {
     if (!f) return
     if (!["image/jpeg", "image/png", "image/webp"].includes(f.type)) {
       toast({ title: "Format invalide", description: "JPG, PNG ou WebP uniquement", variant: "destructive" })
@@ -83,6 +90,20 @@ export default function MotionPage() {
     setStatus("idle")
   }, [toast])
 
+  const onSelectRef = useCallback((f: File | undefined) => {
+    if (!f) return
+    if (!f.type.startsWith("video/")) {
+      toast({ title: "Format invalide", description: "Vidéo uniquement (MP4, MOV...)", variant: "destructive" })
+      return
+    }
+    if (f.size > 50 * 1024 * 1024) {
+      toast({ title: "Vidéo trop volumineuse", description: "Max 50 Mo", variant: "destructive" })
+      return
+    }
+    setRefVideo(f)
+    setRefVideoUrl(URL.createObjectURL(f))
+  }, [toast])
+
   const startPolling = useCallback((requestId: string) => {
     if (pollRef.current) clearInterval(pollRef.current)
     pollRef.current = setInterval(async () => {
@@ -93,21 +114,25 @@ export default function MotionPage() {
           if (pollRef.current) clearInterval(pollRef.current)
           setVideoUrl(json.video_url)
           setStatus("completed")
-          toast({ title: "Vidéo prête !", description: "Ton clip animé a été généré." })
+          toast({ title: "Vidéo prête !", description: "Ton clip a été généré." })
         } else if (json.status === "failed" || json.status === "nsfw") {
           if (pollRef.current) clearInterval(pollRef.current)
           setStatus("failed")
           toast({ title: "Échec de la génération", description: json.error || "La vidéo n'a pas pu être générée.", variant: "destructive" })
         }
       } catch {
-        // on retente au prochain tick
+        // retry au prochain tick
       }
     }, 5000)
   }, [toast])
 
   const handleGenerate = async () => {
-    if (!file || !prompt.trim()) {
-      toast({ title: "Champs manquants", description: "Ajoute une photo et décris le mouvement.", variant: "destructive" })
+    if (!file) {
+      toast({ title: "Photo manquante", description: "Ajoute une image sujet pour démarrer.", variant: "destructive" })
+      return
+    }
+    if (!prompt.trim() && selectedMotions.length === 0) {
+      toast({ title: "Décris le mouvement", description: "Ajoute un prompt ou choisis un preset de mouvement.", variant: "destructive" })
       return
     }
     setStatus("uploading")
@@ -115,8 +140,9 @@ export default function MotionPage() {
     try {
       const fd = new FormData()
       fd.append("file", file)
-      fd.append("prompt", prompt.trim())
+      fd.append("prompt", prompt.trim() || "subtle natural motion, cinematic")
       fd.append("model", model)
+      fd.append("quality", quality)
       fd.append("enhance", String(enhance))
       if (selectedMotions.length > 0) fd.append("motions", JSON.stringify(selectedMotions))
 
@@ -148,151 +174,169 @@ export default function MotionPage() {
     )
   }
 
-  const reset = () => {
+  const clearImage = () => {
     setFile(null)
     setPreviewUrl(null)
-    setPrompt("")
-    setSelectedMotions([])
     setVideoUrl(null)
     setStatus("idle")
-    if (pollRef.current) clearInterval(pollRef.current)
+  }
+  const clearRef = () => {
+    setRefVideo(null)
+    setRefVideoUrl(null)
   }
 
-  const photoDone = !!file
-  const promptDone = !!prompt.trim()
-  const canGenerate = photoDone && promptDone && !busy
+  const canGenerate = !!file && (!!prompt.trim() || selectedMotions.length > 0) && !busy
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex min-h-[60vh] items-center justify-center bg-[#0a0a0a]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#c6f542]" />
       </div>
     )
   }
 
-  const StepBadge = ({ n, done }: { n: number; done: boolean }) => (
-    <span
-      className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
-        done ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
-      }`}
-    >
-      {done ? <Check className="h-4 w-4" /> : n}
-    </span>
-  )
-
   return (
-    <div className="mx-auto max-w-6xl p-4 lg:p-8">
-      {/* Header */}
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
-            <Film className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground text-balance">Motion — Photo animée</h1>
-            <p className="text-sm text-muted-foreground">
-              Transforme une photo en clip vidéo avec un mouvement de caméra contrôlé.
-            </p>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#0a0a0a] text-white">
+      {/* Onglets facon Higgsfield */}
+      <div className="flex items-center gap-6 border-b border-white/10 px-4 lg:px-8">
+        {["Create Video", "Edit Video", "Motion Control"].map((tab) => {
+          const active = tab === "Motion Control"
+          return (
+            <button
+              key={tab}
+              type="button"
+              className={`relative py-4 text-sm font-medium transition-colors ${
+                active ? "text-white" : "text-white/40 hover:text-white/70"
+              }`}
+            >
+              {tab}
+              {active && <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-[#c6f542]" />}
+            </button>
+          )
+        })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-        {/* Colonne config */}
-        <div className="space-y-4">
-          {/* Etape 1 — Photo */}
-          <section className="rounded-2xl border border-hairline bg-card p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <StepBadge n={1} done={photoDone} />
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Ta photo</h2>
-                <p className="text-xs text-muted-foreground">JPG, PNG ou WebP — sujet net et bien cadré</p>
-              </div>
-            </div>
-            <div
-              onDrop={(e) => { e.preventDefault(); onSelectFile(e.dataTransfer.files?.[0]) }}
-              onDragOver={(e) => e.preventDefault()}
-              onClick={() => !busy && fileInputRef.current?.click()}
-              className={`relative flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
-                previewUrl ? "border-primary bg-primary/5" : "border-hairline-strong bg-secondary/40 hover:border-primary/50"
-              } ${busy ? "pointer-events-none opacity-60" : ""}`}
+      <div className="grid gap-4 p-4 lg:grid-cols-[380px_1fr] lg:p-6">
+        {/* ---------- Panneau gauche : configuration ---------- */}
+        <div className="space-y-3">
+          {/* Banniere Motion Control */}
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#1a1a1a] to-[#111] p-4">
+            <button
+              type="button"
+              onClick={() => setShowLibrary((v) => !v)}
+              className="absolute right-3 top-3 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-2.5 py-1.5 text-xs font-medium text-white backdrop-blur transition-colors hover:bg-white/20"
             >
-              {previewUrl ? (
-                <div className="relative">
-                  <img src={previewUrl || "/placeholder.svg"} alt="Aperçu de la photo importée" className="mx-auto max-h-56 rounded-lg object-contain" />
-                  <button
-                    onClick={(e) => { e.stopPropagation(); reset() }}
-                    className="absolute -right-2 -top-2 rounded-full bg-destructive p-1 text-destructive-foreground shadow-md transition-transform hover:scale-105"
-                    aria-label="Retirer la photo"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                    <Upload className="h-6 w-6 text-primary" />
-                  </div>
-                  <p className="text-sm font-medium text-foreground">Glisse une photo ou clique pour choisir</p>
-                  <p className="mt-1 text-xs text-text-faint">Max 10 Mo</p>
-                </>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => onSelectFile(e.target.files?.[0])}
-                className="hidden"
-              />
-            </div>
-          </section>
+              <BookOpen className="h-3.5 w-3.5" />
+              Bibliothèque de mouvements
+            </button>
+            <h2 className="mt-8 text-xl font-extrabold uppercase tracking-tight text-[#c6f542]">Motion Control</h2>
+            <p className="text-sm text-white/60">Anime une image avec un mouvement contrôlé</p>
+          </div>
 
-          {/* Etape 2 — Prompt de mouvement */}
-          <section className="rounded-2xl border border-hairline bg-card p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <StepBadge n={2} done={promptDone} />
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Le mouvement</h2>
-                <p className="text-xs text-muted-foreground">Décris l&apos;animation : caméra, sujet, ambiance</p>
+          {/* Deux vignettes : image sujet + video de reference */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Image sujet */}
+            <div>
+              <div
+                onDrop={(e) => { e.preventDefault(); onSelectImage(e.dataTransfer.files?.[0]) }}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => !busy && imgInputRef.current?.click()}
+                className={`relative flex aspect-[3/4] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors ${
+                  previewUrl ? "border-[#c6f542]/60" : "border-white/15 bg-white/[0.03] hover:border-[#c6f542]/40"
+                } ${busy ? "pointer-events-none opacity-60" : ""}`}
+              >
+                {previewUrl ? (
+                  <>
+                    <img src={previewUrl || "/placeholder.svg"} alt="Image sujet" className="h-full w-full object-cover" />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); clearImage() }}
+                      className="absolute right-1.5 top-1.5 rounded-full bg-black/70 p-1 text-white transition-transform hover:scale-110"
+                      aria-label="Retirer l'image"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <ImageIcon className="mb-2 h-6 w-6 text-white/40" />
+                    <p className="px-2 text-center text-xs font-medium text-white/70">Image sujet</p>
+                    <p className="mt-0.5 flex items-center gap-1 text-[10px] text-white/40"><Upload className="h-3 w-3" /> Importer</p>
+                  </>
+                )}
+                <input ref={imgInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={(e) => onSelectImage(e.target.files?.[0])} className="hidden" />
               </div>
+              <p className="mt-1.5 text-center text-[11px] text-white/40">Requis</p>
             </div>
+
+            {/* Video de reference (UI seulement pour l'instant) */}
+            <div>
+              <div
+                onDrop={(e) => { e.preventDefault(); onSelectRef(e.dataTransfer.files?.[0]) }}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => !busy && refInputRef.current?.click()}
+                className={`relative flex aspect-[3/4] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed transition-colors ${
+                  refVideoUrl ? "border-[#c6f542]/60" : "border-white/15 bg-white/[0.03] hover:border-[#c6f542]/40"
+                } ${busy ? "pointer-events-none opacity-60" : ""}`}
+              >
+                {refVideoUrl ? (
+                  <>
+                    <video src={refVideoUrl} className="h-full w-full object-cover" muted loop playsInline />
+                    <button
+                      onClick={(e) => { e.stopPropagation(); clearRef() }}
+                      className="absolute right-1.5 top-1.5 rounded-full bg-black/70 p-1 text-white transition-transform hover:scale-110"
+                      aria-label="Retirer la vidéo"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Video className="mb-2 h-6 w-6 text-white/40" />
+                    <p className="px-2 text-center text-xs font-medium text-white/70">Vidéo de référence</p>
+                    <p className="mt-0.5 flex items-center gap-1 text-[10px] text-white/40"><Upload className="h-3 w-3" /> Importer</p>
+                  </>
+                )}
+                <input ref={refInputRef} type="file" accept="video/*" onChange={(e) => onSelectRef(e.target.files?.[0])} className="hidden" />
+              </div>
+              <p className="mt-1.5 text-center text-[11px] text-amber-400/70">Bientôt</p>
+            </div>
+          </div>
+
+          {/* Note honnete sur le moteur actuel */}
+          <div className="rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2 text-[11px] leading-relaxed text-amber-200/80">
+            Le transfert de mouvement depuis une vidéo arrive bientôt. Pour l&apos;instant, le moteur anime ton image sujet à partir du prompt et des presets ci-dessous.
+          </div>
+
+          {/* Prompt */}
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
             <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Ex : la caméra zoome lentement, la personne sourit, lumière dorée, léger vent dans les cheveux"
-              className="min-h-24 resize-none border-hairline bg-secondary/50 text-foreground"
+              placeholder="Décris le mouvement : la caméra zoome lentement, la personne sourit, léger vent..."
+              className="min-h-20 resize-none border-0 bg-transparent p-0 text-sm text-white placeholder:text-white/30 focus-visible:ring-0"
               maxLength={MAX_PROMPT}
               disabled={busy}
             />
-            <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="mt-2 flex items-center justify-between">
               <button
                 type="button"
                 onClick={() => setEnhance((v) => !v)}
                 disabled={busy}
                 aria-pressed={enhance}
-                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
-                  enhance
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-hairline-strong bg-secondary text-muted-foreground hover:border-primary/50"
+                className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
+                  enhance ? "border-[#c6f542] bg-[#c6f542]/10 text-[#c6f542]" : "border-white/15 text-white/50 hover:border-white/30"
                 }`}
               >
-                <Sparkles className="h-3.5 w-3.5" />
-                Améliorer le prompt
+                <Sparkles className="h-3.5 w-3.5" /> Enhance
               </button>
-              <span className="text-xs text-text-faint">{prompt.length}/{MAX_PROMPT}</span>
+              <span className="text-[11px] text-white/30">{prompt.length}/{MAX_PROMPT}</span>
             </div>
-          </section>
+          </div>
 
-          {/* Etape 3 — Modele */}
-          <section className="rounded-2xl border border-hairline bg-card p-5">
-            <div className="mb-4 flex items-center gap-3">
-              <StepBadge n={3} done />
-              <div>
-                <h2 className="text-sm font-semibold text-foreground">Qualité</h2>
-                <p className="text-xs text-muted-foreground">Vitesse ou rendu, à toi de choisir</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
+          {/* Ligne Model */}
+          <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+            <div className="px-3 pt-2.5 text-[11px] font-medium uppercase tracking-wide text-white/40">Model</div>
+            <div className="grid grid-cols-3 gap-1 p-2">
               {MODELS.map((m) => (
                 <button
                   key={m.value}
@@ -300,111 +344,149 @@ export default function MotionPage() {
                   onClick={() => !busy && setModel(m.value)}
                   disabled={busy}
                   aria-pressed={model === m.value}
-                  className={`rounded-lg border px-3 py-2.5 text-center transition-colors disabled:opacity-50 ${
-                    model === m.value
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-hairline-strong bg-secondary text-foreground hover:border-primary/50"
+                  className={`rounded-lg px-2 py-2 text-center transition-colors disabled:opacity-50 ${
+                    model === m.value ? "bg-[#c6f542] text-black" : "bg-white/5 text-white/70 hover:bg-white/10"
                   }`}
                 >
-                  <span className="block text-sm font-semibold">{m.label}</span>
-                  <span className={`block text-[11px] ${model === m.value ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                    {m.hint}
-                  </span>
+                  <span className="block text-xs font-semibold leading-tight">{m.label.replace("Motion ", "")}</span>
+                  <span className={`block text-[10px] ${model === m.value ? "text-black/60" : "text-white/40"}`}>{m.credits} cr.</span>
                 </button>
               ))}
             </div>
-          </section>
+          </div>
+
+          {/* Ligne Quality */}
+          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
+            <div>
+              <div className="text-[11px] font-medium uppercase tracking-wide text-white/40">Quality</div>
+              <div className="text-sm font-semibold text-white">{quality}</div>
+            </div>
+            <div className="flex gap-1">
+              {QUALITIES.map((q) => (
+                <button
+                  key={q}
+                  type="button"
+                  onClick={() => !busy && setQuality(q)}
+                  disabled={busy}
+                  aria-pressed={quality === q}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+                    quality === q ? "bg-white text-black" : "bg-white/5 text-white/60 hover:bg-white/10"
+                  }`}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Bouton Generate */}
+          <button
+            onClick={handleGenerate}
+            disabled={!canGenerate}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#c6f542] py-3.5 text-sm font-bold text-black transition-colors hover:bg-[#d4ff5a] disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {busy ? (
+              <><Loader2 className="h-5 w-5 animate-spin" /> Génération...</>
+            ) : (
+              <>Generate <Sparkles className="h-4 w-4" /> {activeModel.credits}</>
+            )}
+          </button>
         </div>
 
-        {/* Colonne resultat + presets */}
-        <div className="space-y-4">
-          {/* Resultat */}
-          <section className="rounded-2xl border border-hairline bg-card p-5">
-            <h2 className="mb-4 text-sm font-semibold text-foreground">Résultat</h2>
-            <div className="flex min-h-56 flex-col items-center justify-center rounded-xl border border-hairline bg-secondary/40 p-4 text-center">
-              {status === "completed" && videoUrl ? (
-                <div className="w-full">
-                  <video src={videoUrl} controls playsInline className="mx-auto max-h-72 w-full rounded-lg" />
-                  <a
-                    href={videoUrl}
-                    download
-                    className="mt-3 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-                  >
-                    <Download className="h-4 w-4" />
-                    Télécharger
-                  </a>
-                </div>
-              ) : busy ? (
-                <>
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  <p className="mt-3 text-sm font-medium text-foreground">
-                    {status === "uploading" ? "Envoi de la photo..." : "Génération en cours..."}
-                  </p>
-                  <p className="mt-1 text-xs text-text-faint">Cela peut prendre 1 à 3 minutes</p>
-                </>
-              ) : status === "failed" ? (
-                <p className="text-sm text-red-400">La génération a échoué. Réessaie avec une autre photo ou un autre prompt.</p>
-              ) : (
-                <>
-                  <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                    <Clapperboard className="h-6 w-6 text-primary" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">Ta vidéo animée apparaîtra ici</p>
-                </>
-              )}
-            </div>
-
+        {/* ---------- Panneau droit : apercu ---------- */}
+        <div className="flex flex-col rounded-2xl border border-white/10 bg-[#0d0d0d]">
+          {/* Barre History / Motion library */}
+          <div className="flex items-center gap-2 border-b border-white/10 p-3">
+            <span className="inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-medium text-white">
+              <History className="h-3.5 w-3.5" /> Historique
+            </span>
             <button
-              onClick={handleGenerate}
-              disabled={!canGenerate}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold uppercase tracking-tight text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+              type="button"
+              onClick={() => setShowLibrary((v) => !v)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/50 transition-colors hover:text-white"
             >
-              {busy ? <Loader2 className="h-5 w-5 animate-spin" /> : <Wand2 className="h-5 w-5" />}
-              {busy ? "Génération..." : "Générer la vidéo"}
+              <BookOpen className="h-3.5 w-3.5" /> Bibliothèque de mouvements
             </button>
-          </section>
+          </div>
 
-          {/* Presets de mouvement (optionnel) */}
-          {motions.length > 0 && (
-            <section className="rounded-2xl border border-hairline bg-card p-5">
-              <div className="mb-1 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-foreground">Mouvements de caméra</h2>
-                <span className="text-xs text-text-faint">{selectedMotions.length}/3</span>
+          {/* Zone centrale */}
+          <div className="flex flex-1 items-center justify-center p-6">
+            {showLibrary ? (
+              motions.length > 0 ? (
+                <div className="grid max-h-[60vh] w-full grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 lg:grid-cols-4">
+                  {motions.map((m) => {
+                    const active = selectedMotions.includes(m.id)
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => toggleMotion(m.id)}
+                        aria-pressed={active}
+                        title={m.description}
+                        className={`group relative overflow-hidden rounded-xl border text-left transition-colors ${
+                          active ? "border-[#c6f542] ring-2 ring-[#c6f542]/40" : "border-white/10 hover:border-white/30"
+                        }`}
+                      >
+                        {m.preview_url ? (
+                          <video src={m.preview_url} className="aspect-video w-full object-cover" muted loop playsInline
+                            onMouseEnter={(e) => e.currentTarget.play().catch(() => {})}
+                            onMouseLeave={(e) => { e.currentTarget.pause(); e.currentTarget.currentTime = 0 }}
+                          />
+                        ) : (
+                          <div className="flex aspect-video w-full items-center justify-center bg-white/5"><Film className="h-5 w-5 text-white/30" /></div>
+                        )}
+                        <span className="block truncate px-2 py-1.5 text-[11px] font-medium text-white/80">{m.name}</span>
+                        {active && <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-[#c6f542]" />}
+                      </button>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-white/40">Bibliothèque de mouvements indisponible pour le moment.</p>
+              )
+            ) : status === "completed" && videoUrl ? (
+              <div className="w-full max-w-md">
+                <video src={videoUrl} controls playsInline autoPlay loop className="mx-auto max-h-[65vh] w-full rounded-xl" />
+                <a href={videoUrl} download className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/20">
+                  <Download className="h-4 w-4" /> Télécharger
+                </a>
               </div>
-              <p className="mb-3 text-xs text-muted-foreground">Optionnel — jusqu&apos;à 3 presets combinés</p>
-              <div className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto pr-1">
-                {motions.map((m) => {
-                  const active = selectedMotions.includes(m.id)
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => !busy && toggleMotion(m.id)}
-                      disabled={busy}
-                      aria-pressed={active}
-                      title={m.description}
-                      className={`group relative overflow-hidden rounded-xl border text-left transition-colors disabled:opacity-50 ${
-                        active ? "border-primary ring-2 ring-primary/40" : "border-hairline-strong hover:border-primary/50"
-                      }`}
-                    >
-                      {m.preview_url ? (
-                        <img src={m.preview_url || "/placeholder.svg"} alt={m.name} className="h-20 w-full object-cover" />
-                      ) : (
-                        <div className="flex h-20 w-full items-center justify-center bg-secondary">
-                          <Film className="h-5 w-5 text-muted-foreground" />
-                        </div>
-                      )}
-                      {active && (
-                        <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                          <Check className="h-3 w-3" />
-                        </span>
-                      )}
-                      <span className="block truncate px-2 py-1.5 text-xs font-medium text-foreground">{m.name}</span>
-                    </button>
-                  )
-                })}
+            ) : busy ? (
+              <div className="flex flex-col items-center text-center">
+                <Loader2 className="h-10 w-10 animate-spin text-[#c6f542]" />
+                <p className="mt-4 text-sm font-medium text-white">{status === "uploading" ? "Envoi de l'image..." : "Génération en cours..."}</p>
+                <p className="mt-1 text-xs text-white/40">1 à 3 minutes</p>
               </div>
-            </section>
+            ) : status === "failed" ? (
+              <p className="max-w-sm text-center text-sm text-red-400">La génération a échoué. Réessaie avec une autre image ou un autre prompt.</p>
+            ) : (
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
+                  <Play className="h-7 w-7 text-white/30" />
+                </div>
+                <p className="text-sm text-white/50">Ton clip généré apparaîtra ici</p>
+                <p className="mt-1 text-xs text-white/30">Importe une image, décris le mouvement, puis Generate</p>
+              </div>
+            )}
+          </div>
+
+          {/* Selection de presets (rappel sous l'apercu) */}
+          {selectedMotions.length > 0 && !showLibrary && (
+            <div className="flex flex-wrap items-center gap-2 border-t border-white/10 p-3">
+              <span className="text-[11px] text-white/40">Mouvements :</span>
+              {selectedMotions.map((id) => {
+                const m = motions.find((x) => x.id === id)
+                return (
+                  <span key={id} className="inline-flex items-center gap-1 rounded-full bg-[#c6f542]/15 px-2.5 py-1 text-[11px] font-medium text-[#c6f542]">
+                    {m?.name || id}
+                    <button type="button" onClick={() => toggleMotion(id)} aria-label="Retirer"><X className="h-3 w-3" /></button>
+                  </span>
+                )
+              })}
+              <button type="button" onClick={() => setShowLibrary(true)} className="inline-flex items-center gap-0.5 text-[11px] text-white/50 hover:text-white">
+                Ajouter <ChevronRight className="h-3 w-3" />
+              </button>
+            </div>
           )}
         </div>
       </div>

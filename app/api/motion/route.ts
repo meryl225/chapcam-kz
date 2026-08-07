@@ -110,6 +110,7 @@ export async function POST(request: NextRequest) {
     const file = form.get("file") as File | null
     const prompt = (form.get("prompt") as string | null)?.trim() || ""
     const modelKey = (form.get("model") as string | null)?.trim() || DEFAULT_MODEL
+    const quality = (form.get("quality") as string | null)?.trim() === "1080p" ? "1080p" : "720p"
     const enhance = (form.get("enhance") as string | null) === "true"
     let motionIds: string[] = []
     try {
@@ -155,6 +156,7 @@ export async function POST(request: NextRequest) {
       image_url: imageUrl,
       prompt,
       enhance_prompt: enhance,
+      resolution: quality,
     }
     if (motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
 
