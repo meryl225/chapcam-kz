@@ -2,11 +2,12 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Play, Check, TrendingUp, Star, Zap, Gauge, Sparkles, Timer, ShieldCheck } from "lucide-react"
+import { useState, useEffect } from "react"
+import { ArrowRight, Play, Check, TrendingUp, Star, Zap, Gauge, Sparkles, Timer, ShieldCheck, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StreamStudio } from "@/components/stream-studio"
 import { MonitorFrame } from "@/components/monitor-frame"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 
 const FLAGS = [
   { src: "/images/flag-cote-divoire.png", alt: "Cote d'Ivoire" },
@@ -34,6 +35,22 @@ const PLATFORMS = [
 ]
 
 export function HeroSection() {
+  const [demoOpen, setDemoOpen] = useState(false)
+
+  // Fermeture de la démo avec la touche Échap + blocage du scroll de fond
+  useEffect(() => {
+    if (!demoOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDemoOpen(false)
+    }
+    document.addEventListener("keydown", onKey)
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.removeEventListener("keydown", onKey)
+      document.body.style.overflow = ""
+    }
+  }, [demoOpen])
+
   return (
     <section className="relative min-h-screen overflow-hidden px-6 pt-28 pb-20">
       {/* Grille de fond subtile */}
@@ -115,17 +132,17 @@ export function HeroSection() {
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
-            <Link href="#in-action">
-              <Button
-                variant="outline"
-                className="h-14 rounded-2xl border-white/15 bg-white/5 px-6 text-base font-semibold text-white hover:bg-white/10"
-              >
-                <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/10">
-                  <Play className="h-3.5 w-3.5 fill-current" />
-                </span>
-                Voir la démo
-              </Button>
-            </Link>
+            <Button
+              type="button"
+              onClick={() => setDemoOpen(true)}
+              variant="outline"
+              className="h-14 rounded-2xl border-white/15 bg-white/5 px-6 text-base font-semibold text-white hover:bg-white/10"
+            >
+              <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/10">
+                <Play className="h-3.5 w-3.5 fill-current" />
+              </span>
+              Voir la démo
+            </Button>
           </div>
 
           {/* Preuve sociale */}
@@ -250,6 +267,49 @@ export function HeroSection() {
           </motion.a>
         </motion.div>
       </div>
+
+      {/* ===== Lightbox de démo vidéo ===== */}
+      <AnimatePresence>
+        {demoOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            onClick={() => setDemoOpen(false)}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Démo ChapCam"
+          >
+            <motion.div
+              initial={{ scale: 0.94, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-4xl overflow-hidden rounded-2xl border border-white/10 bg-black shadow-[0_40px_120px_-20px_rgba(0,212,255,0.35)]"
+            >
+              <button
+                type="button"
+                onClick={() => setDemoOpen(false)}
+                aria-label="Fermer la démo"
+                className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-sm transition-colors hover:bg-black/80"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <video
+                src="/showcase/chapcam-demo.mp4"
+                autoPlay
+                controls
+                playsInline
+                className="aspect-video w-full bg-black object-contain"
+                aria-label="Vidéo de démonstration ChapCam"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   )
 }
