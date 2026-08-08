@@ -43,6 +43,36 @@ function getApiKey(): string | null {
   return process.env.HEYGEN_API_KEY || null
 }
 
+// HeyGen renifle les octets du fichier audio et exige que le Content-Type
+// declare corresponde EXACTEMENT au format detecte, avec des noms MIME precis
+// (notamment "audio/x-wav" pour le WAV, et non "audio/wav"). On lit donc la
+// signature binaire pour renvoyer le bon type. Le client convertit deja tout
+// echantillon en WAV, mais on gere aussi MP3/M4A par securite.
+function detectAudioContentType(buf: Buffer): string {
+  // WAV : "RIFF" .... "WAVE"
+  if (buf.length >= 12 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WAVE") {
+    return "audio/x-wav"
+  }
+  // MP3 : tag "ID3" ou frame sync 0xFF 0xEx/0xFx
+  if (buf.length >= 3 && (buf.toString("ascii", 0, 3) === "ID3" || (buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0))) {
+    return "audio/mpeg"
+  }
+  // M4A / MP4 audio : boite "ftyp" a l'offset 4
+  if (buf.length >= 12 && buf.toString("ascii", 4, 8) === "ftyp") {
+    return "audio/mp4"
+  }
+  // OGG
+  if (buf.length >= 4 && buf.toString("ascii", 0, 4) === "OggS") {
+    return "audio/ogg"
+  }
+  // WebM / Matroska (0x1A45DFA3)
+  if (buf.length >= 4 && buf[0] === 0x1a && buf[1] === 0x45 && buf[2] === 0xdf && buf[3] === 0xa3) {
+    return "audio/webm"
+  }
+  // Defaut : le client normalise en WAV, on suppose donc du WAV.
+  return "audio/x-wav"
+}
+
 // POST : cree une video a partir d'une photo + un prompt (script parle).
 // Attend un multipart/form-data : file (image), script (texte), voice_id.
 export async function POST(request: NextRequest) {
@@ -94,8 +124,8 @@ export async function POST(request: NextRequest) {
     if (file.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: "Photo trop volumineuse (max 10 Mo)." }, { status: 400 })
     }
-    if (useClone && voiceSample!.size > 15 * 1024 * 1024) {
-      return NextResponse.json({ error: "Echantillon vocal trop volumineux (max 15 Mo)." }, { status: 400 })
+    if (useClone && voiceSample!.size > 25 * 1024 * 1024) {
+      return NextResponse.json({ error: "Echantillon vocal trop volumineux (max 25 Mo)." }, { status: 400 })
     }
 
     const estimatedSeconds = estimateSeconds(script)
@@ -153,7 +183,11 @@ export async function POST(request: NextRequest) {
     let cloneVoiceId: string | null = null
     if (useClone) {
       const audioBytes = Buffer.from(await voiceSample!.arrayBuffer())
-      const audioType = voiceSample!.type || "audio/mpeg"
+      // IMPORTANT : HeyGen RENIFLE les octets du fichier et REJETTE l'upload si
+      // le Content-Type declare ne correspond pas exactement au format detecte
+      // (ex: "audio/wav" != "audio/x-wav"). On deduit donc le type reel a partir
+      // de la signature binaire plutot que de se fier au type du navigateur.
+      const audioType = detectAudioContentType(audioBytes)
       const audioUpload = await fetch(HEYGEN_UPLOAD, {
         method: "POST",
         headers: { "X-Api-Key": apiKey, "Content-Type": audioType },
