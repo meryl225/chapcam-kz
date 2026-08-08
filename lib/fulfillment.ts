@@ -9,10 +9,12 @@
 import crypto from 'crypto'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ADMIN_EMAIL } from '@/lib/admin-auth'
-import { getPlan, photoVideoQuotaForPlan, motionQuotaForPlan, type PlanConfig } from '@/lib/plans'
+import { getPlan, photoVideoQuotaForPlan, motionQuotaForPlan, translationQuotaForPlan, type PlanConfig } from '@/lib/plans'
 import { addPhotoVideoCredits } from '@/lib/photo-video-quota'
 import { addMotionCredits } from '@/lib/motion-quota'
+import { addTranslationCredits } from '@/lib/translation-quota'
 import { getMotionOffer, type MotionOffer } from '@/lib/motion-offers'
+import { getTranslationOffer, type TranslationOffer } from '@/lib/translation-offers'
 import { getLiveOffer, type LiveOffer } from '@/lib/live-offers'
 import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
 import { getPcOffer, getDesktopDownloadUrl, getDesktopDownloadUrlMac, type PcOffer } from '@/lib/pc-offer'
@@ -165,6 +167,17 @@ export async function activateSubscription(
     }
   }
 
+  // Crediter les credits "Traduction Video" (1 credit = 1 video traduite <=60s).
+  // Quota petit (traduction couteuse). S'accumule.
+  const translationCredits = translationQuotaForPlan(plan.id)
+  if (translationCredits > 0) {
+    try {
+      await addTranslationCredits(userId, translationCredits)
+    } catch (e) {
+      console.error('[fulfillment] Erreur credit traduction:', (e as Error).message)
+    }
+  }
+
   return { now, end }
 }
 
@@ -223,7 +236,7 @@ export interface PurchaseInput {
 
 export interface PurchaseResult {
   ok: boolean
-  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' | 'numbers_wallet' | null
+  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' | 'translation' | 'numbers_wallet' | null
   userLinked: boolean
   message: string
   licenseKey?: string
@@ -279,8 +292,9 @@ export async function creditPurchase(
   const voiceOffer: VoiceOffer | undefined = getVoiceOffer(input.productId)
   const photoOffer: PhotoVideoOffer | undefined = getPhotoVideoOffer(input.productId)
   const motionOffer: MotionOffer | undefined = getMotionOffer(input.productId)
+  const translationOffer: TranslationOffer | undefined = getTranslationOffer(input.productId)
 
-  if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer) {
+  if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer) {
     return { ok: false, kind: null, userLinked: false, message: `Produit inconnu : ${input.productId}` }
   }
 
@@ -321,7 +335,7 @@ export async function creditPurchase(
   if (!userId) {
     return {
       ok: false,
-      kind: installOffer ? 'installation' : liveOffer ? 'live' : voiceOffer ? 'voice' : photoOffer ? 'photo' : motionOffer ? 'motion' : 'plan',
+      kind: installOffer ? 'installation' : liveOffer ? 'live' : voiceOffer ? 'voice' : photoOffer ? 'photo' : motionOffer ? 'motion' : translationOffer ? 'translation' : 'plan',
       userLinked: false,
       message: `Aucun compte ChapCam ne correspond a ${input.email}.`,
     }
@@ -388,6 +402,17 @@ export async function creditPurchase(
       kind: 'motion',
       userLinked: true,
       message: `${motionOffer.name} credite (${balance} clips disponibles).`,
+    }
+  }
+
+  if (translationOffer) {
+    // Credite le solde de credits Traduction Video (1 credit = 1 video <=60s).
+    const balance = await addTranslationCredits(userId, translationOffer.credits)
+    return {
+      ok: true,
+      kind: 'translation',
+      userLinked: true,
+      message: `${translationOffer.name} credite (${balance} traductions disponibles).`,
     }
   }
 
