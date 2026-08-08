@@ -55,7 +55,6 @@ const navItems: NavItem[] = [
   { href: '/dashboard', icon: Home, label: 'DASHBOARD', color: '#34d399' },
   { href: '/dashboard/voice-swap', icon: AudioLines, label: 'VOICE SWAP', badge: 'PRO', color: '#ef4444' },
   { href: '/dashboard/voice-translator', icon: Languages, label: 'VOICE TRADUCTEUR', badge: 'NEW', color: '#38bdf8' },
-  { href: '/dashboard/video-translation', icon: Film, label: 'TRADUCTION VIDEO', badge: 'NEW', color: '#8b5cf6' },
   { href: '/dashboard/avatars', icon: Users, label: 'MES AVATARS', color: '#22d3ee' },
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES', color: '#4ade80' },
   { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGER', color: '#facc15' },
@@ -70,12 +69,20 @@ function formatPoints(value: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f') // espace fine insecable comme separateur de milliers
 }
 
-type FeaturedTone = 'green' | 'blue' | 'purple'
+type FeaturedTone = 'green' | 'blue' | 'purple' | 'cyan'
 
 const FEATURED_TONES: Record<
   FeaturedTone,
   { bg: string; border: string; shadow: string; tile: string; badge: string; sub: string }
 > = {
+  cyan: {
+    bg: 'bg-gradient-to-br from-[#0891b2] to-[#06b6d4] text-white',
+    border: 'border-[#06b6d4]/40',
+    shadow: 'shadow-[#0891b2]/40',
+    tile: 'bg-white/15',
+    badge: 'bg-white/20 text-white',
+    sub: 'text-white/75',
+  },
   green: {
     bg: 'bg-gradient-to-br from-primary to-emerald-400 text-black',
     border: 'border-primary/40',
@@ -294,6 +301,15 @@ function SidebarContent({
                   badge="New"
                   tone="purple"
                   active={pathname === '/dashboard/motion'}
+                />
+                <FeaturedLink
+                  href="/dashboard/video-translation"
+                  icon={Languages}
+                  title="Traduction Vidéo"
+                  subtitle="Traduis ta vidéo dans 190 langues"
+                  badge="New"
+                  tone="cyan"
+                  active={pathname === '/dashboard/video-translation'}
                 />
               </div>
             )}
