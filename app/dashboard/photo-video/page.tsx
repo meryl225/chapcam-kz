@@ -54,6 +54,64 @@ const SPEEDS: { label: string; value: number }[] = [
   { label: "Énergique", value: 1.1 },
 ]
 
+// HeyGen n'accepte QUE le MP3 ou le WAV pour le clonage vocal. Or l'enregistrement
+// micro du navigateur (MediaRecorder) produit du WebM/Opus, et un import peut etre
+// du M4A/AAC : ces formats font echouer le clone ("ne fonctionne pas"). On reconvertit
+// donc systematiquement l'echantillon en WAV 16 bits mono via la Web Audio API avant
+// l'envoi, ce qui garantit la compatibilite HeyGen quel que soit le format source.
+function encodeWav(buffer: AudioBuffer): Blob {
+  const numCh = buffer.numberOfChannels
+  const length = buffer.length
+  // Mixage mono (moyenne des canaux) pour un fichier leger et compatible.
+  const mono = new Float32Array(length)
+  for (let ch = 0; ch < numCh; ch++) {
+    const data = buffer.getChannelData(ch)
+    for (let i = 0; i < length; i++) mono[i] += data[i] / numCh
+  }
+  const sampleRate = buffer.sampleRate
+  const dataSize = length * 2 // 16 bits = 2 octets/echantillon
+  const buf = new ArrayBuffer(44 + dataSize)
+  const view = new DataView(buf)
+  const writeStr = (off: number, s: string) => {
+    for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i))
+  }
+  writeStr(0, "RIFF")
+  view.setUint32(4, 36 + dataSize, true)
+  writeStr(8, "WAVE")
+  writeStr(12, "fmt ")
+  view.setUint32(16, 16, true) // taille du chunk fmt
+  view.setUint16(20, 1, true) // format PCM
+  view.setUint16(22, 1, true) // mono
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * 2, true) // debit d'octets (mono 16 bits)
+  view.setUint16(32, 2, true) // block align
+  view.setUint16(34, 16, true) // bits par echantillon
+  writeStr(36, "data")
+  view.setUint32(40, dataSize, true)
+  let offset = 44
+  for (let i = 0; i < length; i++) {
+    const s = Math.max(-1, Math.min(1, mono[i]))
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true)
+    offset += 2
+  }
+  return new Blob([view], { type: "audio/wav" })
+}
+
+async function convertAudioToWav(file: File): Promise<File> {
+  const arrayBuf = await file.arrayBuffer()
+  const AudioCtx: typeof AudioContext =
+    window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+  const ctx = new AudioCtx()
+  try {
+    // slice(0) : decodeAudioData consomme le buffer, on lui passe une copie.
+    const audioBuffer = await ctx.decodeAudioData(arrayBuf.slice(0))
+    const wavBlob = encodeWav(audioBuffer)
+    return new File([wavBlob], "voix.wav", { type: "audio/wav" })
+  } finally {
+    ctx.close().catch(() => {})
+  }
+}
+
 export default function PhotoVideoPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -85,6 +143,8 @@ export default function PhotoVideoPage() {
   const [voiceMode, setVoiceMode] = useState<"preset" | "clone">("preset")
   const [voiceSample, setVoiceSample] = useState<File | null>(null)
   const [voiceSampleUrl, setVoiceSampleUrl] = useState<string | null>(null)
+  // Conversion de l'echantillon en WAV (asynchrone) : bloque la generation le temps.
+  const [preparingSample, setPreparingSample] = useState(false)
   const [recording, setRecording] = useState(false)
   const mediaRecRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -164,18 +224,31 @@ export default function PhotoVideoPage() {
     setStatus("idle")
   }, [toast])
 
-  const onSelectAudio = useCallback((f: File | undefined) => {
+  const onSelectAudio = useCallback(async (f: File | undefined) => {
     if (!f) return
     if (!f.type.startsWith("audio/")) {
       toast({ title: "Format invalide", description: "Fichier audio uniquement (MP3, WAV, M4A...)", variant: "destructive" })
       return
     }
-    if (f.size > 15 * 1024 * 1024) {
-      toast({ title: "Fichier trop volumineux", description: "Max 15 Mo", variant: "destructive" })
+    if (f.size > 25 * 1024 * 1024) {
+      toast({ title: "Fichier trop volumineux", description: "Max 25 Mo", variant: "destructive" })
       return
     }
-    setVoiceSample(f)
-    setVoiceSampleUrl(URL.createObjectURL(f))
+    // HeyGen n'accepte que MP3/WAV : on reconvertit tout import en WAV compatible.
+    setPreparingSample(true)
+    try {
+      const wav = await convertAudioToWav(f)
+      setVoiceSample(wav)
+      setVoiceSampleUrl(URL.createObjectURL(wav))
+    } catch {
+      toast({
+        title: "Audio illisible",
+        description: "Impossible de lire ce fichier. Essaie un MP3 ou un WAV clair de 10 à 30s.",
+        variant: "destructive",
+      })
+    } finally {
+      setPreparingSample(false)
+    }
   }, [toast])
 
   const startRecording = useCallback(async () => {
@@ -184,13 +257,25 @@ export default function PhotoVideoPage() {
       const rec = new MediaRecorder(stream)
       chunksRef.current = []
       rec.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data) }
-      rec.onstop = () => {
+      rec.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: rec.mimeType || "audio/webm" })
-        const ext = (rec.mimeType || "audio/webm").includes("mp4") ? "mp4" : "webm"
-        const f = new File([blob], `voix.${ext}`, { type: blob.type })
-        setVoiceSample(f)
-        setVoiceSampleUrl(URL.createObjectURL(blob))
         stream.getTracks().forEach((t) => t.stop())
+        // L'enregistrement est du WebM/Opus : HeyGen ne l'accepte pas pour le
+        // clonage. On le reconvertit en WAV avant de le stocker pour l'envoi.
+        setPreparingSample(true)
+        try {
+          const wav = await convertAudioToWav(new File([blob], "raw", { type: blob.type }))
+          setVoiceSample(wav)
+          setVoiceSampleUrl(URL.createObjectURL(wav))
+        } catch {
+          toast({
+            title: "Enregistrement illisible",
+            description: "Réessaie d'enregistrer 10 à 30s en parlant clairement.",
+            variant: "destructive",
+          })
+        } finally {
+          setPreparingSample(false)
+        }
       }
       mediaRecRef.current = rec
       rec.start()
@@ -280,6 +365,10 @@ export default function PhotoVideoPage() {
       toast({ title: "Extrait vocal manquant", description: "Enregistre ou importe un extrait de ta voix (10-30s).", variant: "destructive" })
       return
     }
+    if (preparingSample) {
+      toast({ title: "Préparation en cours", description: "Ton extrait vocal est en cours de préparation, patiente une seconde.", variant: "destructive" })
+      return
+    }
     setStatus("uploading")
     setVideoUrl(null)
     try {
@@ -310,7 +399,8 @@ export default function PhotoVideoPage() {
         } else if (res.status === 504 && json.code === "clone_timeout") {
           toast({ title: "Clonage trop long", description: json.error, variant: "destructive" })
         } else {
-          toast({ title: "Erreur", description: json.error || "Impossible de lancer la generation.", variant: "destructive" })
+          const detail = json.detail ? ` (${json.detail})` : ""
+          toast({ title: "Erreur", description: `${json.error || "Impossible de lancer la generation."}${detail}`, variant: "destructive" })
         }
         return
       }
@@ -345,7 +435,7 @@ export default function PhotoVideoPage() {
   const photoDone = !!file
   const promptDone = !!prompt.trim()
   const voiceDone = voiceMode === "preset" ? !!voiceId : !!voiceSample
-  const canGenerate = photoDone && promptDone && voiceDone && !busy && !noQuota
+  const canGenerate = photoDone && promptDone && voiceDone && !busy && !noQuota && !preparingSample
 
   if (loading) {
     return (
@@ -591,6 +681,11 @@ export default function PhotoVideoPage() {
                     {recording && (
                       <p className="flex items-center gap-2 text-sm text-destructive">
                         <span className="h-2 w-2 animate-pulse rounded-full bg-destructive" /> Enregistrement en cours...
+                      </p>
+                    )}
+                    {preparingSample && (
+                      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" /> Préparation de l&apos;extrait vocal...
                       </p>
                     )}
                     <input

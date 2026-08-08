@@ -162,8 +162,9 @@ export async function POST(request: NextRequest) {
       const audioJson = await audioUpload.json().catch(() => null)
       const audioAssetId = audioJson?.data?.id
       if (!audioUpload.ok || !audioAssetId) {
+        console.error("[v0] Clone: echec upload audio", audioUpload.status, JSON.stringify(audioJson))
         return NextResponse.json(
-          { error: "Echec de l'upload de l'echantillon vocal.", detail: audioJson?.message || "" },
+          { error: "Echec de l'upload de l'echantillon vocal.", detail: audioJson?.message || audioJson?.msg || `HTTP ${audioUpload.status}` },
           { status: 502 },
         )
       }
@@ -173,11 +174,17 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           audio: { type: "asset_id", asset_id: audioAssetId },
           voice_name: `chapcam_${user.id.slice(0, 8)}_${Date.now()}`,
+          // Indice de langue : ameliore la fidelite du clone pour une voix FR.
+          language: "fr",
+          remove_background_noise: true,
         }),
       })
       const cloneJson = await cloneRes.json().catch(() => null)
-      cloneVoiceId = cloneJson?.data?.voice_clone_id || null
+      // Selon les versions, HeyGen renvoie l'id sous voice_clone_id, voice_id ou id.
+      cloneVoiceId =
+        cloneJson?.data?.voice_clone_id || cloneJson?.data?.voice_id || cloneJson?.data?.id || null
       if (!cloneRes.ok || !cloneVoiceId) {
+        console.error("[v0] Clone: echec creation clone", cloneRes.status, JSON.stringify(cloneJson))
         return NextResponse.json(
           {
             error:
@@ -197,17 +204,27 @@ export async function POST(request: NextRequest) {
       const CLONE_POLL_MS = 3_000
       const startedAt = Date.now()
       let cloneReady = false
+      // Etats "termine" tolerants (HeyGen a utilise "complete"/"completed"/"ready"
+      // selon les versions). On considere l'echec seulement sur "failed"/"error".
+      const DONE = ["complete", "completed", "ready", "success", "active"]
+      const FAILED = ["failed", "error"]
       while (Date.now() - startedAt < CLONE_MAX_WAIT_MS) {
         const statusRes = await fetch(`${HEYGEN_API}/v3/voices/${cloneVoiceId}`, {
           headers: { "X-Api-Key": apiKey },
         })
         const statusJson = await statusRes.json().catch(() => null)
-        const cloneStatus = statusJson?.data?.status
-        if (cloneStatus === "complete") {
+        const cloneStatus = String(statusJson?.data?.status || "").toLowerCase()
+        // Si le statut expose un voice_id definitif, on l'adopte pour la video.
+        const readyVoiceId = statusJson?.data?.voice_id || statusJson?.data?.voice_clone_id
+        if (DONE.includes(cloneStatus)) {
+          if (readyVoiceId) cloneVoiceId = readyVoiceId
           cloneReady = true
           break
         }
-        if (cloneStatus === "failed") break
+        if (FAILED.includes(cloneStatus)) {
+          console.error("[v0] Clone: statut echoue", JSON.stringify(statusJson))
+          break
+        }
         await new Promise((r) => setTimeout(r, CLONE_POLL_MS))
       }
 
@@ -228,7 +245,7 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      effectiveVoiceId = cloneVoiceId
+      effectiveVoiceId = cloneVoiceId as string
     }
 
     // 2) Creation de la video (Avatar IV, type image = photo qui parle)
