@@ -70,11 +70,11 @@ interface Tool {
 
 const tools: Tool[] = [
   { href: '/dashboard/live-swap', icon: Zap, title: 'Live Swap', description: 'Change de visage en direct', badge: 'LIVE', color: '#3b82f6' },
-  { href: '/chapsim', icon: Globe, title: 'ChapSim', description: 'SMS OTP & proxy privé', badge: 'OTP', color: '#8b5cf6' },
-  { href: '/dashboard/voice-swap', icon: AudioLines, title: 'Voice Swap', description: 'Change ta voix en temps réel', badge: 'PRO', color: '#ef4444' },
   { href: '/dashboard/photo-video', icon: ImageIcon, title: 'Photos en Vidéo', description: 'Anime ta photo en vidéo', badge: 'NEW', color: '#22c55e' },
   { href: '/dashboard/motion', icon: Film, title: 'Motion', description: 'Anime ta photo en 3D', badge: 'NEW', color: '#6366f1' },
   { href: '/dashboard/video-translation', icon: Languages, title: 'Traduction Vidéo', description: 'Traduis ta vidéo en 190+ langues', badge: 'NEW', color: '#14b8a6' },
+  { href: '/chapsim', icon: Globe, title: 'ChapSim', description: 'SMS OTP & proxy privé', badge: 'OTP', color: '#8b5cf6' },
+  { href: '/dashboard/voice-swap', icon: AudioLines, title: 'Voice Swap', description: 'Change ta voix en temps réel', badge: 'PRO', color: '#ef4444' },
   { href: '/dashboard/voice-translator', icon: Mic, title: 'Voice Traducteur', description: 'Traduis et clone ta voix', badge: 'NEW', color: '#f59e0b' },
   { href: '/dashboard/avatars', icon: Users, title: 'Mes Avatars', description: 'Personnages IA réalistes', color: '#ec4899' },
 ]
