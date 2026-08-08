@@ -73,8 +73,8 @@ const tools: Tool[] = [
   { href: '/chapsim', icon: Globe, title: 'ChapSim', description: 'SMS OTP & proxy privé', badge: 'OTP', color: '#8b5cf6' },
   { href: '/dashboard/voice-swap', icon: AudioLines, title: 'Voice Swap', description: 'Change ta voix en temps réel', badge: 'PRO', color: '#ef4444' },
   { href: '/dashboard/photo-video', icon: ImageIcon, title: 'Photos en Vidéo', description: 'Anime ta photo en vidéo', badge: 'NEW', color: '#22c55e' },
-  { href: '/dashboard/motion', icon: Film, title: 'Motion', description: 'Anime ta photo en clip animé', badge: 'NEW', color: '#6366f1' },
-  { href: '/dashboard/video-translation', icon: Languages, title: 'Traduction Vidéo', description: 'Traduis ta vidéo en 190 langues', badge: 'NEW', color: '#14b8a6' },
+  { href: '/dashboard/motion', icon: Film, title: 'Motion', description: 'Anime ta photo en 3D', badge: 'NEW', color: '#6366f1' },
+  { href: '/dashboard/video-translation', icon: Languages, title: 'Traduction Vidéo', description: 'Traduis ta vidéo en 190+ langues', badge: 'NEW', color: '#14b8a6' },
   { href: '/dashboard/voice-translator', icon: Mic, title: 'Voice Traducteur', description: 'Traduis et clone ta voix', badge: 'NEW', color: '#f59e0b' },
   { href: '/dashboard/avatars', icon: Users, title: 'Mes Avatars', description: 'Personnages IA réalistes', color: '#ec4899' },
 ]
@@ -423,17 +423,22 @@ export function DashboardSidebar({
 
   return (
     <>
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] border-r border-hairline bg-sidebar md:block">
-        <SidebarContent
-          email={email}
-          plan={plan}
-          expiresAt={expiresAt}
-          isActive={isActive}
-          avatarCount={avatarCount}
-          pointsRemaining={pointsRemaining}
-          pointsTotal={pointsTotal}
-          onLogout={handleLogout}
-        />
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] p-2 md:block">
+        {/* Panneau a bordure lumineuse multicolore animee (look plateforme IA premium) */}
+        <div className="cc-glow-border h-full w-full overflow-hidden">
+          <div className="relative z-[1] h-full w-full overflow-hidden rounded-[1.15rem] bg-sidebar">
+            <SidebarContent
+              email={email}
+              plan={plan}
+              expiresAt={expiresAt}
+              isActive={isActive}
+              avatarCount={avatarCount}
+              pointsRemaining={pointsRemaining}
+              pointsTotal={pointsTotal}
+              onLogout={handleLogout}
+            />
+          </div>
+        </div>
       </aside>
 
       <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-hairline bg-sidebar px-4 md:hidden">
