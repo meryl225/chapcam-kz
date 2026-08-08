@@ -7,6 +7,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { MotionCreditPacksSection } from "@/components/motion/credit-packs-section"
+import { ImageStudio } from "@/components/motion/image-studio"
+
+// Onglets du studio : deux modes image (Higgsfield Soul) + le Motion Control video.
+const TABS = ["Texte → Image", "Édition d'image", "Motion Control"] as const
+type Tab = (typeof TABS)[number]
 
 interface Motion {
   id: string
@@ -45,6 +50,7 @@ export default function MotionPage() {
   const refInputRef = useRef<HTMLInputElement>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const [activeTab, setActiveTab] = useState<Tab>("Motion Control")
   const [loading, setLoading] = useState(true)
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -339,12 +345,13 @@ export default function MotionPage() {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Onglets facon Higgsfield */}
       <div className="flex items-center gap-6 border-b border-white/10 px-4 lg:px-8">
-        {["Create Video", "Edit Video", "Motion Control"].map((tab) => {
-          const active = tab === "Motion Control"
+        {TABS.map((tab) => {
+          const active = tab === activeTab
           return (
             <button
               key={tab}
               type="button"
+              onClick={() => setActiveTab(tab)}
               className={`relative py-4 text-sm font-medium transition-colors ${
                 active ? "text-white" : "text-white/40 hover:text-white/70"
               }`}
@@ -355,6 +362,13 @@ export default function MotionPage() {
           )
         })}
       </div>
+
+      {/* Onglets image (Higgsfield Soul) : generation seule, galerie + telechargement. */}
+      {activeTab !== "Motion Control" ? (
+        <ImageStudio mode={activeTab === "Édition d'image" ? "edit" : "text"} />
+      ) : (
+      <>
+      {/* ------------------------ Onglet Motion Control ------------------------ */}
 
       <div className="grid gap-4 p-4 lg:grid-cols-[380px_1fr] lg:p-6">
         {/* ---------- Panneau gauche : configuration ---------- */}
@@ -677,6 +691,8 @@ export default function MotionPage() {
       <div className="px-4 pb-10 lg:px-6">
         <MotionCreditPacksSection />
       </div>
+      </>
+      )}
     </div>
   )
 }
