@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, AudioLines, Globe, ChevronRight, Crown } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, AudioLines, Globe, ChevronRight, Crown, Mic } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -47,18 +47,36 @@ interface NavItem {
   href: string
   icon: React.ElementType
   label: string
-  badge?: 'NEW' | 'PRO'
   color: string
 }
 
+// Elements utilitaires : lignes compactes et sobres (pas des cartes d'outils).
 const navItems: NavItem[] = [
-  { href: '/dashboard', icon: Home, label: 'DASHBOARD', color: '#34d399' },
-  { href: '/dashboard/voice-swap', icon: AudioLines, label: 'VOICE SWAP', badge: 'PRO', color: '#ef4444' },
-  { href: '/dashboard/voice-translator', icon: Languages, label: 'VOICE TRADUCTEUR', badge: 'NEW', color: '#38bdf8' },
-  { href: '/dashboard/avatars', icon: Users, label: 'MES AVATARS', color: '#22d3ee' },
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES', color: '#4ade80' },
   { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGER', color: '#facc15' },
   { href: '/dashboard/settings', icon: Settings, label: 'PARAMETRES', color: '#94a3b8' },
+]
+
+// Outils IA premium : rendus en cartes glassmorphism avec couleur d'accent
+// distincte, badge et micro-description. C'est le coeur visuel de la sidebar.
+interface Tool {
+  href: string
+  icon: React.ElementType
+  title: string
+  description: string
+  badge?: 'LIVE' | 'PRO' | 'NEW' | 'OTP'
+  color: string
+}
+
+const tools: Tool[] = [
+  { href: '/dashboard/live-swap', icon: Zap, title: 'Live Swap', description: 'Change de visage en direct', badge: 'LIVE', color: '#3b82f6' },
+  { href: '/chapsim', icon: Globe, title: 'ChapSim', description: 'SMS OTP & proxy privé', badge: 'OTP', color: '#8b5cf6' },
+  { href: '/dashboard/voice-swap', icon: AudioLines, title: 'Voice Swap', description: 'Change ta voix en temps réel', badge: 'PRO', color: '#ef4444' },
+  { href: '/dashboard/photo-video', icon: ImageIcon, title: 'Photos en Vidéo', description: 'Anime ta photo en vidéo', badge: 'NEW', color: '#22c55e' },
+  { href: '/dashboard/motion', icon: Film, title: 'Motion', description: 'Anime ta photo en 3D', badge: 'NEW', color: '#6366f1' },
+  { href: '/dashboard/video-translation', icon: Languages, title: 'Traduction Vidéo', description: 'Traduis ta vidéo en 190+ langues', badge: 'NEW', color: '#14b8a6' },
+  { href: '/dashboard/voice-translator', icon: Mic, title: 'Voice Traducteur', description: 'Traduis et clone ta voix', badge: 'NEW', color: '#f59e0b' },
+  { href: '/dashboard/avatars', icon: Users, title: 'Mes Avatars', description: 'Personnages IA réalistes', color: '#ec4899' },
 ]
 
 // Formatage deterministe (identique serveur/client) pour eviter les erreurs
@@ -69,89 +87,72 @@ function formatPoints(value: number): string {
     .replace(/\B(?=(\d{3})+(?!\d))/g, '\u202f') // espace fine insecable comme separateur de milliers
 }
 
-type FeaturedTone = 'green' | 'blue' | 'purple' | 'cyan'
-
-const FEATURED_TONES: Record<
-  FeaturedTone,
-  { bg: string; border: string; shadow: string; tile: string; badge: string; sub: string }
-> = {
-  cyan: {
-    bg: 'bg-gradient-to-br from-[#0891b2] to-[#06b6d4] text-white',
-    border: 'border-[#06b6d4]/40',
-    shadow: 'shadow-[#0891b2]/40',
-    tile: 'bg-white/15',
-    badge: 'bg-white/20 text-white',
-    sub: 'text-white/75',
-  },
-  green: {
-    bg: 'bg-gradient-to-br from-primary to-emerald-400 text-black',
-    border: 'border-primary/40',
-    shadow: 'shadow-primary/30',
-    tile: 'bg-black/15',
-    badge: 'bg-black/20 text-black',
-    sub: 'text-black/70',
-  },
-  blue: {
-    bg: 'bg-gradient-to-br from-[#2563EB] to-[#3b82f6] text-white',
-    border: 'border-[#3b82f6]/40',
-    shadow: 'shadow-[#2563EB]/40',
-    tile: 'bg-white/15',
-    badge: 'bg-white/20 text-white',
-    sub: 'text-white/75',
-  },
-  purple: {
-    bg: 'bg-gradient-to-br from-[#7c3aed] to-[#4f46e5] text-white',
-    border: 'border-[#7c3aed]/40',
-    shadow: 'shadow-[#7c3aed]/40',
-    tile: 'bg-white/15',
-    badge: 'bg-white/20 text-white',
-    sub: 'text-white/75',
-  },
-}
-
-function FeaturedLink({
+// Carte d'outil premium : fond verre sombre translucide, tuile d'icone en
+// couleur d'accent, bordure lumineuse + halo au survol. La couleur est injectee
+// via la variable CSS `--tool` pour un accent distinct par outil.
+function ToolCard({
   href,
   icon: Icon,
   title,
-  subtitle,
+  description,
   badge,
-  tone,
+  color,
   active,
 }: {
   href: string
   icon: React.ElementType
   title: string
-  subtitle: string
-  badge: string
-  tone: FeaturedTone
+  description: string
+  badge?: string
+  color: string
   active?: boolean
 }) {
-  const t = FEATURED_TONES[tone]
   return (
     <Link
       href={href}
-      className={`group relative mb-2 flex items-center gap-3 overflow-hidden rounded-xl border ${t.border} ${t.bg} p-2.5 shadow-lg ${t.shadow} transition-all duration-200 hover:-translate-y-0.5 hover:brightness-110 ${active ? 'ring-2 ring-white/50' : ''}`}
+      style={{ ['--tool' as string]: color }}
+      className={`group relative mb-1.5 flex items-center gap-2.5 overflow-hidden rounded-xl border bg-white/[0.04] p-2 backdrop-blur-md transition-all duration-200 hover:-translate-y-px hover:bg-white/[0.07] hover:shadow-[0_6px_24px_-10px_var(--tool)] ${
+        active
+          ? 'border-[var(--tool)] bg-white/[0.07] shadow-[0_6px_24px_-10px_var(--tool)]'
+          : 'border-white/[0.06] hover:border-[var(--tool)]'
+      }`}
     >
-      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${t.tile}`}>
-        <Icon className="h-[18px] w-[18px]" />
+      {/* Barre d'accent verticale a gauche (identite couleur de l'outil) */}
+      <span
+        className="absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full opacity-70 transition-all duration-200 group-hover:h-9 group-hover:opacity-100"
+        style={{ backgroundColor: 'var(--tool)', boxShadow: '0 0 10px 0 var(--tool)' }}
+      />
+      {/* Balayage lumineux au survol */}
+      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
+
+      {/* Tuile d'icone coloree */}
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-transform duration-200 group-hover:scale-105"
+        style={{ backgroundColor: 'var(--tool)', boxShadow: '0 3px 12px -4px var(--tool)' }}
+      >
+        <Icon className="h-[18px] w-[18px]" strokeWidth={2.4} />
       </span>
+
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-[13px] font-bold uppercase leading-tight tracking-tight">
+          <span className="truncate text-[12.5px] font-bold uppercase leading-tight tracking-tight text-foreground">
             {title}
           </span>
-          <span
-            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide ${t.badge}`}
-          >
-            {badge}
-          </span>
+          {badge && (
+            <span
+              className="shrink-0 rounded-full px-1.5 py-[1px] text-[8.5px] font-extrabold uppercase tracking-wide"
+              style={{ color, backgroundColor: `${color}26` }}
+            >
+              {badge}
+            </span>
+          )}
         </span>
-        <span className={`mt-0.5 block truncate text-[10px] font-medium normal-case ${t.sub}`}>
-          {subtitle}
+        <span className="mt-0.5 block truncate text-[10px] font-medium normal-case text-muted-foreground">
+          {description}
         </span>
       </span>
-      <ChevronRight className="h-4 w-4 shrink-0 opacity-60 transition-transform duration-200 group-hover:translate-x-0.5" />
+
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-foreground" />
     </Link>
   )
 }
@@ -225,36 +226,51 @@ function SidebarContent({
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-1">
+        {/* Accueil */}
+        <Link
+          href="/dashboard"
+          style={{ ['--nav-accent' as string]: '#34d399' }}
+          className={`group/nav mb-2 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 ${
+            pathname === '/dashboard'
+              ? 'bg-[var(--nav-accent)]/10 text-foreground shadow-sm ring-1 ring-[var(--nav-accent)]/30'
+              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+        >
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-all duration-200 group-hover/nav:brightness-110 group-hover/nav:shadow-[0_4px_14px_-4px_var(--nav-accent)]"
+            style={{ backgroundColor: 'var(--nav-accent)' }}
+          >
+            <Home className="h-[17px] w-[17px]" strokeWidth={2.5} />
+          </span>
+          <span className="flex-1 truncate">Dashboard</span>
+        </Link>
+
+        {/* Outils IA premium (cartes glassmorphism) */}
+        <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-text-faint">
+          Outils premium
+        </p>
+        {tools.map((tool) => (
+          <ToolCard
+            key={tool.href}
+            href={tool.href}
+            icon={tool.icon}
+            title={tool.title}
+            description={tool.description}
+            badge={tool.badge}
+            color={tool.color}
+            active={pathname === tool.href}
+          />
+        ))}
+
+        {/* Separateur avant les utilitaires */}
+        <div className="my-2 h-px bg-gradient-to-r from-transparent via-hairline to-transparent" />
+
+        {/* Utilitaires (lignes compactes) */}
         {navItems.map((item) => {
           const isActivePath = pathname === item.href
           return (
-            <div key={item.href}>
-              {/* Boutons vedette premium (Live Swap / ChapCam PC / ChapSim) */}
-              {item.href === '/dashboard/voice-swap' && (
-                <div className="mb-3 mt-1">
-                  <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-text-faint">
-                    Premium
-                  </p>
-                  <FeaturedLink
-                    href="/dashboard/live-swap"
-                    icon={Zap}
-                    title="Live Swap"
-                    subtitle="Change de visage en temps réel"
-                    badge="Live"
-                    tone="blue"
-                    active={pathname === '/dashboard/live-swap'}
-                  />
-                  <FeaturedLink
-                    href="/chapsim"
-                    icon={Globe}
-                    title="ChapSim"
-                    subtitle="SMS OTP & proxies premium"
-                    badge="OTP"
-                    tone="purple"
-                  />
-                </div>
-              )}
             <Link
+              key={item.href}
               href={item.href}
               style={{ ['--nav-accent' as string]: item.color }}
               className={`group/nav mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 ${
@@ -270,50 +286,7 @@ function SidebarContent({
                 <item.icon className="h-[17px] w-[17px]" strokeWidth={2.5} />
               </span>
               <span className="flex-1 truncate">{item.label}</span>
-              {item.badge === 'NEW' && (
-                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary">
-                  NEW
-                </span>
-              )}
-              {item.badge === 'PRO' && (
-                <span className="rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-bold text-violet-300">
-                  PRO
-                </span>
-              )}
             </Link>
-            {/* Vedette : Studio Photo en Video, mis en avant juste sous Voice Swap */}
-            {item.href === '/dashboard/voice-swap' && (
-              <div className="mb-2 mt-2">
-                <FeaturedLink
-                  href="/dashboard/photo-video"
-                  icon={ImageIcon}
-                  title="Photos en Vidéo"
-                  subtitle="Anime ta photo : elle parle avec ta voix"
-                  badge="New"
-                  tone="green"
-                  active={pathname === '/dashboard/photo-video'}
-                />
-                <FeaturedLink
-                  href="/dashboard/motion"
-                  icon={Film}
-                  title="Motion"
-                  subtitle="Anime ta photo en clip avec mouvement de caméra"
-                  badge="New"
-                  tone="purple"
-                  active={pathname === '/dashboard/motion'}
-                />
-                <FeaturedLink
-                  href="/dashboard/video-translation"
-                  icon={Languages}
-                  title="Traduction Vidéo"
-                  subtitle="Traduis ta vidéo dans 190 langues"
-                  badge="New"
-                  tone="cyan"
-                  active={pathname === '/dashboard/video-translation'}
-                />
-              </div>
-            )}
-            </div>
           )
         })}
 
@@ -450,17 +423,22 @@ export function DashboardSidebar({
 
   return (
     <>
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] border-r border-hairline bg-sidebar md:block">
-        <SidebarContent
-          email={email}
-          plan={plan}
-          expiresAt={expiresAt}
-          isActive={isActive}
-          avatarCount={avatarCount}
-          pointsRemaining={pointsRemaining}
-          pointsTotal={pointsTotal}
-          onLogout={handleLogout}
-        />
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] p-2 md:block">
+        {/* Panneau a bordure lumineuse multicolore animee (look plateforme IA premium) */}
+        <div className="cc-glow-border h-full w-full overflow-hidden">
+          <div className="relative z-[1] h-full w-full overflow-hidden rounded-[1.15rem] bg-sidebar">
+            <SidebarContent
+              email={email}
+              plan={plan}
+              expiresAt={expiresAt}
+              isActive={isActive}
+              avatarCount={avatarCount}
+              pointsRemaining={pointsRemaining}
+              pointsTotal={pointsTotal}
+              onLogout={handleLogout}
+            />
+          </div>
+        </div>
       </aside>
 
       <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-hairline bg-sidebar px-4 md:hidden">

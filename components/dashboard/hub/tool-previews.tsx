@@ -16,41 +16,24 @@ export function EsimPreview() {
   )
 }
 
-/* ---------- Live Swap : visage original -> IA -> visage transforme ---------- */
+/* ---------- Live Swap : clip demo du face swap en temps reel ---------- */
 export function LiveSwapPreview() {
   return (
-    <div className="flex items-center justify-center gap-2 rounded-xl border border-hairline bg-black/30 p-3">
-      <div className="relative h-20 w-20 overflow-hidden rounded-lg">
-        <Image
-          src="/swap/face-original.png"
-          alt="Visage original"
-          fill
-          sizes="80px"
-          className="object-cover"
-        />
-        <span className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5 text-center text-[9px] font-semibold text-foreground">
-          Original
-        </span>
-      </div>
-
-      <div className="flex flex-col items-center gap-1">
-        <div className="cc-flow h-0.5 w-8 rounded-full bg-gradient-to-r from-transparent via-primary to-transparent" />
-        <span className="text-[9px] font-bold text-primary">IA</span>
-        <div className="cc-flow h-0.5 w-8 rounded-full bg-gradient-to-r from-transparent via-primary to-transparent" />
-      </div>
-
-      <div className="relative h-20 w-20 overflow-hidden rounded-lg ring-2 ring-primary/50">
-        <Image
-          src="/swap/face-transformed.png"
-          alt="Visage transformé"
-          fill
-          sizes="80px"
-          className="object-cover"
-        />
-        <span className="absolute bottom-0 left-0 right-0 bg-primary/80 py-0.5 text-center text-[9px] font-semibold text-black">
-          ChapCam
-        </span>
-      </div>
+    <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-hairline bg-black/40 ring-1 ring-primary/30">
+      <video
+        src="/swap/live-swap-demo.mp4"
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        aria-label="Démonstration du face swap Live Swap en temps réel"
+        className="h-full w-full object-cover"
+      />
+      <span className="absolute left-2 top-2 flex items-center gap-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-primary backdrop-blur-sm">
+        <span className="cc-blink h-1.5 w-1.5 rounded-full bg-primary" />
+        LIVE
+      </span>
     </div>
   )
 }

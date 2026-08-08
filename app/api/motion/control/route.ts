@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { fal } from "@fal-ai/client"
 import { motionQuotaForPlan } from "@/lib/plans"
 import { getMotionBalance, addMotionCredits, deductMotionCredit } from "@/lib/motion-quota"
+import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, listMotionJobs } from "@/lib/motion-jobs"
 
 // --- Motion Control REEL (Kling Motion Control via fal.ai) ---
 // C'est le moteur EXACT que Higgsfield expose dans son UI "Motion Control" :
@@ -75,6 +76,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, plan, remaining: Math.max(0, balance) })
   }
 
+  // Mode "history" : liste des generations Motion de l'utilisateur (persistees).
+  if (params.get("info") === "history") {
+    try {
+      const jobs = await listMotionJobs(user.id, 30)
+      return NextResponse.json({ success: true, jobs })
+    } catch {
+      return NextResponse.json({ success: true, jobs: [] })
+    }
+  }
+
   const requestId = params.get("request_id")
   const modelKey = params.get("model") === "pro" ? "pro" : "standard"
   const model = MODELS[modelKey]
@@ -91,6 +102,11 @@ export async function GET(request: NextRequest) {
     if (s === "COMPLETED") {
       const result = await fal.queue.result(model, { requestId })
       const videoUrl = (result.data as { video?: { url?: string } })?.video?.url || null
+      // Persister le resultat : la video reste retrouvable meme si l'utilisateur
+      // avait quitte la page pendant le rendu.
+      if (videoUrl) {
+        await markMotionJobCompleted(user.id, requestId, videoUrl).catch(() => {})
+      }
       return NextResponse.json({ success: true, status: "completed", video_url: videoUrl })
     }
 
@@ -101,6 +117,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (err) {
     console.error("[MotionControl] status error:", err instanceof Error ? err.message : err)
+    await markMotionJobFailed(user.id, requestId).catch(() => {})
     return NextResponse.json({ success: true, status: "failed", error: "La generation a echoue." })
   }
 }
@@ -179,6 +196,16 @@ export async function POST(request: NextRequest) {
     if (prompt) input.prompt = prompt
 
     const { request_id } = await fal.queue.submit(model, { input })
+
+    // Persister le job AVANT de repondre : l'historique et la reprise du polling
+    // au retour sur la page en dependent.
+    await createMotionJob({
+      userId: user.id,
+      requestId: request_id,
+      provider: "fal",
+      model: modelKey,
+      prompt,
+    }).catch(() => {})
 
     // Deduire 1 credit UNIQUEMENT apres une soumission fal reussie.
     const remaining = await deductMotionCredit(user.id)

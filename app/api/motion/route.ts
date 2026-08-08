@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { createMotionJob, markMotionJobCompleted, markMotionJobFailed } from "@/lib/motion-jobs"
 
 // --- Motion Control (Higgsfield image -> video) ---
 // L'API Higgsfield ne fait PAS de video-a-video. Elle anime une IMAGE fixe en
@@ -79,11 +80,20 @@ export async function GET(request: NextRequest) {
       headers: { Authorization: auth },
     })
     const json = await res.json().catch(() => ({}))
+    const statusStr = json.status || "unknown" // queued | in_progress | completed | failed | nsfw
+    const videoUrl = json.video?.url || null
+    // Persister le resultat pour que la video reste retrouvable dans l'historique
+    // meme si l'utilisateur avait quitte la page pendant le rendu.
+    if (statusStr === "completed" && videoUrl) {
+      await markMotionJobCompleted(user.id, requestId, videoUrl).catch(() => {})
+    } else if (statusStr === "failed" || statusStr === "nsfw") {
+      await markMotionJobFailed(user.id, requestId).catch(() => {})
+    }
     return NextResponse.json({
       success: true,
-      status: json.status || "unknown", // queued | in_progress | completed | failed | nsfw
-      video_url: json.video?.url || null,
-      error: json.status === "nsfw" ? "Contenu refuse par la moderation." : json.error || null,
+      status: statusStr,
+      video_url: videoUrl,
+      error: statusStr === "nsfw" ? "Contenu refuse par la moderation." : json.error || null,
     })
   } catch {
     return NextResponse.json({ error: "Impossible de recuperer le statut." }, { status: 502 })
@@ -183,6 +193,16 @@ export async function POST(request: NextRequest) {
         { status: res.status === 402 || noCredits ? 402 : 502 },
       )
     }
+
+    // Persister le job : l'historique et la reprise du polling au retour sur la
+    // page en dependent.
+    await createMotionJob({
+      userId: user.id,
+      requestId: json.request_id,
+      provider: "higgsfield",
+      model: modelKey,
+      prompt,
+    }).catch(() => {})
 
     return NextResponse.json({
       success: true,
