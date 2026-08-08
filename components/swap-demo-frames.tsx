@@ -2,9 +2,12 @@
 
 import { motion, AnimatePresence } from "framer-motion"
 import { useState, useEffect, useCallback } from "react"
-import { Maximize2, X } from "lucide-react"
+import { Maximize2, X, Play } from "lucide-react"
 
-const frames = [
+type Frame = { src: string; label: string; type?: "image" | "video" }
+
+const frames: Frame[] = [
+  { src: "/showcase/chapcam-en-action.mp4", label: "ChapCam en Live", type: "video" },
   { src: "/showcase/pa1.jpg", label: "Live Streaming" },
   { src: "/showcase/pa2.jpg", label: "Online Chat" },
   { src: "/showcase/pa3.jpg", label: "Post-Production" },
@@ -15,12 +18,21 @@ export function SwapDemoFrames() {
   const [index, setIndex] = useState(0)
   const [open, setOpen] = useState(false)
 
-  // Defilement automatique des 4 frames
+  const current = frames[index]
+  const isVideo = current.type === "video"
+
+  // Defilement automatique : les images defilent seules, la video passe
+  // au media suivant une fois sa lecture terminee (onEnded).
   useEffect(() => {
+    if (isVideo) return
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % frames.length)
     }, 1800)
     return () => clearInterval(interval)
+  }, [isVideo])
+
+  const goNext = useCallback(() => {
+    setIndex((prev) => (prev + 1) % frames.length)
   }, [])
 
   // Fermeture de la lightbox avec Echap
@@ -34,8 +46,6 @@ export function SwapDemoFrames() {
     return () => window.removeEventListener("keydown", onKey)
   }, [open, onKey])
 
-  const current = frames[index]
-
   return (
     <>
       {/* Rectangle anime cliquable */}
@@ -47,26 +57,45 @@ export function SwapDemoFrames() {
       >
         <div className="relative aspect-video w-full">
           <AnimatePresence mode="wait">
-            <motion.img
-              key={current.src}
-              src={current.src}
-              alt={`ChapCam en action : ${current.label}`}
-              initial={{ opacity: 0, scale: 1.04 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.6 }}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+            {isVideo ? (
+              <motion.video
+                key={current.src}
+                src={current.src}
+                autoPlay
+                muted
+                playsInline
+                onEnded={goNext}
+                initial={{ opacity: 0, scale: 1.04 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.6 }}
+                className="absolute inset-0 h-full w-full object-cover"
+                aria-label={`ChapCam en action : ${current.label}`}
+              />
+            ) : (
+              <motion.img
+                key={current.src}
+                src={current.src}
+                alt={`ChapCam en action : ${current.label}`}
+                initial={{ opacity: 0, scale: 1.04 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.6 }}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            )}
           </AnimatePresence>
 
-          {/* Ligne de scan qui balaie pendant la transformation */}
-          <motion.div
-            key={`scan-${index}`}
-            initial={{ top: "0%", opacity: 0 }}
-            animate={{ top: ["0%", "100%"], opacity: [0, 1, 0] }}
-            transition={{ duration: 1, ease: "linear" }}
-            className="pointer-events-none absolute left-0 right-0 h-12 bg-gradient-to-b from-transparent via-[#00ff88]/40 to-transparent"
-          />
+          {/* Ligne de scan qui balaie pendant la transformation (images uniquement) */}
+          {!isVideo && (
+            <motion.div
+              key={`scan-${index}`}
+              initial={{ top: "0%", opacity: 0 }}
+              animate={{ top: ["0%", "100%"], opacity: [0, 1, 0] }}
+              transition={{ duration: 1, ease: "linear" }}
+              className="pointer-events-none absolute left-0 right-0 h-12 bg-gradient-to-b from-transparent via-[#00ff88]/40 to-transparent"
+            />
+          )}
 
           {/* Voile sombre en bas pour la lisibilite */}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20" />
@@ -151,16 +180,34 @@ export function SwapDemoFrames() {
             >
               <div className="relative aspect-video w-full bg-black">
                 <AnimatePresence mode="wait">
-                  <motion.img
-                    key={`big-${current.src}`}
-                    src={current.src}
-                    alt={`ChapCam en action : ${current.label}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.4 }}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
+                  {isVideo ? (
+                    <motion.video
+                      key={`big-${current.src}`}
+                      src={current.src}
+                      autoPlay
+                      muted
+                      loop
+                      controls
+                      playsInline
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4 }}
+                      className="absolute inset-0 h-full w-full object-contain"
+                      aria-label={`ChapCam en action : ${current.label}`}
+                    />
+                  ) : (
+                    <motion.img
+                      key={`big-${current.src}`}
+                      src={current.src}
+                      alt={`ChapCam en action : ${current.label}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4 }}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  )}
                 </AnimatePresence>
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-[#00ff88]/40 bg-black/70 px-5 py-2 backdrop-blur-sm">
                   <span className="text-base font-semibold text-white">{current.label}</span>
@@ -179,12 +226,21 @@ export function SwapDemoFrames() {
                     setIndex(i)
                   }}
                   aria-label={`Voir ${f.label}`}
-                  className={`h-12 w-12 overflow-hidden rounded-lg border-2 transition-all ${
+                  className={`relative h-12 w-12 overflow-hidden rounded-lg border-2 transition-all ${
                     i === index ? "border-[#00ff88]" : "border-white/20 opacity-60 hover:opacity-100"
                   }`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={f.src} alt={f.label} className="h-full w-full object-cover" />
+                  {f.type === "video" ? (
+                    <>
+                      <video src={f.src} muted playsInline className="h-full w-full object-cover" />
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <Play className="h-4 w-4 fill-white text-white" />
+                      </span>
+                    </>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={f.src || "/placeholder.svg"} alt={f.label} className="h-full w-full object-cover" />
+                  )}
                 </button>
               ))}
             </div>
