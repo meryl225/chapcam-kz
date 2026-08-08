@@ -15,6 +15,19 @@ interface Motion {
   preview_url: string | null
 }
 
+// Une generation Motion persistee (miroir de lib/motion-jobs.ts). Permet de
+// retrouver ses clips meme apres avoir quitte la page pendant le rendu.
+interface MotionJob {
+  id: string
+  request_id: string
+  provider: "fal" | "higgsfield"
+  model: string
+  prompt: string
+  status: "processing" | "completed" | "failed"
+  video_url: string | null
+  created_at: string
+}
+
 type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 
 // Modeles (mappes sur les tiers DoP cote API). Presente facon Higgsfield.
@@ -45,12 +58,17 @@ export default function MotionPage() {
   const [selectedMotions, setSelectedMotions] = useState<string[]>([])
   const [showLibrary, setShowLibrary] = useState(false)
 
+  // `status` ne concerne QUE la soumission en cours (etat du bouton). Une fois
+  // le job soumis, il vit dans `history` et est suivi en arriere-plan : quitter
+  // la page puis revenir ne perd plus la video.
   const [status, setStatus] = useState<Status>("idle")
-  const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  const [history, setHistory] = useState<MotionJob[]>([])
+  const historyRef = useRef<MotionJob[]>([])
   // Solde de credits Motion (null = pas encore charge).
   const [credits, setCredits] = useState<number | null>(null)
 
-  const busy = status === "uploading" || status === "processing"
+  const busy = status === "uploading"
+  const hasProcessing = history.some((j) => j.status === "processing")
   const MAX_PROMPT = 500
   // Duree max d'un clip = duree de la video de reference (borne le cout fal).
   const MOTION_MAX_SECONDS = 10
@@ -64,16 +82,21 @@ export default function MotionPage() {
         return
       }
       try {
-        const [mRes, cRes] = await Promise.all([
+        const [mRes, cRes, hRes] = await Promise.all([
           fetch("/api/motion?info=motions"),
           fetch("/api/motion/control?info=quota"),
+          fetch("/api/motion/control?info=history"),
         ])
         const mJson = await mRes.json()
         if (mRes.ok && Array.isArray(mJson.motions)) setMotions(mJson.motions)
         const cJson = await cRes.json()
         if (cRes.ok) setCredits(Math.max(0, Number(cJson.remaining) || 0))
+        // Charger l'historique persiste : les generations lancees precedemment
+        // (y compris celles encore en cours) reapparaissent ici.
+        const hJson = await hRes.json()
+        if (hRes.ok && Array.isArray(hJson.jobs)) setHistory(hJson.jobs)
       } catch {
-        // presets/solde optionnels
+        // presets/solde/historique optionnels
       }
       setLoading(false)
     }
@@ -82,6 +105,11 @@ export default function MotionPage() {
       if (pollRef.current) clearInterval(pollRef.current)
     }
   }, [router, supabase])
+
+  // Garde une reference a jour de l'historique pour l'interval de polling.
+  useEffect(() => {
+    historyRef.current = history
+  }, [history])
 
   const onSelectImage = useCallback((f: File | undefined) => {
     if (!f) return
@@ -95,7 +123,6 @@ export default function MotionPage() {
     }
     setFile(f)
     setPreviewUrl(URL.createObjectURL(f))
-    setVideoUrl(null)
     setStatus("idle")
   }, [toast])
 
@@ -135,29 +162,39 @@ export default function MotionPage() {
     probe.src = url
   }, [toast])
 
-  // Le poll interroge la bonne route selon le mode utilise (motion-transfer fal
-  // vs image->video Higgsfield), transmis via `endpoint`.
-  const startPolling = useCallback((requestId: string, endpoint: string) => {
-    if (pollRef.current) clearInterval(pollRef.current)
-    pollRef.current = setInterval(async () => {
-      try {
-        const res = await fetch(`${endpoint}?request_id=${encodeURIComponent(requestId)}${endpoint.includes("control") ? `&model=${model}` : ""}`)
-        const json = await res.json()
-        if (json.status === "completed" && json.video_url) {
-          if (pollRef.current) clearInterval(pollRef.current)
-          setVideoUrl(json.video_url)
-          setStatus("completed")
-          toast({ title: "Vidéo prête !", description: "Ton clip a été généré." })
-        } else if (json.status === "failed" || json.status === "nsfw") {
-          if (pollRef.current) clearInterval(pollRef.current)
-          setStatus("failed")
-          toast({ title: "Échec de la génération", description: json.error || "La vidéo n'a pas pu être générée.", variant: "destructive" })
-        }
-      } catch {
-        // retry au prochain tick
+  // Interroge le statut d'UN job (la bonne route selon le fournisseur) et met a
+  // jour son entree dans l'historique. Le statut est aussi persiste cote serveur.
+  const pollJob = useCallback(async (job: MotionJob) => {
+    const endpoint = job.provider === "fal" ? "/api/motion/control" : "/api/motion"
+    const url = `${endpoint}?request_id=${encodeURIComponent(job.request_id)}${job.provider === "fal" ? `&model=${job.model}` : ""}`
+    try {
+      const res = await fetch(url)
+      const json = await res.json()
+      if (json.status === "completed" && json.video_url) {
+        setHistory((prev) => prev.map((j) => (j.request_id === job.request_id ? { ...j, status: "completed", video_url: json.video_url } : j)))
+        toast({ title: "Vidéo prête !", description: "Ton clip Motion a été généré." })
+      } else if (json.status === "failed" || json.status === "nsfw") {
+        setHistory((prev) => prev.map((j) => (j.request_id === job.request_id ? { ...j, status: "failed" } : j)))
+        toast({ title: "Échec de la génération", description: json.error || "La vidéo n'a pas pu être générée.", variant: "destructive" })
       }
+    } catch {
+      // retry au prochain tick
+    }
+  }, [toast])
+
+  // Tant qu'au moins un job est "processing", on poll tous les 5s. L'interval se
+  // relance automatiquement au chargement de la page si des jobs sont en cours,
+  // ce qui resout la perte de video quand on quitte puis revient sur la page.
+  useEffect(() => {
+    if (!hasProcessing) return
+    const id = setInterval(() => {
+      historyRef.current
+        .filter((j) => j.status === "processing")
+        .forEach((j) => { void pollJob(j) })
     }, 5000)
-  }, [toast, model])
+    pollRef.current = id
+    return () => clearInterval(id)
+  }, [hasProcessing, pollJob])
 
   const handleGenerate = async () => {
     if (!file) {
@@ -178,7 +215,6 @@ export default function MotionPage() {
         return
       }
       setStatus("uploading")
-      setVideoUrl(null)
       try {
         const fd = new FormData()
         fd.append("image", file)
@@ -202,9 +238,9 @@ export default function MotionPage() {
           return
         }
         if (typeof json.remaining === "number") setCredits(json.remaining)
-        setStatus("processing")
-        startPolling(json.request_id, "/api/motion/control")
-        toast({ title: "Transfert de mouvement lancé", description: "Cela peut prendre 2 à 5 minutes..." })
+        addJobToHistory(json.request_id, "fal", model === "pro" ? "pro" : "standard", prompt.trim())
+        setStatus("idle")
+        toast({ title: "Transfert de mouvement lancé", description: "Cela peut prendre 2 à 5 minutes. Tu peux quitter la page." })
       } catch {
         setStatus("idle")
         toast({ title: "Erreur réseau", description: "Réessaie dans un instant.", variant: "destructive" })
@@ -218,7 +254,6 @@ export default function MotionPage() {
       return
     }
     setStatus("uploading")
-    setVideoUrl(null)
     try {
       const fd = new FormData()
       fd.append("file", file)
@@ -241,13 +276,36 @@ export default function MotionPage() {
         return
       }
 
-      setStatus("processing")
-      startPolling(json.request_id, "/api/motion")
-      toast({ title: "Génération lancée", description: "Cela peut prendre 1 à 3 minutes..." })
+      addJobToHistory(json.request_id, "higgsfield", model === "pro" ? "standard" : model, prompt.trim() || "Animation")
+      setStatus("idle")
+      toast({ title: "Génération lancée", description: "Cela peut prendre 1 à 3 minutes. Tu peux quitter la page." })
     } catch {
       setStatus("idle")
       toast({ title: "Erreur réseau", description: "Réessaie dans un instant.", variant: "destructive" })
     }
+  }
+
+  // Ajoute (optimiste) un job en tete de l'historique. L'effet de polling le
+  // suivra automatiquement jusqu'a completion, meme si on quitte la page.
+  const addJobToHistory = (
+    requestId: string,
+    provider: "fal" | "higgsfield",
+    model: string,
+    prompt: string,
+  ) => {
+    setHistory((prev) => [
+      {
+        id: `local-${requestId}`,
+        request_id: requestId,
+        provider,
+        model,
+        prompt,
+        status: "processing",
+        video_url: null,
+        created_at: new Date().toISOString(),
+      },
+      ...prev,
+    ])
   }
 
   const toggleMotion = (id: string) => {
@@ -259,7 +317,6 @@ export default function MotionPage() {
   const clearImage = () => {
     setFile(null)
     setPreviewUrl(null)
-    setVideoUrl(null)
     setStatus("idle")
   }
   const clearRef = () => {
@@ -543,21 +600,47 @@ export default function MotionPage() {
               ) : (
                 <p className="text-sm text-white/40">Bibliothèque de mouvements indisponible pour le moment.</p>
               )
-            ) : status === "completed" && videoUrl ? (
-              <div className="w-full max-w-md">
-                <video src={videoUrl} controls playsInline autoPlay loop className="mx-auto max-h-[65vh] w-full rounded-xl" />
-                <a href={videoUrl} download className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/20">
-                  <Download className="h-4 w-4" /> Télécharger
-                </a>
+            ) : history.length > 0 ? (
+              <div className="grid max-h-[70vh] w-full grid-cols-2 gap-3 self-start overflow-y-auto sm:grid-cols-3">
+                {history.map((job) => (
+                  <div key={job.id} className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
+                    <div className="relative aspect-[3/4] w-full bg-black/40">
+                      {job.status === "completed" && job.video_url ? (
+                        <video src={job.video_url} controls loop playsInline className="h-full w-full object-cover" />
+                      ) : job.status === "failed" ? (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-center">
+                          <X className="h-6 w-6 text-red-400" />
+                          <span className="px-2 text-[11px] text-red-400">Échec</span>
+                        </div>
+                      ) : (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center">
+                          <Loader2 className="h-6 w-6 animate-spin text-[#c6f542]" />
+                          <span className="px-2 text-[11px] text-white/50">Génération...</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2 p-2">
+                      <p className="truncate text-[11px] text-white/60" title={job.prompt}>{job.prompt || "Animation"}</p>
+                      {job.status === "completed" && job.video_url && (
+                        <a
+                          href={job.video_url}
+                          download
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white/10 px-2 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-white/20"
+                          aria-label="Télécharger le clip"
+                        >
+                          <Download className="h-3 w-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : busy ? (
               <div className="flex flex-col items-center text-center">
                 <Loader2 className="h-10 w-10 animate-spin text-[#c6f542]" />
-                <p className="mt-4 text-sm font-medium text-white">{status === "uploading" ? "Envoi de l'image..." : "Génération en cours..."}</p>
-                <p className="mt-1 text-xs text-white/40">1 à 3 minutes</p>
+                <p className="mt-4 text-sm font-medium text-white">Envoi de l&apos;image...</p>
+                <p className="mt-1 text-xs text-white/40">Un instant</p>
               </div>
-            ) : status === "failed" ? (
-              <p className="max-w-sm text-center text-sm text-red-400">La génération a échoué. Réessaie avec une autre image ou un autre prompt.</p>
             ) : (
               <div className="flex flex-col items-center text-center">
                 <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white/5">
