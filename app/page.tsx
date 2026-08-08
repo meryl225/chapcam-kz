@@ -7,6 +7,9 @@ import { HeroSection } from "@/components/hero-section"
 const CreatorsSection = dynamic(() =>
   import("@/components/creators-section").then((m) => m.CreatorsSection),
 )
+const ToolsShowcaseSection = dynamic(() =>
+  import("@/components/tools-showcase-section").then((m) => m.ToolsShowcaseSection),
+)
 const InActionSection = dynamic(() =>
   import("@/components/in-action-section").then((m) => m.InActionSection),
 )
@@ -63,6 +66,7 @@ export default function Home() {
       <div className="relative z-10">
         <Header />
         <HeroSection />
+        <ToolsShowcaseSection />
         <CreatorsSection />
         <InActionSection />
         <RoadmapSection />
