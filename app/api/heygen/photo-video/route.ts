@@ -3,6 +3,11 @@ import { createClient } from "@/lib/supabase/server"
 import { photoVideoQuotaForPlan } from "@/lib/plans"
 import { getPhotoVideoBalance, addPhotoVideoCredits, deductPhotoVideoCredit } from "@/lib/photo-video-quota"
 
+// Le clonage de voix HeyGen est ASYNCHRONE (~30-90s de traitement). On attend
+// que le clone soit "complete" avant de creer la video, donc la requete peut
+// durer plus d'une minute : on releve la limite de duree de la fonction.
+export const maxDuration = 300
+
 // --- Studio Photo en Video (HeyGen Avatar IV) ---
 // La photo-video est DECOUPLEE des points/minutes du Live Swap : elle est
 // incluse dans les forfaits sous forme de CREDITS (1 credit = 1 video de 30s).
@@ -184,6 +189,45 @@ export async function POST(request: NextRequest) {
           { status: 502 },
         )
       }
+
+      // IMPORTANT : le clonage est ASYNCHRONE. Le voice_clone_id n'est PAS
+      // utilisable tant que son statut n'est pas "complete" (sinon HeyGen
+      // repond "Voice not found"). On poll le statut avant de creer la video.
+      const CLONE_MAX_WAIT_MS = 120_000 // 2 min max
+      const CLONE_POLL_MS = 3_000
+      const startedAt = Date.now()
+      let cloneReady = false
+      while (Date.now() - startedAt < CLONE_MAX_WAIT_MS) {
+        const statusRes = await fetch(`${HEYGEN_API}/v3/voices/${cloneVoiceId}`, {
+          headers: { "X-Api-Key": apiKey },
+        })
+        const statusJson = await statusRes.json().catch(() => null)
+        const cloneStatus = statusJson?.data?.status
+        if (cloneStatus === "complete") {
+          cloneReady = true
+          break
+        }
+        if (cloneStatus === "failed") break
+        await new Promise((r) => setTimeout(r, CLONE_POLL_MS))
+      }
+
+      if (!cloneReady) {
+        // Nettoyer le clone jetable si possible (marche une fois "complete",
+        // sinon HeyGen l'expirera de lui-meme) et informer l'utilisateur.
+        await fetch(`${HEYGEN_API}/v3/voices/${cloneVoiceId}`, {
+          method: "DELETE",
+          headers: { "X-Api-Key": apiKey },
+        }).catch(() => {})
+        return NextResponse.json(
+          {
+            error:
+              "Le clonage de ta voix a pris trop de temps. Reessaie avec un extrait clair de 10 a 30 secondes.",
+            code: "clone_timeout",
+          },
+          { status: 504 },
+        )
+      }
+
       effectiveVoiceId = cloneVoiceId
     }
 

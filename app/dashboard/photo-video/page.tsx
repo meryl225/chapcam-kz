@@ -307,6 +307,8 @@ export default function PhotoVideoPage() {
         } else if (res.status === 402 && json.code === "quota_exhausted") {
           setRemaining(0)
           toast({ title: "Credits epuises", description: json.error, variant: "destructive" })
+        } else if (res.status === 504 && json.code === "clone_timeout") {
+          toast({ title: "Clonage trop long", description: json.error, variant: "destructive" })
         } else {
           toast({ title: "Erreur", description: json.error || "Impossible de lancer la generation.", variant: "destructive" })
         }
@@ -757,9 +759,17 @@ export default function PhotoVideoPage() {
                   <div className="flex h-full flex-col items-center justify-center px-6 text-center">
                     <Loader2 className="mb-4 h-10 w-10 animate-spin text-primary" />
                     <p className="font-medium text-foreground">
-                      {status === "uploading" ? "Envoi de ta photo..." : "L'IA anime ta photo..."}
+                      {status === "uploading"
+                        ? voiceMode === "clone"
+                          ? "Clonage de ta voix..."
+                          : "Envoi de ta photo..."
+                        : "L'IA anime ta photo..."}
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">Généralement 1 à 3 minutes.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {status === "uploading" && voiceMode === "clone"
+                        ? "Le clonage prend jusqu'à 2 minutes, patiente ici."
+                        : "Généralement 1 à 3 minutes."}
+                    </p>
                   </div>
                 ) : status === "failed" ? (
                   <div className="flex h-full flex-col items-center justify-center px-6 text-center">
