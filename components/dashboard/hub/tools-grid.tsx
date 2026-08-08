@@ -56,7 +56,7 @@ function Badge({ kind, accent }: { kind: NonNullable<Tool['badge']>; accent: str
 
 export function ToolsGrid() {
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
       {tools.map((tool) => (
         <Link
           key={tool.href}
