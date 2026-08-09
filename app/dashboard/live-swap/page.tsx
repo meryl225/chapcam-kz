@@ -130,6 +130,14 @@ export default function DashboardPage() {
     return () => document.removeEventListener('fullscreenchange', onFsChange)
   }, [])
 
+  // La page s'est chargee avec succes : on efface le garde-fou de
+  // rechargement anti-ChunkLoadError (voir app/dashboard/live-swap/error.tsx)
+  // pour qu'un futur echec de chunk (ex: apres un prochain deploiement) puisse
+  // a nouveau declencher l'auto-recuperation.
+  useEffect(() => {
+    try { sessionStorage.removeItem('chapcam_liveswap_chunk_reload') } catch {}
+  }, [])
+
   const {
     isConnected,
     isConnecting,
