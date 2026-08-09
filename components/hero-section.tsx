@@ -167,7 +167,7 @@ export function HeroSection() {
                 ))}
               </div>
               <p className="text-sm text-gray-400">
-                <span className="font-bold text-white">+10 000 créateurs</span> déjà inscrits
+                <span className="font-bold text-white">+15 000 créateurs</span> déjà inscrits
               </p>
             </div>
           </div>
