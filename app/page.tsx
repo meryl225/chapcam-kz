@@ -34,6 +34,9 @@ const TutorialSection = dynamic(() =>
 const FounderSection = dynamic(() =>
   import("@/components/founder-section").then((m) => m.FounderSection),
 )
+const PartnershipSection = dynamic(() =>
+  import("@/components/partnership-section").then((m) => m.PartnershipSection),
+)
 const SiteFooter = dynamic(() =>
   import("@/components/site-footer").then((m) => m.SiteFooter),
 )
@@ -76,6 +79,7 @@ export default function Home() {
         <FAQSection />
         <TutorialSection />
         <FounderSection />
+        <PartnershipSection />
         <SiteFooter />
       </div>
 
