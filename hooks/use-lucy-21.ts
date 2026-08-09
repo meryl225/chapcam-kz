@@ -1,7 +1,15 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { createDecartClient, models } from '@decartai/sdk'
+// NOTE : le SDK Decart (@decartai/sdk) embarque tout le pipeline temps reel
+// WebRTC/WebCodecs, ce qui alourdit fortement le bundle. Il etait importe
+// statiquement ici, donc inclus dans le chunk INITIAL de la page Live Swap :
+// sur les reseaux instables (ou apres un redeploiement qui invalide les
+// hashes de chunks), ce gros chunk echouait a se telecharger -> ChunkLoadError
+// -> l'Error Boundary s'affichait "des le chargement" de la page.
+// On le charge desormais A LA DEMANDE (dynamic import) juste avant la connexion,
+// pour que la page se charge legere et instantanement, et qu'un eventuel souci
+// d'import du SDK n'impacte que le moment ou l'utilisateur clique "Demarrer".
 
 // 2 points = 1 seconde de swap
 const POINTS_PER_SECOND = 2
@@ -179,6 +187,9 @@ export function useLucy21() {
 
       const avatarRes = await fetch(avatarImageUrl)
       const avatarBlob = await avatarRes.blob()
+
+      // Chargement a la demande du SDK Decart (voir note en haut du fichier).
+      const { createDecartClient, models } = await import('@decartai/sdk')
 
       const client = createDecartClient({ apiKey: clientToken })
 
