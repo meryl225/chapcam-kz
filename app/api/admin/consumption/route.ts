@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminRequest } from '@/lib/admin-auth'
+import { getToolUsage, type ToolName } from '@/lib/tool-usage'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -141,6 +142,95 @@ export async function GET(req: NextRequest) {
     lastActivity: r.lastActivity,
   }))
 
+  // 4) Consommation des OUTILS IA (Photo en Video / Motion / Traduction) sur la
+  //    meme periode, depuis le journal Neon tool_usage_events. Bornes : si pas de
+  //    debut (periode "all") on part de l'epoch ; si pas de fin, jusqu'a maintenant.
+  const toolSince = start ?? '1970-01-01T00:00:00.000Z'
+  const toolUntil = end ?? new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
+  let toolsPayload: {
+    totals: { tool: ToolName; generations: number; credits: number; cost_usd: number }[]
+    grandTotalCostUsd: number
+    users: {
+      userId: string
+      email: string | null
+      plan: string | null
+      generations: number
+      credits: number
+      cost_usd: number
+      lastUsed: string
+      byTool: Record<string, { generations: number; credits: number; cost_usd: number }>
+    }[]
+  } = { totals: [], grandTotalCostUsd: 0, users: [] }
+
+  try {
+    const { rows: toolRows, totals: toolTotals } = await getToolUsage(toolSince, toolUntil)
+
+    // Resoudre les emails des utilisateurs d'outils pas deja connus (via subscriptions).
+    const toolUserIds = [...new Set(toolRows.map((r) => r.user_id))]
+    const missing = toolUserIds.filter((id) => !emailByUser.has(id))
+    for (let i = 0; i < missing.length; i += CHUNK) {
+      const slice = missing.slice(i, i + CHUNK)
+      if (slice.length === 0) continue
+      const { data } = await admin
+        .from('subscriptions')
+        .select('user_id, email, plan')
+        .in('user_id', slice)
+      for (const s of data || []) {
+        emailByUser.set(s.user_id, { email: s.email ?? null, plan: s.plan ?? null })
+      }
+    }
+
+    // Agregation par utilisateur (toutes outils confondus) + detail par outil.
+    const toolByUser = new Map<string, (typeof toolsPayload.users)[number]>()
+    for (const r of toolRows) {
+      const cur =
+        toolByUser.get(r.user_id) ??
+        {
+          userId: r.user_id,
+          email: emailByUser.get(r.user_id)?.email ?? null,
+          plan: emailByUser.get(r.user_id)?.plan ?? null,
+          generations: 0,
+          credits: 0,
+          cost_usd: 0,
+          lastUsed: r.last_used,
+          byTool: {},
+        }
+      cur.generations += Number(r.generations) || 0
+      cur.credits += Number(r.credits) || 0
+      cur.cost_usd += Number(r.cost_usd) || 0
+      if (r.last_used > cur.lastUsed) cur.lastUsed = r.last_used
+      cur.byTool[r.tool] = {
+        generations: Number(r.generations) || 0,
+        credits: Number(r.credits) || 0,
+        cost_usd: Math.round((Number(r.cost_usd) || 0) * 100) / 100,
+      }
+      toolByUser.set(r.user_id, cur)
+    }
+
+    const toolUsers = [...toolByUser.values()]
+      .map((u) => ({ ...u, cost_usd: Math.round(u.cost_usd * 100) / 100 }))
+      .sort((a, b) => b.cost_usd - a.cost_usd)
+      .slice(0, 200)
+
+    const grandTotalCostUsd =
+      Math.round(toolTotals.reduce((acc, t) => acc + (Number(t.cost_usd) || 0), 0) * 100) / 100
+
+    toolsPayload = {
+      totals: toolTotals.map((t) => ({
+        tool: t.tool,
+        generations: Number(t.generations) || 0,
+        credits: Number(t.credits) || 0,
+        cost_usd: Math.round((Number(t.cost_usd) || 0) * 100) / 100,
+      })),
+      grandTotalCostUsd,
+      users: toolUsers,
+    }
+  } catch (err) {
+    console.error('[admin/consumption] Erreur lecture outils IA:', err)
+    // On renvoie quand meme les donnees Live Swap ; la section outils sera vide.
+  }
+
   return NextResponse.json(
     {
       period,
@@ -151,6 +241,7 @@ export async function GET(req: NextRequest) {
         seconds: totalSeconds,
       },
       users,
+      tools: toolsPayload,
     },
     { headers: { 'Cache-Control': 'no-store' } },
   )

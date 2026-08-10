@@ -4,6 +4,7 @@ import { fal } from "@fal-ai/client"
 import { motionQuotaForPlan } from "@/lib/plans"
 import { getMotionBalance, addMotionCredits, deductMotionCredit } from "@/lib/motion-quota"
 import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, listMotionJobs } from "@/lib/motion-jobs"
+import { logToolUsage } from "@/lib/tool-usage"
 
 // --- Motion Control REEL (Kling Motion Control via fal.ai) ---
 // C'est le moteur EXACT que Higgsfield expose dans son UI "Motion Control" :
@@ -209,6 +210,14 @@ export async function POST(request: NextRequest) {
 
     // Deduire 1 credit UNIQUEMENT apres une soumission fal reussie.
     const remaining = await deductMotionCredit(user.id)
+
+    // Journaliser la consommation par utilisateur (suivi admin + cout fournisseur estime).
+    await logToolUsage({
+      userId: user.id,
+      tool: 'motion',
+      credits: 1,
+      meta: { model: modelKey },
+    })
 
     return NextResponse.json({
       success: true,

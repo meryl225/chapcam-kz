@@ -6,6 +6,7 @@ import {
   addTranslationCredits,
   deductTranslationCredits,
 } from "@/lib/translation-quota"
+import { logToolUsage } from "@/lib/tool-usage"
 
 // === Traduction Video (HeyGen video-translation v3) ===
 // Flux : upload video -> asset_id, puis POST /v3/video-translations (1 langue),
@@ -218,6 +219,15 @@ export async function POST(request: NextRequest) {
 
     // 3) Deduire les credits UNIQUEMENT apres soumission reussie.
     const remaining = await deductTranslationCredits(user.id, cost)
+
+    // Journaliser la consommation par utilisateur (suivi admin + cout fournisseur estime).
+    await logToolUsage({
+      userId: user.id,
+      tool: 'translation',
+      credits: cost,
+      precision: mode === 'precision',
+      meta: { language, mode },
+    })
 
     return NextResponse.json({
       success: true,

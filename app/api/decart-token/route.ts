@@ -76,21 +76,36 @@ export async function GET(request: Request) {
     'https://www.chapcam.com',
     'http://localhost:3000', // Dev only
   ])
-  // Origine de la requete (fournie par le navigateur via l'en-tete Origin, ou
-  // reconstruite depuis le host + protocole de forwarding derriere le proxy Vercel).
+  // Origine reelle de la page qui ouvrira le WebSocket Decart. On la determine
+  // dans cet ordre de fiabilite :
+  //   1. Le parametre ?origin= envoye par le client (= window.location.origin).
+  //      C'est la source la plus fiable car c'est exactement l'origine que le
+  //      navigateur mettra dans l'en-tete Origin du WebSocket. Indispensable
+  //      pour les previews v0/Vercel servis dans une iframe sandbox, ou l'origine
+  //      de la page differe du host vu cote serveur.
+  //   2. L'en-tete Origin de la requete (souvent absent sur un GET same-origin).
+  //   3. Le host de forwarding derriere le proxy Vercel.
   const hdrs = request.headers
+  const url = new URL(request.url)
+  const clientOriginParam = url.searchParams.get('origin')
   const originHeader = hdrs.get('origin')
   const forwardedHost = hdrs.get('x-forwarded-host') || hdrs.get('host')
   const forwardedProto = hdrs.get('x-forwarded-proto') || 'https'
-  const requestOrigin =
-    originHeader ||
-    (forwardedHost ? `${forwardedProto}://${forwardedHost}` : null)
-  if (requestOrigin) {
+  const candidateOrigins = [
+    clientOriginParam,
+    originHeader,
+    forwardedHost ? `${forwardedProto}://${forwardedHost}` : null,
+  ]
+  let requestOrigin: string | null = null
+  for (const candidate of candidateOrigins) {
+    if (!candidate) continue
     try {
-      // Normaliser (schema + host, sans chemin ni slash final).
-      allowedOrigins.add(new URL(requestOrigin).origin)
+      // Normaliser (schema + host uniquement, sans chemin ni slash final).
+      const normalized = new URL(candidate).origin
+      allowedOrigins.add(normalized)
+      if (!requestOrigin) requestOrigin = normalized
     } catch {
-      // Origine non parsable : on ignore et on garde la liste statique.
+      // Candidat non parsable : on l'ignore.
     }
   }
 
