@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock, ChevronDown, Smartphone } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock, ChevronDown, Smartphone, Film, Upload, Disc3, Trash2 } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
 import { pointsPerSecond, POINTS_PER_SECOND_SD, POINTS_PER_SECOND_HD } from '@/lib/swap-pricing'
@@ -110,6 +110,15 @@ export default function DashboardPage() {
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
 
+  // --- Source du swap : camera en direct OU video importee (fichier) ---
+  const [swapSource, setSwapSource] = useState<'camera' | 'video'>('camera')
+  const [videoFile, setVideoFile] = useState<File | null>(null)
+  // <video> masque qui lit le fichier importe ; on capture son flux
+  // (captureStream) pour l'envoyer a Decart comme n'importe quel MediaStream.
+  const uploadVideoRef = useRef<HTMLVideoElement | null>(null)
+  const uploadObjectUrlRef = useRef<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+
   // Agrandissement de la camera ChapCam (plein ecran natif pour faciliter le cadrage / OBS)
   const chapCamRef = useRef<HTMLDivElement | null>(null)
   const [isCamFullscreen, setIsCamFullscreen] = useState(false)
@@ -135,7 +144,7 @@ export default function DashboardPage() {
   // pour qu'un futur echec de chunk (ex: apres un prochain deploiement) puisse
   // a nouveau declencher l'auto-recuperation.
   useEffect(() => {
-    try { sessionStorage.removeItem('chapcam_liveswap_chunk_reload') } catch {}
+  try { sessionStorage.removeItem('chapcam_liveswap_chunk_reload') } catch {}
   }, [])
 
   const {
@@ -153,7 +162,20 @@ export default function DashboardPage() {
     qualityFactor,
     queuePosition,
     activeResolution,
+    isRecording,
+    recordedUrl,
+    startRecording,
+    stopRecording,
+    clearRecording,
   } = useLucy21()
+
+  // Quand le swap n'est plus actif, on met en pause la video importee (qui
+  // tourne en boucle en arriere-plan pendant le swap) pour liberer les ressources.
+  useEffect(() => {
+    if (!isConnected && !isConnecting && uploadVideoRef.current) {
+      try { uploadVideoRef.current.pause() } catch {}
+    }
+  }, [isConnected, isConnecting])
 
   // Le tarif suit la resolution reellement active : 4 pts/s en 1080p (VIP),
   // 2 pts/s en 720p. Mis a jour des que Decart confirme la resolution.
@@ -430,8 +452,74 @@ export default function DashboardPage() {
     return () => clearInterval(interval)
   }, [])
 
+  // Selection d'un fichier video comme source du swap.
+  const handleSelectVideoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('video/')) return
+    setVideoFile(file)
+    setSwapSource('video')
+  }
+
+  // Retire la video importee et repasse en source camera.
+  const clearVideoFile = () => {
+    setVideoFile(null)
+    setSwapSource('camera')
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  // Libere l'URL objet de la video importee quand elle change / au demontage.
+  useEffect(() => {
+    if (uploadObjectUrlRef.current) {
+      try { URL.revokeObjectURL(uploadObjectUrlRef.current) } catch {}
+      uploadObjectUrlRef.current = null
+    }
+    if (!videoFile) return
+    const url = URL.createObjectURL(videoFile)
+    uploadObjectUrlRef.current = url
+    if (uploadVideoRef.current) uploadVideoRef.current.src = url
+    return () => {
+      try { URL.revokeObjectURL(url) } catch {}
+      if (uploadObjectUrlRef.current === url) uploadObjectUrlRef.current = null
+    }
+  }, [videoFile])
+
+  // Prepare la video importee et capture son flux (video uniquement, comme la
+  // camera) pour l'envoyer a Decart. La video est mise en boucle afin de nourrir
+  // le swap en continu ; l'utilisateur arrete quand il veut.
+  const buildVideoSourceStream = async (): Promise<MediaStream> => {
+    const el = uploadVideoRef.current
+    if (!el) throw new Error("Lecteur video indisponible. Reessaie.")
+    el.muted = true
+    el.loop = true
+    el.playsInline = true
+    // Attendre que les dimensions soient connues avant de capturer le flux.
+    if (el.readyState < 2) {
+      await new Promise<void>((resolve, reject) => {
+        const onReady = () => { cleanup(); resolve() }
+        const onErr = () => { cleanup(); reject(new Error("Impossible de lire cette video. Essaie un autre fichier (MP4 recommande).")) }
+        const cleanup = () => {
+          el.removeEventListener('loadeddata', onReady)
+          el.removeEventListener('error', onErr)
+        }
+        el.addEventListener('loadeddata', onReady)
+        el.addEventListener('error', onErr)
+        el.load()
+      })
+    }
+    try { await el.play() } catch {}
+    const elAny = el as HTMLVideoElement & { captureStream?: () => MediaStream; mozCaptureStream?: () => MediaStream }
+    const capture = elAny.captureStream || elAny.mozCaptureStream
+    if (!capture) throw new Error("Ton navigateur ne permet pas d'utiliser une video importee. Utilise Chrome ou Edge a jour.")
+    const captured = capture.call(el)
+    // On ne garde que la piste video (pas d'audio), comme pour la camera.
+    const videoOnly = new MediaStream(captured.getVideoTracks())
+    return videoOnly
+  }
+
   const handleStartSwap = async () => {
     if (!selectedAvatar || userPoints < POINTS_PER_SECOND || !swapConsent) return
+    if (swapSource === 'video' && !videoFile) return
     // Journalisation de l'acceptation de la certification d'usage responsable.
     console.log('[v0] swap-consent accepted', {
       type: 'live-face-swap',
@@ -447,10 +535,23 @@ export default function DashboardPage() {
     pendingSyncRef.current = 0
     remainingRef.current = userPoints
     sessionStartRef.current = new Date().toISOString()
+
+    // Source video importee : on capture le flux du fichier avant de connecter.
+    let sourceStream: MediaStream | undefined
+    if (swapSource === 'video') {
+      try {
+        sourceStream = await buildVideoSourceStream()
+      } catch (err) {
+        console.error('[v0] video-source error', err)
+        return
+      }
+    }
+
     // 1080p uniquement pour les VIP ayant laisse le HD active ; codec avance optionnel.
     await connect(selectedAvatar.url, {
       hd: isVip && hdEnabled,
       codec: videoCodec || undefined,
+      sourceStream,
     })
   }
 
@@ -524,7 +625,7 @@ export default function DashboardPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND && swapConsent
+  const canStart = !!selectedAvatar && userPoints >= POINTS_PER_SECOND && swapConsent && (swapSource === 'camera' || !!videoFile)
 
   return (
     <div className="mx-auto w-full max-w-[1280px] p-4 md:p-6 space-y-6">
@@ -589,58 +690,96 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Status bar */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-hairline bg-muted px-5 py-3 backdrop-blur-xl">
-        <div className="flex items-center gap-2">
-          {isConnected ? (
-            <Wifi className={`h-4 w-4 ${QUALITY_UI[connectionQuality ?? 'good'].color}`} />
-          ) : (
-            <WifiOff className="h-4 w-4 text-text-faint" />
-          )}
-          <span
-            className={`text-sm font-medium ${isConnected ? QUALITY_UI[connectionQuality ?? 'good'].color : 'text-muted-foreground'}`}
-            title={isConnected && qualityFactor ? `Facteur limitant : ${qualityFactor}` : undefined}
-          >
-            {isConnected
-              ? QUALITY_UI[connectionQuality ?? 'good'].label
-              : 'Connexion prête'}
-          </span>
-        </div>
-        <div className="hidden h-4 w-px bg-muted sm:block" />
-        <div className="flex items-center gap-2 text-sm">
-          {processingMode === 'local' ? <Monitor className="h-4 w-4 text-green-400" /> : <Cloud className="h-4 w-4 text-blue-400" />}
-          <span className="text-muted-foreground">Mode :</span>
-          <span className="font-medium text-foreground">{processingMode === 'local' ? 'Local' : 'Cloud'}</span>
-        </div>
-        <div className="hidden h-4 w-px bg-muted sm:block" />
-        <div className="flex items-center gap-2 text-sm">
-          <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-            {isConnected ? (activeResolution === '1080p' ? '1080p' : '720p') : renderQuality === 'ultra' ? '4K' : renderQuality === 'hd' ? 'HD' : 'SD'}
-          </span>
-          <span className="text-muted-foreground">Qualité :</span>
-          <span className="font-medium text-foreground">
-            {isConnected
-              ? activeResolution === '1080p' ? 'Full HD 1080p' : 'HD 720p'
-              : renderQuality === 'ultra' ? 'Ultra HD' : renderQuality === 'hd' ? 'HD' : 'Standard'}
-          </span>
-        </div>
-        <div className="hidden h-4 w-px bg-muted sm:block" />
-        <div className="flex items-center gap-2 text-sm">
-          <Zap className="h-4 w-4 text-primary" />
-          <span className="text-muted-foreground">Latence :</span>
-          <span className="font-medium text-foreground">{stats.latency || 120} ms</span>
-        </div>
-        {isConnected && (
-          <>
-            <div className="hidden h-4 w-px bg-muted sm:block" />
-            <div className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4 text-primary" />
-              <span className="text-muted-foreground">Direct :</span>
-              <span className="font-mono font-medium text-foreground tabular-nums">
-                {formatDuration(elapsedSeconds)}
+      {/* Source du swap : camera en direct OU video importee (fichier).
+          (Remplace l'ancienne barre de statut Mode/Qualite/Latence.) */}
+      <div className="rounded-xl border border-hairline bg-muted px-5 py-3 backdrop-blur-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <Film className="h-4 w-4 text-primary" />
+            <span className="flex flex-col">
+              <span className="text-sm font-semibold text-foreground">Source du swap</span>
+              <span className="text-[11px] text-muted-foreground">
+                Ta caméra en direct, ou une vidéo que tu importes.
               </span>
+            </span>
+          </span>
+          <div className="flex items-center gap-3">
+            {isConnected && (
+              <span className="flex items-center gap-1.5 text-sm">
+                <Clock className="h-4 w-4 text-primary" />
+                <span className="font-mono font-medium text-foreground tabular-nums">
+                  {formatDuration(elapsedSeconds)}
+                </span>
+              </span>
+            )}
+            <div className="flex items-center gap-1 rounded-lg bg-black/50 p-1">
+              <button
+                type="button"
+                disabled={isConnected || isConnecting}
+                onClick={() => setSwapSource('camera')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                  swapSource === 'camera' ? 'bg-primary text-black' : 'text-foreground/60 hover:text-foreground'
+                }`}
+              >
+                <Camera className="h-3.5 w-3.5" />
+                Caméra
+              </button>
+              <button
+                type="button"
+                disabled={isConnected || isConnecting}
+                onClick={() => {
+                  setSwapSource('video')
+                  if (!videoFile) fileInputRef.current?.click()
+                }}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                  swapSource === 'video' ? 'bg-primary text-black' : 'text-foreground/60 hover:text-foreground'
+                }`}
+              >
+                <Film className="h-3.5 w-3.5" />
+                Vidéo
+              </button>
             </div>
-          </>
+          </div>
+        </div>
+
+        {/* Zone d'import de fichier (visible quand la source = video) */}
+        {swapSource === 'video' && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-hairline pt-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              onChange={handleSelectVideoFile}
+              className="hidden"
+            />
+            <button
+              type="button"
+              disabled={isConnected || isConnecting}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 rounded-lg border border-hairline bg-black/40 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              {videoFile ? 'Changer de vidéo' : 'Importer une vidéo'}
+            </button>
+            {videoFile ? (
+              <span className="flex min-w-0 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
+                <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="max-w-[180px] truncate">{videoFile.name}</span>
+                {!isConnected && !isConnecting && (
+                  <button
+                    type="button"
+                    onClick={clearVideoFile}
+                    aria-label="Retirer la vidéo"
+                    className="shrink-0 text-foreground/50 transition-colors hover:text-red-400"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </span>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">MP4 recommandé.</span>
+            )}
+          </div>
         )}
       </div>
 
@@ -1168,7 +1307,54 @@ export default function DashboardPage() {
             </span>
           </button>
 
+          {/* Enregistrement du resultat du swap (camera OU video importee) */}
+          {(isConnected || recordedUrl) && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-hairline bg-black/40 px-4 py-3">
+              {isConnected && (
+                <button
+                  type="button"
+                  onClick={() => (isRecording ? stopRecording() : startRecording())}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors ${
+                    isRecording ? 'bg-red-500 text-white hover:bg-red-600' : 'bg-white/10 text-foreground hover:bg-white/20'
+                  }`}
+                >
+                  {isRecording ? <Square className="h-4 w-4" /> : <Disc3 className="h-4 w-4 text-red-400" />}
+                  {isRecording ? "Arrêter l'enregistrement" : 'Enregistrer le swap'}
+                </button>
+              )}
+              {isRecording && (
+                <span className="flex items-center gap-1.5 text-xs font-medium text-red-400">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" /> REC
+                </span>
+              )}
+              {recordedUrl && !isRecording && (
+                <>
+                  <a
+                    href={recordedUrl}
+                    download={`chapcam-swap-${Date.now()}.webm`}
+                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90"
+                  >
+                    <Download className="h-4 w-4" />
+                    Télécharger l&apos;enregistrement
+                  </a>
+                  <button
+                    type="button"
+                    onClick={clearRecording}
+                    aria-label="Supprimer l'enregistrement"
+                    className="flex items-center gap-1.5 rounded-lg border border-hairline px-3 py-2 text-xs text-foreground/60 transition-colors hover:text-red-400"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Supprimer
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
           {!isConnected && <GenerateNotice className="mt-3" />}
+
+          {/* Lecteur masque : lit la video importee pour capturer son flux. */}
+          <video ref={uploadVideoRef} muted playsInline className="hidden" aria-hidden="true" />
         </div>
 
         {/* Panneau de reglages */}
