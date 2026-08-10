@@ -9,7 +9,7 @@ import { trackGPUUsage } from '@/lib/rate-limit'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(request: Request) {
   // 1. Verifier que l'utilisateur est authentifie
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -64,6 +64,36 @@ export async function GET() {
     )
   }
 
+  // 4.b Construire la liste des origines autorisees pour le token Decart.
+  //     Decart rejette la connexion ("Origin not allowed") si l'origine reelle
+  //     du navigateur n'est pas listee ici. En plus des domaines de prod, on
+  //     ajoute DYNAMIQUEMENT l'origine de la requete courante : cela couvre les
+  //     previews Vercel (*.vercel.app), l'apercu v0 et tout autre domaine sur
+  //     lequel l'app est reellement servie. C'est sur : le token n'est emis qu'a
+  //     un utilisateur authentifie, servi depuis cette meme origine.
+  const allowedOrigins = new Set<string>([
+    'https://chapcam.com',
+    'https://www.chapcam.com',
+    'http://localhost:3000', // Dev only
+  ])
+  // Origine de la requete (fournie par le navigateur via l'en-tete Origin, ou
+  // reconstruite depuis le host + protocole de forwarding derriere le proxy Vercel).
+  const hdrs = request.headers
+  const originHeader = hdrs.get('origin')
+  const forwardedHost = hdrs.get('x-forwarded-host') || hdrs.get('host')
+  const forwardedProto = hdrs.get('x-forwarded-proto') || 'https'
+  const requestOrigin =
+    originHeader ||
+    (forwardedHost ? `${forwardedProto}://${forwardedHost}` : null)
+  if (requestOrigin) {
+    try {
+      // Normaliser (schema + host, sans chemin ni slash final).
+      allowedOrigins.add(new URL(requestOrigin).origin)
+    } catch {
+      // Origine non parsable : on ignore et on garde la liste statique.
+    }
+  }
+
   try {
     const client = createDecartClient({ apiKey })
 
@@ -73,11 +103,7 @@ export async function GET() {
                       // synchroniser, sans casser les usages tardifs (upload avatar,
                       // changement de scene) qui reutilisent ce token pendant la session.
       allowedModels: ['lucy-2.5', 'lucy-2.1'],
-      allowedOrigins: [
-        'https://chapcam.com',
-        'https://www.chapcam.com',
-        'http://localhost:3000' // Dev only
-      ],
+      allowedOrigins: Array.from(allowedOrigins),
       metadata: {
         userId: user.id,
         userEmail: user.email,
@@ -88,7 +114,8 @@ export async function GET() {
 
     console.log(
       `[Decart Token] Token cree pour user ${user.id} | plan=${decision.plan || 'none'} | ` +
-      `points=${access.points} | noWatermark=${usedNoWatermark} (${decision.reason})`
+      `points=${access.points} | noWatermark=${usedNoWatermark} (${decision.reason}) | ` +
+      `origin=${requestOrigin || 'inconnue'}`
     )
 
     // 6. Journaliser l'emission pour la reconciliation avec Decart (best-effort :
