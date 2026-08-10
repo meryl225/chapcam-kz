@@ -690,58 +690,96 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Status bar */}
-      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-hairline bg-muted px-5 py-3 backdrop-blur-xl">
-        <div className="flex items-center gap-2">
-          {isConnected ? (
-            <Wifi className={`h-4 w-4 ${QUALITY_UI[connectionQuality ?? 'good'].color}`} />
-          ) : (
-            <WifiOff className="h-4 w-4 text-text-faint" />
-          )}
-          <span
-            className={`text-sm font-medium ${isConnected ? QUALITY_UI[connectionQuality ?? 'good'].color : 'text-muted-foreground'}`}
-            title={isConnected && qualityFactor ? `Facteur limitant : ${qualityFactor}` : undefined}
-          >
-            {isConnected
-              ? QUALITY_UI[connectionQuality ?? 'good'].label
-              : 'Connexion prête'}
-          </span>
-        </div>
-        <div className="hidden h-4 w-px bg-muted sm:block" />
-        <div className="flex items-center gap-2 text-sm">
-          {processingMode === 'local' ? <Monitor className="h-4 w-4 text-green-400" /> : <Cloud className="h-4 w-4 text-blue-400" />}
-          <span className="text-muted-foreground">Mode :</span>
-          <span className="font-medium text-foreground">{processingMode === 'local' ? 'Local' : 'Cloud'}</span>
-        </div>
-        <div className="hidden h-4 w-px bg-muted sm:block" />
-        <div className="flex items-center gap-2 text-sm">
-          <span className="rounded bg-primary/15 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-            {isConnected ? (activeResolution === '1080p' ? '1080p' : '720p') : renderQuality === 'ultra' ? '4K' : renderQuality === 'hd' ? 'HD' : 'SD'}
-          </span>
-          <span className="text-muted-foreground">Qualité :</span>
-          <span className="font-medium text-foreground">
-            {isConnected
-              ? activeResolution === '1080p' ? 'Full HD 1080p' : 'HD 720p'
-              : renderQuality === 'ultra' ? 'Ultra HD' : renderQuality === 'hd' ? 'HD' : 'Standard'}
-          </span>
-        </div>
-        <div className="hidden h-4 w-px bg-muted sm:block" />
-        <div className="flex items-center gap-2 text-sm">
-          <Zap className="h-4 w-4 text-primary" />
-          <span className="text-muted-foreground">Latence :</span>
-          <span className="font-medium text-foreground">{stats.latency || 120} ms</span>
-        </div>
-        {isConnected && (
-          <>
-            <div className="hidden h-4 w-px bg-muted sm:block" />
-            <div className="flex items-center gap-2 text-sm">
-              <Clock className="h-4 w-4 text-primary" />
-              <span className="text-muted-foreground">Direct :</span>
-              <span className="font-mono font-medium text-foreground tabular-nums">
-                {formatDuration(elapsedSeconds)}
+      {/* Source du swap : camera en direct OU video importee (fichier).
+          (Remplace l'ancienne barre de statut Mode/Qualite/Latence.) */}
+      <div className="rounded-xl border border-hairline bg-muted px-5 py-3 backdrop-blur-xl">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <span className="flex items-center gap-2">
+            <Film className="h-4 w-4 text-primary" />
+            <span className="flex flex-col">
+              <span className="text-sm font-semibold text-foreground">Source du swap</span>
+              <span className="text-[11px] text-muted-foreground">
+                Ta caméra en direct, ou une vidéo que tu importes.
               </span>
+            </span>
+          </span>
+          <div className="flex items-center gap-3">
+            {isConnected && (
+              <span className="flex items-center gap-1.5 text-sm">
+                <Clock className="h-4 w-4 text-primary" />
+                <span className="font-mono font-medium text-foreground tabular-nums">
+                  {formatDuration(elapsedSeconds)}
+                </span>
+              </span>
+            )}
+            <div className="flex items-center gap-1 rounded-lg bg-black/50 p-1">
+              <button
+                type="button"
+                disabled={isConnected || isConnecting}
+                onClick={() => setSwapSource('camera')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                  swapSource === 'camera' ? 'bg-primary text-black' : 'text-foreground/60 hover:text-foreground'
+                }`}
+              >
+                <Camera className="h-3.5 w-3.5" />
+                Caméra
+              </button>
+              <button
+                type="button"
+                disabled={isConnected || isConnecting}
+                onClick={() => {
+                  setSwapSource('video')
+                  if (!videoFile) fileInputRef.current?.click()
+                }}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                  swapSource === 'video' ? 'bg-primary text-black' : 'text-foreground/60 hover:text-foreground'
+                }`}
+              >
+                <Film className="h-3.5 w-3.5" />
+                Vidéo
+              </button>
             </div>
-          </>
+          </div>
+        </div>
+
+        {/* Zone d'import de fichier (visible quand la source = video) */}
+        {swapSource === 'video' && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-hairline pt-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="video/*"
+              onChange={handleSelectVideoFile}
+              className="hidden"
+            />
+            <button
+              type="button"
+              disabled={isConnected || isConnecting}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 rounded-lg border border-hairline bg-black/40 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Upload className="h-3.5 w-3.5" />
+              {videoFile ? 'Changer de vidéo' : 'Importer une vidéo'}
+            </button>
+            {videoFile ? (
+              <span className="flex min-w-0 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
+                <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
+                <span className="max-w-[180px] truncate">{videoFile.name}</span>
+                {!isConnected && !isConnecting && (
+                  <button
+                    type="button"
+                    onClick={clearVideoFile}
+                    aria-label="Retirer la vidéo"
+                    className="shrink-0 text-foreground/50 transition-colors hover:text-red-400"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </span>
+            ) : (
+              <span className="text-[11px] text-muted-foreground">MP4 recommandé.</span>
+            )}
+          </div>
         )}
       </div>
 
@@ -1193,88 +1231,6 @@ export default function DashboardPage() {
                   <Crown className="h-4 w-4" />
                   Passer VIP
                 </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Selecteur de source : camera en direct OU video importee (fichier). */}
-          <div className="mb-3 rounded-xl border border-hairline bg-black/40 px-4 py-3">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span className="flex items-center gap-2">
-                <Film className="h-4 w-4 text-primary" />
-                <span className="flex flex-col">
-                  <span className="text-sm font-semibold text-foreground">Source du swap</span>
-                  <span className="text-[11px] text-foreground/50">
-                    Ta caméra en direct, ou une vidéo que tu importes.
-                  </span>
-                </span>
-              </span>
-              <div className="flex items-center gap-1 rounded-lg bg-black/50 p-1">
-                <button
-                  type="button"
-                  disabled={isConnected || isConnecting}
-                  onClick={() => setSwapSource('camera')}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                    swapSource === 'camera' ? 'bg-primary text-black' : 'text-foreground/60 hover:text-foreground'
-                  }`}
-                >
-                  <Camera className="h-3.5 w-3.5" />
-                  Caméra
-                </button>
-                <button
-                  type="button"
-                  disabled={isConnected || isConnecting}
-                  onClick={() => {
-                    setSwapSource('video')
-                    if (!videoFile) fileInputRef.current?.click()
-                  }}
-                  className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                    swapSource === 'video' ? 'bg-primary text-black' : 'text-foreground/60 hover:text-foreground'
-                  }`}
-                >
-                  <Film className="h-3.5 w-3.5" />
-                  Vidéo
-                </button>
-              </div>
-            </div>
-
-            {/* Zone d'import de fichier (visible quand la source = video) */}
-            {swapSource === 'video' && (
-              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-hairline pt-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="video/*"
-                  onChange={handleSelectVideoFile}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  disabled={isConnected || isConnecting}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 rounded-lg border border-hairline bg-black/40 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  {videoFile ? 'Changer de vidéo' : 'Importer une vidéo'}
-                </button>
-                {videoFile ? (
-                  <span className="flex min-w-0 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
-                    <Check className="h-3.5 w-3.5 shrink-0 text-primary" />
-                    <span className="max-w-[180px] truncate">{videoFile.name}</span>
-                    {!isConnected && !isConnecting && (
-                      <button
-                        type="button"
-                        onClick={clearVideoFile}
-                        aria-label="Retirer la vidéo"
-                        className="shrink-0 text-foreground/50 transition-colors hover:text-red-400"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </span>
-                ) : (
-                  <span className="text-[11px] text-foreground/40">MP4 recommandé.</span>
-                )}
               </div>
             )}
           </div>
