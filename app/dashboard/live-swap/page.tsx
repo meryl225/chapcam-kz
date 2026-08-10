@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
-import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Mic, MicOff, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock, ChevronDown, Smartphone, Film, Upload, Disc3, Trash2 } from 'lucide-react'
+import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock, ChevronDown, Smartphone, Film, Upload, Disc3, Trash2 } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
 import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
 import { pointsPerSecond, POINTS_PER_SECOND_SD, POINTS_PER_SECOND_HD } from '@/lib/swap-pricing'
@@ -107,8 +107,6 @@ export default function DashboardPage() {
   const [noiseReduction, setNoiseReduction] = useState(60)
   const [faceOrientation, setFaceOrientation] = useState<'left' | 'center' | 'right'>('center')
   const [colorCorrection, setColorCorrection] = useState(true)
-  const [micOn, setMicOn] = useState(true)
-  const [camOn, setCamOn] = useState(true)
 
   // --- Source du swap : camera en direct OU video importee (fichier) ---
   const [swapSource, setSwapSource] = useState<'camera' | 'video'>('camera')
@@ -157,6 +155,8 @@ export default function DashboardPage() {
     disconnect,
     updateAvatar,
     setLivePrompt,
+    cameraEnabled,
+    toggleCamera,
     elapsedSeconds,
     connectionQuality,
     qualityFactor,
@@ -840,34 +840,31 @@ export default function DashboardPage() {
                     <p className="text-sm">Caméra inactive</p>
                   </div>
                 )}
-                {/* Controles camera */}
-                <div className="absolute inset-x-3 bottom-3 z-20 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                {/* Controle camera : coupe / reactive la piste video envoyee au
+                    swap. Visible uniquement pendant un swap actif (sinon le bouton
+                    n'aurait aucun flux sur lequel agir). */}
+                {isConnected && (
+                  <div className="absolute inset-x-3 bottom-3 z-20 flex items-center gap-2">
                     <button
-                      onClick={() => setMicOn(v => !v)}
-                      aria-label={micOn ? 'Couper le micro' : 'Activer le micro'}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-hairline bg-black/50 text-foreground/80 backdrop-blur-md transition-colors hover:bg-black/70"
+                      onClick={toggleCamera}
+                      aria-label={cameraEnabled ? 'Couper la caméra' : 'Activer la caméra'}
+                      title={cameraEnabled ? 'Couper la caméra' : 'Activer la caméra'}
+                      className="flex h-9 items-center gap-2 rounded-lg border border-hairline bg-black/50 px-3 text-xs font-medium text-foreground/90 backdrop-blur-md transition-colors hover:bg-black/70"
                     >
-                      {micOn ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4 text-red-400" />}
+                      {cameraEnabled ? (
+                        <>
+                          <VideoIcon className="h-4 w-4" />
+                          Caméra active
+                        </>
+                      ) : (
+                        <>
+                          <VideoOff className="h-4 w-4 text-red-400" />
+                          Caméra coupée
+                        </>
+                      )}
                     </button>
-                    <button
-                      onClick={() => setCamOn(v => !v)}
-                      aria-label={camOn ? 'Couper la caméra' : 'Activer la caméra'}
-                      className="flex h-9 w-9 items-center justify-center rounded-lg border border-hairline bg-black/50 text-foreground/80 backdrop-blur-md transition-colors hover:bg-black/70"
-                    >
-                      {camOn ? <VideoIcon className="h-4 w-4" /> : <VideoOff className="h-4 w-4 text-red-400" />}
-                    </button>
-                    <div className="flex h-9 items-end gap-0.5 rounded-lg border border-hairline bg-black/50 px-2 py-2 backdrop-blur-md">
-                      {[0, 1, 2, 3, 4, 5].map(i => (
-                        <span
-                          key={i}
-                          className="cc-wave-bar w-0.5 rounded-full bg-primary"
-                          style={{ height: '100%', animationDelay: `${i * 0.12}s` }}
-                        />
-                      ))}
-                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 

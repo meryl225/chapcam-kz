@@ -59,6 +59,8 @@ export function useLucy21() {
   const [isRecording, setIsRecording] = useState(false)
   // URL objet du dernier enregistrement pret a etre telecharge (ou null).
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null)
+  // Etat de la piste camera : true = active, false = coupee (pause camera).
+  const [cameraEnabled, setCameraEnabled] = useState(true)
 
   useEffect(() => {
     return () => {
@@ -74,6 +76,7 @@ export function useLucy21() {
     }
     firstFrameRef.current = false
     avatarRefIdRef.current = null
+    setCameraEnabled(true)
 
     // 0. Si un enregistrement est en cours, on l'arrete proprement : le
     //    handler onstop du MediaRecorder finalisera le fichier telechargeable.
@@ -164,7 +167,16 @@ export function useLucy21() {
         throw new Error('Points insuffisants. Recharge ton compte pour utiliser le swap.')
       }
 
-      const tokenRes = await fetch('/api/decart-token')
+      // On transmet l'origine EXACTE de la page (window.location.origin) au
+      // serveur : c'est cette meme origine que le navigateur enverra dans
+      // l'en-tete Origin du WebSocket vers Decart. Le serveur l'ajoute aux
+      // allowedOrigins du token, ce qui garantit la correspondance et evite
+      // l'erreur "Origin not allowed" sur les previews / domaines non listes.
+      const pageOrigin =
+        typeof window !== 'undefined' ? window.location.origin : ''
+      const tokenRes = await fetch(
+        `/api/decart-token?origin=${encodeURIComponent(pageOrigin)}`,
+      )
       const tokenData = await tokenRes.json().catch(() => null)
       const clientToken = tokenData?.token
       if (!tokenRes.ok || !clientToken) {
@@ -533,6 +545,20 @@ export function useLucy21() {
     })
   }, [])
 
+  // Coupe / reactive la piste VIDEO envoyee au swap. On agit sur track.enabled :
+  // quand c'est false, le navigateur envoie des frames noires a Decart (le swap
+  // se met en pause visuellement) sans fermer la session ni la camera. Utile
+  // comme "pause camera" pendant un live. Sans effet sur une video importee.
+  const toggleCamera = useCallback(() => {
+    const stream = streamRef.current
+    if (!stream) return
+    const videoTracks = stream.getVideoTracks()
+    if (videoTracks.length === 0) return
+    const nextEnabled = !videoTracks[0].enabled
+    videoTracks.forEach((t) => { t.enabled = nextEnabled })
+    setCameraEnabled(nextEnabled)
+  }, [])
+
   return {
     isConnected,
     isConnecting,
@@ -544,6 +570,9 @@ export function useLucy21() {
     disconnect,
     updateAvatar,
     setLivePrompt,
+    // Controle de la piste camera pendant le swap
+    cameraEnabled,
+    toggleCamera,
     // Enregistrement du resultat du swap
     isRecording,
     recordedUrl,
