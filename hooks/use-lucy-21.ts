@@ -49,6 +49,17 @@ export function useLucy21() {
   const firstFrameRef = useRef(false)
   const connectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+  // --- Enregistrement de la sortie transformee (le "swap" rendu par Decart) ---
+  // outputStreamRef = flux transforme recu de Decart (memorise dans onRemoteStream).
+  // On enregistre CE flux directement via MediaRecorder pour produire un fichier
+  // video telechargeable du resultat du swap (camera OU video importee).
+  const outputStreamRef = useRef<MediaStream | null>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
+  const [isRecording, setIsRecording] = useState(false)
+  // URL objet du dernier enregistrement pret a etre telecharge (ou null).
+  const [recordedUrl, setRecordedUrl] = useState<string | null>(null)
+
   useEffect(() => {
     return () => {
       disconnect()
@@ -63,6 +74,13 @@ export function useLucy21() {
     }
     firstFrameRef.current = false
     avatarRefIdRef.current = null
+
+    // 0. Si un enregistrement est en cours, on l'arrete proprement : le
+    //    handler onstop du MediaRecorder finalisera le fichier telechargeable.
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop() } catch {}
+    }
+    outputStreamRef.current = null
 
     // 1. Fermer la session Decart (arrete la facturation cote serveur)
     if (realtimeClientRef.current) {
@@ -119,6 +137,10 @@ export function useLucy21() {
       hd?: boolean
       // Codec video prefere : h264 (compatibilite max), vp8, vp9 (meilleure compression).
       codec?: 'h264' | 'vp8' | 'vp9'
+      // Flux video source personnalise (ex: capture d'une VIDEO IMPORTEE via
+      // videoElement.captureStream()). Si fourni, on l'utilise a la place de la
+      // camera (pas d'appel getUserMedia, donc pas de demande d'acces camera).
+      sourceStream?: MediaStream
     },
   ) => {
     disconnect()
@@ -158,27 +180,33 @@ export function useLucy21() {
       }
 
       let stream: MediaStream
-      try {
-        // Capture en 1080p pour le mode HD (VIP), sinon 720p. On demande la
-        // resolution "ideale" pour degrader proprement si la camera ne suit pas.
-        const camWidth = useHd ? 1920 : 1280
-        const camHeight = useHd ? 1080 : 720
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            width: { ideal: camWidth },
-            height: { ideal: camHeight },
-            frameRate: { ideal: 30 },
-          },
-        })
-      } catch (camError: any) {
-        if (camError.name === 'NotAllowedError') {
-          throw new Error('Acces camera refuse. Autorise ChapCam a acceder a ta camera dans les parametres du navigateur.')
-        } else if (camError.name === 'NotFoundError') {
-          throw new Error('Aucune camera detectee. Connecte une webcam et reessaie.')
-        } else if (camError.name === 'NotReadableError') {
-          throw new Error('Camera deja utilisee par une autre application. Ferme les autres apps utilisant la camera.')
-        } else {
-          throw new Error('Impossible de demarrer la camera: ' + camError.message)
+      if (options?.sourceStream) {
+        // Source = VIDEO IMPORTEE (flux capture d'un <video>). Aucun acces
+        // camera requis. Le flux est fourni et gere par l'appelant (page).
+        stream = options.sourceStream
+      } else {
+        try {
+          // Capture en 1080p pour le mode HD (VIP), sinon 720p. On demande la
+          // resolution "ideale" pour degrader proprement si la camera ne suit pas.
+          const camWidth = useHd ? 1920 : 1280
+          const camHeight = useHd ? 1080 : 720
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              width: { ideal: camWidth },
+              height: { ideal: camHeight },
+              frameRate: { ideal: 30 },
+            },
+          })
+        } catch (camError: any) {
+          if (camError.name === 'NotAllowedError') {
+            throw new Error('Acces camera refuse. Autorise ChapCam a acceder a ta camera dans les parametres du navigateur.')
+          } else if (camError.name === 'NotFoundError') {
+            throw new Error('Aucune camera detectee. Connecte une webcam et reessaie.')
+          } else if (camError.name === 'NotReadableError') {
+            throw new Error('Camera deja utilisee par une autre application. Ferme les autres apps utilisant la camera.')
+          } else {
+            throw new Error('Impossible de demarrer la camera: ' + camError.message)
+          }
         }
       }
 
@@ -274,6 +302,9 @@ export function useLucy21() {
         // traitement intermediaire. Le badge natif "AI Generated" de Decart
         // reste visible, c'est normal et attendu.
         onRemoteStream: (transformedStream: MediaStream) => {
+          // Memorise le flux transforme pour permettre l'enregistrement
+          // (MediaRecorder) du resultat du swap en fichier telechargeable.
+          outputStreamRef.current = transformedStream
           const el = remoteVideoRef.current
           if (!el) return
           el.srcObject = transformedStream
@@ -440,6 +471,68 @@ export function useLucy21() {
     }
   }, [])
 
+  // Demarre l'enregistrement du flux transforme (resultat du swap) en fichier.
+  // A appeler quand le swap est actif (outputStreamRef renseigne).
+  const startRecording = useCallback(() => {
+    const stream = outputStreamRef.current
+    if (!stream || typeof MediaRecorder === 'undefined') return
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') return
+
+    // Nettoyer un enregistrement precedent (libere la memoire du blob).
+    setRecordedUrl((prev) => {
+      if (prev) { try { URL.revokeObjectURL(prev) } catch {} }
+      return null
+    })
+    recordedChunksRef.current = []
+
+    // On choisit le meilleur conteneur/codec supporte par le navigateur.
+    const candidates = [
+      'video/webm;codecs=vp9',
+      'video/webm;codecs=vp8',
+      'video/webm',
+      'video/mp4',
+    ]
+    const mimeType = candidates.find((t) => MediaRecorder.isTypeSupported?.(t)) || ''
+
+    try {
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) recordedChunksRef.current.push(e.data)
+      }
+      recorder.onstop = () => {
+        const type = mimeType || 'video/webm'
+        const blob = new Blob(recordedChunksRef.current, { type })
+        recordedChunksRef.current = []
+        const url = URL.createObjectURL(blob)
+        setRecordedUrl(url)
+        setIsRecording(false)
+        mediaRecorderRef.current = null
+      }
+      // Emet un chunk par seconde : evite de tout perdre si l'onglet se ferme.
+      recorder.start(1000)
+      mediaRecorderRef.current = recorder
+      setIsRecording(true)
+    } catch (err) {
+      console.error('[Lucy 2.5] Enregistrement impossible:', err)
+    }
+  }, [])
+
+  // Arrete l'enregistrement : le handler onstop finalise le fichier + l'URL.
+  const stopRecording = useCallback(() => {
+    const rec = mediaRecorderRef.current
+    if (rec && rec.state !== 'inactive') {
+      try { rec.stop() } catch {}
+    }
+  }, [])
+
+  // Efface l'enregistrement disponible (apres telechargement par ex.).
+  const clearRecording = useCallback(() => {
+    setRecordedUrl((prev) => {
+      if (prev) { try { URL.revokeObjectURL(prev) } catch {} }
+      return null
+    })
+  }, [])
+
   return {
     isConnected,
     isConnecting,
@@ -451,6 +544,12 @@ export function useLucy21() {
     disconnect,
     updateAvatar,
     setLivePrompt,
+    // Enregistrement du resultat du swap
+    isRecording,
+    recordedUrl,
+    startRecording,
+    stopRecording,
+    clearRecording,
     // Retour temps reel Lucy 2.5
     elapsedSeconds,
     connectionQuality,
