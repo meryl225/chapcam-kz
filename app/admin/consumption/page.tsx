@@ -17,6 +17,10 @@ import {
   ShieldAlert,
   KeyRound,
   Database,
+  DollarSign,
+  Clapperboard,
+  Film,
+  Languages,
 } from 'lucide-react'
 
 type Period = 'today' | 'yesterday' | '7d' | '30d' | 'all'
@@ -31,10 +35,48 @@ interface ConsumptionUser {
   lastActivity: string
 }
 
+type ToolName = 'photo_video' | 'motion' | 'translation'
+
+interface ToolBreakdown {
+  generations: number
+  credits: number
+  cost_usd: number
+}
+
+interface ToolUser {
+  userId: string
+  email: string | null
+  plan: string | null
+  generations: number
+  credits: number
+  cost_usd: number
+  lastUsed: string
+  byTool: Partial<Record<ToolName, ToolBreakdown>>
+}
+
+interface ToolsData {
+  totals: { tool: ToolName; generations: number; credits: number; cost_usd: number }[]
+  grandTotalCostUsd: number
+  users: ToolUser[]
+}
+
 interface ConsumptionData {
   period: Period
   totals: { users: number; sessions: number; points: number; seconds: number }
   users: ConsumptionUser[]
+  tools?: ToolsData
+}
+
+// Metadonnees d'affichage par outil (libelle + icone + couleur).
+const TOOL_META: Record<ToolName, { label: string; Icon: typeof Film; color: string }> = {
+  photo_video: { label: 'Studio Photo en Vidéo', Icon: Film, color: 'text-sky-400' },
+  motion: { label: 'Motion', Icon: Clapperboard, color: 'text-purple-400' },
+  translation: { label: 'Traduction Vidéo', Icon: Languages, color: 'text-emerald-400' },
+}
+const TOOL_ORDER: ToolName[] = ['photo_video', 'motion', 'translation']
+
+function fmtUsd(n: number): string {
+  return `$${(Math.round(n * 100) / 100).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
 interface ReconUser {
@@ -134,6 +176,7 @@ export default function AdminConsumptionPage() {
 
   const totals = data?.totals
   const users = data?.users ?? []
+  const tools = data?.tools
 
   return (
     <div className="min-h-screen bg-[#050505] px-4 py-8 md:px-8">
@@ -526,6 +569,147 @@ export default function AdminConsumptionPage() {
               </table>
             </div>
           )}
+        </div>
+
+        {/* ============ Outils IA : Photo en Video / Motion / Traduction ============ */}
+        <div className="mt-10">
+          <div className="mb-4 flex items-center gap-2">
+            <Clapperboard className="h-5 w-5 text-[#00ff88]" />
+            <h2 className="text-lg font-semibold text-white">Outils IA</h2>
+            <span className="text-xs text-gray-500">
+              Studio Photo en Vidéo, Motion et Traduction — consommation par compte
+            </span>
+          </div>
+
+          {/* Cartes de totaux par outil + coût fournisseur estimé */}
+          <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <div className="rounded-2xl border border-[#00ff88]/30 bg-[#00ff88]/5 p-5">
+              <div className="flex items-center gap-2 text-gray-400">
+                <DollarSign className="h-4 w-4 text-[#00ff88]" />
+                <span className="text-sm">Coût fournisseur (estimé)</span>
+              </div>
+              <p className="mt-2 text-3xl font-bold text-[#00ff88]">
+                {fmtUsd(tools?.grandTotalCostUsd ?? 0)}
+              </p>
+              <p className="mt-1 text-xs text-gray-600">HeyGen + fal.ai, hors Live Swap</p>
+            </div>
+            {TOOL_ORDER.map((t) => {
+              const meta = TOOL_META[t]
+              const row = tools?.totals.find((x) => x.tool === t)
+              const ToolIcon = meta.Icon
+              return (
+                <div key={t} className="rounded-2xl border border-gray-800 bg-[#111] p-5">
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <ToolIcon className={`h-4 w-4 ${meta.color}`} />
+                    <span className="text-sm">{meta.label}</span>
+                  </div>
+                  <p className={`mt-2 text-3xl font-bold ${meta.color}`}>
+                    {(row?.generations ?? 0).toLocaleString('fr-FR')}
+                  </p>
+                  <p className="mt-1 text-xs text-gray-600">
+                    {(row?.credits ?? 0).toLocaleString('fr-FR')} crédits · {fmtUsd(row?.cost_usd ?? 0)}
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Tableau par compte */}
+          <div className="overflow-hidden rounded-2xl border border-gray-800 bg-[#111]">
+            <div className="flex items-center justify-between border-b border-gray-800 px-5 py-4">
+              <h3 className="font-semibold text-white">
+                Consommation par compte
+                <span className="ml-2 text-sm font-normal text-gray-500">
+                  (top {tools?.users.length ?? 0})
+                </span>
+              </h3>
+            </div>
+
+            {loading ? (
+              <div className="p-10 text-center text-gray-400">Chargement...</div>
+            ) : !tools || tools.users.length === 0 ? (
+              <div className="p-10 text-center text-gray-400">
+                Aucune génération d&apos;outil sur cette période.
+                <span className="mt-1 block text-xs text-gray-600">
+                  Le suivi démarre à partir de son activation (les générations passées restent sur HeyGen/fal).
+                </span>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-800 text-gray-400">
+                      <th className="px-5 py-3 font-medium">#</th>
+                      <th className="px-5 py-3 font-medium">Compte</th>
+                      <th className="px-5 py-3 font-medium">Forfait</th>
+                      <th className="px-5 py-3 text-right font-medium">Photo</th>
+                      <th className="px-5 py-3 text-right font-medium">Motion</th>
+                      <th className="px-5 py-3 text-right font-medium">Traduction</th>
+                      <th className="px-5 py-3 text-right font-medium">Crédits</th>
+                      <th className="px-5 py-3 text-right font-medium">Coût estimé</th>
+                      <th className="px-5 py-3 text-right font-medium">Dernière activité</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tools.users.map((u, i) => (
+                      <tr
+                        key={u.userId}
+                        className="border-b border-gray-800/60 transition-colors hover:bg-white/[0.02]"
+                      >
+                        <td className="px-5 py-3">
+                          {i < 3 ? (
+                            <span className="inline-flex items-center gap-1 font-bold text-[#00ff88]">
+                              <Crown className="h-3.5 w-3.5" />
+                              {i + 1}
+                            </span>
+                          ) : (
+                            <span className="text-gray-500">{i + 1}</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="block font-medium text-white">
+                            {u.email || 'Email inconnu'}
+                          </span>
+                          <span className="block font-mono text-xs text-gray-600">
+                            {u.userId.slice(0, 8)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs capitalize text-gray-300">
+                            {u.plan || 'free'}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-right text-sky-300">
+                          {u.byTool.photo_video?.generations ?? 0}
+                        </td>
+                        <td className="px-5 py-3 text-right text-purple-300">
+                          {u.byTool.motion?.generations ?? 0}
+                        </td>
+                        <td className="px-5 py-3 text-right text-emerald-300">
+                          {u.byTool.translation?.generations ?? 0}
+                        </td>
+                        <td className="px-5 py-3 text-right text-gray-300">
+                          {u.credits.toLocaleString('fr-FR')}
+                        </td>
+                        <td className="px-5 py-3 text-right font-semibold text-[#00ff88]">
+                          {fmtUsd(u.cost_usd)}
+                        </td>
+                        <td className="px-5 py-3 text-right text-gray-500">
+                          {fmtRelative(u.lastUsed)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <p className="mt-3 text-xs text-gray-600">
+            Les coûts sont des estimations basées sur les tarifs fournisseur (ajustables dans
+            <code className="mx-1 rounded bg-black/40 px-1.5 py-0.5 font-mono">lib/tool-costs.ts</code>)
+            et servent au rapprochement de facture, pas à la facturation des utilisateurs.
+          </p>
         </div>
       </div>
     </div>

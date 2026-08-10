@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { photoVideoQuotaForPlan } from "@/lib/plans"
 import { getPhotoVideoBalance, addPhotoVideoCredits, deductPhotoVideoCredit } from "@/lib/photo-video-quota"
+import { logToolUsage } from "@/lib/tool-usage"
 
 // Le clonage de voix HeyGen est ASYNCHRONE (~30-90s de traitement). On attend
 // que le clone soit "complete" avant de creer la video, donc la requete peut
@@ -342,6 +343,14 @@ export async function POST(request: NextRequest) {
 
     // 3) Deduire 1 credit (1 video de 30s) seulement apres succes de la creation.
     const remaining = await deductPhotoVideoCredit(user.id)
+
+    // Journaliser la consommation par utilisateur (suivi admin + cout fournisseur estime).
+    await logToolUsage({
+      userId: user.id,
+      tool: 'photo_video',
+      credits: 1,
+      durationSeconds: estimatedSeconds,
+    })
 
     return NextResponse.json({
       success: true,
