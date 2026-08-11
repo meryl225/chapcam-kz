@@ -40,6 +40,32 @@ interface Row {
   started_at: string
 }
 
+// Repli de resolution d'email via Supabase Auth (source de verite des comptes).
+// La table subscriptions ne contient QUE les utilisateurs ayant souscrit : un
+// compte gratuit (jamais abonne) n'y figure pas et s'affiche donc "Email inconnu".
+// Pour ces ids restants, on interroge auth.users directement (getUserById).
+async function fillEmailsFromAuth(
+  admin: ReturnType<typeof createAdminClient>,
+  emailByUser: Map<string, { email: string | null; plan: string | null }>,
+  ids: string[],
+) {
+  const missing = ids.filter((id) => !emailByUser.get(id)?.email)
+  await Promise.all(
+    missing.map(async (id) => {
+      try {
+        const { data } = await admin.auth.admin.getUserById(id)
+        const email = data?.user?.email ?? null
+        if (email) {
+          const prev = emailByUser.get(id)
+          emailByUser.set(id, { email, plan: prev?.plan ?? null })
+        }
+      } catch {
+        // Compte introuvable dans Auth (supprime ?) : on laisse "Email inconnu".
+      }
+    }),
+  )
+}
+
 interface Agg {
   userId: string
   sessions: number
@@ -132,6 +158,9 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Repli Auth pour les comptes sans ligne subscriptions (gratuits).
+  await fillEmailsFromAuth(admin, emailByUser, ids)
+
   const users = ranked.map((r) => ({
     userId: r.userId,
     email: emailByUser.get(r.userId)?.email ?? null,
@@ -180,6 +209,9 @@ export async function GET(req: NextRequest) {
         emailByUser.set(s.user_id, { email: s.email ?? null, plan: s.plan ?? null })
       }
     }
+
+    // Repli Auth pour les utilisateurs d'outils sans email resolu (comptes gratuits).
+    await fillEmailsFromAuth(admin, emailByUser, toolUserIds)
 
     // Agregation par utilisateur (toutes outils confondus) + detail par outil.
     const toolByUser = new Map<string, (typeof toolsPayload.users)[number]>()
