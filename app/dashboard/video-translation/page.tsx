@@ -18,6 +18,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { TranslationCreditPacksSection } from "@/components/translation/credit-packs-section"
+import { VideoHistorySection } from "@/components/video-history-section"
 
 type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 
@@ -43,6 +44,8 @@ export default function VideoTranslationPage() {
   const [status, setStatus] = useState<Status>("idle")
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [credits, setCredits] = useState<number | null>(null)
+  // Force le rafraîchissement de la section "Mes vidéos" à chaque traduction terminée.
+  const [historyRefresh, setHistoryRefresh] = useState(0)
 
   const busy = status === "uploading" || status === "processing"
   const cost = mode === "precision" ? 2 : 1
@@ -121,6 +124,7 @@ export default function VideoTranslationPage() {
           if (pollRef.current) clearInterval(pollRef.current)
           setVideoUrl(json.video_url)
           setStatus("completed")
+          setHistoryRefresh((n) => n + 1)
           toast({ title: "Traduction prête !", description: "Ta vidéo traduite est disponible." })
         } else if (json.status === "failed") {
           if (pollRef.current) clearInterval(pollRef.current)
@@ -416,6 +420,9 @@ export default function VideoTranslationPage() {
           )}
         </div>
       </div>
+
+      {/* Historique permanent : toutes les vidéos traduites de cet utilisateur */}
+      <VideoHistorySection tool="translation" refreshKey={historyRefresh} />
 
       {/* Packs de credits Traduction */}
       <TranslationCreditPacksSection />

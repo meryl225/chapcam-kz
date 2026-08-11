@@ -7,6 +7,7 @@ import {
   deductTranslationCredits,
 } from "@/lib/translation-quota"
 import { logToolUsage } from "@/lib/tool-usage"
+import { rehostToBlob, saveVideoHistory, isAlreadyRehosted } from "@/lib/video-history"
 
 // === Traduction Video (HeyGen video-translation v3) ===
 // Flux : upload video -> asset_id, puis POST /v3/video-translations (1 langue),
@@ -112,9 +113,35 @@ export async function GET(request: NextRequest) {
     if (raw === "success" || raw === "completed") status = "completed"
     else if (raw === "failed" || raw === "error") status = "failed"
     else if (raw === "pending") status = "pending"
+
+    const providerUrl = data.url || data.video_url || null
+
+    // Historique PERMANENT : a la fin, re-heberger dans le Blob prive (les URLs
+    // HeyGen expirent) et enregistrer. Idempotent via isAlreadyRehosted.
+    let historyUrl: string | null = null
+    if (status === "completed" && providerUrl) {
+      try {
+        const already = await isAlreadyRehosted(user.id, "translation", id)
+        if (!already) {
+          const pathname = await rehostToBlob(providerUrl, user.id, "translation", id)
+          await saveVideoHistory({
+            userId: user.id,
+            tool: "translation",
+            providerRef: id,
+            blobPathname: pathname,
+            title: data.output_language ? `Traduction · ${data.output_language}` : "Traduction Vidéo",
+            status: "completed",
+          })
+          if (pathname) historyUrl = `/api/videos/file?pathname=${encodeURIComponent(pathname)}`
+        }
+      } catch (e) {
+        console.error("[Translation] Historique non enregistre:", e)
+      }
+    }
+
     return NextResponse.json({
       status,
-      video_url: data.url || data.video_url || null,
+      video_url: historyUrl || providerUrl,
       output_language: data.output_language || null,
       error: status === "failed" ? (data.message || data.error || "Traduction echouee.") : null,
     })
