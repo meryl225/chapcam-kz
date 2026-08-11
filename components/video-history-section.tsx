@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Download, History, Loader2, Play, RefreshCw, X } from "lucide-react"
+import { Download, History, Loader2, Play, RefreshCw, Trash2, X } from "lucide-react"
 
 // Section "Mes vidéos" : historique PERMANENT des vidéos générées par un outil,
 // re-hébergées dans le Blob privé côté serveur (les liens fournisseurs expirent).
@@ -32,6 +32,9 @@ export function VideoHistorySection({
   const [videos, setVideos] = useState<HistoryVideo[]>([])
   const [loading, setLoading] = useState(true)
   const [reloading, setReloading] = useState(false)
+  // id de la vidéo en cours de téléchargement / suppression (pour l'état des boutons)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const load = useCallback(
     async (silent = false) => {
@@ -53,6 +56,58 @@ export function VideoHistorySection({
   useEffect(() => {
     load()
   }, [load])
+
+  // Enregistrement fiable (mobile + ordinateur) : on récupère la vidéo en blob
+  // puis on déclenche un téléchargement via un lien temporaire. Plus robuste que
+  // l'attribut `download` seul, souvent ignoré sur iOS/Android.
+  const handleDownload = useCallback(async (v: HistoryVideo) => {
+    if (!v.video_url) return
+    setDownloadingId(v.id)
+    try {
+      const res = await fetch(`${v.video_url}&download=1`)
+      if (!res.ok) throw new Error("download failed")
+      const blob = await res.blob()
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = objectUrl
+      a.download = `chapcam-${v.tool}-${v.id.slice(0, 8)}.mp4`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      // Laisser le temps au navigateur de démarrer le téléchargement.
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
+    } catch {
+      // Repli : ouvrir la vidéo dans un nouvel onglet (l'utilisateur peut l'enregistrer manuellement).
+      window.open(`${v.video_url}&download=1`, "_blank")
+    } finally {
+      setDownloadingId(null)
+    }
+  }, [])
+
+  // Suppression définitive (fichier Blob + entrée d'historique) après confirmation.
+  const handleDelete = useCallback(async (v: HistoryVideo) => {
+    const ok = window.confirm(
+      "Supprimer définitivement cette vidéo ? Cette action est irréversible.",
+    )
+    if (!ok) return
+    setDeletingId(v.id)
+    // Retrait optimiste de la liste.
+    const prev = videos
+    setVideos((list) => list.filter((x) => x.id !== v.id))
+    try {
+      const res = await fetch("/api/videos/history", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: v.id }),
+      })
+      if (!res.ok) throw new Error("delete failed")
+    } catch {
+      // En cas d'échec, on restaure la liste.
+      setVideos(prev)
+    } finally {
+      setDeletingId(null)
+    }
+  }, [videos])
 
   // Rechargement déclenché par la page parente (nouvelle vidéo terminée).
   useEffect(() => {
@@ -152,16 +207,38 @@ export function VideoHistorySection({
                   </p>
                   <p className="text-[10px] text-white/40">{fmtDate(v.created_at)}</p>
                 </div>
-                {v.status === "completed" && v.video_url && (
-                  <a
-                    href={v.video_url}
-                    download
-                    className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white/10 px-2 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-white/20"
-                    aria-label={`Télécharger ${v.title}`}
+                <div className="flex shrink-0 items-center gap-1">
+                  {v.status === "completed" && v.video_url && (
+                    <button
+                      type="button"
+                      onClick={() => handleDownload(v)}
+                      disabled={downloadingId === v.id}
+                      className="inline-flex items-center gap-1 rounded-lg bg-[#c6f542] px-2 py-1 text-[11px] font-semibold text-black transition-colors hover:bg-[#b3e02e] disabled:opacity-60"
+                      aria-label={`Enregistrer ${v.title}`}
+                      title="Enregistrer sur mon appareil"
+                    >
+                      {downloadingId === v.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Download className="h-3 w-3" />
+                      )}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(v)}
+                    disabled={deletingId === v.id}
+                    className="inline-flex items-center rounded-lg bg-white/10 px-2 py-1 text-white/70 transition-colors hover:bg-red-500/20 hover:text-red-400 disabled:opacity-60"
+                    aria-label={`Supprimer ${v.title}`}
+                    title="Supprimer cette vidéo"
                   >
-                    <Download className="h-3 w-3" />
-                  </a>
-                )}
+                    {deletingId === v.id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-3 w-3" />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           ))}

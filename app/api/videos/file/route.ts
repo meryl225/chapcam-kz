@@ -47,13 +47,22 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    return new NextResponse(result.stream, {
-      headers: {
-        'Content-Type': result.blob.contentType,
-        ETag: result.blob.etag,
-        'Cache-Control': 'private, no-cache',
-      },
-    })
+    // ?download=1 -> force le telechargement (enregistrement mobile/ordinateur)
+    // au lieu d'une lecture inline, avec un nom de fichier lisible.
+    const wantsDownload = request.nextUrl.searchParams.get('download') === '1'
+    const ext = result.blob.contentType.includes('webm') ? 'webm' : 'mp4'
+    const downloadName = `chapcam-${(pathname.split('/').pop() || 'video').replace(/\.(mp4|webm)$/i, '')}.${ext}`
+
+    const headers: Record<string, string> = {
+      'Content-Type': result.blob.contentType,
+      ETag: result.blob.etag,
+      'Cache-Control': 'private, no-cache',
+    }
+    if (wantsDownload) {
+      headers['Content-Disposition'] = `attachment; filename="${downloadName}"`
+    }
+
+    return new NextResponse(result.stream, { headers })
   } catch (error) {
     console.error('[videos/file] Erreur service video:', error)
     return NextResponse.json({ error: 'Échec du service de la vidéo' }, { status: 500 })

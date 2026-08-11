@@ -1,6 +1,6 @@
 import 'server-only'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
-import { put } from '@vercel/blob'
+import { put, del } from '@vercel/blob'
 
 // ============================================================
 // Historique PERMANENT des videos generees par les outils IA
@@ -144,6 +144,40 @@ export async function isAlreadyRehosted(
     LIMIT 1
   `) as unknown[]
   return rows.length > 0
+}
+
+/**
+ * Supprime une entree d'historique appartenant a l'utilisateur : on efface la
+ * video du store Blob prive PUIS la ligne Neon. La verification user_id garantit
+ * qu'on ne peut pas supprimer la video d'un autre compte. Retourne true si une
+ * ligne a bien ete supprimee.
+ */
+export async function deleteVideoHistory(
+  userId: string,
+  id: string,
+): Promise<boolean> {
+  await ensureTable()
+  // 1) Recuperer le blob a supprimer, en s'assurant qu'il appartient a l'utilisateur.
+  const rows = (await sql`
+    SELECT blob_pathname FROM video_history
+    WHERE id = ${id} AND user_id = ${userId}
+    LIMIT 1
+  `) as { blob_pathname: string | null }[]
+  if (rows.length === 0) return false
+
+  // 2) Effacer le fichier Blob (non bloquant : on continue meme si echec).
+  const pathname = rows[0].blob_pathname
+  if (pathname) {
+    try {
+      await del(pathname)
+    } catch (err) {
+      console.error('[video-history] Suppression Blob echouee:', err)
+    }
+  }
+
+  // 3) Supprimer la ligne Neon.
+  await sql`DELETE FROM video_history WHERE id = ${id} AND user_id = ${userId}`
+  return true
 }
 
 /** Liste l'historique d'un utilisateur, tous outils ou filtre par outil. */
