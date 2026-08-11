@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { photoVideoQuotaForPlan } from "@/lib/plans"
 import { getPhotoVideoBalance, addPhotoVideoCredits, deductPhotoVideoCredit } from "@/lib/photo-video-quota"
 import { logToolUsage } from "@/lib/tool-usage"
+import { rehostToBlob, saveVideoHistory, isAlreadyRehosted } from "@/lib/video-history"
 
 // Le clonage de voix HeyGen est ASYNCHRONE (~30-90s de traitement). On attend
 // que le clone soit "complete" avant de creer la video, donc la requete peut
@@ -431,10 +432,37 @@ export async function GET(request: NextRequest) {
       }).catch(() => {})
     }
 
+    // Historique PERMANENT : quand la video est prete, on la re-heberge dans le
+    // Blob prive (les URLs HeyGen expirent ~7j) et on l'enregistre pour cet
+    // utilisateur. Idempotent : on ne re-heberge pas si c'est deja fait.
+    let historyUrl: string | null = null
+    if (data.status === "completed" && data.video_url) {
+      try {
+        const already = await isAlreadyRehosted(user.id, "photo_video", videoId)
+        if (!already) {
+          const pathname = await rehostToBlob(data.video_url, user.id, "photo_video", videoId)
+          await saveVideoHistory({
+            userId: user.id,
+            tool: "photo_video",
+            providerRef: videoId,
+            blobPathname: pathname,
+            thumbnailUrl: data.thumbnail_url || null,
+            title: "Studio Photo en Vidéo",
+            status: "completed",
+          })
+          if (pathname) historyUrl = `/api/videos/file?pathname=${encodeURIComponent(pathname)}`
+        }
+      } catch (e) {
+        // Non bloquant : on renvoie quand meme l'URL HeyGen au client.
+        console.error("[PhotoVideo] Historique non enregistre:", e)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       status: data.status || "unknown", // pending | processing | completed | failed
-      video_url: data.video_url || null,
+      // On privilegie l'URL Blob durable si disponible, sinon l'URL HeyGen.
+      video_url: historyUrl || data.video_url || null,
       thumbnail_url: data.thumbnail_url || null,
       duration: data.duration || null,
       error: data.error || null,

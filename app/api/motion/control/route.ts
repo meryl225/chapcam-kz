@@ -5,6 +5,7 @@ import { motionQuotaForPlan } from "@/lib/plans"
 import { getMotionBalance, addMotionCredits, deductMotionCredit } from "@/lib/motion-quota"
 import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, listMotionJobs } from "@/lib/motion-jobs"
 import { logToolUsage } from "@/lib/tool-usage"
+import { rehostToBlob, saveVideoHistory, isAlreadyRehosted } from "@/lib/video-history"
 
 // --- Motion Control REEL (Kling Motion Control via fal.ai) ---
 // C'est le moteur EXACT que Higgsfield expose dans son UI "Motion Control" :
@@ -105,10 +106,30 @@ export async function GET(request: NextRequest) {
       const videoUrl = (result.data as { video?: { url?: string } })?.video?.url || null
       // Persister le resultat : la video reste retrouvable meme si l'utilisateur
       // avait quitte la page pendant le rendu.
+      let historyUrl: string | null = null
       if (videoUrl) {
         await markMotionJobCompleted(user.id, requestId, videoUrl).catch(() => {})
+        // Historique PERMANENT : les URLs fal expirent aussi -> on re-heberge la
+        // video dans le Blob prive (idempotent via isAlreadyRehosted).
+        try {
+          const already = await isAlreadyRehosted(user.id, "motion", requestId)
+          if (!already) {
+            const pathname = await rehostToBlob(videoUrl, user.id, "motion", requestId)
+            await saveVideoHistory({
+              userId: user.id,
+              tool: "motion",
+              providerRef: requestId,
+              blobPathname: pathname,
+              title: "Motion Control",
+              status: "completed",
+            })
+            if (pathname) historyUrl = `/api/videos/file?pathname=${encodeURIComponent(pathname)}`
+          }
+        } catch (e) {
+          console.error("[MotionControl] Historique non enregistre:", e)
+        }
       }
-      return NextResponse.json({ success: true, status: "completed", video_url: videoUrl })
+      return NextResponse.json({ success: true, status: "completed", video_url: historyUrl || videoUrl })
     }
 
     return NextResponse.json({

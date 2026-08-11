@@ -15,6 +15,7 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { CreditPacksSection } from "@/components/photo-video/credit-packs-section"
+import { VideoHistorySection } from "@/components/video-history-section"
 
 interface Voice {
   voice_id: string
@@ -152,6 +153,9 @@ export default function PhotoVideoPage() {
 
   const [status, setStatus] = useState<Status>("idle")
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  // Compteur incrémenté à chaque vidéo terminée : force la section "Mes vidéos"
+  // à se rafraîchir pour afficher la nouvelle génération.
+  const [historyRefresh, setHistoryRefresh] = useState(0)
 
   const busy = status === "uploading" || status === "processing"
 
@@ -340,6 +344,7 @@ export default function PhotoVideoPage() {
           if (pollRef.current) clearInterval(pollRef.current)
           setVideoUrl(json.video_url)
           setStatus("completed")
+          setHistoryRefresh((n) => n + 1)
           toast({ title: "Video prete !", description: "Ta video a ete generee avec succes." })
         } else if (json.status === "failed") {
           if (pollRef.current) clearInterval(pollRef.current)
@@ -969,6 +974,9 @@ export default function PhotoVideoPage() {
           </div>
         </div>
       </div>
+
+      {/* Historique permanent : toutes les vidéos générées par cet utilisateur */}
+      <VideoHistorySection tool="photo_video" refreshKey={historyRefresh} />
 
       {/* Achat de credits video (sans forfait Live Swap requis) */}
       <div id="recharger-credits" className="scroll-mt-8">
