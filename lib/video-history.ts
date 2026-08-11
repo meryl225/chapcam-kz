@@ -180,6 +180,27 @@ export async function deleteVideoHistory(
   return true
 }
 
+/**
+ * Retourne une map { provider_ref -> blob_pathname } pour un utilisateur et un
+ * outil donnes. Sert a "durcir" les galeries existantes (ex: Motion) en
+ * remplacant les URLs fournisseur (qui expirent) par la copie Blob permanente.
+ */
+export async function getBlobPathnamesByRef(
+  userId: string,
+  tool: VideoTool,
+): Promise<Record<string, string>> {
+  await ensureTable()
+  const rows = (await sql`
+    SELECT provider_ref, blob_pathname
+    FROM video_history
+    WHERE user_id = ${userId} AND tool = ${tool}
+      AND provider_ref IS NOT NULL AND blob_pathname IS NOT NULL
+  `) as { provider_ref: string; blob_pathname: string }[]
+  const map: Record<string, string> = {}
+  for (const r of rows) map[r.provider_ref] = r.blob_pathname
+  return map
+}
+
 /** Liste l'historique d'un utilisateur, tous outils ou filtre par outil. */
 export async function listVideoHistory(
   userId: string,
