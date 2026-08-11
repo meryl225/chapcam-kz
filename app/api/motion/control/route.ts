@@ -5,7 +5,7 @@ import { motionQuotaForPlan } from "@/lib/plans"
 import { getMotionBalance, addMotionCredits, deductMotionCredit } from "@/lib/motion-quota"
 import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, listMotionJobs } from "@/lib/motion-jobs"
 import { logToolUsage } from "@/lib/tool-usage"
-import { rehostToBlob, saveVideoHistory, isAlreadyRehosted } from "@/lib/video-history"
+import { rehostToBlob, saveVideoHistory, isAlreadyRehosted, getBlobPathnamesByRef } from "@/lib/video-history"
 
 // --- Motion Control REEL (Kling Motion Control via fal.ai) ---
 // C'est le moteur EXACT que Higgsfield expose dans son UI "Motion Control" :
@@ -82,7 +82,17 @@ export async function GET(request: NextRequest) {
   if (params.get("info") === "history") {
     try {
       const jobs = await listMotionJobs(user.id, 30)
-      return NextResponse.json({ success: true, jobs })
+      // Preferer la copie Blob PERMANENTE quand elle existe : les URLs fal
+      // expirent, donc on remplace video_url par la route Blob durable pour les
+      // clips deja re-heberges. Les autres gardent leur URL fal (encore valide).
+      const blobByRef: Record<string, string> = await getBlobPathnamesByRef(user.id, "motion").catch(() => ({}))
+      const durableJobs = jobs.map((j) => {
+        const pathname = blobByRef[j.request_id]
+        return pathname
+          ? { ...j, video_url: `/api/videos/file?pathname=${encodeURIComponent(pathname)}` }
+          : j
+      })
+      return NextResponse.json({ success: true, jobs: durableJobs })
     } catch {
       return NextResponse.json({ success: true, jobs: [] })
     }
