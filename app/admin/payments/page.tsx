@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   RotateCcw,
   Megaphone,
+  Banknote,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -314,6 +315,13 @@ export default function AdminPaymentsPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/admin/payments/received"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#00ff88]/40 bg-[#0d2018] px-4 py-2.5 text-sm font-medium text-[#00ff88] transition-colors hover:border-[#00ff88] hover:text-white"
+            >
+              <Banknote className="h-4 w-4" />
+              Paiements reçus
+            </Link>
             <Link
               href="/admin/campaign"
               className="inline-flex items-center gap-2 rounded-xl border border-[#00d4ff]/40 bg-[#0d2030] px-4 py-2.5 text-sm font-medium text-[#00d4ff] transition-colors hover:border-[#00d4ff] hover:text-white"
