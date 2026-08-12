@@ -144,6 +144,13 @@ export function useLucy21() {
       // videoElement.captureStream()). Si fourni, on l'utilise a la place de la
       // camera (pas d'appel getUserMedia, donc pas de demande d'acces camera).
       sourceStream?: MediaStream
+      // Identifiant unique du swap, genere par l'appelant AVANT connect(). Envoye
+      // au serveur pour lier la reservation de warmup et les heartbeats a UNE
+      // seule ligne swap_sessions.
+      sessionId?: string
+      // Callback appele quand le serveur a effectivement reserve des points de
+      // warmup a l'emission du token (permet a l'UI de refleter le solde a jour).
+      onReserved?: (reservedPoints: number) => void
     },
   ) => {
     disconnect()
@@ -174,11 +181,20 @@ export function useLucy21() {
       // l'erreur "Origin not allowed" sur les previews / domaines non listes.
       const pageOrigin =
         typeof window !== 'undefined' ? window.location.origin : ''
+      // On transmet le session_id pour que le serveur cree la ligne de
+      // reservation de warmup rattachee a CE swap.
+      const sessionParam = options?.sessionId
+        ? `&sessionId=${encodeURIComponent(options.sessionId)}`
+        : ''
       const tokenRes = await fetch(
-        `/api/decart-token?origin=${encodeURIComponent(pageOrigin)}`,
+        `/api/decart-token?origin=${encodeURIComponent(pageOrigin)}${sessionParam}`,
       )
       const tokenData = await tokenRes.json().catch(() => null)
       const clientToken = tokenData?.token
+      // Refleter immediatement les points reserves pour le warmup dans l'UI.
+      if (tokenData?.reservedPoints > 0 && options?.onReserved) {
+        options.onReserved(tokenData.reservedPoints)
+      }
       if (!tokenRes.ok || !clientToken) {
         // Afficher la vraie raison renvoyee par le serveur (abonnement inactif,
         // points insuffisants, plafond quotidien...) plutot qu'un message

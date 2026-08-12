@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveWatermarkForUser, pickDecartApiKey } from '@/lib/watermark'
 import { checkLiveAccess } from '@/lib/live-guard'
 import { trackGPUUsage } from '@/lib/rate-limit'
+import { RESERVATION_SECONDS, RESERVATION_POINTS } from '@/lib/swap-pricing'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -88,6 +89,11 @@ export async function GET(request: Request) {
   const hdrs = request.headers
   const url = new URL(request.url)
   const clientOriginParam = url.searchParams.get('origin')
+  // Identifiant de session genere par le client AVANT connect() : c'est la meme
+  // cle que les heartbeats /api/points utiliseront. On l'attache a la ligne de
+  // reservation ci-dessous pour que warmup + swap actif se cumulent sur UNE
+  // seule ligne swap_sessions.
+  const clientSessionId = url.searchParams.get('sessionId')
   const originHeader = hdrs.get('origin')
   const forwardedHost = hdrs.get('x-forwarded-host') || hdrs.get('host')
   const forwardedProto = hdrs.get('x-forwarded-proto') || 'https'
@@ -151,12 +157,61 @@ export async function GET(request: Request) {
       console.warn('[Decart Token] Log non enregistre:', logErr?.message)
     }
 
+    // 7. RESERVATION DE WARMUP (anti sessions "fantomes").
+    //    Le token est cree => Decart a provisionne le GPU et facturera au minimum
+    //    le warmup/connexion. On debite donc immediatement un forfait de warmup
+    //    et on cree la ligne swap_sessions correspondante (finalized=false), avec
+    //    le meme session_id que les heartbeats. Ainsi, meme si le client meurt
+    //    pendant la connexion (0 heartbeat), la conso est deja facturee et
+    //    tracee. Les heartbeats s'ajouteront ensuite sur CETTE meme ligne.
+    //    Best-effort : une erreur ici ne bloque jamais le demarrage du swap.
+    if (clientSessionId) {
+      try {
+        const admin = createAdminClient()
+        const { data: sub } = await admin
+          .from('subscriptions')
+          .select('id, points')
+          .eq('user_id', user.id)
+          .single()
+        if (sub) {
+          const current = sub.points || 0
+          // Ne jamais debiter plus que le solde disponible.
+          const reserve = Math.min(RESERVATION_POINTS, current)
+          if (reserve > 0) {
+            await admin
+              .from('subscriptions')
+              .update({ points: current - reserve, updated_at: new Date().toISOString() })
+              .eq('id', sub.id)
+          }
+          const nowIso = new Date().toISOString()
+          await admin.from('swap_sessions').insert({
+            session_id: clientSessionId,
+            user_id: user.id,
+            avatar_id: null,
+            avatar_name: null,
+            duration_seconds: RESERVATION_SECONDS,
+            points_used: reserve,
+            frames_processed: 0,
+            started_at: nowIso,
+            ended_at: nowIso,
+            finalized: false,
+            updated_at: nowIso,
+          })
+        }
+      } catch (resErr: any) {
+        console.warn('[Decart Token] Reservation warmup non enregistree:', resErr?.message)
+      }
+    }
+
     return NextResponse.json({
       success: true,
       token: token.apiKey,
       expiresAt: token.expiresAt,
       userId: user.id,
-      noWatermark: usedNoWatermark
+      noWatermark: usedNoWatermark,
+      // Points reserves pour le warmup : le client peut ainsi refleter le solde
+      // a jour immediatement (avant le 1er heartbeat).
+      reservedPoints: clientSessionId ? RESERVATION_POINTS : 0,
     })
   } catch (error: any) {
     console.error('[Decart Token] Error:', error.message)
