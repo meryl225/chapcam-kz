@@ -580,6 +580,15 @@ export default function DashboardPage() {
       hd: isVip && hdEnabled,
       codec: videoCodec || undefined,
       sourceStream,
+      sessionId: sessionIdRef.current ?? undefined,
+      // Le serveur a debite le warmup a l'emission du token : on decremente le
+      // solde local pour que l'affichage reste juste avant le 1er heartbeat.
+      onReserved: (reservedPoints) => {
+        remainingRef.current = Math.max(0, remainingRef.current - reservedPoints)
+        pointsUsedRef.current += reservedPoints
+        setUserPoints(remainingRef.current)
+        setPointsUsed(pointsUsedRef.current)
+      },
     })
   }
 

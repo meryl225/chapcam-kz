@@ -18,3 +18,17 @@ export type SwapResolution = '720p' | '1080p'
 export function pointsPerSecond(resolution?: SwapResolution | string | null): number {
   return resolution === '1080p' ? POINTS_PER_SECOND_HD : POINTS_PER_SECOND_SD
 }
+
+// === Reservation de warmup (anti sessions "fantomes") ===
+// Decart facture le GPU des l'OUVERTURE du WebSocket : chargement du modele,
+// warmup, negociation... AVANT que le swap ne soit "live". Or le client ne
+// facture qu'a partir de `isConnected` (swap actif). Cette fenetre de connexion
+// n'etait donc JAMAIS facturee : si le client mourait pendant le warmup (0
+// heartbeat), le token avait brule du GPU sans aucune deduction -> session
+// "fantome". On reserve donc un forfait de warmup DES l'emission du token.
+// C'est une periode DISTINCTE du swap actif : aucun double-comptage avec les
+// heartbeats, qui s'ajoutent par-dessus.
+/** Duree de warmup/connexion facturee a l'emission du token (secondes). */
+export const RESERVATION_SECONDS = 5
+/** Points reserves a l'emission du token (tarif de base 720p). */
+export const RESERVATION_POINTS = POINTS_PER_SECOND_SD * RESERVATION_SECONDS
