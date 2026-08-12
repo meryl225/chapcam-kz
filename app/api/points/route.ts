@@ -23,6 +23,10 @@ export async function POST(request: NextRequest) {
       // Resolution reelle du swap ('720p' | '1080p') : sert a facturer le HD
       // plus cher et a valider cote serveur le nombre de points demande.
       resolution,
+      // Identifiant unique du swap en cours (genere par le client au demarrage).
+      // Cle d'upsert : garantit UNE seule ligne swap_sessions par swap, creee des
+      // le premier heartbeat -> plus aucune session "fantome" si le client meurt.
+      sessionId,
       // Champs specifiques a l'enregistrement d'UNE session complete (a l'arret du swap).
       saveSession,
       avatarId,
@@ -40,29 +44,68 @@ export async function POST(request: NextRequest) {
     // et frames, pour que la page Statistiques soit claire et exacte.
     if (saveSession) {
       const duration = Math.max(0, Math.floor(sessionDuration || 0))
-      // Rien a enregistrer pour une session vide (swap coupe instantanement).
-      if (duration <= 0) {
-        return NextResponse.json({ success: true, skipped: true })
-      }
       const admin = createAdminClient()
       const endedAt = new Date()
       const startedAtDate = startedAt ? new Date(startedAt) : new Date(endedAt.getTime() - duration * 1000)
+      // Points bornes au max theorique (duree x tarif) : un client ne peut pas
+      // gonfler l'historique. Le ratio points_used/duration_seconds distingue
+      // ensuite une session HD (4 pts/s) d'une SD (2 pts/s).
+      const finalPoints = Math.max(0, Math.min(
+        Math.floor(pointsToDeduct || duration * rate),
+        duration * rate,
+      ))
+      const frames = Math.max(0, Math.floor(framesProcessed || 0))
+
+      // Cas normal : une ligne a deja ete creee par les heartbeats. On la
+      // FINALISE (avatar, totaux, finalized=true) au lieu d'en creer une 2e.
+      if (sessionId) {
+        const { data: existing } = await admin
+          .from('swap_sessions')
+          .select('id, duration_seconds, points_used')
+          .eq('session_id', sessionId)
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (existing) {
+          const { error: finErr } = await admin
+            .from('swap_sessions')
+            .update({
+              avatar_id: avatarId ?? null,
+              avatar_name: avatarName ?? null,
+              // On garde le plus grand entre l'accumule (heartbeats) et le total
+              // client, pour ne JAMAIS sous-compter la conso reelle.
+              duration_seconds: Math.max(existing.duration_seconds || 0, duration),
+              points_used: Math.max(existing.points_used || 0, finalPoints),
+              frames_processed: frames,
+              ended_at: endedAt.toISOString(),
+              updated_at: endedAt.toISOString(),
+              finalized: true,
+            })
+            .eq('id', existing.id)
+          if (finErr) {
+            console.error('[Points] Finalize session error:', finErr)
+            return NextResponse.json({ success: false, error: 'Erreur finalisation session' }, { status: 500 })
+          }
+          return NextResponse.json({ success: true, finalized: true })
+        }
+      }
+
+      // Repli : aucune ligne heartbeat (session tres courte, ou sans sessionId).
+      // Rien a enregistrer si la session est vide.
+      if (duration <= 0) {
+        return NextResponse.json({ success: true, skipped: true })
+      }
       const { error: sessionError } = await admin.from('swap_sessions').insert({
+        session_id: sessionId ?? null,
         user_id: user.id,
         avatar_id: avatarId ?? null,
         avatar_name: avatarName ?? null,
         duration_seconds: duration,
-        // On borne les points enregistres au max theorique (duree x tarif) pour
-        // qu'un client ne puisse pas gonfler l'historique. Le HD (1080p) est
-        // facture au tarif plus eleve. Le ratio points_used/duration_seconds
-        // permettra ensuite de distinguer une session HD (4 pts/s) d'une SD (2).
-        points_used: Math.max(0, Math.min(
-          Math.floor(pointsToDeduct || duration * rate),
-          duration * rate,
-        )),
-        frames_processed: Math.max(0, Math.floor(framesProcessed || 0)),
+        points_used: finalPoints,
+        frames_processed: frames,
         started_at: startedAtDate.toISOString(),
         ended_at: endedAt.toISOString(),
+        finalized: true,
+        updated_at: endedAt.toISOString(),
       })
       if (sessionError) {
         console.error('[Points] Save session error:', sessionError)
@@ -152,10 +195,73 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // NB : on n'enregistre PLUS de ligne swap_sessions ici. Cette route est
-    // appelee toutes les ~10s pour deduire les points ; enregistrer a chaque
-    // fois creait des dizaines de fausses "sessions" de 10s. L'historique est
-    // desormais ecrit UNE fois par swap via la branche saveSession ci-dessus.
+    // === Upsert "heartbeat" de la session ===
+    // A chaque deduction (~10s), on cree la ligne swap_sessions au 1er battement
+    // puis on l'incremente. Resultat : des qu'UN point est debite, la session
+    // existe en base -> plus aucune session "fantome" si l'onglet se ferme, si le
+    // reseau tombe, ou si le beacon de fin echoue. La finalisation (avatar,
+    // finalized=true) se fera via la branche saveSession a l'arret propre.
+    // Non bloquant : un echec ici ne doit jamais empecher la deduction.
+    if (sessionId) {
+      try {
+        const nowIso = new Date().toISOString()
+        const { data: existing } = await admin
+          .from('swap_sessions')
+          .select('id, duration_seconds, points_used')
+          .eq('session_id', sessionId)
+          .eq('user_id', user.id)
+          .maybeSingle()
+        if (existing) {
+          await admin
+            .from('swap_sessions')
+            .update({
+              duration_seconds: (existing.duration_seconds || 0) + elapsed,
+              points_used: (existing.points_used || 0) + pointsDeducted,
+              ended_at: nowIso,
+              updated_at: nowIso,
+            })
+            .eq('id', existing.id)
+        } else {
+          const startIso = startedAt ? new Date(startedAt).toISOString() : nowIso
+          const { error: insErr } = await admin.from('swap_sessions').insert({
+            session_id: sessionId,
+            user_id: user.id,
+            avatar_id: avatarId ?? null,
+            avatar_name: avatarName ?? null,
+            duration_seconds: elapsed,
+            points_used: pointsDeducted,
+            frames_processed: 0,
+            started_at: startIso,
+            ended_at: nowIso,
+            finalized: false,
+            updated_at: nowIso,
+          })
+          // Course rare (2 heartbeats quasi simultanes) : l'index unique rejette
+          // le 2e insert -> on rejoue en increment sur la ligne desormais presente.
+          if (insErr) {
+            const { data: again } = await admin
+              .from('swap_sessions')
+              .select('id, duration_seconds, points_used')
+              .eq('session_id', sessionId)
+              .eq('user_id', user.id)
+              .maybeSingle()
+            if (again) {
+              await admin
+                .from('swap_sessions')
+                .update({
+                  duration_seconds: (again.duration_seconds || 0) + elapsed,
+                  points_used: (again.points_used || 0) + pointsDeducted,
+                  ended_at: nowIso,
+                  updated_at: nowIso,
+                })
+                .eq('id', again.id)
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[Points] Heartbeat session upsert echoue:', e)
+      }
+    }
 
     return NextResponse.json({
       success: true,

@@ -76,6 +76,13 @@ export default function DashboardPage() {
   const pendingSyncRef = useRef(0)       // points consommes NON encore envoyes au serveur
   const remainingRef = useRef(0)         // solde restant estime (pour couper a 0)
   const sessionStartRef = useRef<string | null>(null) // horodatage ISO du debut du swap en cours
+  // Identifiant unique du swap en cours : envoye a CHAQUE appel /api/points pour
+  // que le serveur cree/incremente UNE seule ligne swap_sessions (upsert). C'est
+  // ce qui elimine les sessions "fantomes" quand le client se ferme brutalement.
+  const sessionIdRef = useRef<string | null>(null)
+  // Avatar du swap en cours (capture au demarrage) : permet aux lignes heartbeat
+  // de porter l'avatar meme si la session n'est jamais finalisee.
+  const sessionAvatarRef = useRef<{ id: string | null; name: string | null }>({ id: null, name: null })
   // Tarif points/seconde du swap en cours (2 en 720p, 4 en 1080p VIP). En ref
   // pour eviter toute closure perimee dans les intervalles / handlers de flush.
   const rateRef = useRef(POINTS_PER_SECOND_SD)
@@ -292,6 +299,11 @@ export default function DashboardPage() {
           sessionDuration: Math.max(1, Math.round(chunk / rateRef.current)),
           // Derive de rateRef (ref toujours a jour) pour eviter une closure perimee.
           resolution: rateRef.current >= POINTS_PER_SECOND_HD ? '1080p' : '720p',
+          // Cle d'upsert + metadonnees : la session existe des le 1er heartbeat.
+          sessionId: sessionIdRef.current,
+          avatarId: sessionAvatarRef.current.id,
+          avatarName: sessionAvatarRef.current.name,
+          startedAt: sessionStartRef.current,
         }),
       })
       const data = await res.json().catch(() => null)
@@ -352,6 +364,11 @@ export default function DashboardPage() {
           pointsToDeduct: chunk,
           sessionDuration: Math.max(1, Math.round(chunk / rateRef.current)),
           resolution: rateRef.current >= POINTS_PER_SECOND_HD ? '1080p' : '720p',
+          // Meme cle d'upsert : ce dernier flush s'attache a la bonne session.
+          sessionId: sessionIdRef.current,
+          avatarId: sessionAvatarRef.current.id,
+          avatarName: sessionAvatarRef.current.name,
+          startedAt: sessionStartRef.current,
         })], { type: 'application/json' })
         navigator.sendBeacon?.('/api/points', blob)
       } catch {
@@ -384,9 +401,11 @@ export default function DashboardPage() {
     const sessionSeconds = durationRef.current
     const sessionPoints = pointsUsedRef.current
     const startedAt = sessionStartRef.current
+    const sessionId = sessionIdRef.current
     // Empeche un double enregistrement (l'arret manuel + l'epuisement peuvent
     // tous deux appeler cette fonction).
     sessionStartRef.current = null
+    sessionIdRef.current = null
 
     // Enregistre UNE session complete dans l'historique (avatar, duree, points).
     if (sessionSeconds > 0) {
@@ -397,6 +416,8 @@ export default function DashboardPage() {
           keepalive: true,
           body: JSON.stringify({
             saveSession: true,
+            // Finalise la ligne heartbeat existante (pas de 2e ligne creee).
+            sessionId,
             avatarId: selectedAvatar?.id ?? null,
             avatarName: selectedAvatar?.name ?? null,
             sessionDuration: sessionSeconds,
@@ -535,6 +556,13 @@ export default function DashboardPage() {
     pendingSyncRef.current = 0
     remainingRef.current = userPoints
     sessionStartRef.current = new Date().toISOString()
+    // Nouvel identifiant unique pour CE swap + capture de l'avatar : les
+    // heartbeats creeront/incrementeront une seule ligne swap_sessions.
+    sessionIdRef.current =
+      (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    sessionAvatarRef.current = { id: selectedAvatar?.id ?? null, name: selectedAvatar?.name ?? null }
 
     // Source video importee : on capture le flux du fichier avant de connecter.
     let sourceStream: MediaStream | undefined
