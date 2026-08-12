@@ -9,11 +9,16 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
 
 // Rate limit configuration
+// NB : la cle de comptage combine IP + empreinte du User-Agent (voir
+// getRateLimitKey). C'est indispensable pour les reseaux mobiles a fort CGNAT
+// (operateurs nigerians, ivoiriens...) ou des milliers d'abonnes partagent une
+// meme IP publique : sans cela, quelques utilisateurs suffisaient a epuiser le
+// quota de TOUTE l'IP et bloquaient les autres (429/403 « site inaccessible »).
 const RATE_LIMITS = {
-  api: { requests: 60, windowMs: 60000 },      // 60 req/min for general API
-  swap: { requests: 10, windowMs: 60000 },     // 10 req/min for swap endpoints
-  auth: { requests: 5, windowMs: 60000 },      // 5 req/min for auth endpoints
-  payment: { requests: 10, windowMs: 60000 },  // 10 req/min for payment
+  api: { requests: 240, windowMs: 60000 },     // API generale (inclut le polling /api/points ~6/min/user)
+  swap: { requests: 40, windowMs: 60000 },     // endpoints swap (demarrage de session, tokens)
+  auth: { requests: 10, windowMs: 60000 },     // auth : reste strict (anti brute-force)
+  payment: { requests: 20, windowMs: 60000 },  // paiement
 }
 
 // Blocked patterns (anti-scraping)
@@ -44,9 +49,31 @@ function getClientIP(request: NextRequest): string {
   return forwarded?.split(',')[0]?.trim() || realIP || 'unknown'
 }
 
-function checkRateLimit(ip: string, endpoint: string): { allowed: boolean; remaining: number } {
+// Petit hash stable (djb2) d'une chaine -> entier positif en base36. Sert a
+// derfor une empreinte courte et non reversible du User-Agent.
+function shortHash(input: string): string {
+  let h = 5381
+  for (let i = 0; i < input.length; i++) {
+    h = ((h << 5) + h + input.charCodeAt(i)) | 0
+  }
+  return (h >>> 0).toString(36)
+}
+
+// Cle de rate-limit = IP + empreinte d'appareil (User-Agent). Derriere un CGNAT,
+// des centaines d'utilisateurs partagent une meme IP mais ont des appareils/
+// navigateurs differents : ajouter l'empreinte UA les separe en compartiments
+// distincts, de sorte qu'un utilisateur n'epuise plus le quota des autres.
+// Ce n'est pas un identifiant parfait, mais il reduit drastiquement les
+// collisions injustes tout en gardant une protection anti-abus par appareil.
+function getRateLimitKey(request: NextRequest): string {
+  const ip = getClientIP(request)
+  const ua = request.headers.get('user-agent') || ''
+  return `${ip}#${shortHash(ua)}`
+}
+
+function checkRateLimit(client: string, endpoint: string): { allowed: boolean; remaining: number } {
   const now = Date.now()
-  const key = `${ip}:${endpoint}`
+  const key = `${client}:${endpoint}`
   
   // Determine rate limit based on endpoint
   let limit = RATE_LIMITS.api
@@ -174,9 +201,18 @@ export async function middleware(request: NextRequest) {
     }
   }
   
+  // Endpoints de POLLING authentifies, appeles a haute frequence par le client
+  // pendant une session active (facturation des points toutes les ~10s,
+  // heartbeat live). Ils sont deja proteges cote serveur (session requise) et ne
+  // doivent PAS etre rate-limites, sinon un simple swap prolonge finit par se
+  // faire couper — surtout derriere un CGNAT ou le compteur est partage.
+  const isAuthenticatedPolling =
+    pathname === '/api/points' || pathname === '/api/live/heartbeat'
+
   // 3. Rate limiting for API routes (les webhooks serveur et l'app desktop sont exemptes)
-  if (pathname.startsWith('/api/') && !isServerWebhook && !isDesktopApi) {
-    const { allowed, remaining } = checkRateLimit(ip, pathname)
+  if (pathname.startsWith('/api/') && !isServerWebhook && !isDesktopApi && !isAuthenticatedPolling) {
+    // Cle par appareil (IP + empreinte UA) pour ne pas penaliser les reseaux CGNAT.
+    const { allowed, remaining } = checkRateLimit(getRateLimitKey(request), pathname)
     
     if (!allowed) {
       console.log(`[Security] Rate limit exceeded: ${ip} on ${pathname}`)
