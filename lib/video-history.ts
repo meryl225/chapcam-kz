@@ -18,6 +18,9 @@ export type VideoTool = 'photo_video' | 'motion' | 'translation'
 export interface VideoHistoryItem {
   id: string
   tool: VideoTool
+  // Reference fournisseur (video_id HeyGen / translation id) : sert a re-heberger
+  // a la demande une video dont le blob manque mais encore valide chez HeyGen.
+  provider_ref: string | null
   // Chemin du blob prive (a servir via /api/videos/file?pathname=...).
   blob_pathname: string | null
   // Miniature optionnelle (URL directe fournisseur, non critique si elle expire).
@@ -201,6 +204,23 @@ export async function getBlobPathnamesByRef(
   return map
 }
 
+/**
+ * Met a jour le blob_pathname d'une ligne existante (auto-reparation) : quand on
+ * a reussi a re-heberger a posteriori une video dont le blob manquait.
+ */
+export async function setBlobPathname(
+  userId: string,
+  id: string,
+  pathname: string,
+): Promise<void> {
+  await ensureTable()
+  await sql`
+    UPDATE video_history
+    SET blob_pathname = ${pathname}, status = 'completed'
+    WHERE id = ${id} AND user_id = ${userId}
+  `
+}
+
 /** Liste l'historique d'un utilisateur, tous outils ou filtre par outil. */
 export async function listVideoHistory(
   userId: string,
@@ -210,14 +230,14 @@ export async function listVideoHistory(
   await ensureTable()
   const rows = tool
     ? ((await sql`
-        SELECT id, tool, blob_pathname, thumbnail_url, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, title, status, created_at
         FROM video_history
         WHERE user_id = ${userId} AND tool = ${tool}
         ORDER BY created_at DESC
         LIMIT ${limit}
       `) as VideoHistoryItem[])
     : ((await sql`
-        SELECT id, tool, blob_pathname, thumbnail_url, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, title, status, created_at
         FROM video_history
         WHERE user_id = ${userId}
         ORDER BY created_at DESC
