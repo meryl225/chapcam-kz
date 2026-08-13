@@ -8,17 +8,15 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 // Rate limiting store (in-memory, resets on redeploy - use Redis for production scale)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
 
-// Rate limit configuration
-// NB : la cle de comptage combine IP + empreinte du User-Agent (voir
-// getRateLimitKey). C'est indispensable pour les reseaux mobiles a fort CGNAT
-// (operateurs nigerians, ivoiriens...) ou des milliers d'abonnes partagent une
-// meme IP publique : sans cela, quelques utilisateurs suffisaient a epuiser le
-// quota de TOUTE l'IP et bloquaient les autres (429/403 « site inaccessible »).
+// Rate limit configuration.
+// SEULE l'authentification est desormais limitee (anti force-brute). L'API
+// generale, le swap et le paiement ne sont PLUS limites : personne n'est jamais
+// bloque, quel que soit son pays ou le nombre d'utilisateurs derriere une meme
+// IP (reseaux mobiles a fort CGNAT). La cle combine IP + empreinte User-Agent,
+// donc la limite auth s'applique par appareil et ne restreint jamais le nombre
+// de personnes pouvant se connecter au site.
 const RATE_LIMITS = {
-  api: { requests: 240, windowMs: 60000 },     // API generale (inclut le polling /api/points ~6/min/user)
-  swap: { requests: 40, windowMs: 60000 },     // endpoints swap (demarrage de session, tokens)
-  auth: { requests: 10, windowMs: 60000 },     // auth : reste strict (anti brute-force)
-  payment: { requests: 20, windowMs: 60000 },  // paiement
+  auth: { requests: 20, windowMs: 60000 },  // page de connexion : 20 tentatives/min/appareil
 }
 
 // Blocked patterns (anti-scraping)
@@ -74,17 +72,10 @@ function getRateLimitKey(request: NextRequest): string {
 function checkRateLimit(client: string, endpoint: string): { allowed: boolean; remaining: number } {
   const now = Date.now()
   const key = `${client}:${endpoint}`
-  
-  // Determine rate limit based on endpoint
-  let limit = RATE_LIMITS.api
-  if (endpoint.includes('/swap') || endpoint.includes('/decart') || endpoint.includes('/fal')) {
-    limit = RATE_LIMITS.swap
-  } else if (endpoint.includes('/auth')) {
-    limit = RATE_LIMITS.auth
-  } else if (endpoint.includes('/payment')) {
-    limit = RATE_LIMITS.payment
-  }
-  
+
+  // Seule l'authentification est limitee (voir RATE_LIMITS).
+  const limit = RATE_LIMITS.auth
+
   const record = rateLimitStore.get(key)
   
   if (!record || now > record.resetTime) {
@@ -201,31 +192,24 @@ export async function middleware(request: NextRequest) {
     }
   }
   
-  // Endpoints de POLLING authentifies, appeles a haute frequence par le client
-  // pendant une session active (facturation des points toutes les ~10s,
-  // heartbeat live). Ils sont deja proteges cote serveur (session requise) et ne
-  // doivent PAS etre rate-limites, sinon un simple swap prolonge finit par se
-  // faire couper — surtout derriere un CGNAT ou le compteur est partage.
-  const isAuthenticatedPolling =
-    pathname === '/api/points' || pathname === '/api/live/heartbeat'
-
-  // 3. Rate limiting for API routes (les webhooks serveur et l'app desktop sont exemptes)
-  if (pathname.startsWith('/api/') && !isServerWebhook && !isDesktopApi && !isAuthenticatedPolling) {
-    // Cle par appareil (IP + empreinte UA) pour ne pas penaliser les reseaux CGNAT.
-    const { allowed, remaining } = checkRateLimit(getRateLimitKey(request), pathname)
-    
+  // 3. Rate limiting.
+  // ACCES LIBRE POUR TOUS : on ne limite plus l'API generale, le swap ni le
+  // paiement. Quel que soit le pays ou le nombre d'utilisateurs derriere une
+  // meme IP publique (reseaux mobiles a fort CGNAT : Nigeria, Cote d'Ivoire,
+  // etc.), personne n'est jamais bloque par un quota partage. Le compteur
+  // par-IP causait des 429/403 « site inaccessible » pour des visiteurs
+  // parfaitement legitimes.
+  //
+  // SEULE EXCEPTION : les endpoints d'AUTHENTIFICATION restent proteges contre
+  // la force brute. Cette limite est par-appareil (IP + empreinte UA) et ne
+  // restreint donc PAS le nombre de personnes pouvant se connecter au site ;
+  // elle empeche uniquement un meme appareil de marteler la page de connexion.
+  if (pathname.startsWith('/api/auth') && !isServerWebhook && !isDesktopApi) {
+    const { allowed } = checkRateLimit(getRateLimitKey(request), pathname)
     if (!allowed) {
-      console.log(`[Security] Rate limit exceeded: ${ip} on ${pathname}`)
+      console.log(`[Security] Auth rate limit exceeded: ${ip} on ${pathname}`)
       const response = new NextResponse('Too Many Requests', { status: 429 })
       response.headers.set('Retry-After', '60')
-      response.headers.set('X-RateLimit-Remaining', '0')
-      return addSecurityHeaders(response)
-    }
-    
-    // For API routes, just add headers and continue
-    if (!pathname.startsWith('/api/auth') && !pathname.includes('/dashboard')) {
-      const response = NextResponse.next()
-      response.headers.set('X-RateLimit-Remaining', remaining.toString())
       return addSecurityHeaders(response)
     }
   }
