@@ -75,6 +75,38 @@ const MOBILE_MONEY: Record<string, UICountryMethod[]> = {
   MZ: [mm('mpesa_vodacom', 'M-Pesa (Vodacom)')],
 }
 
+// --- Logos des moyens de paiement (operateurs Mobile Money) ---------------
+// Utilise pour l'affichage marketing des pays principaux. `logo` est optionnel :
+// quand on n'a pas d'asset fiable, on retombe sur une pastille texte.
+export interface PaymentOperator {
+  key: string
+  label: string
+  logo?: string
+}
+
+// Cle operateur -> logo (assets presents dans public/images).
+const OPERATOR_LOGOS: Record<string, string> = {
+  orange_money: '/images/orange-money-logo.png',
+  wave: '/images/wave-logo.png',
+  mtn_money: '/images/mtn-momo-logo.jpg',
+  airtel_money: '/images/airtel-logo.svg',
+  vodafone_cash: '/images/vodafone-logo.svg',
+  djamo: '/images/djamo-logo.png',
+}
+
+const op = (key: string, label: string): PaymentOperator => ({
+  key,
+  label,
+  logo: OPERATOR_LOGOS[key],
+})
+
+// Operateurs affiches par pays PayDunya (methode 'mobile' agregee).
+const PAYDUNYA_OPERATORS: Record<string, PaymentOperator[]> = {
+  CI: [op('wave', 'Wave'), op('orange_money', 'Orange Money'), op('mtn_money', 'MTN'), op('moov_money', 'Moov'), op('djamo', 'Djamo')],
+  BJ: [op('mtn_money', 'MTN'), op('moov_money', 'Moov')],
+  TG: [op('moov_money', 'Moov'), op('tmoney', 'T-Money')],
+}
+
 // Pays confies a PayDunya : NE PAS les router vers GeniusPay.
 const PAYDUNYA_CODES = new Set(['CI', 'BJ', 'TG'])
 
@@ -266,6 +298,28 @@ export const PAYMENT_COUNTRIES: UICountry[] = [
 const COUNTRY_BY_CODE: Record<string, UICountry> = Object.fromEntries(
   PAYMENT_COUNTRIES.map((c) => [c.code, c]),
 )
+
+// --- Pays "principaux" mis en avant (affichage marketing) -----------------
+// Ceux explicitement cites dans l'API (PayDunya + Mobile Money GeniusPay) plus
+// la France, toujours en avant. Le reste des pays du monde (carte seule) est
+// resume par "+N autres pays".
+const PRINCIPAL_CODES = new Set<string>([...PAYDUNYA_CODES, ...FEATURED_ORDER, 'FR'])
+export const PRINCIPAL_COUNTRIES: UICountry[] = PAYMENT_COUNTRIES.filter((c) =>
+  PRINCIPAL_CODES.has(c.code),
+)
+// Nombre de pays restants (carte bancaire) non affiches individuellement.
+export const OTHER_COUNTRIES_COUNT = PAYMENT_COUNTRIES.length - PRINCIPAL_COUNTRIES.length
+
+/**
+ * Operateurs / moyens de paiement Mobile Money a afficher pour un pays donne.
+ * (La carte bancaire Visa/Mastercard est geree separement cote UI.)
+ */
+export function getPaymentOperators(country: UICountry): PaymentOperator[] {
+  if (country.provider === 'paydunya') {
+    return PAYDUNYA_OPERATORS[country.code] || []
+  }
+  return (MOBILE_MONEY[country.code] || []).map((m) => op(m.id, m.label))
+}
 
 /**
  * Valide le couple (pays, methode) recu du client contre la liste de verite.
