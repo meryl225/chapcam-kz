@@ -96,16 +96,22 @@ async function postGeniusPayPayment(body: Record<string, any>): Promise<GeniusPa
 // Cree un paiement GeniusPay en mode "checkout hebergee". Le montant est en XOF
 // (source de verite serveur) ; GeniusPay convertit vers la devise du payeur.
 //
-// - `paymentMethod` (optionnel) : token GeniusPay pre-selectionnant la methode
-//   choisie par l'utilisateur (ex. 'orange_money', 'card'). null => checkout
-//   generique ou le client choisit sur la page GeniusPay.
 // - `country` (optionnel) : code ISO2 envoye comme customer.country pour
-//   pre-filtrer les operateurs locaux sur la page GeniusPay.
+//   pre-filtrer les operateurs locaux sur la page de checkout hebergee.
+// - `paymentMethod` : conserve UNIQUEMENT pour la tracabilite (metadata). On ne
+//   l'envoie PAS a l'API — voir la note ci-dessous.
 //
-// FILET DE SECURITE : si l'appel AVEC token echoue (l'API refuse certains
-// tokens selon le pays), on rejoue automatiquement SANS token (checkout
-// generique, toujours acceptee). Le paiement ne peut donc jamais etre bloque
-// par un mapping methode/pays imparfait.
+// IMPORTANT — pourquoi on N'ENVOIE JAMAIS `payment_method` :
+//   Verifie empiriquement sur l'API live : des qu'on envoie `payment_method`
+//   (quelle que soit sa valeur : wave, orange_money, ET MEME card), GeniusPay
+//   resout TOUJOURS le paiement en Wave et renvoie une URL directe
+//   `pay.wave.com`, ignorant la methode demandee. Aucun champ (channels,
+//   payment_methods, preferred_method, gateway...) ne permet de pre-selectionner
+//   ou restreindre la methode sur la page hebergee. Le SEUL comportement correct
+//   est donc d'omettre `payment_method` : GeniusPay renvoie alors sa vraie page
+//   de checkout hebergee (`geniuspay.ci/checkout/...`), pre-filtree par le pays,
+//   ou le client choisit lui-meme sa methode (Mobile Money OU carte). C'est ce
+//   qui evite le "toujours renvoye vers Wave".
 export async function createGeniusPayPayment(params: {
   amountXof: number
   description: string
@@ -113,12 +119,13 @@ export async function createGeniusPayPayment(params: {
   fullName: string
   phone?: string
   country?: string | null
+  /** Conserve pour compat/tracabilite ; NON transmis a l'API (force Wave). */
   paymentMethod?: string | null
   metadata: GeniusPayMetadata
   successUrl: string
   errorUrl: string
 }): Promise<GeniusPayCreation | null> {
-  const baseBody: Record<string, any> = {
+  return postGeniusPayPayment({
     amount: params.amountXof,
     currency: 'XOF',
     description: params.description.slice(0, 500),
@@ -131,22 +138,7 @@ export async function createGeniusPayPayment(params: {
     success_url: params.successUrl,
     error_url: params.errorUrl,
     metadata: params.metadata,
-  }
-
-  // 1) Tentative avec le token de methode choisi (si fourni).
-  if (params.paymentMethod) {
-    const withMethod = await postGeniusPayPayment({
-      ...baseBody,
-      payment_method: params.paymentMethod,
-    })
-    if (withMethod) return withMethod
-    console.warn(
-      `[GeniusPay] Token '${params.paymentMethod}' refuse pour ${params.country || '??'} : repli checkout generique.`,
-    )
-  }
-
-  // 2) Repli (ou cas sans token) : checkout generique, toujours acceptee.
-  return postGeniusPayPayment(baseBody)
+  })
 }
 
 export interface GeniusPayInfo {
