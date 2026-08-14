@@ -67,7 +67,7 @@ const DEFAULT_COUNTRY = PAYMENT_COUNTRIES[0] // Cote d'Ivoire (PayDunya)
 // (pays -> methode -> recap) puis redirige vers la page du prestataire :
 //   - CI / BJ / TG  -> PayDunya
 //   - autres pays   -> GeniusPay
-//   - cryptomonnaie -> Trybit
+//   - cryptomonnaie -> NOWPayments
 // Gere aussi les navigateurs in-app.
 export function usePaymentCheckout() {
   const [chooser, setChooser] = useState<Chooser | null>(null)
@@ -365,12 +365,12 @@ export function usePaymentCheckout() {
                   {/* Autres moyens : cryptomonnaie */}
                   <p className="mb-3 mt-6 text-sm font-semibold text-white/70">Autres moyens de paiement</p>
                   <button
-                    onClick={() => pay('trybit')}
+                    onClick={() => pay('nowpayments')}
                     disabled={busy}
                     className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition-all hover:border-[#f7931a]/50 disabled:opacity-60"
                   >
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f7931a]/20 to-[#26a17b]/15 text-[#f7931a] ring-1 ring-inset ring-[#f7931a]/20">
-                      {pendingMethod === 'trybit' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Bitcoin className="h-5 w-5" />}
+                      {pendingMethod === 'nowpayments' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Bitcoin className="h-5 w-5" />}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[15px] font-semibold text-white">Payer en cryptomonnaie</span>
@@ -429,7 +429,7 @@ export function usePaymentCheckout() {
                 disabled={busy || !method}
                 className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#7c5cff] to-[#5b3df5] px-6 py-4 text-base font-bold text-white shadow-lg shadow-[#7c5cff]/30 transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a78bfa] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {pendingMethod && pendingMethod !== 'trybit' ? (
+                {pendingMethod && pendingMethod !== 'nowpayments' ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
                     Redirection…

@@ -204,13 +204,16 @@ export const translations: Record<string, string> = {
     "Offer valid until September 1, 2026 or while spots last.",
   "Studio Photo en Vidéo :": "Photo to Video Studio:",
   "vidéos de 30s incluses": "30s videos included",
+  "Afficher les prix en": "Show prices in",
+  "Montants convertis a titre indicatif. Vous serez debite en FCFA (XOF).":
+    "Amounts converted for reference only. You will be charged in FCFA (XOF).",
   "Moyens de paiement acceptes": "Accepted payment methods",
   "Carte bancaire": "Bank card",
   "Visa & Mastercard acceptees": "Visa & Mastercard accepted",
   Cryptomonnaie: "Cryptocurrency",
   "Bitcoin, USDT, ETH & plus": "Bitcoin, USDT, ETH & more",
-  "Paiement securise via PayDunya (mobile money & carte) ou Trybit (crypto)":
-    "Secure payment via PayDunya (mobile money & card) or Trybit (crypto)",
+  "Paiement securise via PayDunya (mobile money & carte) ou NOWPayments (crypto)":
+    "Secure payment via PayDunya (mobile money & card) or NOWPayments (crypto)",
 
   // ----- Section pays disponibles (AvailableCountriesSection) -----
   "Carte bancaire & Mobile Money acceptes": "Bank card & Mobile Money accepted",
