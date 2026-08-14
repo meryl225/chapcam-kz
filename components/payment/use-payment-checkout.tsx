@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import Image from 'next/image'
-import { ChevronRight, CreditCard, Loader2, ShieldCheck, X, Zap, Headphones, Lock, BadgeCheck, Plus, Globe } from 'lucide-react'
+import { ChevronRight, ChevronLeft, CreditCard, Loader2, ShieldCheck, X, Zap, Headphones, Lock, BadgeCheck, Plus, Globe, Search, Check } from 'lucide-react'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
+import { GENIUSPAY_COUNTRIES, type GeniusPayCountry } from '@/lib/geniuspay-countries'
 
 export type PaymentMethod = 'paydunya' | 'trybit' | 'nowpayments' | 'geniuspay'
 
@@ -36,6 +37,24 @@ export function usePaymentCheckout() {
   const [pendingMethod, setPendingMethod] = useState<PaymentMethod | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [inAppUrl, setInAppUrl] = useState<string | null>(null)
+  // Sous-vue GeniusPay : selection pays -> methode.
+  const [gpOpen, setGpOpen] = useState(false)
+  const [gpCountry, setGpCountry] = useState<GeniusPayCountry | null>(null)
+  const [gpMethodId, setGpMethodId] = useState<string | null>(null)
+  const [gpQuery, setGpQuery] = useState('')
+
+  const gpFilteredCountries = useMemo(() => {
+    const q = gpQuery.trim().toLowerCase()
+    if (!q) return GENIUSPAY_COUNTRIES
+    return GENIUSPAY_COUNTRIES.filter((c) => c.name.toLowerCase().includes(q))
+  }, [gpQuery])
+
+  const resetGp = useCallback(() => {
+    setGpOpen(false)
+    setGpCountry(null)
+    setGpMethodId(null)
+    setGpQuery('')
+  }, [])
 
   const startCheckout = useCallback((productId: string, opts?: StartOptions) => {
     setError(null)
@@ -50,10 +69,11 @@ export function usePaymentCheckout() {
     if (pendingKey) return // on ne ferme pas pendant une redirection en cours
     setChooser(null)
     setError(null)
-  }, [pendingKey])
+    resetGp()
+  }, [pendingKey, resetGp])
 
   const pay = useCallback(
-    async (method: PaymentMethod) => {
+    async (method: PaymentMethod, extra?: { country?: string; method?: string }) => {
       if (!chooser) return
       setError(null)
       setPendingKey(chooser.loaderKey)
@@ -65,6 +85,8 @@ export function usePaymentCheckout() {
           body: JSON.stringify({
             productId: chooser.productId,
             phoneNumber: chooser.phoneNumber,
+            ...(extra?.country ? { country: extra.country } : {}),
+            ...(extra?.method ? { method: extra.method } : {}),
           }),
         })
         const data = await res.json().catch(() => null)
@@ -145,6 +167,8 @@ export function usePaymentCheckout() {
                 </p>
               )}
 
+              {!gpOpen && (
+              <>
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
                 Choisissez une méthode de paiement
               </p>
@@ -193,33 +217,27 @@ export function usePaymentCheckout() {
                   <ChevronRight className="h-5 w-5 shrink-0 text-white/30 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#60a5fa]" />
                 </button>
 
-                {/* GeniusPay : carte bancaire internationale + mobile money */}
+                {/* GeniusPay : selection du pays -> methodes disponibles */}
                 <button
-                  onClick={() => pay('geniuspay')}
+                  onClick={() => { setError(null); setGpOpen(true) }}
                   disabled={!!pendingKey}
                   className="group flex items-center gap-4 rounded-[20px] border border-white/10 bg-gradient-to-br from-[#111726] to-[#0d1220] p-4 text-left transition-all duration-200 hover:border-[#06b6d4]/60 hover:shadow-[0_10px_40px_-12px_rgba(6,182,212,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06b6d4] disabled:opacity-60"
                 >
                   <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#06b6d4]/20 to-[#0e7490]/15 text-[#22d3ee] ring-1 ring-inset ring-[#06b6d4]/20">
-                    {pendingMethod === 'geniuspay' ? (
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    ) : (
-                      <Globe className="h-6 w-6" />
-                    )}
+                    <Globe className="h-6 w-6" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
-                      <span className="text-base font-semibold text-white">Carte bancaire internationale</span>
+                      <span className="text-base font-semibold text-white">Choisir mon pays</span>
                     </span>
                     <span className="mt-1 block text-sm text-white/45">
-                      Visa, Mastercard et mobile money — paiement hors zone CFA
+                      Mobile Money, Visa &amp; Mastercard — 20 pays d&apos;Afrique
                     </span>
-                    <span className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/70 ring-1 ring-inset ring-white/10">
-                        Visa
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/70 ring-1 ring-inset ring-white/10">
-                        Mastercard
-                      </span>
+                    <span className="mt-2.5 flex flex-wrap items-center gap-1">
+                      {['🇸🇳', '🇨🇲', '🇰🇪', '🇳🇬', '🇬🇭', '🇨🇩'].map((f) => (
+                        <span key={f} className="text-base leading-none" aria-hidden>{f}</span>
+                      ))}
+                      <span className="ml-1 text-[11px] font-medium text-white/40">+ 14 autres</span>
                     </span>
                   </span>
                   <ChevronRight className="h-5 w-5 shrink-0 text-white/30 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#22d3ee]" />
@@ -252,6 +270,121 @@ export function usePaymentCheckout() {
                   <ChevronRight className="h-5 w-5 shrink-0 text-white/30 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#f7931a]" />
                 </button>
               </div>
+              </>
+              )}
+
+              {/* ===== Sous-vue GeniusPay : selection pays -> methode ===== */}
+              {gpOpen && (
+                <div>
+                  {/* Barre de navigation : retour */}
+                  <div className="mb-3 flex items-center gap-2">
+                    <button
+                      onClick={() => (gpCountry ? (setGpCountry(null), setGpMethodId(null)) : resetGp())}
+                      disabled={!!pendingKey}
+                      className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                      Retour
+                    </button>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                      {gpCountry ? gpCountry.name : 'Choisissez votre pays'}
+                    </p>
+                  </div>
+
+                  {/* Etape 1 : liste des pays */}
+                  {!gpCountry && (
+                    <>
+                      <div className="relative mb-3">
+                        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+                        <input
+                          type="text"
+                          value={gpQuery}
+                          onChange={(e) => setGpQuery(e.target.value)}
+                          placeholder="Rechercher un pays…"
+                          className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-white/30 focus:border-[#06b6d4]/50 focus:outline-none focus:ring-1 focus:ring-[#06b6d4]/40"
+                        />
+                      </div>
+                      <div className="flex max-h-[280px] flex-col gap-1.5 overflow-y-auto pr-1">
+                        {gpFilteredCountries.map((c) => (
+                          <button
+                            key={c.code}
+                            onClick={() => { setGpCountry(c); setGpMethodId(null) }}
+                            className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5 text-left transition-colors hover:border-[#06b6d4]/40 hover:bg-white/[0.06]"
+                          >
+                            <span className="text-2xl leading-none" aria-hidden>{c.flag}</span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-medium text-white">{c.name}</span>
+                              <span className="block text-[11px] text-white/40">
+                                {c.methods.length} méthode{c.methods.length > 1 ? 's' : ''} disponible{c.methods.length > 1 ? 's' : ''}
+                              </span>
+                            </span>
+                            <ChevronRight className="h-4 w-4 shrink-0 text-white/25 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#22d3ee]" />
+                          </button>
+                        ))}
+                        {gpFilteredCountries.length === 0 && (
+                          <p className="py-6 text-center text-sm text-white/40">Aucun pays trouvé.</p>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Etape 2 : methodes du pays choisi */}
+                  {gpCountry && (
+                    <>
+                      <div className="mb-3 flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2.5">
+                        <span className="text-2xl leading-none" aria-hidden>{gpCountry.flag}</span>
+                        <span className="text-sm font-semibold text-white">{gpCountry.name}</span>
+                      </div>
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
+                        Méthode de paiement
+                      </p>
+                      <div className="flex max-h-[260px] flex-col gap-1.5 overflow-y-auto pr-1">
+                        {gpCountry.methods.map((m) => {
+                          const selected = gpMethodId === m.id
+                          return (
+                            <button
+                              key={m.id}
+                              onClick={() => setGpMethodId(m.id)}
+                              disabled={!!pendingKey}
+                              className={`flex items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors disabled:opacity-60 ${
+                                selected
+                                  ? 'border-[#06b6d4]/70 bg-[#06b6d4]/10'
+                                  : 'border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]'
+                              }`}
+                            >
+                              <span
+                                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                                  selected ? 'border-[#22d3ee] bg-[#22d3ee] text-[#0b0e14]' : 'border-white/25'
+                                }`}
+                              >
+                                {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                              </span>
+                              <span className="text-sm font-medium text-white">{m.label}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <button
+                        onClick={() => pay('geniuspay', { country: gpCountry.code, method: gpMethodId || undefined })}
+                        disabled={!gpMethodId || !!pendingKey}
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#06b6d4] to-[#0e7490] px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-[#06b6d4]/30 transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#22d3ee] disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {pendingMethod === 'geniuspay' ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Redirection…
+                          </>
+                        ) : (
+                          <>
+                            Continuer le paiement
+                            <ChevronRight className="h-4 w-4" />
+                          </>
+                        )}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
 
               {/* Gages de confiance - footer 3 colonnes */}
               <div className="mt-5 grid grid-cols-3 gap-2 rounded-[20px] border border-white/10 bg-white/[0.03] p-4">

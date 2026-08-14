@@ -51,6 +51,10 @@ export interface GeniusPayMetadata {
   user_id: string | null
   email: string
   full_name: string
+  /** Code pays ISO2 choisi dans le selecteur (traçabilite). */
+  country?: string
+  /** Identifiant de la methode choisie (traçabilite). */
+  method?: string
 }
 
 export interface GeniusPayCreation {
@@ -58,36 +62,11 @@ export interface GeniusPayCreation {
   checkoutUrl: string // page de paiement hebergee GeniusPay
 }
 
-// Cree un paiement GeniusPay en mode "checkout hebergee" : on N'ENVOIE PAS
-// payment_method, donc le client choisit carte bancaire OU mobile money sur la
-// page GeniusPay. Le montant est en XOF (source de verite serveur).
-export async function createGeniusPayPayment(params: {
-  amountXof: number
-  description: string
-  email: string
-  fullName: string
-  phone?: string
-  metadata: GeniusPayMetadata
-  successUrl: string
-  errorUrl: string
-}): Promise<GeniusPayCreation | null> {
-  const body: Record<string, any> = {
-    amount: params.amountXof,
-    currency: 'XOF',
-    description: params.description.slice(0, 500),
-    customer: {
-      name: params.fullName,
-      email: params.email,
-      ...(params.phone ? { phone: params.phone } : {}),
-    },
-    success_url: params.successUrl,
-    error_url: params.errorUrl,
-    metadata: params.metadata,
-  }
-
+// Un seul appel POST /payments. Retourne la creation, ou null en cas d'echec.
+async function postGeniusPayPayment(body: Record<string, any>): Promise<GeniusPayCreation | null> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 20000)
   try {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 20000)
     const res = await fetch(`${GENIUSPAY_BASE_URL}/payments`, {
       method: 'POST',
       headers: authHeaders(),
@@ -95,19 +74,79 @@ export async function createGeniusPayPayment(params: {
       signal: controller.signal,
       cache: 'no-store',
     })
-    clearTimeout(timeout)
     const data = await res.json().catch(() => null)
     const d = data?.data
     const checkoutUrl = d?.checkout_url || d?.payment_url
     if (!res.ok || !data?.success || !d?.reference || !checkoutUrl) {
-      console.error(`[GeniusPay] Creation paiement echouee (HTTP ${res.status}):`, data)
+      console.error(
+        `[GeniusPay] Creation paiement echouee (HTTP ${res.status}, method=${body.payment_method || 'none'}):`,
+        data,
+      )
       return null
     }
     return { reference: String(d.reference), checkoutUrl: String(checkoutUrl) }
   } catch (e) {
     console.error('[GeniusPay] Appel create injoignable:', e)
     return null
+  } finally {
+    clearTimeout(timeout)
   }
+}
+
+// Cree un paiement GeniusPay en mode "checkout hebergee". Le montant est en XOF
+// (source de verite serveur) ; GeniusPay convertit vers la devise du payeur.
+//
+// - `paymentMethod` (optionnel) : token GeniusPay pre-selectionnant la methode
+//   choisie par l'utilisateur (ex. 'orange_money', 'card'). null => checkout
+//   generique ou le client choisit sur la page GeniusPay.
+// - `country` (optionnel) : code ISO2 envoye comme customer.country pour
+//   pre-filtrer les operateurs locaux sur la page GeniusPay.
+//
+// FILET DE SECURITE : si l'appel AVEC token echoue (l'API refuse certains
+// tokens selon le pays), on rejoue automatiquement SANS token (checkout
+// generique, toujours acceptee). Le paiement ne peut donc jamais etre bloque
+// par un mapping methode/pays imparfait.
+export async function createGeniusPayPayment(params: {
+  amountXof: number
+  description: string
+  email: string
+  fullName: string
+  phone?: string
+  country?: string | null
+  paymentMethod?: string | null
+  metadata: GeniusPayMetadata
+  successUrl: string
+  errorUrl: string
+}): Promise<GeniusPayCreation | null> {
+  const baseBody: Record<string, any> = {
+    amount: params.amountXof,
+    currency: 'XOF',
+    description: params.description.slice(0, 500),
+    customer: {
+      name: params.fullName,
+      email: params.email,
+      ...(params.phone ? { phone: params.phone } : {}),
+      ...(params.country ? { country: params.country } : {}),
+    },
+    success_url: params.successUrl,
+    error_url: params.errorUrl,
+    metadata: params.metadata,
+  }
+
+  // 1) Tentative avec le token de methode choisi (si fourni).
+  if (params.paymentMethod) {
+    const withMethod = await postGeniusPayPayment({
+      ...baseBody,
+      payment_method: params.paymentMethod,
+    })
+    if (withMethod) return withMethod
+    console.warn(
+      `[GeniusPay] Token '${params.paymentMethod}' refuse pour ${params.country || '??'} : repli checkout generique.`,
+    )
+  }
+
+  // 2) Repli (ou cas sans token) : checkout generique, toujours acceptee.
+  return postGeniusPayPayment(baseBody)
 }
 
 export interface GeniusPayInfo {
