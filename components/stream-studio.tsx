@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import { Mic, Video, Monitor, Camera, Circle, Settings, Sliders, Volume2, TrendingUp } from "lucide-react"
+import { useT } from "@/lib/i18n/language-provider"
 
 const AVATARS = [
   { src: "/images/hero/avatars/a1.png" },
@@ -31,6 +32,7 @@ const CHAT = [
 ]
 
 export function StreamStudio() {
+  const tr = useT()
   const [viewers, setViewers] = useState(2543)
   const [divider, setDivider] = useState(52)
   const [tab, setTab] = useState<"visage" | "corps">("visage")
@@ -133,10 +135,12 @@ export function StreamStudio() {
 
                 {/* Etiquettes */}
                 <span className="absolute left-2.5 top-2.5 rounded-md border border-white/15 bg-black/55 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
-                  Avant
+                    {tr("Avant")}
+
                 </span>
                 <span className="absolute right-2.5 top-2.5 rounded-md border border-[#00d4ff]/40 bg-[#00d4ff]/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#00d4ff] backdrop-blur-sm">
-                  Après
+                    {tr("Après")}
+
                 </span>
 
                 {/* Separateur + poignee */}
@@ -174,14 +178,14 @@ export function StreamStudio() {
                       tab === t ? "bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] text-white" : "text-gray-400"
                     }`}
                   >
-                    {t === "visage" ? "Visage" : "Corps"}
+                    {t === "visage" ? tr("Visage") : tr("Corps")}
                   </button>
                 ))}
               </div>
 
               {/* Selection avatar */}
               <div>
-                <p className="mb-1.5 text-[9px] font-bold uppercase tracking-wider text-gray-500">Sélection d&apos;avatar</p>
+                <p className="mb-1.5 text-[9px] font-bold uppercase tracking-wider text-gray-500">{tr("Sélection d'avatar")}</p>
                 <div className="grid grid-cols-3 gap-1.5">
                   {AVATARS.map((a, i) => (
                     <button
@@ -204,7 +208,7 @@ export function StreamStudio() {
                 {SLIDERS.map((s) => (
                   <div key={s.label}>
                     <div className="mb-1 flex items-center justify-between text-[9px]">
-                      <span className="font-medium text-gray-400">{s.label}</span>
+                      <span className="font-medium text-gray-400">{tr(s.label)}</span>
                       <span className="font-bold text-white">{s.value}%</span>
                     </div>
                     <div className="relative h-1 rounded-full bg-white/10">
@@ -223,7 +227,7 @@ export function StreamStudio() {
 
               {/* Bouton appliquer */}
               <button className="mt-auto rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] py-2 text-[11px] font-bold text-white shadow-[0_6px_20px_-6px_rgba(0,212,255,0.6)] transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_10px_28px_-6px_rgba(139,92,246,0.7)] active:translate-y-0">
-                Appliquer en direct
+                {tr("Appliquer en direct")}
               </button>
             </div>
           </div>
@@ -264,7 +268,7 @@ export function StreamStudio() {
           {/* Carte spectateurs flottante */}
           <div className="absolute -bottom-5 right-3 hidden items-center gap-3 rounded-xl border border-white/10 bg-[#0d1220]/80 px-3 py-2 shadow-[0_20px_50px_-16px_rgba(0,0,0,0.9),0_0_0_1px_rgba(255,255,255,0.05),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:border-[#00ff88]/30 hover:shadow-[0_24px_60px_-16px_rgba(0,0,0,0.95),0_0_30px_-8px_rgba(0,255,136,0.4)] sm:flex">
             <div>
-              <p className="text-[8px] font-bold uppercase tracking-wider text-gray-500">Spectateurs</p>
+              <p className="text-[8px] font-bold uppercase tracking-wider text-gray-500">{tr("Spectateurs")}</p>
               <p className="text-lg font-black leading-none text-white">{viewers.toLocaleString("en-US")}</p>
               <p className="flex items-center gap-0.5 text-[9px] font-semibold text-[#00ff88]">
                 <TrendingUp className="h-2.5 w-2.5" />
@@ -280,7 +284,7 @@ export function StreamStudio() {
         {/* ===== Panneau chat ===== */}
         <div className="hidden w-[168px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f16]/90 shadow-[0_30px_80px_-24px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl xl:flex">
           <div className="border-b border-white/[0.08] px-3 py-2.5">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-white">Chat en direct</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-white">{tr("Chat en direct")}</p>
           </div>
           <div className="flex flex-1 flex-col gap-2.5 p-3">
             <AnimatePresence mode="popLayout">
@@ -303,17 +307,17 @@ export function StreamStudio() {
                     <p className="truncate text-[9px] font-bold" style={{ color: c.color }}>
                       {c.user}
                     </p>
-                    <p className="text-[9px] leading-tight text-gray-300">{c.msg}</p>
+                            <p className="text-[9px] leading-tight text-gray-300">{tr(c.msg)}</p>
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
           </div>
           <div className="px-3 pb-2">
-            <div className="rounded-lg bg-white/5 px-2.5 py-1.5 text-[9px] text-gray-500">Envoyer un message…</div>
+            <div className="rounded-lg bg-white/5 px-2.5 py-1.5 text-[9px] text-gray-500">{tr("Envoyer un message…")}</div>
           </div>
           <div className="border-t border-white/[0.08] px-3 py-2.5">
-            <p className="mb-1.5 text-[8px] font-bold uppercase tracking-wider text-gray-500">En live sur</p>
+            <p className="mb-1.5 text-[8px] font-bold uppercase tracking-wider text-gray-500">{tr("En live sur")}</p>
             <div className="flex items-center gap-2 text-[10px] font-bold">
               <span className="text-[#9146FF]">Twitch</span>
               <span className="text-[#ff4d4d]">YT</span>
