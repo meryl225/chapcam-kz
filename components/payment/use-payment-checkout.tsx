@@ -168,9 +168,12 @@ export function usePaymentCheckout() {
   )
 
   // Soumission de l'etape pays + methode -> bon prestataire.
+  // CI / BJ / TG : le Mobile Money reste sur PayDunya, mais la carte bancaire
+  // (Visa / Mastercard) est routee vers GeniusPay. Les autres pays passent
+  // toujours entierement par GeniusPay.
   const submit = useCallback(() => {
     if (!method) return
-    if (country.provider === 'paydunya') {
+    if (country.provider === 'paydunya' && method.kind !== 'card') {
       pay('paydunya')
     } else {
       pay('geniuspay', { country: country.code, method: method.id })
