@@ -341,7 +341,7 @@ export function RoadmapSection() {
                     className="text-xl md:text-2xl font-bold"
                     style={{ color: currentPhase.color }}
                   >
-                    {currentPhase.title}
+                    {t(currentPhase.title)}
                   </h3>
                   
                   {/* Timeline badge */}
@@ -365,13 +365,13 @@ export function RoadmapSection() {
                       ease: "easeInOut",
                     }}
                   >
-                    {currentPhase.timeline}
+                    {t(currentPhase.timeline)}
                   </motion.div>
                 </div>
 
                 {/* Description */}
                 <p className="text-gray-300 text-base md:text-lg leading-relaxed mb-8">
-                  {currentPhase.description}
+                  {t(currentPhase.description)}
                 </p>
 
                 {/* Features */}
@@ -393,7 +393,7 @@ export function RoadmapSection() {
                           style={{ color: currentPhase.color }} 
                         />
                       </div>
-                      <span className="text-gray-200 text-sm">{feature.text}</span>
+                      <span className="text-gray-200 text-sm">{t(feature.text)}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -415,7 +415,7 @@ export function RoadmapSection() {
                     ease: "easeInOut",
                   }}
                 >
-                  {currentPhase.tagline}
+                  {t(currentPhase.tagline)}
                 </motion.p>
               </div>
             </div>
@@ -459,13 +459,13 @@ export function RoadmapSection() {
                   >
                     <Target className="w-7 h-7 text-[#00d4ff]" />
                   </motion.div>
-                  <h3 className="text-white font-bold text-lg">NOTRE MISSION</h3>
+                  <h3 className="text-white font-bold text-lg">{t("NOTRE MISSION")}</h3>
                 </div>
 
                 {/* Mission text */}
                 <div className="flex-1 text-center lg:text-left">
                   <p className="text-gray-300 text-sm leading-relaxed">
-                    Donner a chacun le pouvoir de devenir qui il veut, quand il veut, avec liberte, creativite et confiance.
+                    {t("Donner a chacun le pouvoir de devenir qui il veut, quand il veut, avec liberte, creativite et confiance.")}
                   </p>
                 </div>
 
@@ -495,7 +495,7 @@ export function RoadmapSection() {
                         <value.icon className="w-5 h-5" style={{ color: value.color }} />
                       </motion.div>
                       <span className="text-gray-400 text-[10px] font-medium text-center whitespace-nowrap">
-                        {value.text}
+                        {t(value.text)}
                       </span>
                     </motion.div>
                   ))}

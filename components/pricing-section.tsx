@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Gift, Clapperboard } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useT } from "@/lib/i18n/language-provider"
 
 // Statut du logo (watermark) par forfait :
 // - "with"   : rendu AVEC logo ChapCam (Starter, Standard)
@@ -121,6 +122,7 @@ const plans = [
 ]
 
 export function PricingSection() {
+  const t = useT()
   return (
     <section id="tarifs" className="relative py-24 px-6 bg-[#050505]">
       <div className="max-w-7xl mx-auto relative">
@@ -132,11 +134,11 @@ export function PricingSection() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl lg:text-5xl font-black text-white mb-4">
-            Changez d&apos;apparence en live
+            {t("Changez d'apparence en live")}
           </h2>
-          <p className="text-emerald-400 text-2xl font-medium">avec ChapCam</p>
+          <p className="text-emerald-400 text-2xl font-medium">{t("avec ChapCam")}</p>
           <p className="text-gray-400 mt-4 text-lg">
-            2 points = 1 seconde de transformation du visage et corps entier
+            {t("2 points = 1 seconde de transformation du visage et corps entier")}
           </p>
         </motion.div>
 
@@ -153,26 +155,28 @@ export function PricingSection() {
             </div>
             <div className="flex-1">
               <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
-                Nouveau · Sorti le 17 juillet
+                {t("Nouveau · Sorti le 17 juillet")}
               </div>
               <h3 className="text-xl font-bold text-white md:text-2xl">
-                Ces recharges alimentent ChapCam 2.0
+                {t("Ces recharges alimentent ChapCam 2.0")}
               </h3>
               <p className="mt-2 text-pretty text-gray-300 leading-relaxed">
-                Toutes les offres ci-dessous sont destinees a notre nouveau logiciel{" "}
-                <span className="font-semibold text-emerald-400">ChapCam 2.0</span>, qui fonctionne
-                desormais avec <span className="font-semibold text-white">tout type de PC</span> et
-                permet meme de <span className="font-semibold text-white">changer la couleur de peau</span>.
+                {t("Toutes les offres ci-dessous sont destinees a notre nouveau logiciel")}{" "}
+                <span className="font-semibold text-emerald-400">ChapCam 2.0</span>
+                {t(", qui fonctionne desormais avec")}{" "}
+                <span className="font-semibold text-white">{t("tout type de PC")}</span>{" "}
+                {t("et permet meme de")}{" "}
+                <span className="font-semibold text-white">{t("changer la couleur de peau")}</span>.
               </p>
             </div>
             <div className="flex flex-col gap-2 text-sm text-gray-300 md:min-w-[220px]">
               <span className="inline-flex items-center gap-2">
                 <Monitor className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                Compatible avec tout type de PC
+                {t("Compatible avec tout type de PC")}
               </span>
               <span className="inline-flex items-center gap-2">
                 <Palette className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                Changement de la couleur de peau
+                {t("Changement de la couleur de peau")}
               </span>
             </div>
           </div>
@@ -214,7 +218,7 @@ export function PricingSection() {
                 {plan.id === "vipdebout" ? (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 px-5 py-1 text-sm font-bold text-black shadow-[0_0_20px_rgba(250,204,21,0.55)]">
                     <Crown className="w-4 h-4" />
-                    MEILLEURE OFFRE
+                    {t("MEILLEURE OFFRE")}
                   </div>
                 ) : plan.bestOffer ? (
                   <div
@@ -222,7 +226,7 @@ export function PricingSection() {
                     style={{ backgroundColor: plan.color }}
                   >
                     <Crown className="w-4 h-4" />
-                    POPULAIRE
+                    {t("POPULAIRE")}
                   </div>
                 ) : null}
 
@@ -235,7 +239,7 @@ export function PricingSection() {
                   </div>
                   <div>
                     <div className="font-bold text-white text-xl">{plan.name}</div>
-                    <div className="text-sm text-gray-400">{plan.duration}</div>
+                    <div className="text-sm text-gray-400">{t(plan.duration)}</div>
                   </div>
                 </div>
 

@@ -146,4 +146,67 @@ export const translations: Record<string, string> = {
   "Clique sur la galerie pour l'agrandir - ChapCam en action":
     "Click the gallery to enlarge it - ChapCam in action",
   "Fonctionne pendant tes appels video": "Works during your video calls",
+
+  // ----- Section tarifs (PricingSection) -----
+  "Changez d'apparence en live": "Change your appearance live",
+  "avec ChapCam": "with ChapCam",
+  "2 points = 1 seconde de transformation du visage et corps entier":
+    "2 points = 1 second of full face and body transformation",
+  "Nouveau · Sorti le 17 juillet": "New · Released July 17",
+  "Ces recharges alimentent ChapCam 2.0": "These top-ups power ChapCam 2.0",
+  "Toutes les offres ci-dessous sont destinees a notre nouveau logiciel":
+    "All the offers below are for our new software",
+  ", qui fonctionne desormais avec": ", which now works with",
+  "tout type de PC": "any type of PC",
+  "et permet meme de": "and even lets you",
+  "changer la couleur de peau": "change skin color",
+  "Compatible avec tout type de PC": "Works with any type of PC",
+  "Changement de la couleur de peau": "Skin color change",
+  "1 JOUR": "1 DAY",
+  "90 JOURS": "90 DAYS",
+  "365 JOURS": "365 DAYS",
+  "Valable 24 heures": "Valid for 24 hours",
+  "Valable 3 mois": "Valid for 3 months",
+  "Valable 1 an": "Valid for 1 year",
+  "Transformation du visage et corps entier": "Full face and body transformation",
+  "Qualite HD 1080p": "HD 1080p quality",
+  "Rendu sans logo ChapCam inclus": "ChapCam logo-free rendering included",
+  "Qualite 4K Ultra HD": "4K Ultra HD quality",
+  "Support prioritaire": "Priority support",
+  "Rendu Full HD 1080p sans logo": "Logo-free Full HD 1080p rendering",
+  "Studio CHAPCAM : scènes en direct (décors, styles, effets)":
+    "CHAPCAM Studio: live scenes (backgrounds, styles, effects)",
+  "Prompts personnalisés en direct + Enhance": "Live custom prompts + Enhance",
+  "Suivi temps réel : chrono précis & qualité réseau":
+    "Real-time tracking: precise timer & network quality",
+  "Support VIP 24/7": "24/7 VIP support",
+  "Acces aux nouveautes en avant-premiere": "Early access to new features",
+  "Studio CHAPCAM complet : scènes en direct (décors, styles, effets, arrière-plans)":
+    "Full CHAPCAM Studio: live scenes (backgrounds, styles, effects, backdrops)",
+  "Prompts personnalisés illimités en direct + Enhance":
+    "Unlimited live custom prompts + Enhance",
+  "Support VIP prioritaire 24/7": "Priority 24/7 VIP support",
+  "Acces anticipe a toutes les nouveautes": "Early access to all new features",
+  "MEILLEURE OFFRE": "BEST OFFER",
+  POPULAIRE: "POPULAR",
+  "Avec logo ChapCam": "With ChapCam logo",
+  "Filigrane visible sur le rendu": "Visible watermark on the output",
+  "Sans logo (automatique)": "Logo-free (automatic)",
+  "Sans logo (sur demande)": "Logo-free (on request)",
+  "Retrait du logo inclus, active automatiquement":
+    "Logo removal included, activated automatically",
+  "Retrait du logo active par notre equipe": "Logo removal activated by our team",
+  "Cadeau inclus": "Gift included",
+  "Changeur de voix i9 offert": "Free i9 voice changer",
+  "Boîtier + accessoires livrés": "Device + accessories delivered",
+  Recharger: "Top up",
+  "Offre valable jusqu'au 1er Septembre 2026 ou jusqu'a epuisement des places.":
+    "Offer valid until September 1, 2026 or while spots last.",
+  "Moyens de paiement acceptes": "Accepted payment methods",
+  "Carte bancaire": "Bank card",
+  "Visa & Mastercard acceptees": "Visa & Mastercard accepted",
+  Cryptomonnaie: "Cryptocurrency",
+  "Bitcoin, USDT, ETH & plus": "Bitcoin, USDT, ETH & more",
+  "Paiement securise via PayDunya (mobile money & carte) ou Trybit (crypto)":
+    "Secure payment via PayDunya (mobile money & card) or Trybit (crypto)",
 }
