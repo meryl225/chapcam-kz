@@ -1,10 +1,26 @@
 'use client'
 
-import { useCallback, useState, type ReactNode } from 'react'
-import Image from 'next/image'
-import { ChevronRight, CreditCard, Loader2, ShieldCheck, X, Zap, Headphones, Lock, BadgeCheck, Plus, Globe } from 'lucide-react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import {
+  ChevronRight,
+  ChevronDown,
+  Loader2,
+  ShieldCheck,
+  X,
+  Headphones,
+  Lock,
+  BadgeCheck,
+  Search,
+  Check,
+  Smartphone,
+  CreditCard,
+  Bitcoin,
+  ArrowRight,
+} from 'lucide-react'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
+import { PAYMENT_COUNTRIES, type UICountry, type UICountryMethod } from '@/lib/geniuspay-countries'
+import { getPlan } from '@/lib/plans'
 
 export type PaymentMethod = 'paydunya' | 'trybit' | 'nowpayments' | 'geniuspay'
 
@@ -27,9 +43,14 @@ const ENDPOINTS: Record<PaymentMethod, string> = {
   geniuspay: '/api/payment/geniuspay/create',
 }
 
-// Hook partage de paiement ChapCam. Presente un choix de methode
-// (Mobile Money / Carte via PayDunya OU Crypto via Trybit) puis redirige vers
-// la page de paiement correspondante. Gere aussi les navigateurs in-app.
+const DEFAULT_COUNTRY = PAYMENT_COUNTRIES[0] // Cote d'Ivoire (PayDunya)
+
+// Hook partage de paiement ChapCam. Presente un ecran "Finalisez votre paiement"
+// (pays -> methode -> recap) puis redirige vers la page du prestataire :
+//   - CI / BJ / TG  -> PayDunya
+//   - autres pays   -> GeniusPay
+//   - cryptomonnaie -> Trybit
+// Gere aussi les navigateurs in-app.
 export function usePaymentCheckout() {
   const [chooser, setChooser] = useState<Chooser | null>(null)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
@@ -37,8 +58,44 @@ export function usePaymentCheckout() {
   const [error, setError] = useState<string | null>(null)
   const [inAppUrl, setInAppUrl] = useState<string | null>(null)
 
+  // Selection pays / methode.
+  const [countryCode, setCountryCode] = useState<string>(DEFAULT_COUNTRY.code)
+  const [methodId, setMethodId] = useState<string>(DEFAULT_COUNTRY.methods[0].id)
+  const [countryOpen, setCountryOpen] = useState(false)
+  const [query, setQuery] = useState('')
+
+  const country = useMemo<UICountry>(
+    () => PAYMENT_COUNTRIES.find((c) => c.code === countryCode) || DEFAULT_COUNTRY,
+    [countryCode],
+  )
+  const method = useMemo<UICountryMethod | null>(
+    () => country.methods.find((m) => m.id === methodId) || country.methods[0] || null,
+    [country, methodId],
+  )
+  const filteredCountries = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return PAYMENT_COUNTRIES
+    return PAYMENT_COUNTRIES.filter((c) => c.name.toLowerCase().includes(q))
+  }, [query])
+
+  // Formule d'abonnement (pour le recapitulatif de droite). null => autre produit
+  // (packs de credits, etc.) : on masque le recap et le montant.
+  const plan = useMemo(() => (chooser ? getPlan(chooser.productId) : undefined), [chooser])
+
+  const selectCountry = useCallback((c: UICountry) => {
+    setCountryCode(c.code)
+    setMethodId(c.methods[0]?.id || '')
+    setCountryOpen(false)
+    setQuery('')
+  }, [])
+
   const startCheckout = useCallback((productId: string, opts?: StartOptions) => {
     setError(null)
+    // Reinitialise la selection a chaque ouverture.
+    setCountryCode(DEFAULT_COUNTRY.code)
+    setMethodId(DEFAULT_COUNTRY.methods[0].id)
+    setCountryOpen(false)
+    setQuery('')
     setChooser({
       productId,
       phoneNumber: opts?.phoneNumber,
@@ -50,21 +107,24 @@ export function usePaymentCheckout() {
     if (pendingKey) return // on ne ferme pas pendant une redirection en cours
     setChooser(null)
     setError(null)
+    setCountryOpen(false)
   }, [pendingKey])
 
   const pay = useCallback(
-    async (method: PaymentMethod) => {
+    async (payMethod: PaymentMethod, extra?: { country?: string; method?: string }) => {
       if (!chooser) return
       setError(null)
       setPendingKey(chooser.loaderKey)
-      setPendingMethod(method)
+      setPendingMethod(payMethod)
       try {
-        const res = await fetch(ENDPOINTS[method], {
+        const res = await fetch(ENDPOINTS[payMethod], {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             productId: chooser.productId,
             phoneNumber: chooser.phoneNumber,
+            ...(extra?.country ? { country: extra.country } : {}),
+            ...(extra?.method ? { method: extra.method } : {}),
           }),
         })
         const data = await res.json().catch(() => null)
@@ -89,176 +149,277 @@ export function usePaymentCheckout() {
     [chooser],
   )
 
+  // Soumission de l'etape pays + methode -> bon prestataire.
+  const submit = useCallback(() => {
+    if (!method) return
+    if (country.provider === 'paydunya') {
+      pay('paydunya')
+    } else {
+      pay('geniuspay', { country: country.code, method: method.id })
+    }
+  }, [country, method, pay])
+
+  const busy = !!pendingKey
+  const priceLabel = plan ? `${plan.price.toLocaleString('fr-FR')} FCFA` : null
+
   const modal: ReactNode = (
     <>
       {inAppUrl && <InAppBrowserNotice url={inAppUrl} onClose={() => setInAppUrl(null)} />}
       {chooser && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-md duration-300 animate-in fade-in-0">
-          <div className="relative my-auto w-full max-w-md overflow-hidden rounded-[24px] border border-white/10 bg-[#0b0e14] text-white shadow-[0_30px_80px_-20px_rgba(0,0,0,0.9)] duration-300 animate-in zoom-in-95 fade-in-0">
-            {/* Halo bleu decoratif en haut */}
-            <div className="pointer-events-none absolute -top-24 left-1/2 h-56 w-72 -translate-x-1/2 rounded-full bg-[#2f6bff]/25 blur-3xl" />
-            <div className="pointer-events-none absolute inset-0 rounded-[24px] ring-1 ring-inset ring-white/5" />
+        <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/80 p-4 backdrop-blur-md duration-300 animate-in fade-in-0 sm:items-center">
+          <div className="relative my-auto w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/10 bg-[#0a0b13] text-white shadow-[0_40px_100px_-20px_rgba(0,0,0,0.95)] duration-300 animate-in zoom-in-95 fade-in-0">
+            {/* Halo violet decoratif */}
+            <div className="pointer-events-none absolute -top-32 left-1/4 h-72 w-96 -translate-x-1/2 rounded-full bg-[#7c5cff]/25 blur-[100px]" />
+            <div className="pointer-events-none absolute inset-0 rounded-[28px] ring-1 ring-inset ring-white/5" />
 
             <button
               onClick={close}
-              disabled={!!pendingKey}
-              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/60 backdrop-blur transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
+              disabled={busy}
+              className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/60 backdrop-blur transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
               aria-label="Fermer"
             >
               <X className="h-4 w-4" />
             </button>
 
-            {/* En-tete */}
-            <div className="relative px-6 pb-6 pt-8 sm:px-8">
-              <div className="relative flex h-16 w-16 items-center justify-center">
-                <span className="absolute inset-0 rounded-full bg-[#2f6bff]/20 blur-lg" />
-                <span className="absolute inset-0 rounded-full border border-[#2f6bff]/40" />
-                <span className="relative flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-[#3b82f6] to-[#1d4ed8] text-white shadow-lg shadow-[#2f6bff]/40">
+            <div className="relative max-h-[92vh] overflow-y-auto p-6 sm:p-8">
+              {/* En-tete */}
+              <div className="mb-8">
+                <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7c5cff]/25 to-[#5b3df5]/10 text-[#a78bfa] ring-1 ring-inset ring-[#7c5cff]/25">
                   <ShieldCheck className="h-6 w-6" />
                 </span>
-              </div>
-              <h3 className="mt-5 pr-8 text-2xl font-bold leading-tight tracking-tight text-balance">
-                Finalisez votre{' '}
-                <span className="bg-gradient-to-r from-[#60a5fa] to-[#3b82f6] bg-clip-text text-transparent">
-                  paiement
-                </span>
-              </h3>
-              <p className="mt-2 text-sm leading-relaxed text-white/50 text-pretty">
-                Votre compte sera crédité automatiquement dès la confirmation du paiement.
-              </p>
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/80">
-                  <Zap className="h-3.5 w-3.5 text-[#60a5fa]" />
-                  Rapide
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium text-emerald-300">
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  100% Sécurisé
-                </span>
-              </div>
-            </div>
-
-            <div className="relative px-6 pb-6 sm:px-8">
-              {error && (
-                <p className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
-                  {error}
+                <h2 className="text-2xl font-bold tracking-tight text-white text-balance">
+                  Finalisez votre paiement
+                </h2>
+                <p className="mt-1 text-sm text-white/45">
+                  Paiement sécurisé et activation automatique après confirmation.
                 </p>
+              </div>
+
+              {error && (
+                <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                  {error}
+                </div>
               )}
 
-              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/35">
-                Choisissez une méthode de paiement
-              </p>
+              <div className={`grid gap-8 ${plan ? 'lg:grid-cols-[1fr_320px]' : ''}`}>
+                {/* ===== Colonne gauche : etapes ===== */}
+                <div>
+                  {/* Etape 1 : pays */}
+                  <div className="mb-3 flex items-center gap-2.5">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#7c5cff] text-xs font-bold text-white">
+                      1
+                    </span>
+                    <span className="text-base font-semibold text-white">Pays de paiement</span>
+                  </div>
 
-              <div className="flex flex-col gap-3.5">
-                {/* PayDunya : mobile money / carte */}
-                <button
-                  onClick={() => pay('paydunya')}
-                  disabled={!!pendingKey}
-                  className="group relative flex items-center gap-4 rounded-[20px] border border-[#2f6bff]/30 bg-gradient-to-br from-[#111726] to-[#0d1220] p-4 text-left shadow-[0_0_0_1px_rgba(47,107,255,0.04)] transition-all duration-200 hover:border-[#3b82f6]/70 hover:shadow-[0_10px_40px_-12px_rgba(47,107,255,0.5)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3b82f6] disabled:opacity-60"
-                >
-                  <span className="absolute -top-2.5 left-4 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#3b82f6] to-[#2563eb] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-lg shadow-[#2f6bff]/40">
-                    <BadgeCheck className="h-3 w-3" />
-                    Recommandé
-                  </span>
-                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3b82f6]/20 to-[#1d4ed8]/10 text-[#60a5fa] ring-1 ring-inset ring-[#3b82f6]/20">
-                    {pendingMethod === 'paydunya' ? (
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    ) : (
-                      <CreditCard className="h-6 w-6" />
+                  <div className="relative mb-8">
+                    <button
+                      onClick={() => setCountryOpen((o) => !o)}
+                      disabled={busy}
+                      className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-left transition-colors hover:border-white/20 disabled:opacity-60"
+                    >
+                      <span className="text-2xl leading-none" aria-hidden>{country.flag}</span>
+                      <span className="flex-1 text-base font-medium text-white">{country.name}</span>
+                      <ChevronDown
+                        className={`h-5 w-5 text-white/40 transition-transform ${countryOpen ? 'rotate-180' : ''}`}
+                      />
+                    </button>
+
+                    {countryOpen && (
+                      <>
+                        <button
+                          className="fixed inset-0 z-10 cursor-default"
+                          aria-hidden
+                          tabIndex={-1}
+                          onClick={() => setCountryOpen(false)}
+                        />
+                        <div className="absolute left-0 right-0 top-full z-20 mt-2 overflow-hidden rounded-2xl border border-white/10 bg-[#12141f] shadow-2xl">
+                          <div className="relative border-b border-white/5 p-2">
+                            <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/30" />
+                            <input
+                              type="text"
+                              autoFocus
+                              value={query}
+                              onChange={(e) => setQuery(e.target.value)}
+                              placeholder="Rechercher un pays…"
+                              className="w-full rounded-xl bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[#7c5cff]/50"
+                            />
+                          </div>
+                          <div className="max-h-64 overflow-y-auto py-1">
+                            {filteredCountries.map((c) => (
+                              <button
+                                key={c.code}
+                                onClick={() => selectCountry(c)}
+                                className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-white/5 ${
+                                  c.code === countryCode ? 'bg-[#7c5cff]/10' : ''
+                                }`}
+                              >
+                                <span className="text-xl leading-none" aria-hidden>{c.flag}</span>
+                                <span className="flex-1 text-sm font-medium text-white">{c.name}</span>
+                                {c.code === countryCode && <Check className="h-4 w-4 text-[#a78bfa]" />}
+                              </button>
+                            ))}
+                            {filteredCountries.length === 0 && (
+                              <p className="py-6 text-center text-sm text-white/40">Aucun pays trouvé.</p>
+                            )}
+                          </div>
+                        </div>
+                      </>
                     )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-base font-semibold text-white">Mobile Money ou Carte</span>
-                    <span className="mt-0.5 block text-xs text-white/45">Paiement rapide et sécurisé</span>
-                    <span className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                      {[
-                        { src: '/images/wave-logo.png', alt: 'Wave' },
-                        { src: '/images/orange-money-logo.png', alt: 'Orange Money' },
-                        { src: '/images/mtn-momo-logo.jpg', alt: 'MTN MoMo' },
-                        { src: '/images/djamo-logo.png', alt: 'Djamo' },
-                      ].map((logo) => (
-                        <span
-                          key={logo.alt}
-                          className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-lg bg-white ring-1 ring-white/10"
+                  </div>
+
+                  {/* Etape 2 : methode */}
+                  <div className="mb-1 flex items-center gap-2.5">
+                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#7c5cff] text-xs font-bold text-white">
+                      2
+                    </span>
+                    <span className="text-base font-semibold text-white">Moyen de paiement</span>
+                  </div>
+                  <p className="mb-4 pl-[34px] text-sm text-white/40">
+                    Sélectionnez votre méthode de paiement
+                  </p>
+
+                  <div className="flex flex-col gap-3">
+                    {country.methods.map((m, i) => {
+                      const selected = method?.id === m.id
+                      const Icon = m.kind === 'card' ? CreditCard : Smartphone
+                      return (
+                        <button
+                          key={m.id}
+                          onClick={() => setMethodId(m.id)}
+                          disabled={busy}
+                          className={`group flex items-center gap-4 rounded-2xl border p-4 text-left transition-all disabled:opacity-60 ${
+                            selected
+                              ? 'border-[#7c5cff]/70 bg-[#7c5cff]/[0.08] shadow-[0_8px_30px_-12px_rgba(124,92,255,0.5)]'
+                              : 'border-white/10 bg-white/[0.03] hover:border-white/20'
+                          }`}
                         >
-                          <Image src={logo.src} alt={logo.alt} width={22} height={22} className="h-5 w-5 object-contain" />
-                        </span>
-                      ))}
-                      <span className="ml-0.5 inline-flex items-center gap-1 text-xs font-medium text-[#60a5fa]">
-                        <Plus className="h-3 w-3" />
-                        Carte bancaire
-                      </span>
-                    </span>
-                  </span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-white/30 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#60a5fa]" />
-                </button>
+                          <span
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                              m.kind === 'card'
+                                ? 'bg-gradient-to-br from-[#3b82f6]/20 to-[#1d4ed8]/10 text-[#60a5fa] ring-1 ring-inset ring-[#3b82f6]/20'
+                                : 'bg-gradient-to-br from-[#f59e0b]/20 to-[#d97706]/10 text-[#fbbf24] ring-1 ring-inset ring-[#f59e0b]/20'
+                            }`}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span className="text-[15px] font-semibold text-white">{m.label}</span>
+                              {i === 0 && (
+                                <span className="rounded-md bg-[#7c5cff]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c4b5fd]">
+                                  Recommandé
+                                </span>
+                              )}
+                            </span>
+                            <span className="mt-0.5 block truncate text-xs text-white/40">
+                              {m.sublabel || (m.kind === 'card' ? 'Paiement par carte bancaire' : 'Paiement rapide et sécurisé')}
+                            </span>
+                          </span>
+                          <span
+                            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                              selected ? 'border-[#a78bfa] bg-[#a78bfa] text-[#0a0b13]' : 'border-white/25'
+                            }`}
+                          >
+                            {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
 
-                {/* GeniusPay : carte bancaire internationale + mobile money */}
-                <button
-                  onClick={() => pay('geniuspay')}
-                  disabled={!!pendingKey}
-                  className="group flex items-center gap-4 rounded-[20px] border border-white/10 bg-gradient-to-br from-[#111726] to-[#0d1220] p-4 text-left transition-all duration-200 hover:border-[#06b6d4]/60 hover:shadow-[0_10px_40px_-12px_rgba(6,182,212,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06b6d4] disabled:opacity-60"
-                >
-                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#06b6d4]/20 to-[#0e7490]/15 text-[#22d3ee] ring-1 ring-inset ring-[#06b6d4]/20">
-                    {pendingMethod === 'geniuspay' ? (
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    ) : (
-                      <Globe className="h-6 w-6" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="text-base font-semibold text-white">Carte bancaire internationale</span>
+                  {/* Autres moyens : cryptomonnaie */}
+                  <p className="mb-3 mt-6 text-sm font-semibold text-white/70">Autres moyens de paiement</p>
+                  <button
+                    onClick={() => pay('trybit')}
+                    disabled={busy}
+                    className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition-all hover:border-[#f7931a]/50 disabled:opacity-60"
+                  >
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f7931a]/20 to-[#26a17b]/15 text-[#f7931a] ring-1 ring-inset ring-[#f7931a]/20">
+                      {pendingMethod === 'trybit' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Bitcoin className="h-5 w-5" />}
                     </span>
-                    <span className="mt-1 block text-sm text-white/45">
-                      Visa, Mastercard et mobile money — paiement hors zone CFA
-                    </span>
-                    <span className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                      <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/70 ring-1 ring-inset ring-white/10">
-                        Visa
-                      </span>
-                      <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/70 ring-1 ring-inset ring-white/10">
-                        Mastercard
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-semibold text-white">Payer en cryptomonnaie</span>
+                      <span className="mt-0.5 block text-xs text-white/40">
+                        Bitcoin, USDT, ETH et plus de 200 cryptos acceptées
                       </span>
                     </span>
-                  </span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-white/30 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#22d3ee]" />
-                </button>
+                    <ChevronRight className="h-5 w-5 shrink-0 text-white/25 transition-transform group-hover:translate-x-0.5 group-hover:text-[#f7931a]" />
+                  </button>
+                </div>
 
-                {/* NOWPayments : crypto (seule option crypto active) */}
-                <button
-                  onClick={() => pay('nowpayments')}
-                  disabled={!!pendingKey}
-                  className="group flex items-center gap-4 rounded-[20px] border border-white/10 bg-gradient-to-br from-[#111726] to-[#0d1220] p-4 text-left transition-all duration-200 hover:border-[#f7931a]/60 hover:shadow-[0_10px_40px_-12px_rgba(247,147,26,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f7931a] disabled:opacity-60"
-                >
-                  <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#f7931a]/20 to-[#9333ea]/15 text-[#f7931a] ring-1 ring-inset ring-[#f7931a]/20">
-                    {pendingMethod === 'nowpayments' ? (
-                      <Loader2 className="h-6 w-6 animate-spin" />
-                    ) : (
-                      <Image src="/images/bitcoin-logo.png" alt="Crypto" width={30} height={30} className="h-8 w-8 object-contain" />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="text-base font-semibold text-white">Cryptomonnaie</span>
-                      <span className="rounded-full bg-[#7c3aed]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#c4b5fd]">
-                        En EUR
-                      </span>
-                    </span>
-                    <span className="mt-1 block text-sm text-white/45">
-                      Bitcoin, USDT, ETH et 200+ cryptos acceptées
-                    </span>
-                  </span>
-                  <ChevronRight className="h-5 w-5 shrink-0 text-white/30 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#f7931a]" />
-                </button>
+                {/* ===== Colonne droite : recapitulatif (formules uniquement) ===== */}
+                {plan && (
+                  <aside className="lg:pt-1">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                      <h3 className="text-base font-semibold text-white">Récapitulatif de la commande</h3>
+
+                      <div className="mt-5 space-y-3 text-sm">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-white/45">Plan sélectionné</span>
+                          <span className="font-medium text-white">{plan.name} {plan.duration}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-white/45">Montant</span>
+                          <span className="font-semibold text-white">{priceLabel}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-white/45">Frais de transaction</span>
+                          <span className="font-medium text-emerald-400">Gratuit</span>
+                        </div>
+                      </div>
+
+                      <div className="my-4 border-t border-dashed border-white/10" />
+
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-sm font-medium text-white/70">Total à payer</span>
+                        <span className="text-xl font-bold text-[#a78bfa]">{priceLabel}</span>
+                      </div>
+
+                      <ul className="mt-5 space-y-2.5">
+                        {plan.features.slice(0, 4).map((f) => (
+                          <li key={f} className="flex items-start gap-2.5 text-sm text-white/70">
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#a78bfa]" />
+                            <span className="text-pretty">{f}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </aside>
+                )}
               </div>
 
+              {/* CTA principal */}
+              <button
+                onClick={submit}
+                disabled={busy || !method}
+                className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#7c5cff] to-[#5b3df5] px-6 py-4 text-base font-bold text-white shadow-lg shadow-[#7c5cff]/30 transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a78bfa] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {pendingMethod && pendingMethod !== 'trybit' ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Redirection…
+                  </>
+                ) : (
+                  <>
+                    {priceLabel ? `Continuer le paiement — ${priceLabel}` : 'Continuer le paiement'}
+                    <ArrowRight className="h-5 w-5" />
+                  </>
+                )}
+              </button>
+              <p className="mt-3 flex items-center justify-center gap-2 text-xs text-white/40">
+                <Lock className="h-3.5 w-3.5" />
+                Paiement sécurisé
+                <span className="text-white/20">•</span>
+                Activation automatique
+              </p>
+
               {/* Gages de confiance - footer 3 colonnes */}
-              <div className="mt-5 grid grid-cols-3 gap-2 rounded-[20px] border border-white/10 bg-white/[0.03] p-4">
+              <div className="mt-6 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
                 {[
-                  { icon: ShieldCheck, color: 'text-emerald-400', title: 'Paiement 100% sécurisé', sub: 'Vos données protégées' },
-                  { icon: Zap, color: 'text-[#60a5fa]', title: 'Activation instantanée', sub: 'Crédit immédiat' },
-                  { icon: Headphones, color: 'text-[#c4b5fd]', title: 'Support 24/7', sub: 'Nous sommes là pour vous' },
+                  { icon: Lock, color: 'text-[#a78bfa]', title: 'Données cryptées', sub: 'SSL 256 bits' },
+                  { icon: ShieldCheck, color: 'text-emerald-400', title: 'Conformité PCI DSS', sub: 'Paiements sécurisés' },
+                  { icon: Headphones, color: 'text-[#60a5fa]', title: 'Support 24/7', sub: 'Nous sommes là pour vous' },
                 ].map((item) => (
                   <div key={item.title} className="flex flex-col items-center gap-1.5 text-center">
                     <item.icon className={`h-5 w-5 ${item.color}`} />
@@ -272,7 +433,7 @@ export function usePaymentCheckout() {
               <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                 <span className="flex items-center gap-2.5">
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/50">
-                    <Lock className="h-4 w-4" />
+                    <BadgeCheck className="h-4 w-4" />
                   </span>
                   <span className="text-[11px] leading-tight text-white/45 text-pretty">
                     Vos données sont protégées par un chiffrement de niveau bancaire.

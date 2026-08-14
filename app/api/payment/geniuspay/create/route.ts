@@ -10,6 +10,7 @@ import { getPhotoVideoOffer } from '@/lib/photo-video-offers'
 import { getMotionOffer } from '@/lib/motion-offers'
 import { getTranslationOffer } from '@/lib/translation-offers'
 import { createGeniusPayPayment, geniuspayConfigured } from '@/lib/geniuspay'
+import { resolveGeniusPayMethod } from '@/lib/geniuspay-countries'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -44,6 +45,26 @@ export async function POST(request: NextRequest) {
     const fullName =
       String(body.fullName || user.user_metadata?.full_name || '').trim() || 'Client ChapCam'
     const phoneNumber = String(body.phoneNumber || '').trim()
+
+    // Pays + methode choisis dans le selecteur (valides cote serveur contre la
+    // structure de donnees : on ne fait jamais confiance au client).
+    // Retro-compatible : si aucun pays n'est fourni, on ouvre la checkout
+    // generique (comportement precedent du bouton "Carte bancaire").
+    const countryCode = String(body.country || '').trim().toUpperCase()
+    const methodId = String(body.method || '').trim()
+    let gpCountry: string | null = null
+    let gpMethodToken: string | null = null
+    if (countryCode || methodId) {
+      const resolved = resolveGeniusPayMethod(countryCode, methodId)
+      if (!resolved) {
+        return NextResponse.json(
+          { success: false, error: 'Pays ou methode de paiement invalide.' },
+          { status: 400 },
+        )
+      }
+      gpCountry = resolved.country.code
+      gpMethodToken = resolved.method.gp
+    }
 
     // Determiner le produit (meme resolution que PayDunya/Trybit).
     const plan = getPlan(productId)
@@ -119,12 +140,16 @@ export async function POST(request: NextRequest) {
       email: user.email,
       fullName,
       phone: phoneNumber || undefined,
+      country: gpCountry,
+      paymentMethod: gpMethodToken,
       metadata: {
         kind,
         product_id: productId,
         user_id: user.id,
         email: user.email,
         full_name: fullName,
+        ...(gpCountry ? { country: gpCountry } : {}),
+        ...(methodId ? { method: methodId } : {}),
       },
       successUrl: `${origin}/dashboard/payment-success?provider=geniuspay`,
       errorUrl: `${origin}/dashboard/plans`,
