@@ -22,6 +22,25 @@ import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 import { PAYMENT_COUNTRIES, type UICountry, type UICountryMethod } from '@/lib/geniuspay-countries'
 import { getPlan } from '@/lib/plans'
 
+// Drapeau rendu comme VRAIE image (flagcdn.com) et non emoji : les emojis
+// drapeaux ne s'affichent pas sous Windows/Chrome (seul le code pays apparait).
+// Le CDN sert un PNG par code ISO2 ; on garde une image transparente en repli.
+function FlagIcon({ code, className = '' }: { code: string; className?: string }) {
+  const cc = code.toLowerCase()
+  return (
+    <img
+      src={`https://flagcdn.com/w40/${cc}.png`}
+      srcSet={`https://flagcdn.com/w80/${cc}.png 2x`}
+      width={24}
+      height={18}
+      loading="lazy"
+      alt=""
+      aria-hidden
+      className={`inline-block shrink-0 rounded-[3px] object-cover shadow-sm ring-1 ring-white/10 ${className}`}
+    />
+  )
+}
+
 export type PaymentMethod = 'paydunya' | 'trybit' | 'nowpayments' | 'geniuspay'
 
 interface StartOptions {
@@ -218,7 +237,7 @@ export function usePaymentCheckout() {
                       disabled={busy}
                       className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-left transition-colors hover:border-white/20 disabled:opacity-60"
                     >
-                      <span className="text-2xl leading-none" aria-hidden>{country.flag}</span>
+                      <FlagIcon code={country.code} className="h-[21px] w-7" />
                       <span className="flex-1 text-base font-medium text-white">{country.name}</span>
                       <ChevronDown
                         className={`h-5 w-5 text-white/40 transition-transform ${countryOpen ? 'rotate-180' : ''}`}
@@ -254,7 +273,7 @@ export function usePaymentCheckout() {
                                   c.code === countryCode ? 'bg-[#7c5cff]/10' : ''
                                 }`}
                               >
-                                <span className="text-xl leading-none" aria-hidden>{c.flag}</span>
+                                <FlagIcon code={c.code} className="h-[18px] w-6" />
                                 <span className="flex-1 text-sm font-medium text-white">{c.name}</span>
                                 {c.code === countryCode && <Check className="h-4 w-4 text-[#a78bfa]" />}
                               </button>
