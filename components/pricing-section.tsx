@@ -5,7 +5,14 @@ import { Button } from "@/components/ui/button"
 import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Gift, Clapperboard } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
+import { useState, useEffect } from "react"
 import { useT } from "@/lib/i18n/language-provider"
+import {
+  CURRENCIES,
+  useXofRates,
+  formatConverted,
+  guessCurrency,
+} from "@/lib/currency-convert"
 
 // Statut du logo (watermark) par forfait :
 // - "with"   : rendu AVEC logo ChapCam (Starter, Standard)
@@ -123,6 +130,16 @@ const plans = [
 
 export function PricingSection() {
   const t = useT()
+  const { rates } = useXofRates()
+  const [currencyCode, setCurrencyCode] = useState("XOF")
+
+  // Devine la devise du visiteur au montage (cote client uniquement).
+  useEffect(() => {
+    setCurrencyCode(guessCurrency())
+  }, [])
+
+  const currency = CURRENCIES.find((c) => c.code === currencyCode) ?? CURRENCIES[0]
+
   return (
     <section id="tarifs" className="relative py-24 px-6 bg-[#050505]">
       <div className="max-w-7xl mx-auto relative">
@@ -140,6 +157,30 @@ export function PricingSection() {
           <p className="text-gray-400 mt-4 text-lg">
             {t("2 points = 1 seconde de transformation du visage et corps entier")}
           </p>
+
+          {/* Selecteur de devise indicative */}
+          <div className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2">
+            <label htmlFor="currency-select" className="text-sm text-gray-400">
+              {t("Afficher les prix en")}
+            </label>
+            <select
+              id="currency-select"
+              value={currency.code}
+              onChange={(e) => setCurrencyCode(e.target.value)}
+              className="cursor-pointer rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-sm font-semibold text-white outline-none focus:border-emerald-400"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code} className="bg-[#0a0a0a] text-white">
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {currency.code !== "XOF" && (
+            <p className="mt-3 text-xs text-gray-500">
+              {t("Montants convertis a titre indicatif. Vous serez debite en FCFA (XOF).")}
+            </p>
+          )}
         </motion.div>
 
         {/* Annonce ChapCam 2.0 : les offres de recharge concernent le nouveau logiciel */}
@@ -257,6 +298,11 @@ export function PricingSection() {
                     {plan.price}
                   </span>
                   <span className="text-gray-400 text-xl"> {plan.currency}</span>
+                  {formatConverted(plan.price, currency, rates) && (
+                    <p className="text-sm font-medium mt-1" style={{ color: plan.color }}>
+                      ≈ {formatConverted(plan.price, currency, rates)}
+                    </p>
+                  )}
                   <p className="text-gray-500 text-sm mt-1">{t(plan.validity)}</p>
                 </div>
 
