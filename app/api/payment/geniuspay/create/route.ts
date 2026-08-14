@@ -53,6 +53,7 @@ export async function POST(request: NextRequest) {
     const countryCode = String(body.country || '').trim().toUpperCase()
     const methodId = String(body.method || '').trim()
     let gpCountry: string | null = null
+    let gpDialingCode: string | null = null
     if (countryCode || methodId) {
       const resolved = resolveGeniusPayMethod(countryCode, methodId)
       if (!resolved) {
@@ -62,7 +63,19 @@ export async function POST(request: NextRequest) {
         )
       }
       gpCountry = resolved.countryCode
+      gpDialingCode = resolved.dialingCode
     }
+
+    // La page de checkout GeniusPay determine les methodes disponibles (Mobile
+    // Money vs carte) d'apres l'INDICATIF du numero envoye. On envoie donc le
+    // prefixe du pays choisi pour debloquer le bon Mobile Money ; l'utilisateur
+    // saisit son numero complet sur la page GeniusPay. Si l'utilisateur a fourni
+    // un numero deja international (+...), on le conserve.
+    const gpPhone = phoneNumber.startsWith('+')
+      ? phoneNumber
+      : gpDialingCode
+        ? `+${gpDialingCode}`
+        : phoneNumber || undefined
 
     // Determiner le produit (meme resolution que PayDunya/Trybit).
     const plan = getPlan(productId)
@@ -137,7 +150,7 @@ export async function POST(request: NextRequest) {
       description: `ChapCam - ${label}`,
       email: user.email,
       fullName,
-      phone: phoneNumber || undefined,
+      phone: gpPhone,
       country: gpCountry,
       metadata: {
         kind,
