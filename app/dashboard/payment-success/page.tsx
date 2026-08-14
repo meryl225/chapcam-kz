@@ -18,16 +18,24 @@ function PaymentSuccessContent() {
   const isTrybit = provider === 'trybit'
   // Paiement crypto NOWPayments : le provider ajoute NP_id (payment_id) a l'URL.
   const isNowPayments = provider === 'nowpayments'
+  // Paiement carte / mobile money GeniusPay : retour statique (?provider=geniuspay),
+  // on reconfirme via la route de statut GeniusPay (repli sur la derniere demande).
+  const isGeniusPay = provider === 'geniuspay'
   const isCrypto = isTrybit || isNowPayments
+  // Les retours "sans token" (crypto + GeniusPay) s'appuient sur la derniere
+  // demande de l'utilisateur connecte au lieu d'un token dans l'URL.
+  const isTokenless = isCrypto || isGeniusPay
   const uuid = searchParams.get('uuid')
+  const reference = searchParams.get('reference')
   const npId = searchParams.get('NP_id') || searchParams.get('payment_id')
   const [status, setStatus] = useState<Status>('checking')
   const [kind, setKind] = useState<'plan' | 'live' | null>(null)
 
   const check = useCallback(async () => {
-    // Le crypto n'a pas de token dans l'URL : la route retrouve la derniere
-    // facture de l'utilisateur connecte (ou via l'identifiant fourni).
-    if (!isCrypto && !token) {
+    // Les retours sans token (crypto + GeniusPay) n'ont pas de token dans l'URL :
+    // la route retrouve la derniere demande de l'utilisateur connecte (ou via
+    // l'identifiant fourni).
+    if (!isTokenless && !token) {
       setStatus('error')
       return true
     }
@@ -37,6 +45,8 @@ function PaymentSuccessContent() {
         url = `/api/payment/nowpayments/status${npId ? `?payment_id=${encodeURIComponent(npId)}` : ''}`
       } else if (isTrybit) {
         url = `/api/payment/trybit/status${uuid ? `?uuid=${encodeURIComponent(uuid)}` : ''}`
+      } else if (isGeniusPay) {
+        url = `/api/payment/geniuspay/status${reference ? `?reference=${encodeURIComponent(reference)}` : ''}`
       } else {
         url = `/api/payment/status?token=${encodeURIComponent(token!)}`
       }
@@ -55,10 +65,10 @@ function PaymentSuccessContent() {
     } catch {
       return false
     }
-  }, [token, isCrypto, isTrybit, isNowPayments, uuid, npId])
+  }, [token, isTokenless, isTrybit, isNowPayments, isGeniusPay, uuid, reference, npId])
 
   useEffect(() => {
-    if (!isCrypto && !token) {
+    if (!isTokenless && !token) {
       setStatus('error')
       return
     }
@@ -81,7 +91,7 @@ function PaymentSuccessContent() {
       active = false
       clearTimeout(timer)
     }
-  }, [token, isCrypto, check])
+  }, [token, isTokenless, check])
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-6 py-12">
@@ -97,7 +107,9 @@ function PaymentSuccessContent() {
                 ? 'Nous confirmons votre transaction crypto aupres de NOWPayments. Patientez quelques secondes.'
                 : isTrybit
                   ? 'Nous confirmons votre transaction crypto aupres de Trybit. Patientez quelques secondes.'
-                  : 'Nous confirmons votre transaction aupres de PayDunya. Patientez quelques secondes.'}
+                  : isGeniusPay
+                    ? 'Nous confirmons votre transaction aupres de GeniusPay. Patientez quelques secondes.'
+                    : 'Nous confirmons votre transaction aupres de PayDunya. Patientez quelques secondes.'}
             </p>
           </>
         )}
