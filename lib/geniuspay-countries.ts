@@ -91,6 +91,82 @@ export const GENIUSPAY_COUNTRIES: GeniusPayCountry[] = [
   { code: 'MZ', name: 'Mozambique', flag: '🇲🇿', currency: 'MZN', methods: [MPESA_VODACOM] },
 ]
 
+// ============================================================
+// Modele UNIFIE pour le selecteur de pays du modal de paiement.
+//   - Cote d'Ivoire / Benin / Togo => PayDunya (paiements existants inchanges).
+//   - Tous les autres pays          => GeniusPay (catalogue ci-dessus).
+// Le modal itere sur PAYMENT_COUNTRIES ; selon `provider`, il route vers le bon
+// endpoint serveur. Pour PayDunya le token de methode est cosmetique (la page
+// PayDunya hebergee affiche tous les operateurs) ; pour GeniusPay on transmet
+// pays + methode a /api/payment/geniuspay/create.
+// ============================================================
+
+export type PaymentProvider = 'paydunya' | 'geniuspay'
+
+export interface UICountryMethod {
+  id: string
+  label: string
+  sublabel?: string
+  kind: 'mobile' | 'card'
+}
+
+export interface UICountry {
+  code: string
+  name: string
+  flag: string
+  provider: PaymentProvider
+  methods: UICountryMethod[]
+}
+
+const PAYDUNYA_COUNTRIES: UICountry[] = [
+  {
+    code: 'CI',
+    name: "Côte d'Ivoire",
+    flag: '🇨🇮',
+    provider: 'paydunya',
+    methods: [
+      { id: 'mobile', label: 'Mobile Money', sublabel: 'Wave, Orange, MTN, Moov, Djamo', kind: 'mobile' },
+      { id: 'card', label: 'Carte bancaire', sublabel: 'Visa / Mastercard', kind: 'card' },
+    ],
+  },
+  {
+    code: 'BJ',
+    name: 'Bénin',
+    flag: '🇧🇯',
+    provider: 'paydunya',
+    methods: [
+      { id: 'mobile', label: 'Mobile Money', sublabel: 'MTN, Moov', kind: 'mobile' },
+      { id: 'card', label: 'Carte bancaire', sublabel: 'Visa / Mastercard', kind: 'card' },
+    ],
+  },
+  {
+    code: 'TG',
+    name: 'Togo',
+    flag: '🇹🇬',
+    provider: 'paydunya',
+    methods: [
+      { id: 'mobile', label: 'Mobile Money', sublabel: 'Moov, T-Money', kind: 'mobile' },
+      { id: 'card', label: 'Carte bancaire', sublabel: 'Visa / Mastercard', kind: 'card' },
+    ],
+  },
+]
+
+// Liste complete affichee dans le selecteur (PayDunya d'abord, puis GeniusPay).
+export const PAYMENT_COUNTRIES: UICountry[] = [
+  ...PAYDUNYA_COUNTRIES,
+  ...GENIUSPAY_COUNTRIES.map<UICountry>((c) => ({
+    code: c.code,
+    name: c.name,
+    flag: c.flag,
+    provider: 'geniuspay',
+    methods: c.methods.map<UICountryMethod>((m) => ({
+      id: m.id,
+      label: m.label,
+      kind: m.id === 'visa' || m.id === 'mastercard' ? 'card' : 'mobile',
+    })),
+  })),
+]
+
 // --- Helpers (utilises par la route serveur) ------------------------------
 export function getGeniusPayCountry(code: string | null | undefined): GeniusPayCountry | null {
   if (!code) return null
