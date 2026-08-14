@@ -20,6 +20,7 @@ import { isInAppBrowser } from '@/lib/in-app-browser'
 import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 import { PAYMENT_COUNTRIES, type UICountry, type UICountryMethod } from '@/lib/geniuspay-countries'
 import { getPlan } from '@/lib/plans'
+import { useT } from '@/lib/i18n/language-provider'
 
 // Drapeau rendu comme VRAIE image (flagcdn.com) et non emoji : les emojis
 // drapeaux ne s'affichent pas sous Windows/Chrome (seul le code pays apparait).
@@ -70,6 +71,7 @@ const DEFAULT_COUNTRY = PAYMENT_COUNTRIES[0] // Cote d'Ivoire (PayDunya)
 //   - cryptomonnaie -> NOWPayments
 // Gere aussi les navigateurs in-app.
 export function usePaymentCheckout() {
+  const t = useT()
   const [chooser, setChooser] = useState<Chooser | null>(null)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [pendingMethod, setPendingMethod] = useState<PaymentMethod | null>(null)
@@ -197,7 +199,7 @@ export function usePaymentCheckout() {
               onClick={close}
               disabled={busy}
               className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/60 backdrop-blur transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
-              aria-label="Fermer"
+              aria-label={t('Fermer')}
             >
               <X className="h-4 w-4" />
             </button>
@@ -209,10 +211,10 @@ export function usePaymentCheckout() {
                   <ShieldCheck className="h-6 w-6" />
                 </span>
                 <h2 className="text-2xl font-bold tracking-tight text-white text-balance">
-                  Finalisez votre paiement
+                  {t('Finalisez votre paiement')}
                 </h2>
                 <p className="mt-1 text-sm text-white/45">
-                  Paiement sécurisé et activation automatique après confirmation.
+                  {t('Paiement sécurisé et activation automatique après confirmation.')}
                 </p>
               </div>
 
@@ -230,7 +232,7 @@ export function usePaymentCheckout() {
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#7c5cff] text-xs font-bold text-white">
                       1
                     </span>
-                    <span className="text-base font-semibold text-white">Pays de paiement</span>
+                    <span className="text-base font-semibold text-white">{t('Pays de paiement')}</span>
                   </div>
 
                   <div className="relative mb-8">
@@ -262,7 +264,7 @@ export function usePaymentCheckout() {
                               autoFocus
                               value={query}
                               onChange={(e) => setQuery(e.target.value)}
-                              placeholder="Rechercher un pays…"
+                              placeholder={t('Rechercher un pays…')}
                               className="w-full rounded-xl bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[#7c5cff]/50"
                             />
                           </div>
@@ -281,7 +283,7 @@ export function usePaymentCheckout() {
                               </button>
                             ))}
                             {filteredCountries.length === 0 && (
-                              <p className="py-6 text-center text-sm text-white/40">Aucun pays trouvé.</p>
+                              <p className="py-6 text-center text-sm text-white/40">{t('Aucun pays trouvé.')}</p>
                             )}
                           </div>
                         </div>
@@ -294,10 +296,10 @@ export function usePaymentCheckout() {
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#7c5cff] text-xs font-bold text-white">
                       2
                     </span>
-                    <span className="text-base font-semibold text-white">Moyen de paiement</span>
+                    <span className="text-base font-semibold text-white">{t('Moyen de paiement')}</span>
                   </div>
                   <p className="mb-4 pl-[34px] text-sm text-white/40">
-                    Sélectionnez votre méthode de paiement
+                    {t('Sélectionnez votre méthode de paiement')}
                   </p>
 
                   <div className="flex flex-col gap-3">
@@ -342,12 +344,12 @@ export function usePaymentCheckout() {
                               <span className="text-[15px] font-semibold text-white">{m.label}</span>
                               {i === 0 && (
                                 <span className="rounded-md bg-[#7c5cff]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c4b5fd]">
-                                  Recommandé
+                                  {t('Recommandé')}
                                 </span>
                               )}
                             </span>
                             <span className="mt-0.5 block truncate text-xs text-white/40">
-                              {m.sublabel || (m.kind === 'card' ? 'Paiement par carte bancaire' : 'Paiement rapide et sécurisé')}
+                              {m.sublabel || (m.kind === 'card' ? t('Paiement par carte bancaire') : t('Paiement rapide et sécurisé'))}
                             </span>
                           </span>
                           <span

@@ -74,6 +74,18 @@ export function useXofRates(): { rates: Record<string, number>; live: boolean } 
   return { rates: FALLBACK_UNITS_PER_XOF, live: false }
 }
 
+/**
+ * Formatage deterministe (identique serveur/client) d'un entier avec separateur
+ * de milliers. Evite les erreurs d'hydratation de `toLocaleString()` dont le
+ * separateur depend de la locale du runtime (virgule cote serveur, espace cote
+ * navigateur FR).
+ */
+export function formatXof(value: number): string {
+  return Math.round(value)
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, "\u202f") // espace fine insecable
+}
+
 /** Convertit "50.000" (format FR) ou 50000 en nombre XOF. */
 export function parseXof(price: string | number): number {
   if (typeof price === "number") return price

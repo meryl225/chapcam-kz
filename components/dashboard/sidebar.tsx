@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/sheet'
 import { createClient } from '@/lib/supabase/client'
 import { ThemeToggleCompact } from '@/components/theme-toggle'
+import { LanguageToggle } from '@/components/language-toggle'
+import { useT } from '@/lib/i18n/language-provider'
 import { useState, useEffect } from 'react'
 
 const PLAN_LABELS: Record<string, string> = {
@@ -107,6 +109,7 @@ function ToolCard({
   color: string
   active?: boolean
 }) {
+  const t = useT()
   return (
     <Link
       href={href}
@@ -136,7 +139,7 @@ function ToolCard({
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">
           <span className="truncate text-[12.5px] font-bold uppercase leading-tight tracking-tight text-foreground">
-            {title}
+            {t(title)}
           </span>
           {badge && (
             <span
@@ -148,7 +151,7 @@ function ToolCard({
           )}
         </span>
         <span className="mt-0.5 block truncate text-[10px] font-medium normal-case text-muted-foreground">
-          {description}
+          {t(description)}
         </span>
       </span>
 
@@ -178,6 +181,7 @@ function SidebarContent({
   pointsTotal,
   onLogout,
 }: SidebarContentProps) {
+  const t = useT()
   const pathname = usePathname()
   const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false
   const showUpgradeBanner = plan === 'free' || isExpired || !isActive || pointsRemaining <= 0
@@ -214,7 +218,7 @@ function SidebarContent({
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
               </span>
               <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-faint">
-                Swap en temps réel
+                {t('Swap en temps réel')}
               </span>
             </span>
           </span>
@@ -247,7 +251,7 @@ function SidebarContent({
 
         {/* Outils IA premium (cartes glassmorphism) */}
         <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-text-faint">
-          Outils premium
+          {t('Outils premium')}
         </p>
         {tools.map((tool) => (
           <ToolCard
@@ -285,7 +289,7 @@ function SidebarContent({
               >
                 <item.icon className="h-[17px] w-[17px]" strokeWidth={2.5} />
               </span>
-              <span className="flex-1 truncate">{item.label}</span>
+              <span className="flex-1 truncate">{t(item.label)}</span>
             </Link>
           )
         })}
@@ -304,7 +308,7 @@ function SidebarContent({
           >
             <HelpCircle className="h-[17px] w-[17px]" strokeWidth={2.5} />
           </span>
-          <span className="flex-1 truncate">AIDE & SUPPORT</span>
+          <span className="flex-1 truncate">{t('AIDE & SUPPORT')}</span>
         </a>
 
         {/* Lien Secret Admin Stats */}
@@ -316,7 +320,7 @@ function SidebarContent({
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
               <Shield className="h-[17px] w-[17px]" strokeWidth={2.5} />
             </span>
-            <span className="flex-1 truncate">ADMIN STATS</span>
+            <span className="flex-1 truncate">{t('ADMIN STATS')}</span>
           </Link>
         )}
       </nav>
@@ -330,21 +334,21 @@ function SidebarContent({
             <span className="relative inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-black shadow-[0_0_16px_rgba(250,204,21,0.55)] ring-1 ring-yellow-200/60">
               <span className="pointer-events-none absolute inset-0 -translate-x-full animate-[shimmer_2.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
               <Crown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
-              {PLAN_LABELS[plan] || plan}
+              {t(PLAN_LABELS[plan] || plan)}
             </span>
           ) : (
             <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${PLAN_COLORS[plan] || 'bg-gray-500 text-white'}`}>
-              {PLAN_LABELS[plan] || plan}
+              {t(PLAN_LABELS[plan] || plan)}
             </span>
           )}
-          {isExpired && <span className="text-xs text-red-400">Expire</span>}
+          {isExpired && <span className="text-xs text-red-400">{t('Expire')}</span>}
         </div>
 
         <div className={`mb-3 rounded-lg p-3 ${VIP_PLANS.has(plan) ? 'bg-gradient-to-br from-yellow-500/10 to-amber-500/5 ring-1 ring-yellow-500/30' : 'bg-muted'}`}>
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Battery className={`h-4 w-4 ${VIP_PLANS.has(plan) ? 'text-yellow-500' : 'text-primary'}`} />
-              <span className="text-xs font-medium text-foreground">Points restants</span>
+              <span className="text-xs font-medium text-foreground">{t('Points restants')}</span>
             </div>
             <span className="text-sm font-bold text-foreground">
               {formatPoints(pointsRemaining)}/{formatPoints(pointsTotal)}
@@ -352,30 +356,31 @@ function SidebarContent({
           </div>
           <Progress value={pointsPercentage} className="h-2 bg-secondary" />
           <p className="mt-2 text-xs text-text-faint">
-            = {Math.floor(pointsRemaining / 2 / 60)} min de swap
+            = {Math.floor(pointsRemaining / 2 / 60)} {t('min de swap')}
           </p>
         </div>
 
         <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
-          <span>Avatars utilises</span>
+          <span>{t('Avatars utilises')}</span>
           <span>{avatarCount}/∞</span>
         </div>
 
-        {/* Bascule clair / sombre */}
-        <div className="mb-3">
+        {/* Bascule clair / sombre + langue */}
+        <div className="mb-3 flex items-center justify-between gap-2">
           <ThemeToggleCompact />
+          <LanguageToggle />
         </div>
 
         {showUpgradeBanner && (
           <div className="mb-3 rounded-lg bg-orange-500/20 p-3">
             <p className="mb-2 text-xs text-orange-300">
-              Recharge tes points pour continuer
+              {t('Recharge tes points pour continuer')}
             </p>
             <Link
               href="/dashboard/plans"
               className="block rounded-lg bg-orange-500 py-2 text-center text-xs font-bold uppercase text-white transition-colors hover:bg-orange-600"
             >
-              VOIR LES OFFRES
+              {t('VOIR LES OFFRES')}
             </Link>
           </div>
         )}
@@ -385,7 +390,7 @@ function SidebarContent({
           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-red-400"
         >
           <LogOut className="h-4 w-4" />
-          Deconnexion
+          {t('Deconnexion')}
         </button>
       </div>
     </div>
@@ -412,6 +417,7 @@ export function DashboardSidebar({
   pointsRemaining = 0,
   pointsTotal = 0,
 }: DashboardSidebarProps) {
+  const t = useT()
   const router = useRouter()
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -458,7 +464,7 @@ export function DashboardSidebar({
               </button>
             </SheetTrigger>
             <SheetContent side="left" className="w-[280px] border-hairline bg-sidebar p-0">
-              <SheetTitle className="sr-only">Menu de navigation</SheetTitle>
+              <SheetTitle className="sr-only">{t('Menu de navigation')}</SheetTitle>
               <SidebarContent
                 email={email}
                 plan={plan}
@@ -489,6 +495,7 @@ interface PlanGuardBannerProps {
 }
 
 export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0, voiceSecondsRemaining = 0 }: PlanGuardBannerProps) {
+  const t = useT()
   const pathname = usePathname()
   const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false
 
@@ -505,16 +512,16 @@ export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0
     <div className="fixed left-0 right-0 top-14 z-40 flex items-center justify-between bg-orange-500 px-4 py-2 md:left-[240px] md:top-0">
       <p className="text-sm font-medium text-foreground">
         {onVoiceSwap
-          ? 'Recharge une offre ChapVoice pour activer le changement de voix'
+          ? t('Recharge une offre ChapVoice pour activer le changement de voix')
           : pointsRemaining <= 0
-            ? 'Tu as epuise tes points — Recharge pour continuer le swap'
-            : 'Tu es sur le plan gratuit — Active un abonnement pour demarrer le swap'}
+            ? t('Tu as epuise tes points — Recharge pour continuer le swap')
+            : t('Tu es sur le plan gratuit — Active un abonnement pour demarrer le swap')}
       </p>
       <Link
         href={onVoiceSwap ? '/dashboard/voice-swap' : '/dashboard/plans'}
         className="rounded-lg bg-white px-4 py-1.5 text-xs font-bold uppercase text-orange-500 transition-colors hover:bg-gray-100"
       >
-        RECHARGER
+        {t('RECHARGER')}
       </Link>
     </div>
   )
