@@ -47,7 +47,7 @@ function PlansContent() {
               </div>
               <h3 className="mb-2 text-xl font-black text-foreground md:text-2xl">
                 Payez par <span className="text-primary">Carte bancaire, Wave, Orange, MTN, Moov ou Djamo</span> via PayDunya
-                {" "}ou en <span className="text-[#f7931a]">Cryptomonnaie</span> via Trybit
+                {" "}ou en <span className="text-[#f7931a]">Cryptomonnaie</span> via NOWPayments
               </h3>
               <p className="text-sm text-muted-foreground">
                 Activation automatique de votre compte des que le paiement est confirme.

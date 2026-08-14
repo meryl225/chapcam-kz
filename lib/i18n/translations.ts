@@ -212,8 +212,8 @@ export const translations: Record<string, string> = {
   "Visa & Mastercard acceptees": "Visa & Mastercard accepted",
   Cryptomonnaie: "Cryptocurrency",
   "Bitcoin, USDT, ETH & plus": "Bitcoin, USDT, ETH & more",
-  "Paiement securise via PayDunya (mobile money & carte) ou Trybit (crypto)":
-    "Secure payment via PayDunya (mobile money & card) or Trybit (crypto)",
+  "Paiement securise via PayDunya (mobile money & carte) ou NOWPayments (crypto)":
+    "Secure payment via PayDunya (mobile money & card) or NOWPayments (crypto)",
 
   // ----- Section pays disponibles (AvailableCountriesSection) -----
   "Carte bancaire & Mobile Money acceptes": "Bank card & Mobile Money accepted",

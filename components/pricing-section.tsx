@@ -463,7 +463,7 @@ export function PricingSection() {
           </div>
 
           <p className="mt-8 text-center text-sm text-gray-500">
-            {t("Paiement securise via PayDunya (mobile money & carte) ou Trybit (crypto)")}
+            {t("Paiement securise via PayDunya (mobile money & carte) ou NOWPayments (crypto)")}
           </p>
         </motion.div>
       </div>
