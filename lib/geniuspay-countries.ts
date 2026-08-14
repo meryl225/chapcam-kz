@@ -198,14 +198,26 @@ const OTHER_GENIUSPAY: UICountry[] = WORLD.map(([code]) => code)
   .map(geniusCountry)
   .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
 
-// Liste finale affichee dans le selecteur.
+// Ordre de base de la liste :
 //   1) PayDunya (CI, BJ, TG)
 //   2) Pays GeniusPay Mobile Money (mis en avant)
 //   3) Tous les autres pays (carte bancaire), ordre alphabetique.
-export const PAYMENT_COUNTRIES: UICountry[] = [
+const BASE_ORDER: UICountry[] = [
   ...PAYDUNYA_COUNTRIES,
   ...FEATURED_GENIUSPAY,
   ...OTHER_GENIUSPAY,
+]
+
+// Pays epingles tout en haut, dans cet ordre exact (juste apres la Cote
+// d'Ivoire on veut le Nigeria puis la France).
+const PINNED_ORDER = ['CI', 'NG', 'FR']
+
+// Liste finale : les pays epingles en tete, puis tout le reste dans l'ordre de
+// base (sans doublon).
+const byCode = new Map(BASE_ORDER.map((c) => [c.code, c]))
+export const PAYMENT_COUNTRIES: UICountry[] = [
+  ...PINNED_ORDER.map((code) => byCode.get(code)).filter((c): c is UICountry => Boolean(c)),
+  ...BASE_ORDER.filter((c) => !PINNED_ORDER.includes(c.code)),
 ]
 
 // Index rapide (utilise cote serveur pour la validation).
