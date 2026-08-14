@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { MessageCircle, Mail, Handshake, ArrowRight } from "lucide-react"
+import { useT } from "@/lib/i18n/language-provider"
 
 // Coordonnees officielles ChapCam (reprises du header / lib/email.ts).
 const WHATSAPP_NUMBER_DISPLAY = "+225 05 55 56 01 89"
@@ -13,6 +14,7 @@ const EMAIL_URL =
   "mailto:contact@chapcam.com?subject=" + encodeURIComponent("Demande de partenariat ChapCam")
 
 export function PartnershipSection() {
+  const t = useT()
   return (
     <section id="partenariat" className="relative px-6 py-24 overflow-hidden">
       {/* Effets de fond */}
@@ -32,15 +34,16 @@ export function PartnershipSection() {
         >
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[#00ff88]/30 bg-[#00ff88]/10 px-4 py-2">
             <Handshake className="h-4 w-4 text-[#00ff88]" />
-            <span className="text-sm font-semibold tracking-wide text-[#00ff88]">PARTENARIAT</span>
+            <span className="text-sm font-semibold tracking-wide text-[#00ff88]">{t("PARTENARIAT")}</span>
           </div>
 
           <h2 className="mb-4 text-balance text-4xl font-bold text-white md:text-5xl">
-            Travaillons <span className="text-[#00ff88]">ensemble</span>
+            {t("Travaillons")} <span className="text-[#00ff88]">{t("ensemble")}</span>
           </h2>
           <p className="mx-auto max-w-2xl text-pretty leading-relaxed text-gray-300">
-            Créateur, agence, revendeur ou média ? Contacte l&apos;équipe ChapCam pour un partenariat,
-            une collaboration ou toute question. On te répond rapidement par mail ou sur WhatsApp.
+            {t(
+              "Créateur, agence, revendeur ou média ? Contacte l'équipe ChapCam pour un partenariat, une collaboration ou toute question. On te répond rapidement par mail ou sur WhatsApp.",
+            )}
           </p>
         </motion.div>
 
@@ -62,10 +65,10 @@ export function PartnershipSection() {
               <MessageCircle className="h-7 w-7 text-[#25D366]" />
             </div>
             <h3 className="mb-1 text-xl font-bold text-white">WhatsApp</h3>
-            <p className="mb-4 text-sm text-gray-400">Réponse rapide, assistance en direct</p>
+            <p className="mb-4 text-sm text-gray-400">{t("Réponse rapide, assistance en direct")}</p>
             <span className="text-lg font-semibold text-white">{WHATSAPP_NUMBER_DISPLAY}</span>
             <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[#25D366]">
-              Écrire sur WhatsApp
+              {t("Écrire sur WhatsApp")}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </span>
           </motion.a>
@@ -83,11 +86,11 @@ export function PartnershipSection() {
             <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#00d4ff]/15 ring-1 ring-[#00d4ff]/30">
               <Mail className="h-7 w-7 text-[#00d4ff]" />
             </div>
-            <h3 className="mb-1 text-xl font-bold text-white">Email</h3>
-            <p className="mb-4 text-sm text-gray-400">Pour les demandes détaillées & pros</p>
+            <h3 className="mb-1 text-xl font-bold text-white">{t("Email")}</h3>
+            <p className="mb-4 text-sm text-gray-400">{t("Pour les demandes détaillées & pros")}</p>
             <span className="text-lg font-semibold text-white">{EMAIL}</span>
             <span className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[#00d4ff]">
-              Nous envoyer un mail
+              {t("Nous envoyer un mail")}
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </span>
           </motion.a>

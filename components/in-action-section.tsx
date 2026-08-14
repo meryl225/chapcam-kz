@@ -5,8 +5,10 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Play, ArrowRight } from "lucide-react"
 import { SwapDemoFrames } from "@/components/swap-demo-frames"
+import { useT } from "@/lib/i18n/language-provider"
 
 export function InActionSection() {
+  const t = useT()
   // Platform logos as SVG components
   const platforms = [
     { name: "WhatsApp", color: "#25D366" },
@@ -44,18 +46,18 @@ export function InActionSection() {
               transition={{ duration: 1.5, repeat: Infinity }}
               className="w-2 h-2 rounded-full bg-[#00ff88]"
             />
-            <span className="text-[#00ff88] font-semibold text-sm tracking-wide">EN ACTION</span>
+            <span className="text-[#00ff88] font-semibold text-sm tracking-wide">{t("EN ACTION")}</span>
           </motion.div>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 leading-tight">
-            Regardez ChapCam{" "}
-            <span className="text-[#00ff88]">transformer</span>
+            {t("Regardez ChapCam")}{" "}
+            <span className="text-[#00ff88]">{t("transformer")}</span>
             <br />
-            en temps reel
+            {t("en temps reel")}
           </h2>
 
           <p className="text-gray-400 text-lg md:text-xl max-w-2xl mx-auto">
-            Transformation du visage et du corps entier avec mouvements naturels et sans delai
+            {t("Transformation du visage et du corps entier avec mouvements naturels et sans delai")}
           </p>
         </motion.div>
 
@@ -93,7 +95,7 @@ export function InActionSection() {
               transition={{ delay: 1 }}
               className="text-center text-gray-500 text-sm mt-4"
             >
-              Clique sur la galerie pour l&apos;agrandir - ChapCam en action
+              {t("Clique sur la galerie pour l'agrandir - ChapCam en action")}
             </motion.p>
           </div>
         </motion.div>
@@ -106,7 +108,7 @@ export function InActionSection() {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="text-center mb-12"
         >
-          <p className="text-gray-400 mb-6 text-lg">Fonctionne pendant tes appels video</p>
+          <p className="text-gray-400 mb-6 text-lg">{t("Fonctionne pendant tes appels video")}</p>
 
           <div className="flex items-center justify-center gap-8 flex-wrap">
             {platforms.map((platform, index) => (
@@ -158,7 +160,7 @@ export function InActionSection() {
 
               <Button className="relative bg-[#00ff88] hover:bg-[#00ff88]/90 text-black font-bold text-lg px-10 py-7 rounded-full transition-all flex items-center gap-3">
                 <Play className="w-5 h-5 fill-current" />
-                Essayer maintenant
+                {t("Essayer maintenant")}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Button>
             </motion.div>

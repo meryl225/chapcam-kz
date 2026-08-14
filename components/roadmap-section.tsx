@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { User, Smile, Mic, Star, Infinity, Shield, Users, Zap, Heart } from "lucide-react"
+import { useT } from "@/lib/i18n/language-provider"
 
 const phases = [
   {
@@ -239,6 +240,7 @@ function GlowingRing({
 }
 
 export function RoadmapSection() {
+  const t = useT()
   const [selectedPhase, setSelectedPhase] = useState(0)
   const currentPhase = phases[selectedPhase]
 
@@ -261,10 +263,10 @@ export function RoadmapSection() {
         >
           <p className="text-gray-400 text-sm tracking-widest mb-2">ROADMAP</p>
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-            <span className="text-[#00d4ff]">5 PHASES</span> POUR TRANSFORMER
+            <span className="text-[#00d4ff]">{t("5 PHASES")}</span> {t("POUR TRANSFORMER")}
           </h2>
           <p className="text-gray-400 text-sm tracking-wide">
-            TON IDENTITE, TON STYLE, TON MONDE.
+            {t("TON IDENTITE, TON STYLE, TON MONDE.")}
           </p>
         </motion.div>
 
@@ -285,7 +287,7 @@ export function RoadmapSection() {
                 }`}
                 style={{ color: selectedPhase === index ? phase.color : undefined }}
               >
-                {phase.phase}
+                {t(phase.phase)}
               </p>
             </div>
           ))}
@@ -339,7 +341,7 @@ export function RoadmapSection() {
                     className="text-xl md:text-2xl font-bold"
                     style={{ color: currentPhase.color }}
                   >
-                    {currentPhase.title}
+                    {t(currentPhase.title)}
                   </h3>
                   
                   {/* Timeline badge */}
@@ -363,13 +365,13 @@ export function RoadmapSection() {
                       ease: "easeInOut",
                     }}
                   >
-                    {currentPhase.timeline}
+                    {t(currentPhase.timeline)}
                   </motion.div>
                 </div>
 
                 {/* Description */}
                 <p className="text-gray-300 text-base md:text-lg leading-relaxed mb-8">
-                  {currentPhase.description}
+                  {t(currentPhase.description)}
                 </p>
 
                 {/* Features */}
@@ -391,7 +393,7 @@ export function RoadmapSection() {
                           style={{ color: currentPhase.color }} 
                         />
                       </div>
-                      <span className="text-gray-200 text-sm">{feature.text}</span>
+                      <span className="text-gray-200 text-sm">{t(feature.text)}</span>
                     </motion.div>
                   ))}
                 </div>
@@ -413,7 +415,7 @@ export function RoadmapSection() {
                     ease: "easeInOut",
                   }}
                 >
-                  {currentPhase.tagline}
+                  {t(currentPhase.tagline)}
                 </motion.p>
               </div>
             </div>
@@ -457,13 +459,13 @@ export function RoadmapSection() {
                   >
                     <Target className="w-7 h-7 text-[#00d4ff]" />
                   </motion.div>
-                  <h3 className="text-white font-bold text-lg">NOTRE MISSION</h3>
+                  <h3 className="text-white font-bold text-lg">{t("NOTRE MISSION")}</h3>
                 </div>
 
                 {/* Mission text */}
                 <div className="flex-1 text-center lg:text-left">
                   <p className="text-gray-300 text-sm leading-relaxed">
-                    Donner a chacun le pouvoir de devenir qui il veut, quand il veut, avec liberte, creativite et confiance.
+                    {t("Donner a chacun le pouvoir de devenir qui il veut, quand il veut, avec liberte, creativite et confiance.")}
                   </p>
                 </div>
 
@@ -493,7 +495,7 @@ export function RoadmapSection() {
                         <value.icon className="w-5 h-5" style={{ color: value.color }} />
                       </motion.div>
                       <span className="text-gray-400 text-[10px] font-medium text-center whitespace-nowrap">
-                        {value.text}
+                        {t(value.text)}
                       </span>
                     </motion.div>
                   ))}

@@ -4,6 +4,7 @@ import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
 import { SecurityProvider } from '@/components/security-provider'
 import { ThemeProvider } from '@/components/theme-provider'
+import { LanguageProvider } from '@/lib/i18n/language-provider'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
@@ -47,9 +48,11 @@ export default function RootLayout({
           enableSystem={false}
           disableTransitionOnChange
         >
-          <SecurityProvider>
-            {children}
-          </SecurityProvider>
+          <LanguageProvider>
+            <SecurityProvider>
+              {children}
+            </SecurityProvider>
+          </LanguageProvider>
         </ThemeProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>

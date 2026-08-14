@@ -1,7 +1,11 @@
+"use client"
+
 import Link from "next/link"
 import { MapPin, Phone } from "lucide-react"
+import { useT } from "@/lib/i18n/language-provider"
 
 export function SiteFooter() {
+  const t = useT()
   const year = new Date().getFullYear()
 
   return (
@@ -12,7 +16,7 @@ export function SiteFooter() {
             Chap<span className="text-primary">Cam</span>
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Plateforme d&apos;intelligence artificielle responsable. © {year} ChapCam. Tous droits réservés.
+            {t("Plateforme d'intelligence artificielle responsable. © {year} ChapCam. Tous droits réservés.").replace("{year}", String(year))}
           </p>
 
           <div className="mt-4 flex flex-col items-center gap-2 md:items-start">
@@ -33,27 +37,27 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <nav aria-label="Liens légaux" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
+        <nav aria-label={t("Liens légaux")} className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm">
           <Link href="/numbers" className="font-semibold text-[#2563EB] transition-colors hover:text-[#1d4ed8]">
-            ESIM ChapCam
+            {t("ESIM ChapCam")}
           </Link>
           <Link href="/conditions" className="text-muted-foreground transition-colors hover:text-primary">
-            Conditions d&apos;utilisation
+            {t("Conditions d'utilisation")}
           </Link>
           <Link href="/confidentialite" className="text-muted-foreground transition-colors hover:text-primary">
-            Politique de confidentialité
+            {t("Politique de confidentialité")}
           </Link>
           <Link href="/conditions#paiements" className="text-muted-foreground transition-colors hover:text-primary">
-            Politique de remboursement
+            {t("Politique de remboursement")}
           </Link>
           <a
             href="mailto:contact@chapcam.com"
             className="text-muted-foreground transition-colors hover:text-primary"
           >
-            Contact juridique
+            {t("Contact juridique")}
           </a>
           <Link href="/charte#signaler" className="text-muted-foreground transition-colors hover:text-primary">
-            Signaler un abus
+            {t("Signaler un abus")}
           </Link>
         </nav>
       </div>

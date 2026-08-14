@@ -6,8 +6,10 @@ import {
   OTHER_COUNTRIES_COUNT,
   getPaymentOperators,
 } from "@/lib/geniuspay-countries"
+import { useT } from "@/lib/i18n/language-provider"
 
 export function AvailableCountriesSection() {
+  const t = useT()
   return (
     <section className="relative py-20 md:py-28">
       <div className="mx-auto max-w-6xl px-4">
@@ -19,14 +21,15 @@ export function AvailableCountriesSection() {
         >
           <div className="mb-10 text-center">
             <p className="mb-3 text-sm font-bold uppercase tracking-widest text-[#00ff88]">
-              Carte bancaire &amp; Mobile Money acceptes
+              {t("Carte bancaire & Mobile Money acceptes")}
             </p>
             <h3 className="text-balance text-2xl font-black text-white md:text-3xl">
-              Payez depuis {PRINCIPAL_COUNTRIES.length + OTHER_COUNTRIES_COUNT}+ pays
+              {t("Payez depuis")} {PRINCIPAL_COUNTRIES.length + OTHER_COUNTRIES_COUNT}+ {t("pays")}
             </h3>
             <p className="mx-auto mt-3 max-w-2xl text-pretty text-sm text-gray-400 md:text-base">
-              Le Mobile Money (Orange Money, MTN, Moov, Wave, M-Pesa, Airtel...) est disponible dans
-              les pays ci-dessous, et la carte bancaire Visa / Mastercard partout dans le monde.
+              {t(
+                "Le Mobile Money (Orange Money, MTN, Moov, Wave, M-Pesa, Airtel...) est disponible dans les pays ci-dessous, et la carte bancaire Visa / Mastercard partout dans le monde.",
+              )}
             </p>
             <div className="mt-5 flex items-center justify-center gap-3">
               <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white p-2.5 ring-1 ring-black/5">
@@ -110,10 +113,10 @@ export function AvailableCountriesSection() {
           <div className="mt-4 flex flex-col items-center justify-between gap-4 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-5 text-center sm:flex-row sm:text-left">
             <div>
               <p className="text-base font-bold text-white">
-                + {OTHER_COUNTRIES_COUNT} autres pays
+                + {OTHER_COUNTRIES_COUNT} {t("autres pays")}
               </p>
               <p className="mt-0.5 text-sm text-gray-400">
-                Carte bancaire Visa / Mastercard acceptee partout dans le monde.
+                {t("Carte bancaire Visa / Mastercard acceptee partout dans le monde.")}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">

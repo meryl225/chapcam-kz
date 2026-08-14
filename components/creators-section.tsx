@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Radio, Clapperboard, Gamepad2, Video, Bot, Building2 } from "lucide-react"
+import { useT } from "@/lib/i18n/language-provider"
 
 const CARDS = [
   {
@@ -43,6 +44,7 @@ const CARDS = [
 ]
 
 export function CreatorsSection() {
+  const t = useT()
   return (
     <section className="relative px-6 py-24">
       <div className="mx-auto max-w-6xl">
@@ -55,12 +57,12 @@ export function CreatorsSection() {
           className="mb-14 text-center"
         >
           <p className="mb-3 text-xs font-bold uppercase tracking-[0.25em] text-gray-500">
-            Pour tous les créateurs
+            {t("Pour tous les créateurs")}
           </p>
           <h2 className="text-balance text-4xl font-black tracking-tight text-white sm:text-5xl">
-            Une seule caméra. Des{" "}
+            {t("Une seule caméra. Des")}{" "}
             <span className="bg-gradient-to-r from-[#8b5cf6] to-[#00d4ff] bg-clip-text text-transparent">
-              possibilités infinies.
+              {t("possibilités infinies.")}
             </span>
           </h2>
         </motion.div>
@@ -89,8 +91,8 @@ export function CreatorsSection() {
                 >
                   <card.icon className="h-5 w-5" style={{ color: card.color }} />
                 </span>
-                <h3 className="mb-1.5 text-sm font-bold text-white">{card.title}</h3>
-                <p className="text-xs leading-relaxed text-gray-400">{card.desc}</p>
+                <h3 className="mb-1.5 text-sm font-bold text-white">{t(card.title)}</h3>
+                <p className="text-xs leading-relaxed text-gray-400">{t(card.desc)}</p>
               </div>
             </motion.div>
           ))}
