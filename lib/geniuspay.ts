@@ -33,6 +33,12 @@ function authHeaders(): Record<string, string> {
     'X-API-Key': process.env.GENIUSPAY_API_KEY || '',
     'X-API-Secret': process.env.GENIUSPAY_API_SECRET || '',
     'Content-Type': 'application/json',
+    // OBLIGATOIRE : l'API GeniusPay est en Laravel. Sans cet en-tete, la moindre
+    // erreur (ou meme un succes) est renvoyee sous forme de REDIRECTION HTML vers
+    // la page d'accueil au lieu de JSON — ce qui faisait echouer le parsing et
+    // renvoyait « Paiement par carte indisponible ». Avec Accept: application/json,
+    // Laravel repond systematiquement en JSON (201 a la creation).
+    Accept: 'application/json',
   }
 }
 
