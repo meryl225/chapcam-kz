@@ -441,7 +441,6 @@ export const translations: Record<string, string> = {
     "Bank card, Wave, Orange, MTN, Moov or Djamo",
   "via PayDunya": "via PayDunya",
   "ou en": "or in",
-  Cryptomonnaie: "Cryptocurrency",
   "via NOWPayments": "via NOWPayments",
   "Activation automatique de votre compte des que le paiement est confirme.":
     "Your account is activated automatically once the payment is confirmed.",
@@ -449,9 +448,6 @@ export const translations: Record<string, string> = {
   "avec ChapCam": "with ChapCam",
   "2 points = 1 seconde de transformation du visage et corps entier":
     "2 points = 1 second of full face and body transformation",
-  "Afficher les prix en": "Show prices in",
-  "Montants convertis a titre indicatif. Vous serez debite en FCFA (XOF).":
-    "Amounts shown are indicative. You will be charged in FCFA (XOF).",
   "Paiement 100% securise et instantane. Apres avoir paye, patientez quelques secondes sur la page PayDunya : votre compte est credite automatiquement des la confirmation.":
     "100% secure and instant payment. After paying, wait a few seconds on the PayDunya page: your account is credited automatically once confirmed.",
   "Nouveau · Sorti le 17 juillet": "New · Released July 17",
@@ -475,12 +471,8 @@ export const translations: Record<string, string> = {
     "Logo removal included, activated automatically",
   "Retrait du logo active par notre equipe": "Logo removal activated by our team",
   "Cadeau inclus": "Gift included",
-  "Changeur de voix i9 offert": "Free i9 voice changer",
-  "Boîtier + accessoires livrés": "Device + accessories shipped",
   points: "points",
-  "Studio Photo en Vidéo :": "Photo-to-Video Studio:",
   "{n} vidéos de 30s incluses": "{n} 30s videos included",
-  Recharger: "Top up",
   "Activation automatique et immediate apres confirmation du paiement.":
     "Automatic and immediate activation after payment confirmation.",
   "Retour au tableau de bord": "Back to dashboard",
@@ -510,4 +502,112 @@ export const translations: Record<string, string> = {
     "Unlimited custom live prompts + Enhance",
   "Support VIP prioritaire 24/7": "Priority 24/7 VIP support",
   "Acces anticipe a toutes les nouveautes": "Early access to all new features",
+
+  // ----- Modal de paiement partage -----
+  Fermer: "Close",
+  "Finalisez votre paiement": "Complete your payment",
+  "Paiement sécurisé et activation automatique après confirmation.":
+    "Secure payment and automatic activation after confirmation.",
+  "Pays de paiement": "Payment country",
+  "Rechercher un pays…": "Search a country…",
+  "Aucun pays trouvé.": "No country found.",
+  "Moyen de paiement": "Payment method",
+  "Sélectionnez votre méthode de paiement": "Select your payment method",
+  Recommandé: "Recommended",
+  "Paiement par carte bancaire": "Bank card payment",
+  "Paiement rapide et sécurisé": "Fast and secure payment",
+  "Autres moyens de paiement": "Other payment methods",
+  "Payer en cryptomonnaie": "Pay with cryptocurrency",
+  "Bitcoin, USDT, ETH et plus de 200 cryptos acceptées":
+    "Bitcoin, USDT, ETH and 200+ cryptos accepted",
+  "Récapitulatif de la commande": "Order summary",
+  "Plan sélectionné": "Selected plan",
+  Montant: "Amount",
+  "Frais de transaction": "Transaction fees",
+  "Total à payer": "Total to pay",
+  "Redirection…": "Redirecting…",
+  "Continuer le paiement": "Continue payment",
+  "Paiement sécurisé": "Secure payment",
+  "Activation automatique": "Automatic activation",
+  "Données cryptées": "Encrypted data",
+  "SSL 256 bits": "256-bit SSL",
+  "Conformité PCI DSS": "PCI DSS compliance",
+  "Paiements sécurisés": "Secure payments",
+  "Support 24/7": "24/7 support",
+  "Nous sommes là pour vous": "We're here for you",
+  "Vos données sont protégées par un chiffrement de niveau bancaire.":
+    "Your data is protected with bank-level encryption.",
+  "Plateforme vérifiée": "Verified platform",
+
+  // ----- Dashboard : accueil (hub) -----
+  "Compte gratuit": "Free account",
+  "Plan 1 jour": "1-day plan",
+  "Plan 30 jours": "30-day plan",
+  "Plan 90 jours": "90-day plan",
+  "Plan 365 jours": "365-day plan",
+  restantes: "left",
+  Bonjour: "Hello",
+  "Transforme ton apparence et ta voix en temps réel avec l’IA.":
+    "Transform your appearance and voice in real time with AI.",
+  "Lancer le Live Swap": "Start Live Swap",
+  "Tous les outils ChapCam": "All ChapCam tools",
+  "Choisis l’outil que tu souhaites utiliser.": "Choose the tool you want to use.",
+  "Utilisation rapide": "Quick usage",
+  "Swaps aujourd’hui": "Swaps today",
+  "Minutes restantes": "Minutes left",
+  "Avatars créés": "Avatars created",
+  "Temps aujourd’hui": "Time today",
+  "Passe en Pro et débloque tout ChapCam": "Go Pro and unlock all of ChapCam",
+  "Plus de crédits": "More credits",
+  "Qualité 4K": "4K quality",
+  "Avatars premium": "Premium avatars",
+  "Voir les offres": "See offers",
+
+  // ----- Dashboard : grille d'outils -----
+  Actif: "Active",
+  Nouveau: "New",
+  Ouvrir: "Open",
+  "Traduction de Vidéo": "Video Translation",
+
+  // ----- Dashboard : actions rapides (header) -----
+  "Actions rapides": "Quick actions",
+  "Ajoute des crédits de swap": "Add swap credits",
+  "Mes demandes": "My requests",
+  "Suivi de tes requêtes": "Track your requests",
+  "Demande d'installation": "Installation request",
+  "On installe ChapCam pour toi": "We install ChapCam for you",
+
+  // ----- Dashboard : promo ChapSim -----
+  "Numéros virtuels premium": "Premium virtual numbers",
+  "Reçois tes SMS OTP et achète des numéros & proxies dans le monde entier.":
+    "Receive your OTP SMS and buy numbers & proxies worldwide.",
+  "180+ pays": "180+ countries",
+  Proxies: "Proxies",
+  "Obtenir ChapSim": "Get ChapSim",
+
+  // ----- Dashboard : bannière support -----
+  "Besoin d’aide ?": "Need help?",
+  "Notre équipe t’assiste en direct sur WhatsApp ou par téléphone.":
+    "Our team helps you live on WhatsApp or by phone.",
+  Appeler: "Call",
+
+  // ----- Dashboard : carte de consentement -----
+  "Engagements d’utilisation confirmés": "Usage commitments confirmed",
+  "Vous avez accepté les conditions d’utilisation responsable de ChapCam.":
+    "You have accepted ChapCam's responsible use terms.",
+  "Revoir mes engagements": "Review my commitments",
+  "Utilisation responsable": "Responsible use",
+  "Merci de confirmer ces engagements avant d’utiliser ChapCam.":
+    "Please confirm these commitments before using ChapCam.",
+  "J'utilise uniquement des images pour lesquelles je dispose des droits nécessaires.":
+    "I only use images for which I hold the necessary rights.",
+  "Je ne vais pas usurper l'identité d'une personne réelle.":
+    "I will not impersonate a real person.",
+  "Je comprends que les utilisations frauduleuses sont interdites et peuvent entraîner la suspension du compte.":
+    "I understand that fraudulent use is prohibited and may result in account suspension.",
+  "Impossible d’enregistrer votre confirmation. Réessayez.":
+    "Unable to save your confirmation. Please try again.",
+  "Enregistrement…": "Saving…",
+  "Je confirme": "I confirm",
+  Annuler: "Cancel",
 }
