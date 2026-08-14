@@ -406,30 +406,6 @@ export function PricingSection() {
             </div>
           </div>
 
-          {/* Methodes par pays */}
-          <div className="mx-auto grid max-w-4xl grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {[
-              { country: "Cote d'Ivoire", methods: ["Orange Money", "MTN", "Moov", "Wave", "Djamo"] },
-              { country: "Benin", methods: ["Moov", "MTN"] },
-              { country: "Togo", methods: ["T-Money", "Moov"] },
-              { country: "Cameroun", methods: ["MTN"] },
-            ].map((item) => (
-              <div key={item.country} className="rounded-2xl border border-white/10 bg-[#111] p-5">
-                <p className="mb-3 text-sm font-bold uppercase tracking-wide text-[#00ff88]">{item.country}</p>
-                <div className="flex flex-wrap gap-2">
-                  {item.methods.map((m) => (
-                    <span
-                      key={m}
-                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-gray-300"
-                    >
-                      {m}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
           <p className="mt-8 text-center text-sm text-gray-500">
             Paiement securise via PayDunya (mobile money &amp; carte) ou Trybit (crypto)
           </p>
