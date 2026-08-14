@@ -13,7 +13,6 @@ import {
   Search,
   Check,
   Smartphone,
-  CreditCard,
   Bitcoin,
   ArrowRight,
 } from 'lucide-react'
@@ -301,7 +300,7 @@ export function usePaymentCheckout() {
                   <div className="flex flex-col gap-3">
                     {country.methods.map((m, i) => {
                       const selected = method?.id === m.id
-                      const Icon = m.kind === 'card' ? CreditCard : Smartphone
+                      const Icon = Smartphone
                       return (
                         <button
                           key={m.id}
@@ -313,15 +312,28 @@ export function usePaymentCheckout() {
                               : 'border-white/10 bg-white/[0.03] hover:border-white/20'
                           }`}
                         >
-                          <span
-                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                              m.kind === 'card'
-                                ? 'bg-gradient-to-br from-[#3b82f6]/20 to-[#1d4ed8]/10 text-[#60a5fa] ring-1 ring-inset ring-[#3b82f6]/20'
-                                : 'bg-gradient-to-br from-[#f59e0b]/20 to-[#d97706]/10 text-[#fbbf24] ring-1 ring-inset ring-[#f59e0b]/20'
-                            }`}
-                          >
-                            <Icon className="h-5 w-5" />
-                          </span>
+                          {m.kind === 'card' ? (
+                            <span className="flex shrink-0 items-center gap-1.5">
+                              <span className="flex h-11 w-12 items-center justify-center rounded-xl bg-white px-2">
+                                <img
+                                  src="/images/visa-logo.svg"
+                                  alt="Visa"
+                                  className="max-h-4 w-full object-contain"
+                                />
+                              </span>
+                              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white p-2">
+                                <img
+                                  src="/images/mastercard-logo.svg"
+                                  alt="Mastercard"
+                                  className="max-h-full max-w-full object-contain"
+                                />
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f59e0b]/20 to-[#d97706]/10 text-[#fbbf24] ring-1 ring-inset ring-[#f59e0b]/20">
+                              <Icon className="h-5 w-5" />
+                            </span>
+                          )}
                           <span className="min-w-0 flex-1">
                             <span className="flex flex-wrap items-center gap-2">
                               <span className="text-[15px] font-semibold text-white">{m.label}</span>
