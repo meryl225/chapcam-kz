@@ -29,11 +29,11 @@ export function AvailableCountriesSection() {
               les pays ci-dessous, et la carte bancaire Visa / Mastercard partout dans le monde.
             </p>
             <div className="mt-5 flex items-center justify-center gap-3">
-              <span className="flex h-11 w-16 items-center justify-center rounded-xl bg-white px-3">
-                <img src="/images/visa-logo.svg" alt="Visa" className="max-h-4 max-w-full object-contain" />
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white p-2.5 ring-1 ring-black/5">
+                <img src="/images/visa-logo.svg" alt="Visa" className="h-full w-full object-contain" />
               </span>
-              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white p-2">
-                <img src="/images/mastercard-logo.svg" alt="Mastercard" className="max-h-full max-w-full object-contain" />
+              <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-white p-2.5 ring-1 ring-black/5">
+                <img src="/images/mastercard-logo.svg" alt="Mastercard" className="h-full w-full object-contain" />
               </span>
             </div>
           </div>
@@ -68,18 +68,19 @@ export function AvailableCountriesSection() {
                         <span
                           key={operator.key}
                           title={operator.label}
-                          className="flex h-7 items-center justify-center rounded-md bg-white px-1.5"
+                          className="flex h-9 w-9 items-center justify-center rounded-lg bg-white p-1.5 ring-1 ring-black/5"
                         >
                           <img
                             src={operator.logo || "/placeholder.svg"}
                             alt={operator.label}
-                            className="max-h-4 w-auto max-w-[52px] object-contain"
+                            className="h-full w-full object-contain"
                           />
                         </span>
                       ) : (
                         <span
                           key={operator.key}
-                          className="rounded-md border border-white/10 bg-white/5 px-2 py-1 text-[11px] font-medium text-gray-300"
+                          title={operator.label}
+                          className="flex h-9 items-center justify-center rounded-lg border border-white/10 bg-white/[0.06] px-2.5 text-[11px] font-semibold text-gray-200"
                         >
                           {operator.label}
                         </span>
@@ -87,11 +88,17 @@ export function AvailableCountriesSection() {
                     )}
 
                     {/* Carte bancaire : disponible partout */}
-                    <span className="flex h-7 items-center justify-center rounded-md bg-white px-1.5">
-                      <img src="/images/visa-logo.svg" alt="Visa" className="max-h-3 w-auto max-w-[38px] object-contain" />
+                    <span
+                      title="Visa"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg bg-white p-1.5 ring-1 ring-black/5"
+                    >
+                      <img src="/images/visa-logo.svg" alt="Visa" className="h-full w-full object-contain" />
                     </span>
-                    <span className="flex h-7 w-7 items-center justify-center rounded-md bg-white p-1">
-                      <img src="/images/mastercard-logo.svg" alt="Mastercard" className="max-h-full max-w-full object-contain" />
+                    <span
+                      title="Mastercard"
+                      className="flex h-9 w-9 items-center justify-center rounded-lg bg-white p-1.5 ring-1 ring-black/5"
+                    >
+                      <img src="/images/mastercard-logo.svg" alt="Mastercard" className="h-full w-full object-contain" />
                     </span>
                   </div>
                 </div>
@@ -110,11 +117,11 @@ export function AvailableCountriesSection() {
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <span className="flex h-9 w-14 items-center justify-center rounded-lg bg-white px-2">
-                <img src="/images/visa-logo.svg" alt="Visa" className="max-h-3.5 max-w-full object-contain" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white p-2 ring-1 ring-black/5">
+                <img src="/images/visa-logo.svg" alt="Visa" className="h-full w-full object-contain" />
               </span>
-              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white p-1.5">
-                <img src="/images/mastercard-logo.svg" alt="Mastercard" className="max-h-full max-w-full object-contain" />
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white p-2 ring-1 ring-black/5">
+                <img src="/images/mastercard-logo.svg" alt="Mastercard" className="h-full w-full object-contain" />
               </span>
             </div>
           </div>
