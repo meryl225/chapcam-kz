@@ -53,7 +53,6 @@ export async function POST(request: NextRequest) {
     const countryCode = String(body.country || '').trim().toUpperCase()
     const methodId = String(body.method || '').trim()
     let gpCountry: string | null = null
-    let gpMethodToken: string | null = null
     if (countryCode || methodId) {
       const resolved = resolveGeniusPayMethod(countryCode, methodId)
       if (!resolved) {
@@ -62,8 +61,7 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         )
       }
-      gpCountry = resolved.country.code
-      gpMethodToken = resolved.method.gp
+      gpCountry = resolved.countryCode
     }
 
     // Determiner le produit (meme resolution que PayDunya/Trybit).
@@ -141,7 +139,6 @@ export async function POST(request: NextRequest) {
       fullName,
       phone: phoneNumber || undefined,
       country: gpCountry,
-      paymentMethod: gpMethodToken,
       metadata: {
         kind,
         product_id: productId,

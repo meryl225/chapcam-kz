@@ -1,104 +1,17 @@
 // ============================================================
-// Structure de donnees des paiements GeniusPay par pays.
-//   pays (ISO2) -> devise -> methodes disponibles -> token GeniusPay
+// Source de verite unique des pays de paiement (client + serveur).
 //
-// C'est la SOURCE DE VERITE unique cote client ET serveur. Pour ajouter /
-// retirer un pays ou une methode plus tard, il suffit de modifier ce fichier :
-// l'UI (selecteur de pays) et la route de creation s'y adaptent automatiquement.
+//   - Cote d'Ivoire / Benin / Togo  => PayDunya (paiements existants inchanges).
+//   - TOUS les autres pays du monde => GeniusPay.
+//       - carte bancaire (Visa / Mastercard) disponible PARTOUT,
+//       - + methodes Mobile Money specifiques pour les pays ou GeniusPay les
+//         supporte (Orange, Wave, MTN, M-Pesa, Airtel...).
 //
-// Champ `gp` = token `payment_method` envoye a l'API GeniusPay.
-//   - Une valeur (ex. 'orange_money') : token verifie comme ACCEPTE par l'API,
-//     qui renvoie une page de checkout hebergee.
-//   - null : l'API ne connait pas de token dedie pour cette methode (elle
-//     renvoie une 422 si on le force). On ouvre alors la checkout hebergee
-//     GENERIQUE, pre-hintee par le pays (customer.country), ou l'utilisateur
-//     choisit son operateur. => aucun echec possible.
-//
-// Filet de securite supplementaire cote serveur (lib/geniuspay.ts) : si l'appel
-// avec un token echoue malgre tout, on rejoue SANS token (checkout generique).
-// Le paiement ne peut donc jamais etre bloque par un mapping imparfait.
-//
-// NB : le montant est TOUJOURS envoye en XOF (choix produit) ; GeniusPay
-// convertit automatiquement vers la devise locale du payeur. La `currency` ci-
-// dessous est indicative (affichage / evolutions futures).
-// ============================================================
-
-export interface GeniusPayMethod {
-  /** Identifiant interne stable (utilise dans l'URL / metadata). */
-  id: string
-  /** Libelle affiche a l'utilisateur. */
-  label: string
-  /** Token `payment_method` GeniusPay, ou null pour checkout generique. */
-  gp: string | null
-}
-
-export interface GeniusPayCountry {
-  /** Code ISO 3166-1 alpha-2 (envoye comme customer.country). */
-  code: string
-  /** Nom affiche. */
-  name: string
-  /** Drapeau (emoji). */
-  flag: string
-  /** Devise locale (indicative). */
-  currency: string
-  /** Methodes de paiement disponibles pour ce pays. */
-  methods: GeniusPayMethod[]
-}
-
-// --- Presets de methodes (reutilisables) ---------------------------------
-// Tokens ACCEPTES par l'API (verifies empiriquement) : renvoient une checkout.
-const ORANGE: GeniusPayMethod = { id: 'orange_money', label: 'Orange Money', gp: 'orange_money' }
-const WAVE: GeniusPayMethod = { id: 'wave', label: 'Wave', gp: 'wave' }
-const MTN: GeniusPayMethod = { id: 'mtn_money', label: 'MTN Mobile Money', gp: 'mtn_money' }
-const MOOV: GeniusPayMethod = { id: 'moov_money', label: 'Moov Money', gp: 'moov_money' }
-const VISA: GeniusPayMethod = { id: 'visa', label: 'Visa', gp: 'card' }
-const MASTERCARD: GeniusPayMethod = { id: 'mastercard', label: 'Mastercard', gp: 'card' }
-
-// Methodes sans token dedie cote API => checkout generique (gp: null).
-const FREE_MONEY: GeniusPayMethod = { id: 'free_money', label: 'Free Money', gp: null }
-const MOBICASH: GeniusPayMethod = { id: 'mobicash', label: 'Mobicash', gp: null }
-const AIRTEL: GeniusPayMethod = { id: 'airtel_money', label: 'Airtel Money', gp: null }
-const MPESA: GeniusPayMethod = { id: 'mpesa', label: 'M-Pesa', gp: null }
-const VODACOM: GeniusPayMethod = { id: 'vodacom', label: 'Vodacom', gp: null }
-const VODAFONE: GeniusPayMethod = { id: 'vodafone_cash', label: 'Vodafone Cash', gp: null }
-const TIGO: GeniusPayMethod = { id: 'tigo_pesa', label: 'Tigo Pesa', gp: null }
-const ZAMTEL: GeniusPayMethod = { id: 'zamtel', label: 'Zamtel', gp: null }
-const MPESA_VODACOM: GeniusPayMethod = { id: 'mpesa_vodacom', label: 'M-Pesa (Vodacom)', gp: null }
-
-// --- Liste des pays -------------------------------------------------------
-// NB : Cote d'Ivoire, Benin et Togo NE figurent PAS ici : leurs paiements
-// existants (PayDunya) restent inchanges, comme demande.
-export const GENIUSPAY_COUNTRIES: GeniusPayCountry[] = [
-  { code: 'SN', name: 'Sénégal', flag: '🇸🇳', currency: 'XOF', methods: [FREE_MONEY, ORANGE, WAVE, VISA, MASTERCARD] },
-  { code: 'BF', name: 'Burkina Faso', flag: '🇧🇫', currency: 'XOF', methods: [ORANGE, WAVE, MOOV, MOBICASH, VISA, MASTERCARD] },
-  { code: 'ML', name: 'Mali', flag: '🇲🇱', currency: 'XOF', methods: [ORANGE, MOBICASH, VISA, MASTERCARD] },
-  { code: 'CM', name: 'Cameroun', flag: '🇨🇲', currency: 'XAF', methods: [MTN, ORANGE, VISA, MASTERCARD] },
-  { code: 'CG', name: 'République du Congo', flag: '🇨🇬', currency: 'XAF', methods: [AIRTEL, MTN, ORANGE, MPESA, VISA, MASTERCARD] },
-  { code: 'GA', name: 'Gabon', flag: '🇬🇦', currency: 'XAF', methods: [AIRTEL] },
-  { code: 'CD', name: 'RD Congo', flag: '🇨🇩', currency: 'CDF', methods: [AIRTEL, ORANGE, VODACOM] },
-  { code: 'KE', name: 'Kenya', flag: '🇰🇪', currency: 'KES', methods: [MPESA] },
-  { code: 'RW', name: 'Rwanda', flag: '🇷🇼', currency: 'RWF', methods: [AIRTEL, MTN] },
-  { code: 'UG', name: 'Ouganda', flag: '🇺🇬', currency: 'UGX', methods: [AIRTEL, MTN] },
-  { code: 'SL', name: 'Sierra Leone', flag: '🇸🇱', currency: 'SLE', methods: [ORANGE] },
-  { code: 'GN', name: 'Guinée', flag: '🇬🇳', currency: 'GNF', methods: [ORANGE, VISA, MASTERCARD] },
-  { code: 'NE', name: 'Niger', flag: '🇳🇪', currency: 'XOF', methods: [AIRTEL] },
-  { code: 'GW', name: 'Guinée-Bissau', flag: '🇬🇼', currency: 'XOF', methods: [ORANGE, VISA, MASTERCARD] },
-  { code: 'GH', name: 'Ghana', flag: '🇬🇭', currency: 'GHS', methods: [MTN, VODAFONE, VISA, MASTERCARD] },
-  { code: 'NG', name: 'Nigeria', flag: '🇳🇬', currency: 'NGN', methods: [MTN, VISA, MASTERCARD] },
-  { code: 'ZM', name: 'Zambie', flag: '🇿🇲', currency: 'ZMW', methods: [MTN, ZAMTEL] },
-  { code: 'TZ', name: 'Tanzanie', flag: '🇹🇿', currency: 'TZS', methods: [MPESA, AIRTEL, TIGO] },
-  { code: 'MW', name: 'Malawi', flag: '🇲🇼', currency: 'MWK', methods: [AIRTEL] },
-  { code: 'MZ', name: 'Mozambique', flag: '🇲🇿', currency: 'MZN', methods: [MPESA_VODACOM] },
-]
-
-// ============================================================
-// Modele UNIFIE pour le selecteur de pays du modal de paiement.
-//   - Cote d'Ivoire / Benin / Togo => PayDunya (paiements existants inchanges).
-//   - Tous les autres pays          => GeniusPay (catalogue ci-dessus).
-// Le modal itere sur PAYMENT_COUNTRIES ; selon `provider`, il route vers le bon
-// endpoint serveur. Pour PayDunya le token de methode est cosmetique (la page
-// PayDunya hebergee affiche tous les operateurs) ; pour GeniusPay on transmet
-// pays + methode a /api/payment/geniuspay/create.
+// Le modal itere sur PAYMENT_COUNTRIES et route selon `provider`. Le montant est
+// TOUJOURS envoye en XOF (choix produit) ; GeniusPay convertit vers la devise
+// locale du payeur. On n'envoie JAMAIS `payment_method` a l'API GeniusPay (cela
+// forcerait Wave) : la methode choisie sert d'indication (metadata) et la page
+// hebergee, pre-filtree par le pays, laisse le client finaliser.
 // ============================================================
 
 export type PaymentProvider = 'paydunya' | 'geniuspay'
@@ -111,18 +24,140 @@ export interface UICountryMethod {
 }
 
 export interface UICountry {
-  code: string
+  code: string // ISO 3166-1 alpha-2
   name: string
   flag: string
   provider: PaymentProvider
   methods: UICountryMethod[]
 }
 
+// --- Drapeau emoji calcule depuis le code ISO2 (pas de hardcode) ----------
+function flagOf(code: string): string {
+  return code
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+    .replace(/./g, (c) => String.fromCodePoint(127397 + c.charCodeAt(0)))
+}
+
+// --- Methode carte, disponible pour tous les pays -------------------------
+const CARD: UICountryMethod = {
+  id: 'card',
+  label: 'Carte bancaire',
+  sublabel: 'Visa / Mastercard',
+  kind: 'card',
+}
+
+const mm = (id: string, label: string): UICountryMethod => ({ id, label, kind: 'mobile' })
+
+// --- Mobile Money par pays (uniquement la ou GeniusPay le supporte) -------
+// L'ordre definit l'ordre d'affichage des methodes ; la carte est ajoutee a la
+// fin automatiquement.
+const MOBILE_MONEY: Record<string, UICountryMethod[]> = {
+  SN: [mm('free_money', 'Free Money'), mm('orange_money', 'Orange Money'), mm('wave', 'Wave')],
+  BF: [mm('orange_money', 'Orange Money'), mm('wave', 'Wave'), mm('moov_money', 'Moov Money'), mm('mobicash', 'Mobicash')],
+  ML: [mm('orange_money', 'Orange Money'), mm('mobicash', 'Mobicash')],
+  CM: [mm('mtn_money', 'MTN Mobile Money'), mm('orange_money', 'Orange Money')],
+  CG: [mm('airtel_money', 'Airtel Money'), mm('mtn_money', 'MTN Mobile Money'), mm('orange_money', 'Orange Money'), mm('mpesa', 'M-Pesa')],
+  GA: [mm('airtel_money', 'Airtel Money')],
+  CD: [mm('airtel_money', 'Airtel Money'), mm('orange_money', 'Orange Money'), mm('vodacom', 'Vodacom')],
+  KE: [mm('mpesa', 'M-Pesa')],
+  RW: [mm('airtel_money', 'Airtel Money'), mm('mtn_money', 'MTN Mobile Money')],
+  UG: [mm('airtel_money', 'Airtel Money'), mm('mtn_money', 'MTN Mobile Money')],
+  SL: [mm('orange_money', 'Orange Money')],
+  GN: [mm('orange_money', 'Orange Money')],
+  NE: [mm('airtel_money', 'Airtel Money')],
+  GW: [mm('orange_money', 'Orange Money')],
+  GH: [mm('mtn_money', 'MTN Mobile Money'), mm('vodafone_cash', 'Vodafone Cash')],
+  NG: [mm('mtn_money', 'MTN Mobile Money')],
+  ZM: [mm('mtn_money', 'MTN Mobile Money'), mm('zamtel', 'Zamtel')],
+  TZ: [mm('mpesa', 'M-Pesa'), mm('airtel_money', 'Airtel Money'), mm('tigo_pesa', 'Tigo Pesa')],
+  MW: [mm('airtel_money', 'Airtel Money')],
+  MZ: [mm('mpesa_vodacom', 'M-Pesa (Vodacom)')],
+}
+
+// Pays confies a PayDunya : NE PAS les router vers GeniusPay.
+const PAYDUNYA_CODES = new Set(['CI', 'BJ', 'TG'])
+
+// Ordre de "mise en avant" des pays Mobile Money (affiches en tete de liste).
+const FEATURED_ORDER = [
+  'SN', 'BF', 'ML', 'CM', 'GA', 'CG', 'CD', 'GN', 'GW', 'NE',
+  'GH', 'NG', 'KE', 'RW', 'UG', 'TZ', 'ZM', 'MW', 'MZ', 'SL',
+]
+
+// --- Liste complete des pays du monde (ISO2 + nom francais) ---------------
+// Utilisee pour offrir la carte bancaire PARTOUT.
+const WORLD: Array<[string, string]> = [
+  ['AF', 'Afghanistan'], ['ZA', 'Afrique du Sud'], ['AL', 'Albanie'], ['DZ', 'Algérie'],
+  ['DE', 'Allemagne'], ['AD', 'Andorre'], ['AO', 'Angola'], ['AG', 'Antigua-et-Barbuda'],
+  ['SA', 'Arabie saoudite'], ['AR', 'Argentine'], ['AM', 'Arménie'], ['AU', 'Australie'],
+  ['AT', 'Autriche'], ['AZ', 'Azerbaïdjan'], ['BS', 'Bahamas'], ['BH', 'Bahreïn'],
+  ['BD', 'Bangladesh'], ['BB', 'Barbade'], ['BE', 'Belgique'], ['BZ', 'Belize'],
+  ['BJ', 'Bénin'], ['BT', 'Bhoutan'], ['BY', 'Biélorussie'], ['BO', 'Bolivie'],
+  ['BA', 'Bosnie-Herzégovine'], ['BW', 'Botswana'], ['BR', 'Brésil'], ['BN', 'Brunei'],
+  ['BG', 'Bulgarie'], ['BF', 'Burkina Faso'], ['BI', 'Burundi'], ['KH', 'Cambodge'],
+  ['CM', 'Cameroun'], ['CA', 'Canada'], ['CV', 'Cap-Vert'], ['CL', 'Chili'],
+  ['CN', 'Chine'], ['CY', 'Chypre'], ['CO', 'Colombie'], ['KM', 'Comores'],
+  ['CG', 'Congo'], ['CD', 'Congo (RDC)'], ['KR', 'Corée du Sud'], ['KP', 'Corée du Nord'],
+  ['CR', 'Costa Rica'], ['CI', "Côte d'Ivoire"], ['HR', 'Croatie'], ['CU', 'Cuba'],
+  ['DK', 'Danemark'], ['DJ', 'Djibouti'], ['DM', 'Dominique'], ['EG', 'Égypte'],
+  ['AE', 'Émirats arabes unis'], ['EC', 'Équateur'], ['ER', 'Érythrée'], ['ES', 'Espagne'],
+  ['EE', 'Estonie'], ['SZ', 'Eswatini'], ['US', 'États-Unis'], ['ET', 'Éthiopie'],
+  ['FJ', 'Fidji'], ['FI', 'Finlande'], ['FR', 'France'], ['GA', 'Gabon'],
+  ['GM', 'Gambie'], ['GE', 'Géorgie'], ['GH', 'Ghana'], ['GR', 'Grèce'],
+  ['GD', 'Grenade'], ['GT', 'Guatemala'], ['GN', 'Guinée'], ['GW', 'Guinée-Bissau'],
+  ['GQ', 'Guinée équatoriale'], ['GY', 'Guyana'], ['HT', 'Haïti'], ['HN', 'Honduras'],
+  ['HU', 'Hongrie'], ['IN', 'Inde'], ['ID', 'Indonésie'], ['IQ', 'Irak'],
+  ['IR', 'Iran'], ['IE', 'Irlande'], ['IS', 'Islande'], ['IL', 'Israël'],
+  ['IT', 'Italie'], ['JM', 'Jamaïque'], ['JP', 'Japon'], ['JO', 'Jordanie'],
+  ['KZ', 'Kazakhstan'], ['KE', 'Kenya'], ['KG', 'Kirghizistan'], ['KI', 'Kiribati'],
+  ['KW', 'Koweït'], ['LA', 'Laos'], ['LS', 'Lesotho'], ['LV', 'Lettonie'],
+  ['LB', 'Liban'], ['LR', 'Liberia'], ['LY', 'Libye'], ['LI', 'Liechtenstein'],
+  ['LT', 'Lituanie'], ['LU', 'Luxembourg'], ['MK', 'Macédoine du Nord'], ['MG', 'Madagascar'],
+  ['MY', 'Malaisie'], ['MW', 'Malawi'], ['MV', 'Maldives'], ['ML', 'Mali'],
+  ['MT', 'Malte'], ['MA', 'Maroc'], ['MH', 'Îles Marshall'], ['MU', 'Maurice'],
+  ['MR', 'Mauritanie'], ['MX', 'Mexique'], ['FM', 'Micronésie'], ['MD', 'Moldavie'],
+  ['MC', 'Monaco'], ['MN', 'Mongolie'], ['ME', 'Monténégro'], ['MZ', 'Mozambique'],
+  ['MM', 'Myanmar'], ['NA', 'Namibie'], ['NR', 'Nauru'], ['NP', 'Népal'],
+  ['NI', 'Nicaragua'], ['NE', 'Niger'], ['NG', 'Nigeria'], ['NO', 'Norvège'],
+  ['NZ', 'Nouvelle-Zélande'], ['OM', 'Oman'], ['UG', 'Ouganda'], ['UZ', 'Ouzbékistan'],
+  ['PK', 'Pakistan'], ['PW', 'Palaos'], ['PS', 'Palestine'], ['PA', 'Panama'],
+  ['PG', 'Papouasie-Nouvelle-Guinée'], ['PY', 'Paraguay'], ['NL', 'Pays-Bas'], ['PE', 'Pérou'],
+  ['PH', 'Philippines'], ['PL', 'Pologne'], ['PT', 'Portugal'], ['QA', 'Qatar'],
+  ['RO', 'Roumanie'], ['GB', 'Royaume-Uni'], ['RU', 'Russie'], ['RW', 'Rwanda'],
+  ['KN', 'Saint-Kitts-et-Nevis'], ['SM', 'Saint-Marin'], ['VC', 'Saint-Vincent-et-les-Grenadines'],
+  ['LC', 'Sainte-Lucie'], ['SB', 'Îles Salomon'], ['SV', 'Salvador'], ['WS', 'Samoa'],
+  ['ST', 'Sao Tomé-et-Principe'], ['SN', 'Sénégal'], ['RS', 'Serbie'], ['SC', 'Seychelles'],
+  ['SL', 'Sierra Leone'], ['SG', 'Singapour'], ['SK', 'Slovaquie'], ['SI', 'Slovénie'],
+  ['SO', 'Somalie'], ['SD', 'Soudan'], ['SS', 'Soudan du Sud'], ['LK', 'Sri Lanka'],
+  ['SE', 'Suède'], ['CH', 'Suisse'], ['SR', 'Suriname'], ['SY', 'Syrie'],
+  ['TJ', 'Tadjikistan'], ['TZ', 'Tanzanie'], ['TD', 'Tchad'], ['CZ', 'Tchéquie'],
+  ['TH', 'Thaïlande'], ['TL', 'Timor oriental'], ['TG', 'Togo'], ['TO', 'Tonga'],
+  ['TT', 'Trinité-et-Tobago'], ['TN', 'Tunisie'], ['TM', 'Turkménistan'], ['TR', 'Turquie'],
+  ['TV', 'Tuvalu'], ['UA', 'Ukraine'], ['UY', 'Uruguay'], ['VU', 'Vanuatu'],
+  ['VA', 'Vatican'], ['VE', 'Venezuela'], ['VN', 'Viêt Nam'], ['YE', 'Yémen'],
+  ['ZM', 'Zambie'], ['ZW', 'Zimbabwe'],
+]
+
+const NAME_BY_CODE: Record<string, string> = Object.fromEntries(WORLD)
+
+// Construit une entree pays GeniusPay : Mobile Money (si dispo) + carte.
+function geniusCountry(code: string): UICountry {
+  const mobile = MOBILE_MONEY[code] || []
+  return {
+    code,
+    name: NAME_BY_CODE[code] || code,
+    flag: flagOf(code),
+    provider: 'geniuspay',
+    methods: [...mobile, CARD],
+  }
+}
+
+// --- Pays PayDunya (mobile money local + carte) ---------------------------
 const PAYDUNYA_COUNTRIES: UICountry[] = [
   {
     code: 'CI',
     name: "Côte d'Ivoire",
-    flag: '🇨🇮',
+    flag: flagOf('CI'),
     provider: 'paydunya',
     methods: [
       { id: 'mobile', label: 'Mobile Money', sublabel: 'Wave, Orange, MTN, Moov, Djamo', kind: 'mobile' },
@@ -132,7 +167,7 @@ const PAYDUNYA_COUNTRIES: UICountry[] = [
   {
     code: 'BJ',
     name: 'Bénin',
-    flag: '🇧🇯',
+    flag: flagOf('BJ'),
     provider: 'paydunya',
     methods: [
       { id: 'mobile', label: 'Mobile Money', sublabel: 'MTN, Moov', kind: 'mobile' },
@@ -142,7 +177,7 @@ const PAYDUNYA_COUNTRIES: UICountry[] = [
   {
     code: 'TG',
     name: 'Togo',
-    flag: '🇹🇬',
+    flag: flagOf('TG'),
     provider: 'paydunya',
     methods: [
       { id: 'mobile', label: 'Mobile Money', sublabel: 'Moov, T-Money', kind: 'mobile' },
@@ -151,41 +186,46 @@ const PAYDUNYA_COUNTRIES: UICountry[] = [
   },
 ]
 
-// Liste complete affichee dans le selecteur (PayDunya d'abord, puis GeniusPay).
+// Pays GeniusPay mis en avant (Mobile Money), dans l'ordre defini.
+const FEATURED_GENIUSPAY: UICountry[] = FEATURED_ORDER.filter((c) => !PAYDUNYA_CODES.has(c)).map(
+  geniusCountry,
+)
+
+// Tous les autres pays du monde (carte bancaire), tries par nom.
+const featuredSet = new Set(FEATURED_ORDER)
+const OTHER_GENIUSPAY: UICountry[] = WORLD.map(([code]) => code)
+  .filter((code) => !PAYDUNYA_CODES.has(code) && !featuredSet.has(code))
+  .map(geniusCountry)
+  .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+
+// Liste finale affichee dans le selecteur.
+//   1) PayDunya (CI, BJ, TG)
+//   2) Pays GeniusPay Mobile Money (mis en avant)
+//   3) Tous les autres pays (carte bancaire), ordre alphabetique.
 export const PAYMENT_COUNTRIES: UICountry[] = [
   ...PAYDUNYA_COUNTRIES,
-  ...GENIUSPAY_COUNTRIES.map<UICountry>((c) => ({
-    code: c.code,
-    name: c.name,
-    flag: c.flag,
-    provider: 'geniuspay',
-    methods: c.methods.map<UICountryMethod>((m) => ({
-      id: m.id,
-      label: m.label,
-      kind: m.id === 'visa' || m.id === 'mastercard' ? 'card' : 'mobile',
-    })),
-  })),
+  ...FEATURED_GENIUSPAY,
+  ...OTHER_GENIUSPAY,
 ]
 
-// --- Helpers (utilises par la route serveur) ------------------------------
-export function getGeniusPayCountry(code: string | null | undefined): GeniusPayCountry | null {
-  if (!code) return null
-  const c = code.trim().toUpperCase()
-  return GENIUSPAY_COUNTRIES.find((x) => x.code === c) || null
-}
+// Index rapide (utilise cote serveur pour la validation).
+const COUNTRY_BY_CODE: Record<string, UICountry> = Object.fromEntries(
+  PAYMENT_COUNTRIES.map((c) => [c.code, c]),
+)
 
 /**
- * Resout (pays, methode) -> token GeniusPay a envoyer.
- * Retourne null si le couple est invalide (l'appelant doit refuser) ou si la
- * methode n'a pas de token dedie (=> checkout generique).
+ * Valide le couple (pays, methode) recu du client contre la liste de verite.
+ * Retourne le code pays normalise + l'id de methode, ou null si invalide.
+ * (Le token GeniusPay n'est plus utilise : on n'envoie jamais payment_method.)
  */
 export function resolveGeniusPayMethod(
   countryCode: string | null | undefined,
   methodId: string | null | undefined,
-): { country: GeniusPayCountry; method: GeniusPayMethod } | null {
-  const country = getGeniusPayCountry(countryCode)
+): { countryCode: string; methodId: string; methodLabel: string } | null {
+  if (!countryCode) return null
+  const country = COUNTRY_BY_CODE[countryCode.trim().toUpperCase()]
   if (!country) return null
   const method = country.methods.find((m) => m.id === methodId)
   if (!method) return null
-  return { country, method }
+  return { countryCode: country.code, methodId: method.id, methodLabel: method.label }
 }
