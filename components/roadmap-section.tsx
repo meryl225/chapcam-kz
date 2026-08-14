@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { User, Smile, Mic, Star, Infinity, Shield, Users, Zap, Heart } from "lucide-react"
+import { useT } from "@/lib/i18n/language-provider"
 
 const phases = [
   {
@@ -239,6 +240,7 @@ function GlowingRing({
 }
 
 export function RoadmapSection() {
+  const t = useT()
   const [selectedPhase, setSelectedPhase] = useState(0)
   const currentPhase = phases[selectedPhase]
 
@@ -261,10 +263,10 @@ export function RoadmapSection() {
         >
           <p className="text-gray-400 text-sm tracking-widest mb-2">ROADMAP</p>
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
-            <span className="text-[#00d4ff]">5 PHASES</span> POUR TRANSFORMER
+            <span className="text-[#00d4ff]">{t("5 PHASES")}</span> {t("POUR TRANSFORMER")}
           </h2>
           <p className="text-gray-400 text-sm tracking-wide">
-            TON IDENTITE, TON STYLE, TON MONDE.
+            {t("TON IDENTITE, TON STYLE, TON MONDE.")}
           </p>
         </motion.div>
 
@@ -285,7 +287,7 @@ export function RoadmapSection() {
                 }`}
                 style={{ color: selectedPhase === index ? phase.color : undefined }}
               >
-                {phase.phase}
+                {t(phase.phase)}
               </p>
             </div>
           ))}

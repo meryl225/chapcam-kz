@@ -5,8 +5,11 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
 import { ChevronDown, MessageCircle } from "lucide-react"
+import { LanguageToggle } from "@/components/language-toggle"
+import { useT } from "@/lib/i18n/language-provider"
 
 export function Header() {
+  const t = useT()
   return (
     <motion.header 
       initial={{ y: -100, opacity: 0 }}
@@ -38,7 +41,7 @@ export function Header() {
                 <path d="M15 5L19 3V11L15 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </span>
-            <span className="text-xs font-medium bg-gradient-to-r from-[#00d4ff] via-[#8b5cf6] to-[#e91e8c] bg-clip-text text-transparent tracking-wider">SWAP EN TEMPS REEL</span>
+            <span className="text-xs font-medium bg-gradient-to-r from-[#00d4ff] via-[#8b5cf6] to-[#e91e8c] bg-clip-text text-transparent tracking-wider">{t("SWAP EN TEMPS REEL")}</span>
           </div>
         </Link>
 
@@ -57,7 +60,7 @@ export function Header() {
               href={item.href}
               className="whitespace-nowrap text-white/70 hover:text-white transition-colors text-sm font-medium relative group inline-flex items-center gap-1"
             >
-              {item.name}
+              {t(item.name)}
               {item.caret && <ChevronDown className="w-3.5 h-3.5 opacity-60" />}
               <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] group-hover:w-full transition-all duration-300" />
             </Link>
@@ -85,6 +88,9 @@ export function Header() {
 
         {/* CTA Buttons */}
         <div className="flex shrink-0 items-center gap-2 xl:gap-3">
+          {/* Bascule de langue FR / EN */}
+          <LanguageToggle />
+
           {/* Communaute - Facebook, TikTok & Instagram */}
           <div className="hidden items-center gap-1.5 lg:flex">
             <a
@@ -145,7 +151,7 @@ export function Header() {
               variant="ghost"
               className="rounded-full border border-white/10 bg-transparent px-5 py-2 font-medium text-white transition-colors hover:border-white/20 hover:bg-white/5"
             >
-              Se connecter
+              {t("Se connecter")}
             </Button>
           </Link>
 
@@ -153,7 +159,7 @@ export function Header() {
           <Link href="/auth/sign-up">
             <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Button className="rounded-full border-0 bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] px-5 py-2 font-semibold text-white shadow-[0_0_25px_-4px_rgba(139,92,246,0.6)] transition-all hover:brightness-110 hover:shadow-[0_0_32px_-4px_rgba(0,212,255,0.7)]">
-                {"S'inscrire gratuitement"}
+                {t("S'inscrire gratuitement")}
               </Button>
             </motion.div>
           </Link>

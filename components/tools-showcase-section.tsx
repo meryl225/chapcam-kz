@@ -4,6 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { ArrowRight, Zap, ImageIcon, Film, Languages } from "lucide-react"
+import { useT } from "@/lib/i18n/language-provider"
 
 type Tool = {
   title: string
@@ -60,6 +61,7 @@ const tools: Tool[] = [
 ]
 
 export function ToolsShowcaseSection() {
+  const t = useT()
   return (
     <section id="outils" className="relative py-24 px-6 overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0d1117]/60 to-transparent" />
@@ -74,17 +76,17 @@ export function ToolsShowcaseSection() {
         >
           <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#00d4ff]/20 to-[#8b5cf6]/20 border border-[#00d4ff]/30 px-6 py-2 rounded-full mb-6">
             <span className="text-[#00d4ff] text-sm font-semibold tracking-wider uppercase">
-              Nos outils IA
+              {t("Nos outils IA")}
             </span>
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white text-balance">
-            Une suite complete pour{" "}
+            {t("Une suite complete pour")}{" "}
             <span className="bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] bg-clip-text text-transparent">
-              creer sans limites
+              {t("creer sans limites")}
             </span>
           </h2>
           <p className="mt-4 text-gray-400 max-w-2xl mx-auto text-pretty">
-            Change ton visage, anime tes photos et traduis tes videos : tout ce qu'il te faut en un seul endroit.
+            {t("Change ton visage, anime tes photos et traduis tes videos : tout ce qu'il te faut en un seul endroit.")}
           </p>
         </motion.div>
 
@@ -140,21 +142,21 @@ export function ToolsShowcaseSection() {
                     className="rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide backdrop-blur-sm"
                     style={{ color: tool.color, backgroundColor: `${tool.color}26` }}
                   >
-                    {tool.badge}
+                    {t(tool.badge)}
                   </span>
                 </div>
 
                 {/* Titre + description + CTA en bas */}
                 <div className="absolute inset-x-0 bottom-0 p-6">
-                  <h3 className="text-2xl font-bold text-white text-balance">{tool.title}</h3>
+                  <h3 className="text-2xl font-bold text-white text-balance">{t(tool.title)}</h3>
                   <p className="mt-2 max-w-md text-sm leading-relaxed text-gray-300 text-pretty">
-                    {tool.description}
+                    {t(tool.description)}
                   </p>
                   <span
                     className="mt-4 inline-flex items-center gap-2 text-sm font-semibold transition-colors"
                     style={{ color: tool.color }}
                   >
-                    Essayer maintenant
+                    {t("Essayer maintenant")}
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </span>
                 </div>

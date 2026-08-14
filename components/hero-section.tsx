@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { StreamStudio } from "@/components/stream-studio"
 import { MonitorFrame } from "@/components/monitor-frame"
 import { motion, AnimatePresence } from "framer-motion"
+import { useT } from "@/lib/i18n/language-provider"
 
 const FLAGS = [
   { src: "/images/flag-cote-divoire.png", alt: "Cote d'Ivoire" },
@@ -35,6 +36,7 @@ const PLATFORMS = [
 ]
 
 export function HeroSection() {
+  const t = useT()
   const [demoOpen, setDemoOpen] = useState(false)
 
   // Fermeture de la démo avec la touche Échap + blocage du scroll de fond
@@ -77,28 +79,29 @@ export function HeroSection() {
           {/* Eyebrow */}
           <span className="group inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-300 shadow-[0_2px_12px_-4px_rgba(0,212,255,0.25)] backdrop-blur-md transition-all duration-300 hover:border-[#00d4ff]/40 hover:bg-white/[0.08] hover:shadow-[0_4px_20px_-4px_rgba(0,212,255,0.5)]">
             <TrendingUp className="h-3.5 w-3.5 text-[#00d4ff] transition-transform duration-300 group-hover:scale-110" />
-            N°1 des outils de transformation en direct
+            {t("N°1 des outils de transformation en direct")}
           </span>
 
           {/* Titre */}
           <h1 className="text-balance text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl xl:text-7xl">
-            La caméra IA
+            {t("La caméra IA")}
             <br />
-            des{" "}
+            {t("des")}{" "}
             <span className="bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] bg-clip-text text-transparent">
-              créateurs
+              {t("créateurs")}
             </span>
             <br />
             &amp;{" "}
             <span className="bg-gradient-to-r from-[#8b5cf6] to-[#e91e8c] bg-clip-text text-transparent">
-              gamers.
+              {t("gamers.")}
             </span>
           </h1>
 
           {/* Sous-titre */}
           <p className="max-w-xl text-pretty text-lg leading-relaxed text-gray-400">
-            Change de visage et de corps en temps réel pour tes streams, vidéos, appels et réseaux
-            sociaux. Garde tes mouvements. Reste toi, deviens quelqu&apos;un d&apos;autre.
+            {t(
+              "Change de visage et de corps en temps réel pour tes streams, vidéos, appels et réseaux sociaux. Garde tes mouvements. Reste toi, deviens quelqu'un d'autre.",
+            )}
           </p>
 
         {/* Badges */}
@@ -117,7 +120,7 @@ export function HeroSection() {
                 >
                   <Icon className="h-3.5 w-3.5" />
                 </span>
-                {b.label}
+                {t(b.label)}
                 <Check className="h-3.5 w-3.5 text-[#00ff88] opacity-80" />
               </span>
             )
@@ -128,7 +131,7 @@ export function HeroSection() {
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <Link href="/auth/sign-up">
               <Button className="group h-14 rounded-2xl bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] px-8 text-base font-bold text-white transition-all hover:brightness-110 hover:shadow-[0_0_40px_rgba(0,212,255,0.4)]">
-                Commencer gratuitement
+                {t("Commencer gratuitement")}
                 <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
               </Button>
             </Link>
@@ -141,7 +144,7 @@ export function HeroSection() {
               <span className="mr-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/10">
                 <Play className="h-3.5 w-3.5 fill-current" />
               </span>
-              Voir la démo
+              {t("Voir la démo")}
             </Button>
           </div>
 
@@ -167,7 +170,7 @@ export function HeroSection() {
                 ))}
               </div>
               <p className="text-sm text-gray-400">
-                <span className="font-bold text-white">+15 000 créateurs</span> déjà inscrits
+                <span className="font-bold text-white">{t("+15 000 créateurs")}</span> {t("déjà inscrits")}
               </p>
             </div>
           </div>
@@ -175,7 +178,7 @@ export function HeroSection() {
           {/* Fonctionne avec */}
           <div className="pt-2">
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-              Fonctionne avec
+              {t("Fonctionne avec")}
             </p>
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5">
               {PLATFORMS.map((p) => (
@@ -217,7 +220,7 @@ export function HeroSection() {
                 />
               ))}
             </span>
-            Disponible en Afrique de l&apos;Ouest &amp; Centrale
+            {t("Disponible en Afrique de l'Ouest & Centrale")}
           </div>
         </motion.div>
 
@@ -244,7 +247,7 @@ export function HeroSection() {
           >
             <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/80 backdrop-blur-sm">
               <Sparkles className="h-3 w-3 text-[#8b5cf6]" />
-              Partenaire
+              {t("Partenaire")}
             </span>
             <Image
               src="/chapsim/banner.png"
@@ -257,10 +260,10 @@ export function HeroSection() {
             <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-[#0b1020]/90 px-4 py-3 backdrop-blur-sm">
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-white">ChapSim</p>
-                <p className="truncate text-xs text-gray-400">Numéros virtuels, SMS OTP &amp; proxies premium</p>
+                <p className="truncate text-xs text-gray-400">{t("Numéros virtuels, SMS OTP & proxies premium")}</p>
               </div>
               <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_-4px_rgba(139,92,246,0.7)] transition-all duration-300 group-hover:brightness-110">
-                Obtenir
+                {t("Obtenir")}
                 <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
               </span>
             </div>
