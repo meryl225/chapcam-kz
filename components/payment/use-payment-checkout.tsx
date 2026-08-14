@@ -2,11 +2,11 @@
 
 import { useCallback, useState, type ReactNode } from 'react'
 import Image from 'next/image'
-import { ChevronRight, CreditCard, Loader2, ShieldCheck, X, Zap, Headphones, Lock, BadgeCheck, Plus } from 'lucide-react'
+import { ChevronRight, CreditCard, Loader2, ShieldCheck, X, Zap, Headphones, Lock, BadgeCheck, Plus, Globe } from 'lucide-react'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 
-export type PaymentMethod = 'paydunya' | 'trybit' | 'nowpayments'
+export type PaymentMethod = 'paydunya' | 'trybit' | 'nowpayments' | 'geniuspay'
 
 interface StartOptions {
   phoneNumber?: string
@@ -24,6 +24,7 @@ const ENDPOINTS: Record<PaymentMethod, string> = {
   paydunya: '/api/payment/create',
   trybit: '/api/payment/trybit/create',
   nowpayments: '/api/payment/nowpayments/create',
+  geniuspay: '/api/payment/geniuspay/create',
 }
 
 // Hook partage de paiement ChapCam. Presente un choix de methode
@@ -190,6 +191,38 @@ export function usePaymentCheckout() {
                     </span>
                   </span>
                   <ChevronRight className="h-5 w-5 shrink-0 text-white/30 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#60a5fa]" />
+                </button>
+
+                {/* GeniusPay : carte bancaire internationale + mobile money */}
+                <button
+                  onClick={() => pay('geniuspay')}
+                  disabled={!!pendingKey}
+                  className="group flex items-center gap-4 rounded-[20px] border border-white/10 bg-gradient-to-br from-[#111726] to-[#0d1220] p-4 text-left transition-all duration-200 hover:border-[#06b6d4]/60 hover:shadow-[0_10px_40px_-12px_rgba(6,182,212,0.4)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#06b6d4] disabled:opacity-60"
+                >
+                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#06b6d4]/20 to-[#0e7490]/15 text-[#22d3ee] ring-1 ring-inset ring-[#06b6d4]/20">
+                    {pendingMethod === 'geniuspay' ? (
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    ) : (
+                      <Globe className="h-6 w-6" />
+                    )}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="text-base font-semibold text-white">Carte bancaire internationale</span>
+                    </span>
+                    <span className="mt-1 block text-sm text-white/45">
+                      Visa, Mastercard et mobile money — paiement hors zone CFA
+                    </span>
+                    <span className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                      <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/70 ring-1 ring-inset ring-white/10">
+                        Visa
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-md bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white/70 ring-1 ring-inset ring-white/10">
+                        Mastercard
+                      </span>
+                    </span>
+                  </span>
+                  <ChevronRight className="h-5 w-5 shrink-0 text-white/30 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-[#22d3ee]" />
                 </button>
 
                 {/* NOWPayments : crypto (seule option crypto active) */}
