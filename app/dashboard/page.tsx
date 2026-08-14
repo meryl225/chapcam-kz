@@ -7,6 +7,7 @@ import { ConsentCard } from '@/components/dashboard/consent-card'
 import { SupportBanner } from '@/components/dashboard/support-banner'
 import { Sparkles, Crown, Check, Zap, Timer, Users, Hourglass, ArrowRight, Clock } from 'lucide-react'
 import { getUserAvatar } from '@/lib/user-avatar'
+import { T } from '@/components/i18n/t'
 
 const POINTS_PER_SECOND = 2
 
@@ -117,20 +118,20 @@ export default async function DashboardHubPage() {
               <div className="min-w-0">
                 <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-background/50 px-3 py-1 text-xs font-semibold text-muted-foreground backdrop-blur">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                  {isPro ? PLAN_LABELS[plan] || plan : 'Compte gratuit'}
+                  {isPro ? <T>{PLAN_LABELS[plan] || plan}</T> : <T>Compte gratuit</T>}
                   <span className="mx-1 h-3 w-px bg-hairline" />
                   <Clock className="h-3 w-3" />
-                  {fmtMinutes(points)} restantes
+                  {fmtMinutes(points)} <T>restantes</T>
                 </span>
 
                 <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground md:text-5xl text-balance">
-                  {`Bonjour ${displayName}`}
+                  <T>Bonjour</T> {displayName}
                 </h1>
               </div>
             </div>
 
             <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg text-pretty">
-              Transforme ton apparence et ta voix en temps réel avec l’IA.
+              <T>Transforme ton apparence et ta voix en temps réel avec l’IA.</T>
             </p>
 
             <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -139,7 +140,7 @@ export default async function DashboardHubPage() {
                 className="group inline-flex items-center gap-2.5 rounded-2xl bg-primary px-7 py-3.5 text-base font-bold text-black shadow-[0_0_30px_rgba(0,255,136,0.4)] transition-all hover:scale-[1.02] hover:bg-primary/90 hover:shadow-[0_0_44px_rgba(0,255,136,0.55)]"
               >
                 <Zap className="h-5 w-5" fill="currentColor" />
-                Lancer le Live Swap
+                <T>Lancer le Live Swap</T>
                 <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
               <Link
@@ -147,7 +148,7 @@ export default async function DashboardHubPage() {
                 className="inline-flex items-center gap-2 rounded-2xl border border-hairline bg-background/40 px-6 py-3.5 text-base font-semibold text-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-primary"
               >
                 <Sparkles className="h-5 w-5" />
-                Recharger
+                <T>Recharger</T>
               </Link>
             </div>
           </div>
@@ -170,10 +171,10 @@ export default async function DashboardHubPage() {
         <div className="mb-6 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl text-balance">
-              Tous les outils ChapCam
+              <T>Tous les outils ChapCam</T>
             </h2>
             <p className="mt-1.5 text-sm text-muted-foreground md:text-base">
-              Choisis l’outil que tu souhaites utiliser.
+              <T>Choisis l’outil que tu souhaites utiliser.</T>
             </p>
           </div>
         </div>
@@ -182,7 +183,7 @@ export default async function DashboardHubPage() {
 
       {/* ===== Utilisation rapide ===== */}
       <section aria-label="Utilisation rapide" className="mt-12">
-        <h2 className="mb-5 text-xl font-bold text-foreground md:text-2xl">Utilisation rapide</h2>
+        <h2 className="mb-5 text-xl font-bold text-foreground md:text-2xl"><T>Utilisation rapide</T></h2>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {[
             { icon: Zap, label: 'Swaps aujourd’hui', value: String(swapsToday), color: '#00ff88' },
@@ -206,7 +207,7 @@ export default async function DashboardHubPage() {
                 <s.icon className="h-5 w-5" style={{ color: s.color }} />
               </div>
               <p className="relative text-2xl font-bold text-foreground md:text-3xl">{s.value}</p>
-              <p className="relative mt-1 text-xs text-text-faint">{s.label}</p>
+              <p className="relative mt-1 text-xs text-text-faint"><T>{s.label}</T></p>
             </div>
           ))}
         </div>
@@ -228,14 +229,14 @@ export default async function DashboardHubPage() {
               <div className="mb-3 flex items-center gap-2">
                 <Crown className="h-6 w-6 text-primary" />
                 <h3 className="text-xl font-bold text-foreground md:text-2xl text-balance">
-                  Passe en Pro et débloque tout ChapCam
+                  <T>Passe en Pro et débloque tout ChapCam</T>
                 </h3>
               </div>
               <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground md:text-base">
                 {['Plus de crédits', 'Qualité 4K', 'Avatars premium', 'Support prioritaire'].map((b) => (
                   <li key={b} className="flex items-center gap-1.5">
                     <Check className="h-4 w-4 text-primary" />
-                    {b}
+                    <T>{b}</T>
                   </li>
                 ))}
               </ul>
@@ -244,7 +245,7 @@ export default async function DashboardHubPage() {
               href="/dashboard/plans"
               className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-primary px-7 py-3.5 text-base font-bold text-black shadow-[0_0_30px_rgba(0,255,136,0.4)] transition-all hover:scale-[1.02] hover:bg-primary/90"
             >
-              Voir les offres
+              <T>Voir les offres</T>
               <ArrowRight className="h-5 w-5" />
             </Link>
           </div>

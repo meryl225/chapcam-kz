@@ -20,6 +20,7 @@ import { isInAppBrowser } from '@/lib/in-app-browser'
 import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
 import { PAYMENT_COUNTRIES, type UICountry, type UICountryMethod } from '@/lib/geniuspay-countries'
 import { getPlan } from '@/lib/plans'
+import { useT } from '@/lib/i18n/language-provider'
 
 // Drapeau rendu comme VRAIE image (flagcdn.com) et non emoji : les emojis
 // drapeaux ne s'affichent pas sous Windows/Chrome (seul le code pays apparait).
@@ -70,6 +71,7 @@ const DEFAULT_COUNTRY = PAYMENT_COUNTRIES[0] // Cote d'Ivoire (PayDunya)
 //   - cryptomonnaie -> NOWPayments
 // Gere aussi les navigateurs in-app.
 export function usePaymentCheckout() {
+  const t = useT()
   const [chooser, setChooser] = useState<Chooser | null>(null)
   const [pendingKey, setPendingKey] = useState<string | null>(null)
   const [pendingMethod, setPendingMethod] = useState<PaymentMethod | null>(null)
@@ -197,7 +199,7 @@ export function usePaymentCheckout() {
               onClick={close}
               disabled={busy}
               className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/60 backdrop-blur transition-colors hover:bg-white/10 hover:text-white disabled:opacity-40"
-              aria-label="Fermer"
+              aria-label={t('Fermer')}
             >
               <X className="h-4 w-4" />
             </button>
@@ -209,10 +211,10 @@ export function usePaymentCheckout() {
                   <ShieldCheck className="h-6 w-6" />
                 </span>
                 <h2 className="text-2xl font-bold tracking-tight text-white text-balance">
-                  Finalisez votre paiement
+                  {t('Finalisez votre paiement')}
                 </h2>
                 <p className="mt-1 text-sm text-white/45">
-                  Paiement sécurisé et activation automatique après confirmation.
+                  {t('Paiement sécurisé et activation automatique après confirmation.')}
                 </p>
               </div>
 
@@ -230,7 +232,7 @@ export function usePaymentCheckout() {
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#7c5cff] text-xs font-bold text-white">
                       1
                     </span>
-                    <span className="text-base font-semibold text-white">Pays de paiement</span>
+                    <span className="text-base font-semibold text-white">{t('Pays de paiement')}</span>
                   </div>
 
                   <div className="relative mb-8">
@@ -262,7 +264,7 @@ export function usePaymentCheckout() {
                               autoFocus
                               value={query}
                               onChange={(e) => setQuery(e.target.value)}
-                              placeholder="Rechercher un pays…"
+                              placeholder={t('Rechercher un pays…')}
                               className="w-full rounded-xl bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[#7c5cff]/50"
                             />
                           </div>
@@ -281,7 +283,7 @@ export function usePaymentCheckout() {
                               </button>
                             ))}
                             {filteredCountries.length === 0 && (
-                              <p className="py-6 text-center text-sm text-white/40">Aucun pays trouvé.</p>
+                              <p className="py-6 text-center text-sm text-white/40">{t('Aucun pays trouvé.')}</p>
                             )}
                           </div>
                         </div>
@@ -294,10 +296,10 @@ export function usePaymentCheckout() {
                     <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#7c5cff] text-xs font-bold text-white">
                       2
                     </span>
-                    <span className="text-base font-semibold text-white">Moyen de paiement</span>
+                    <span className="text-base font-semibold text-white">{t('Moyen de paiement')}</span>
                   </div>
                   <p className="mb-4 pl-[34px] text-sm text-white/40">
-                    Sélectionnez votre méthode de paiement
+                    {t('Sélectionnez votre méthode de paiement')}
                   </p>
 
                   <div className="flex flex-col gap-3">
@@ -342,12 +344,12 @@ export function usePaymentCheckout() {
                               <span className="text-[15px] font-semibold text-white">{m.label}</span>
                               {i === 0 && (
                                 <span className="rounded-md bg-[#7c5cff]/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#c4b5fd]">
-                                  Recommandé
+                                  {t('Recommandé')}
                                 </span>
                               )}
                             </span>
                             <span className="mt-0.5 block truncate text-xs text-white/40">
-                              {m.sublabel || (m.kind === 'card' ? 'Paiement par carte bancaire' : 'Paiement rapide et sécurisé')}
+                              {m.sublabel || (m.kind === 'card' ? t('Paiement par carte bancaire') : t('Paiement rapide et sécurisé'))}
                             </span>
                           </span>
                           <span
@@ -363,7 +365,7 @@ export function usePaymentCheckout() {
                   </div>
 
                   {/* Autres moyens : cryptomonnaie */}
-                  <p className="mb-3 mt-6 text-sm font-semibold text-white/70">Autres moyens de paiement</p>
+                  <p className="mb-3 mt-6 text-sm font-semibold text-white/70">{t('Autres moyens de paiement')}</p>
                   <button
                     onClick={() => pay('nowpayments')}
                     disabled={busy}
@@ -373,9 +375,9 @@ export function usePaymentCheckout() {
                       {pendingMethod === 'nowpayments' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Bitcoin className="h-5 w-5" />}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-[15px] font-semibold text-white">Payer en cryptomonnaie</span>
+                      <span className="block text-[15px] font-semibold text-white">{t('Payer en cryptomonnaie')}</span>
                       <span className="mt-0.5 block text-xs text-white/40">
-                        Bitcoin, USDT, ETH et plus de 200 cryptos acceptées
+                        {t('Bitcoin, USDT, ETH et plus de 200 cryptos acceptées')}
                       </span>
                     </span>
                     <ChevronRight className="h-5 w-5 shrink-0 text-white/25 transition-transform group-hover:translate-x-0.5 group-hover:text-[#f7931a]" />
@@ -386,27 +388,27 @@ export function usePaymentCheckout() {
                 {plan && (
                   <aside className="lg:pt-1">
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-                      <h3 className="text-base font-semibold text-white">Récapitulatif de la commande</h3>
+                      <h3 className="text-base font-semibold text-white">{t('Récapitulatif de la commande')}</h3>
 
                       <div className="mt-5 space-y-3 text-sm">
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-white/45">Plan sélectionné</span>
-                          <span className="font-medium text-white">{plan.name} {plan.duration}</span>
+                          <span className="text-white/45">{t('Plan sélectionné')}</span>
+                          <span className="font-medium text-white">{plan.name} {t(plan.duration)}</span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-white/45">Montant</span>
+                          <span className="text-white/45">{t('Montant')}</span>
                           <span className="font-semibold text-white">{priceLabel}</span>
                         </div>
                         <div className="flex items-center justify-between gap-3">
-                          <span className="text-white/45">Frais de transaction</span>
-                          <span className="font-medium text-emerald-400">Gratuit</span>
+                          <span className="text-white/45">{t('Frais de transaction')}</span>
+                          <span className="font-medium text-emerald-400">{t('Gratuit')}</span>
                         </div>
                       </div>
 
                       <div className="my-4 border-t border-dashed border-white/10" />
 
                       <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-medium text-white/70">Total à payer</span>
+                        <span className="text-sm font-medium text-white/70">{t('Total à payer')}</span>
                         <span className="text-xl font-bold text-[#a78bfa]">{priceLabel}</span>
                       </div>
 
@@ -414,7 +416,7 @@ export function usePaymentCheckout() {
                         {plan.features.slice(0, 4).map((f) => (
                           <li key={f} className="flex items-start gap-2.5 text-sm text-white/70">
                             <Check className="mt-0.5 h-4 w-4 shrink-0 text-[#a78bfa]" />
-                            <span className="text-pretty">{f}</span>
+                            <span className="text-pretty">{t(f)}</span>
                           </li>
                         ))}
                       </ul>
@@ -432,20 +434,20 @@ export function usePaymentCheckout() {
                 {pendingMethod && pendingMethod !== 'nowpayments' ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    Redirection…
+                    {t('Redirection…')}
                   </>
                 ) : (
                   <>
-                    {priceLabel ? `Continuer le paiement — ${priceLabel}` : 'Continuer le paiement'}
+                    {priceLabel ? `${t('Continuer le paiement')} — ${priceLabel}` : t('Continuer le paiement')}
                     <ArrowRight className="h-5 w-5" />
                   </>
                 )}
               </button>
               <p className="mt-3 flex items-center justify-center gap-2 text-xs text-white/40">
                 <Lock className="h-3.5 w-3.5" />
-                Paiement sécurisé
+                {t('Paiement sécurisé')}
                 <span className="text-white/20">•</span>
-                Activation automatique
+                {t('Activation automatique')}
               </p>
 
               {/* Gages de confiance - footer 3 colonnes */}
@@ -457,8 +459,8 @@ export function usePaymentCheckout() {
                 ].map((item) => (
                   <div key={item.title} className="flex flex-col items-center gap-1.5 text-center">
                     <item.icon className={`h-5 w-5 ${item.color}`} />
-                    <span className="text-[11px] font-semibold leading-tight text-white/85 text-pretty">{item.title}</span>
-                    <span className="text-[10px] leading-tight text-white/35 text-pretty">{item.sub}</span>
+                    <span className="text-[11px] font-semibold leading-tight text-white/85 text-pretty">{t(item.title)}</span>
+                    <span className="text-[10px] leading-tight text-white/35 text-pretty">{t(item.sub)}</span>
                   </div>
                 ))}
               </div>
@@ -470,14 +472,14 @@ export function usePaymentCheckout() {
                     <BadgeCheck className="h-4 w-4" />
                   </span>
                   <span className="text-[11px] leading-tight text-white/45 text-pretty">
-                    Vos données sont protégées par un chiffrement de niveau bancaire.
+                    {t('Vos données sont protégées par un chiffrement de niveau bancaire.')}
                   </span>
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5">
                   <BadgeCheck className="h-4 w-4 text-[#3b82f6]" />
                   <span className="flex flex-col leading-tight">
                     <span className="text-[11px] font-semibold text-white">chapcam.com</span>
-                    <span className="text-[10px] text-emerald-400">Plateforme vérifiée</span>
+                    <span className="text-[10px] text-emerald-400">{t('Plateforme vérifiée')}</span>
                   </span>
                 </span>
               </div>

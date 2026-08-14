@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import { T } from '@/components/i18n/t'
 
 interface Tool {
   href: string
@@ -49,7 +50,7 @@ function Badge({ kind, accent }: { kind: NonNullable<Tool['badge']>; accent: str
       style={{ backgroundColor: `${accent}22`, borderColor: `${accent}55`, color: accent }}
     >
       <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accent}` }} />
-      {label}
+      <T>{label}</T>
     </span>
   )
 }
@@ -117,14 +118,14 @@ export function ToolsGrid() {
               </div>
             )}
             <h3 className="max-w-[85%] text-2xl font-bold leading-tight tracking-tight text-white text-balance drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
-              {tool.title}
+              <T>{tool.title}</T>
             </h3>
           </div>
 
           {/* CTA « Ouvrir » en bas à gauche */}
           <div className="absolute bottom-4 left-5 z-10">
             <span className="inline-flex items-center gap-2 text-[15px] font-semibold text-white transition-all duration-300 group-hover:gap-3">
-              Ouvrir
+              <T>Ouvrir</T>
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" style={{ color: tool.accent }} />
             </span>
           </div>

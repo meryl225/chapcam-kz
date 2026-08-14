@@ -9,9 +9,11 @@ import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 import { PaymentBadgePopup } from '@/components/payment-badge-popup'
-import { CURRENCIES, useXofRates, formatConverted, guessCurrency } from '@/lib/currency-convert'
+import { CURRENCIES, useXofRates, formatConverted, formatXof, guessCurrency } from '@/lib/currency-convert'
+import { useT } from '@/lib/i18n/language-provider'
 
 function PlansContent() {
+  const t = useT()
   const searchParams = useSearchParams()
   // Paiement partage : ouvre le choix de methode (PayDunya / Crypto) puis redirige.
   const { startCheckout, pendingKey, error, modal } = usePaymentCheckout()
@@ -51,15 +53,15 @@ function PlansContent() {
             <div className="relative z-10 text-center">
               <div className="mb-2 flex items-center justify-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
-                <span className="text-lg font-bold text-primary">PAIEMENT EN LIGNE SECURISE</span>
+                <span className="text-lg font-bold text-primary">{t('PAIEMENT EN LIGNE SECURISE')}</span>
                 <Sparkles className="h-5 w-5 text-primary" />
               </div>
               <h3 className="mb-2 text-xl font-black text-foreground md:text-2xl">
-                Payez par <span className="text-primary">Carte bancaire, Wave, Orange, MTN, Moov ou Djamo</span> via PayDunya
-                {" "}ou en <span className="text-[#f7931a]">Cryptomonnaie</span> via NOWPayments
+                {t('Payez par')} <span className="text-primary">{t('Carte bancaire, Wave, Orange, MTN, Moov ou Djamo')}</span> {t('via PayDunya')}
+                {" "}{t('ou en')} <span className="text-[#f7931a]">{t('Cryptomonnaie')}</span> {t('via NOWPayments')}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Activation automatique de votre compte des que le paiement est confirme.
+                {t('Activation automatique de votre compte des que le paiement est confirme.')}
               </p>
               {/* Logos crypto acceptes (Bitcoin, Ethereum, USDT, TON, BNB) */}
               <div className="mt-4 flex items-center justify-center gap-2">
@@ -67,7 +69,7 @@ function PlansContent() {
                   <Image src="/images/bitcoin-logo.png" alt="Bitcoin" width={32} height={32} className="max-h-full max-w-full object-contain" />
                 </span>
                 <span className="flex h-8 items-center justify-center overflow-hidden rounded-lg">
-                  <Image src="/images/crypto-accepted-logos.png" alt="Cryptomonnaies acceptees : Bitcoin, Ethereum, USDT, TON, BNB" width={120} height={32} className="max-h-full object-contain" />
+                  <Image src="/images/crypto-accepted-logos.png" alt={t('Cryptomonnaies acceptees : Bitcoin, Ethereum, USDT, TON, BNB')} width={120} height={32} className="max-h-full object-contain" />
                 </span>
               </div>
             </div>
@@ -76,17 +78,17 @@ function PlansContent() {
 
         <div className="mb-16 text-center">
           <h1 className="mb-4 text-4xl font-bold text-foreground md:text-5xl text-balance">
-            Changez d&apos;apparence en live
+            {t('Changez d\'apparence en live')}
           </h1>
-          <p className="text-3xl font-medium text-emerald-400">avec ChapCam</p>
+          <p className="text-3xl font-medium text-emerald-400">{t('avec ChapCam')}</p>
           <p className="mt-6 text-lg text-muted-foreground">
-            2 points = 1 seconde de transformation du visage et corps entier
+            {t('2 points = 1 seconde de transformation du visage et corps entier')}
           </p>
 
           {/* Convertisseur de devise indicatif */}
           <div className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2">
             <label htmlFor="currency-select" className="text-sm text-muted-foreground">
-              Afficher les prix en
+              {t('Afficher les prix en')}
             </label>
             <select
               id="currency-select"
@@ -103,15 +105,14 @@ function PlansContent() {
           </div>
           {currency.code !== 'XOF' && (
             <p className="mt-3 text-xs text-muted-foreground/70">
-              Montants convertis a titre indicatif. Vous serez debite en FCFA (XOF).
+              {t('Montants convertis a titre indicatif. Vous serez debite en FCFA (XOF).')}
             </p>
           )}
         </div>
 
         <div className="mx-auto mb-8 max-w-2xl rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center">
           <p className="text-sm font-semibold text-emerald-300">
-            Paiement 100% securise et instantane. Apres avoir paye, patientez quelques secondes sur
-            la page PayDunya : votre compte est credite automatiquement des la confirmation.
+            {t('Paiement 100% securise et instantane. Apres avoir paye, patientez quelques secondes sur la page PayDunya : votre compte est credite automatiquement des la confirmation.')}
           </p>
         </div>
 
@@ -133,27 +134,26 @@ function PlansContent() {
             </div>
             <div className="flex-1">
               <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
-                Nouveau · Sorti le 17 juillet
+                {t('Nouveau · Sorti le 17 juillet')}
               </div>
               <h3 className="text-xl font-bold text-foreground md:text-2xl">
-                Ces recharges alimentent ChapCam 2.0
+                {t('Ces recharges alimentent ChapCam 2.0')}
               </h3>
               <p className="mt-2 text-pretty leading-relaxed text-muted-foreground">
-                Toutes les offres ci-dessous sont destinees a notre nouveau logiciel{' '}
-                <span className="font-semibold text-emerald-400">ChapCam 2.0</span>, qui fonctionne
-                desormais avec <span className="font-semibold text-foreground">tout type de PC</span> et
-                permet meme de{' '}
-                <span className="font-semibold text-foreground">changer la couleur de peau</span>.
+                {t('Toutes les offres ci-dessous sont destinees a notre nouveau logiciel')}{' '}
+                <span className="font-semibold text-emerald-400">ChapCam 2.0</span>{t(', qui fonctionne desormais avec')}{' '}
+                <span className="font-semibold text-foreground">{t('tout type de PC')}</span> {t('et permet meme de')}{' '}
+                <span className="font-semibold text-foreground">{t('changer la couleur de peau')}</span>.
               </p>
             </div>
             <div className="flex flex-col gap-2 text-sm text-muted-foreground md:min-w-[220px]">
               <span className="inline-flex items-center gap-2">
                 <Monitor className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                Compatible avec tout type de PC
+                {t('Compatible avec tout type de PC')}
               </span>
               <span className="inline-flex items-center gap-2">
                 <Palette className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                Changement de la couleur de peau
+                {t('Changement de la couleur de peau')}
               </span>
             </div>
           </div>
@@ -218,7 +218,7 @@ function PlansContent() {
                     style={{ backgroundColor: accent }}
                   >
                     <Crown className="h-4 w-4" />
-                    POPULAIRE
+                    {t('POPULAIRE')}
                   </div>
                 ) : plan.id === 'vipdebout' ? (
                   <div
@@ -226,7 +226,7 @@ function PlansContent() {
                     style={{ backgroundColor: accent }}
                   >
                     <Crown className="h-4 w-4" />
-                    MEILLEURE OFFRE
+                    {t('MEILLEURE OFFRE')}
                   </div>
                 ) : null}
 
@@ -242,12 +242,12 @@ function PlansContent() {
                       <Crown className="relative h-8 w-8 text-amber-300" strokeWidth={2} fill="rgba(250,204,21,0.25)" />
                     </div>
                     <span className="mt-2 rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-0.5 text-[11px] font-extrabold uppercase tracking-[0.15em] text-amber-300">
-                      Édition VIP
+                      {t('Édition VIP')}
                     </span>
                   </div>
                 )}
 
-                <div className={`text-sm font-medium text-emerald-400 ${isVipDebout ? 'text-center' : ''}`}>{plan.duration}</div>
+                <div className={`text-sm font-medium text-emerald-400 ${isVipDebout ? 'text-center' : ''}`}>{t(plan.duration)}</div>
                 <h3 className={`mt-2 flex items-center gap-2 text-3xl font-bold text-foreground ${isVipDebout ? 'justify-center' : ''}`}>
                   {isVipPro && (
                     <span
@@ -263,7 +263,7 @@ function PlansContent() {
                 <div className="mb-2 mt-8">
                   <div className="mb-1 flex items-center gap-2">
                     <span className="text-xl text-text-faint line-through">
-                      {plan.oldPrice.toLocaleString()}
+                      {formatXof(plan.oldPrice)}
                     </span>
                     <span className="text-sm font-semibold text-red-400">-{plan.discount}%</span>
                   </div>
@@ -271,7 +271,7 @@ function PlansContent() {
                     className="text-5xl font-bold text-primary"
                     style={plan.id === 'vipdebout' ? { color: '#facc15' } : undefined}
                   >
-                    {plan.price.toLocaleString()}
+                    {formatXof(plan.price)}
                   </span>
                   <span className="text-2xl text-muted-foreground"> FCFA</span>
                   {formatConverted(plan.price, currency, rates) && (
@@ -286,8 +286,8 @@ function PlansContent() {
                   <div className="mt-8 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                     <Droplet className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
                     <div>
-                      <p className="text-sm font-bold text-foreground">Avec logo ChapCam</p>
-                      <p className="text-xs text-muted-foreground">Filigrane visible sur le rendu</p>
+                      <p className="text-sm font-bold text-foreground">{t('Avec logo ChapCam')}</p>
+                      <p className="text-xs text-muted-foreground">{t('Filigrane visible sur le rendu')}</p>
                     </div>
                   </div>
                 ) : (
@@ -298,12 +298,12 @@ function PlansContent() {
                     <DropletOff className="h-5 w-5 flex-shrink-0" style={{ color: accent }} />
                     <div>
                       <p className="text-sm font-bold" style={{ color: accent }}>
-                        {plan.watermark === 'auto' ? 'Sans logo (automatique)' : 'Sans logo (sur demande)'}
+                        {plan.watermark === 'auto' ? t('Sans logo (automatique)') : t('Sans logo (sur demande)')}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {plan.watermark === 'auto'
-                          ? 'Retrait du logo inclus, active automatiquement'
-                          : 'Retrait du logo active par notre equipe'}
+                          ? t('Retrait du logo inclus, active automatiquement')
+                          : t('Retrait du logo active par notre equipe')}
                       </p>
                     </div>
                   </div>
@@ -324,10 +324,10 @@ function PlansContent() {
                     <div>
                       <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-black">
                         <Gift className="h-3 w-3" />
-                        Cadeau inclus
+                        {t('Cadeau inclus')}
                       </div>
-                      <p className="text-sm font-bold text-foreground">Changeur de voix i9 offert</p>
-                      <p className="text-xs text-muted-foreground">Boîtier + accessoires livrés</p>
+                      <p className="text-sm font-bold text-foreground">{t('Changeur de voix i9 offert')}</p>
+                      <p className="text-xs text-muted-foreground">{t('Boîtier + accessoires livrés')}</p>
                     </div>
                   </div>
                 )}
@@ -336,16 +336,16 @@ function PlansContent() {
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-center gap-3">
                       <Check className="h-5 w-5 flex-shrink-0 text-emerald-400" />
-                      {feature}
+                      {t(feature)}
                     </li>
                   ))}
                   <li className="flex items-center gap-3">
                     <Check className="h-5 w-5 flex-shrink-0 text-emerald-400" />
-                    {plan.points.toLocaleString()} points ({plan.minutes})
+                    {formatXof(plan.points)} {t('points')} ({plan.minutes})
                   </li>
                   <li className="flex items-center gap-3 rounded-xl bg-primary/10 px-3 py-2 font-medium text-foreground">
                     <Clapperboard className="h-5 w-5 flex-shrink-0 text-primary" />
-                    Studio Photo en Vidéo : {plan.photoVideoQuota} vidéos de 30s incluses
+                    {t('Studio Photo en Vidéo :')} {t('{n} vidéos de 30s incluses').replace('{n}', String(plan.photoVideoQuota))}
                   </li>
                 </ul>
 
@@ -362,7 +362,7 @@ function PlansContent() {
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
-                      Recharger
+                      {t('Recharger')}
                       <CreditCard className="h-4 w-4" />
                     </>
                   )}
@@ -382,7 +382,7 @@ function PlansContent() {
           <div className="inline-flex flex-col items-center gap-3 rounded-2xl border border-primary/30 bg-primary/10 px-6 py-4 sm:flex-row">
             <Clock className="h-5 w-5 flex-shrink-0 text-primary" />
             <p className="font-semibold text-primary">
-              Activation automatique et immediate apres confirmation du paiement.
+              {t('Activation automatique et immediate apres confirmation du paiement.')}
             </p>
           </div>
           <div className="mt-6">
@@ -390,7 +390,7 @@ function PlansContent() {
               href="/dashboard"
               className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-card px-5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
             >
-              Retour au tableau de bord
+              {t('Retour au tableau de bord')}
             </Link>
           </div>
         </motion.div>

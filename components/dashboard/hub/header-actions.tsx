@@ -4,15 +4,17 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { CreditCard, ClipboardList, Download, ChevronRight } from 'lucide-react'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
+import { useT } from '@/lib/i18n/language-provider'
 
 export function HeaderActions() {
+  const t = useT()
   const [showInstallModal, setShowInstallModal] = useState(false)
 
   return (
     <>
       <div className="w-full overflow-hidden rounded-2xl border border-hairline bg-card/80 p-2 backdrop-blur lg:w-72">
         <p className="px-3 pb-1 pt-2 text-[11px] font-bold uppercase tracking-wider text-text-faint">
-          Actions rapides
+          {t('Actions rapides')}
         </p>
 
         <div className="flex flex-col gap-1">
@@ -25,9 +27,9 @@ export function HeaderActions() {
               <CreditCard className="h-[18px] w-[18px]" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold text-foreground">Recharger</span>
+              <span className="block text-sm font-semibold text-foreground">{t('Recharger')}</span>
               <span className="block truncate text-[11px] text-text-faint">
-                Ajoute des crédits de swap
+                {t('Ajoute des crédits de swap')}
               </span>
             </span>
             <ChevronRight className="h-4 w-4 shrink-0 text-text-faint transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-primary" />
@@ -42,9 +44,9 @@ export function HeaderActions() {
               <ClipboardList className="h-[18px] w-[18px]" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold text-foreground">Mes demandes</span>
+              <span className="block text-sm font-semibold text-foreground">{t('Mes demandes')}</span>
               <span className="block truncate text-[11px] text-text-faint">
-                Suivi de tes requêtes
+                {t('Suivi de tes requêtes')}
               </span>
             </span>
             <ChevronRight className="h-4 w-4 shrink-0 text-text-faint transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -60,10 +62,10 @@ export function HeaderActions() {
             </span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold text-foreground">
-                Demande d&apos;installation
+                {t('Demande d\'installation')}
               </span>
               <span className="block truncate text-[11px] text-text-faint">
-                On installe ChapCam pour toi
+                {t('On installe ChapCam pour toi')}
               </span>
             </span>
             <ChevronRight className="h-4 w-4 shrink-0 text-text-faint transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-[#3b82f6]" />

@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, Globe, ShieldCheck, MessageSquareText } from 'lucide-react'
+import { T } from '@/components/i18n/t'
 
 const FEATURES = [
   { icon: Globe, label: '180+ pays' },
@@ -41,17 +42,17 @@ export function EsimPromo() {
           </div>
           <div>
             <p className="text-lg font-extrabold leading-none tracking-tight text-white">ChapSim</p>
-            <p className="mt-1 text-[11px] font-medium text-[#a78bfa]">Numéros virtuels premium</p>
+            <p className="mt-1 text-[11px] font-medium text-[#a78bfa]"><T>Numéros virtuels premium</T></p>
           </div>
         </div>
         <span className="inline-flex items-center gap-1 rounded-full bg-[#7c3aed]/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-[#c4b5fd] ring-1 ring-[#7c3aed]/40">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#a78bfa]" />
-          Nouveau
+          <T>Nouveau</T>
         </span>
       </div>
 
       <p className="relative mt-3 text-xs leading-snug text-white/60 text-pretty">
-        Reçois tes SMS OTP et achète des numéros &amp; proxies dans le monde entier.
+        <T>Reçois tes SMS OTP et achète des numéros &amp; proxies dans le monde entier.</T>
       </p>
 
       {/* tags fonctionnalités */}
@@ -62,14 +63,14 @@ export function EsimPromo() {
             className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-white/75"
           >
             <f.icon className="h-3 w-3 text-[#a78bfa]" />
-            {f.label}
+            <T>{f.label}</T>
           </span>
         ))}
       </div>
 
       {/* CTA */}
       <span className="relative mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#7c3aed] to-[#4f46e5] px-4 py-2.5 text-sm font-bold text-white shadow-[0_8px_24px_-8px_rgba(124,58,237,0.9)] transition-all group-hover:brightness-110">
-        Obtenir ChapSim
+        <T>Obtenir ChapSim</T>
         <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
       </span>
     </Link>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ShieldCheck, Check, Pencil } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { useT } from '@/lib/i18n/language-provider'
 
 const STATEMENTS = [
   "J'utilise uniquement des images pour lesquelles je dispose des droits nécessaires.",
@@ -11,6 +12,7 @@ const STATEMENTS = [
 ]
 
 export function ConsentCard({ initiallyAccepted }: { initiallyAccepted: boolean }) {
+  const t = useT()
   const [accepted, setAccepted] = useState(initiallyAccepted)
   const [reviewing, setReviewing] = useState(false)
   const [checks, setChecks] = useState<boolean[]>([
@@ -33,9 +35,9 @@ export function ConsentCard({ initiallyAccepted }: { initiallyAccepted: boolean 
             <ShieldCheck className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <p className="text-sm font-bold text-foreground">Engagements d’utilisation confirmés</p>
+            <p className="text-sm font-bold text-foreground">{t('Engagements d’utilisation confirmés')}</p>
             <p className="text-xs text-muted-foreground">
-              Vous avez accepté les conditions d’utilisation responsable de ChapCam.
+              {t('Vous avez accepté les conditions d’utilisation responsable de ChapCam.')}
             </p>
           </div>
         </div>
@@ -45,7 +47,7 @@ export function ConsentCard({ initiallyAccepted }: { initiallyAccepted: boolean 
           className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-hairline bg-background/40 px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:border-primary/40 hover:text-primary"
         >
           <Pencil className="h-4 w-4" aria-hidden />
-          Revoir mes engagements
+          {t('Revoir mes engagements')}
         </button>
       </section>
     )
@@ -73,7 +75,7 @@ export function ConsentCard({ initiallyAccepted }: { initiallyAccepted: boolean 
       setAccepted(true)
       setReviewing(false)
     } catch {
-      setError('Impossible d’enregistrer votre confirmation. Réessayez.')
+      setError(t('Impossible d’enregistrer votre confirmation. Réessayez.'))
     } finally {
       setSaving(false)
     }
@@ -89,9 +91,9 @@ export function ConsentCard({ initiallyAccepted }: { initiallyAccepted: boolean 
           <ShieldCheck className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-foreground">Utilisation responsable</h2>
+          <h2 className="text-lg font-bold text-foreground">{t('Utilisation responsable')}</h2>
           <p className="text-sm text-muted-foreground">
-            Merci de confirmer ces engagements avant d’utiliser ChapCam.
+            {t('Merci de confirmer ces engagements avant d’utiliser ChapCam.')}
           </p>
         </div>
       </div>
@@ -115,7 +117,7 @@ export function ConsentCard({ initiallyAccepted }: { initiallyAccepted: boolean 
                 checked={checks[i]}
                 onChange={() => toggle(i)}
               />
-              <span className="text-sm leading-relaxed text-foreground">{text}</span>
+              <span className="text-sm leading-relaxed text-foreground">{t(text)}</span>
             </label>
           </li>
         ))}
@@ -134,7 +136,7 @@ export function ConsentCard({ initiallyAccepted }: { initiallyAccepted: boolean 
           disabled={!allChecked || saving}
           className="inline-flex items-center justify-center rounded-xl bg-primary px-6 py-3 font-bold text-black transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          {saving ? 'Enregistrement…' : 'Je confirme'}
+          {saving ? t('Enregistrement…') : t('Je confirme')}
         </button>
         {accepted && (
           <button
@@ -143,7 +145,7 @@ export function ConsentCard({ initiallyAccepted }: { initiallyAccepted: boolean 
             disabled={saving}
             className="inline-flex items-center justify-center rounded-xl border border-hairline px-6 py-3 font-semibold text-foreground transition-colors hover:border-primary/40 disabled:opacity-40"
           >
-            Annuler
+            {t('Annuler')}
           </button>
         )}
       </div>

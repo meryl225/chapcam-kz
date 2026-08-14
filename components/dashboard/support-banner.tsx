@@ -1,6 +1,7 @@
 'use client'
 
 import { MessageCircle, Phone, LifeBuoy } from 'lucide-react'
+import { useT } from '@/lib/i18n/language-provider'
 
 // Numero d'assistance ChapCam (Cote d'Ivoire)
 const SUPPORT_PHONE_DISPLAY = '+225 05 55 56 01 89'
@@ -10,6 +11,7 @@ const WHATSAPP_MESSAGE =
   'Bonjour ChapCam, je rencontre un problème pour utiliser le logiciel et j’ai besoin d’aide.'
 
 export function SupportBanner() {
+  const t = useT()
   const whatsappUrl = `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(WHATSAPP_MESSAGE)}`
 
   return (
@@ -22,8 +24,8 @@ export function SupportBanner() {
           <LifeBuoy className="h-4 w-4 text-primary" />
         </div>
         <p className="text-sm text-muted-foreground text-pretty">
-          <span className="font-medium text-foreground">Besoin d’aide&nbsp;?</span> Notre équipe
-          t’assiste en direct sur WhatsApp ou par téléphone.
+          <span className="font-medium text-foreground">{t('Besoin d’aide ?')}</span>{' '}
+          {t('Notre équipe t’assiste en direct sur WhatsApp ou par téléphone.')}
         </p>
       </div>
 
@@ -43,7 +45,7 @@ export function SupportBanner() {
         >
           <Phone className="h-4 w-4" />
           <span className="hidden sm:inline">{SUPPORT_PHONE_DISPLAY}</span>
-          <span className="sm:hidden">Appeler</span>
+          <span className="sm:hidden">{t('Appeler')}</span>
         </a>
       </div>
     </section>
