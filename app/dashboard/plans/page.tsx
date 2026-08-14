@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, Suspense } from 'react'
+import { useEffect, useRef, useState, Suspense } from 'react'
 import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift, Clapperboard } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
@@ -9,6 +9,7 @@ import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 import { PaymentBadgePopup } from '@/components/payment-badge-popup'
+import { CURRENCIES, useXofRates, formatConverted, guessCurrency } from '@/lib/currency-convert'
 
 function PlansContent() {
   const searchParams = useSearchParams()
@@ -16,6 +17,14 @@ function PlansContent() {
   const { startCheckout, pendingKey, error, modal } = usePaymentCheckout()
   // evite de relancer le checkout auto plusieurs fois (ex: arrivee depuis l'accueil)
   const autoStarted = useRef(false)
+
+  // Convertisseur de devise indicatif (le debit reste en XOF/FCFA).
+  const { rates } = useXofRates()
+  const [currencyCode, setCurrencyCode] = useState('XOF')
+  useEffect(() => {
+    setCurrencyCode(guessCurrency())
+  }, [])
+  const currency = CURRENCIES.find((c) => c.code === currencyCode) ?? CURRENCIES[0]
 
   // Si l'utilisateur arrive depuis la page d'accueil avec ?plan=ID, on ouvre
   // automatiquement le choix de paiement pour ce produit (formule ou Live Pro).
@@ -73,6 +82,30 @@ function PlansContent() {
           <p className="mt-6 text-lg text-muted-foreground">
             2 points = 1 seconde de transformation du visage et corps entier
           </p>
+
+          {/* Convertisseur de devise indicatif */}
+          <div className="mt-6 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2">
+            <label htmlFor="currency-select" className="text-sm text-muted-foreground">
+              Afficher les prix en
+            </label>
+            <select
+              id="currency-select"
+              value={currency.code}
+              onChange={(e) => setCurrencyCode(e.target.value)}
+              className="cursor-pointer rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-sm font-semibold text-foreground outline-none focus:border-emerald-400"
+            >
+              {CURRENCIES.map((c) => (
+                <option key={c.code} value={c.code} className="bg-[#0a0a0a] text-white">
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          {currency.code !== 'XOF' && (
+            <p className="mt-3 text-xs text-muted-foreground/70">
+              Montants convertis a titre indicatif. Vous serez debite en FCFA (XOF).
+            </p>
+          )}
         </div>
 
         <div className="mx-auto mb-8 max-w-2xl rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-center">
@@ -241,6 +274,11 @@ function PlansContent() {
                     {plan.price.toLocaleString()}
                   </span>
                   <span className="text-2xl text-muted-foreground"> FCFA</span>
+                  {formatConverted(plan.price, currency, rates) && (
+                    <p className="mt-1 text-sm font-medium" style={{ color: accent }}>
+                      ≈ {formatConverted(plan.price, currency, rates)}
+                    </p>
+                  )}
                 </div>
 
                 {/* Statut du logo (watermark) mis en avant */}
