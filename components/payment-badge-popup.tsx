@@ -9,13 +9,15 @@ import { X } from "lucide-react"
 const BADGES = [
   {
     src: "/images/badge-all-payments.jpg",
-    alt: "Nous acceptons tous les paiements : Wave, Orange Money, Moov Money, MTN Mobile Money, TMoney",
+    alt: "Nous acceptons tous les paiements : Wave, Orange Money, Moov Money, MTN Mobile Money, TMoney, Visa, Mastercard",
     glow: "#2563eb",
+    cards: true,
   },
   {
     src: "/images/badge-all-crypto.jpg",
     alt: "Nous acceptons toutes les crypto-monnaies : Bitcoin, Ethereum, USDT, BNB et plus",
     glow: "#f7931a",
+    cards: false,
   },
 ]
 
@@ -100,6 +102,28 @@ export function PaymentBadgePopup() {
                 </motion.div>
               </AnimatePresence>
             </div>
+
+            {/* Pastille carte bancaire superposee (badge paiements uniquement) */}
+            <AnimatePresence>
+              {badge.cards && (
+                <motion.div
+                  key="cards-chip"
+                  initial={{ opacity: 0, y: 6, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.9 }}
+                  transition={{ duration: 0.35 }}
+                  className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-black/5 bg-white px-2 py-1 shadow-[0_8px_24px_-6px_rgba(0,0,0,0.6)]"
+                >
+                  <span className="flex h-6 w-8 items-center justify-center rounded-md bg-white">
+                    <img src="/images/visa-logo.svg" alt="Visa" className="h-full w-full object-contain" />
+                  </span>
+                  <span className="h-4 w-px bg-black/10" aria-hidden />
+                  <span className="flex h-6 w-7 items-center justify-center rounded-md bg-white">
+                    <img src="/images/mastercard-logo.svg" alt="Mastercard" className="h-full w-full object-contain" />
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Petites pastilles indicatrices */}
             <div className="mt-3 flex items-center justify-center gap-1.5">
