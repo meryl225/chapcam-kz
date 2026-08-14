@@ -3,8 +3,10 @@
 import { motion } from "framer-motion"
 import Image from "next/image"
 import { Linkedin, Twitter, Github } from "lucide-react"
+import { useT } from "@/lib/i18n/language-provider"
 
 export function FounderSection() {
+  const t = useT()
   return (
     <section id="founder" className="relative py-24 px-6 overflow-hidden">
       {/* Background effects */}
@@ -28,11 +30,11 @@ export function FounderSection() {
             viewport={{ once: true }}
             className="inline-flex items-center gap-2 bg-[#00ff88]/10 border border-[#00ff88]/30 px-4 py-2 rounded-full mb-6"
           >
-            <span className="text-[#00ff88] font-semibold text-sm tracking-wide">FONDATEUR</span>
+            <span className="text-[#00ff88] font-semibold text-sm tracking-wide">{t("FONDATEUR")}</span>
           </motion.div>
 
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            La vision derriere <span className="text-[#00ff88]">ChapCam</span>
+            {t("La vision derriere")} <span className="text-[#00ff88]">ChapCam</span>
           </h2>
         </motion.div>
 
@@ -81,10 +83,10 @@ export function FounderSection() {
                         Meryl Kacou
                       </h3>
                       <p className="text-[#00ff88] font-semibold text-lg mb-3">
-                        CEO & Founder — ChapCam
+                        {t("CEO & Founder — ChapCam")}
                       </p>
                       <p className="text-gray-300 text-sm md:text-base max-w-xl">
-                        Senior Developer & AI Builder focused on real-time face swap and immersive communication technologies.
+                        {t("Senior Developer & AI Builder focused on real-time face swap and immersive communication technologies.")}
                       </p>
                     </div>
                     

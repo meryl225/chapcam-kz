@@ -257,7 +257,7 @@ export function PricingSection() {
                     {plan.price}
                   </span>
                   <span className="text-gray-400 text-xl"> {plan.currency}</span>
-                  <p className="text-gray-500 text-sm mt-1">{plan.validity}</p>
+                  <p className="text-gray-500 text-sm mt-1">{t(plan.validity)}</p>
                 </div>
 
                 {/* Statut du logo (watermark) mis en avant */}
@@ -265,8 +265,8 @@ export function PricingSection() {
                   <div className="mb-6 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                     <Droplet className="w-5 h-5 text-gray-400 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-bold text-gray-300">Avec logo ChapCam</p>
-                      <p className="text-xs text-gray-500">Filigrane visible sur le rendu</p>
+                      <p className="text-sm font-bold text-gray-300">{t("Avec logo ChapCam")}</p>
+                      <p className="text-xs text-gray-500">{t("Filigrane visible sur le rendu")}</p>
                     </div>
                   </div>
                 ) : (
@@ -277,12 +277,12 @@ export function PricingSection() {
                     <DropletOff className="w-5 h-5 flex-shrink-0" style={{ color: plan.color }} />
                     <div>
                       <p className="text-sm font-bold" style={{ color: plan.color }}>
-                        {plan.watermark === "auto" ? "Sans logo (automatique)" : "Sans logo (sur demande)"}
+                        {plan.watermark === "auto" ? t("Sans logo (automatique)") : t("Sans logo (sur demande)")}
                       </p>
                       <p className="text-xs text-gray-400">
                         {plan.watermark === "auto"
-                          ? "Retrait du logo inclus, active automatiquement"
-                          : "Retrait du logo active par notre equipe"}
+                          ? t("Retrait du logo inclus, active automatiquement")
+                          : t("Retrait du logo active par notre equipe")}
                       </p>
                     </div>
                   </div>
@@ -303,10 +303,10 @@ export function PricingSection() {
                     <div>
                       <div className="mb-1 inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-black">
                         <Gift className="h-3 w-3" />
-                        Cadeau inclus
+                        {t("Cadeau inclus")}
                       </div>
-                      <p className="text-sm font-bold text-white">Changeur de voix i9 offert</p>
-                      <p className="text-xs text-gray-400">Boîtier + accessoires livrés</p>
+                      <p className="text-sm font-bold text-white">{t("Changeur de voix i9 offert")}</p>
+                      <p className="text-xs text-gray-400">{t("Boîtier + accessoires livrés")}</p>
                     </div>
                   </div>
                 )}
@@ -315,7 +315,7 @@ export function PricingSection() {
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-start gap-3">
                       <Check className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                      <span>{feature}</span>
+                      <span>{t(feature)}</span>
                     </li>
                   ))}
                 </ul>
@@ -324,7 +324,7 @@ export function PricingSection() {
                 <div className="mb-8 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
                   <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
                   <p className="text-sm font-semibold text-emerald-300 leading-snug">
-                    Studio Photo en Vidéo : {plan.photoVideos} vidéos de 30s incluses
+                    {t("Studio Photo en Vidéo :")} {plan.photoVideos} {t("vidéos de 30s incluses")}
                   </p>
                 </div>
 
@@ -336,7 +336,7 @@ export function PricingSection() {
                         : "bg-white text-black hover:bg-gray-200"
                     }`}
                   >
-                    Recharger
+                    {t("Recharger")}
                   </Button>
                 </Link>
               </motion.div>
@@ -354,7 +354,7 @@ export function PricingSection() {
           <div className="inline-flex items-center gap-3 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-6 py-3">
             <Clock className="w-5 h-5 text-yellow-400" />
             <p className="text-yellow-400 font-semibold">
-              Offre valable jusqu&apos;au 1er Septembre 2026 ou jusqu&apos;a epuisement des places.
+              {t("Offre valable jusqu'au 1er Septembre 2026 ou jusqu'a epuisement des places.")}
             </p>
           </div>
         </motion.div>
@@ -366,7 +366,7 @@ export function PricingSection() {
           viewport={{ once: true }}
           className="mt-16"
         >
-          <p className="mb-6 text-center text-gray-400">Moyens de paiement acceptes</p>
+          <p className="mb-6 text-center text-gray-400">{t("Moyens de paiement acceptes")}</p>
 
           {/* Carte bancaire + Crypto mis en avant */}
           <div className="mx-auto mb-8 flex max-w-2xl flex-col items-stretch justify-center gap-3 sm:flex-row">
@@ -375,8 +375,8 @@ export function PricingSection() {
                 <CreditCard className="h-6 w-6 text-[#00ff88]" />
               </span>
               <div className="text-left">
-                <p className="font-bold text-white">Carte bancaire</p>
-                <p className="text-sm text-gray-400">Visa &amp; Mastercard acceptees</p>
+                <p className="font-bold text-white">{t("Carte bancaire")}</p>
+                <p className="text-sm text-gray-400">{t("Visa & Mastercard acceptees")}</p>
               </div>
             </div>
             <div className="flex flex-1 items-center justify-center gap-3 rounded-2xl border border-[#f7931a]/40 bg-[#f7931a]/10 px-6 py-4">
@@ -384,8 +384,8 @@ export function PricingSection() {
                 <Image src="/images/bitcoin-logo.png" alt="Bitcoin" width={44} height={44} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
               </span>
               <div className="text-left">
-                <p className="font-bold text-white">Cryptomonnaie</p>
-                <p className="text-sm text-gray-400">Bitcoin, USDT, ETH &amp; plus</p>
+                <p className="font-bold text-white">{t("Cryptomonnaie")}</p>
+                <p className="text-sm text-gray-400">{t("Bitcoin, USDT, ETH & plus")}</p>
               </div>
             </div>
           </div>
@@ -417,7 +417,7 @@ export function PricingSection() {
           </div>
 
           <p className="mt-8 text-center text-sm text-gray-500">
-            Paiement securise via PayDunya (mobile money &amp; carte) ou Trybit (crypto)
+            {t("Paiement securise via PayDunya (mobile money & carte) ou Trybit (crypto)")}
           </p>
         </motion.div>
       </div>

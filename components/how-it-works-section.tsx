@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { UserPlus, Sparkles, Video } from "lucide-react"
+import { useT } from "@/lib/i18n/language-provider"
 
 const steps = [
   {
@@ -106,6 +107,7 @@ const platforms = [
 ]
 
 export function HowItWorksSection() {
+  const t = useT()
   return (
     <section id="comment-ca-marche" className="relative py-24 px-6 overflow-hidden">
       {/* Background gradient */}
@@ -130,7 +132,7 @@ export function HowItWorksSection() {
             }}
             transition={{ duration: 3, repeat: Infinity }}
           >
-            <span className="text-[#00d4ff] text-sm font-semibold tracking-wider uppercase">Comment ca marche</span>
+            <span className="text-[#00d4ff] text-sm font-semibold tracking-wider uppercase">{t("Comment ca marche")}</span>
           </motion.div>
         </motion.div>
 
@@ -206,8 +208,8 @@ export function HowItWorksSection() {
                       />
                     </motion.div>
                     
-                    <h3 className="text-white font-bold text-xl mb-3">{step.title}</h3>
-                    <p className="text-gray-400 text-sm leading-relaxed max-w-xs">{step.description}</p>
+                    <h3 className="text-white font-bold text-xl mb-3">{t(step.title)}</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed max-w-xs">{t(step.description)}</p>
                   </motion.div>
                 ))}
                 
@@ -219,7 +221,7 @@ export function HowItWorksSection() {
                   transition={{ duration: 0.6, delay: 0.6 }}
                   className="lg:pl-8 lg:border-l border-white/10"
                 >
-                  <h4 className="text-gray-600 text-sm font-medium mb-6 text-center lg:text-left">Compatible avec</h4>
+                  <h4 className="text-gray-600 text-sm font-medium mb-6 text-center lg:text-left">{t("Compatible avec")}</h4>
                   <div className="bg-white rounded-2xl p-6 shadow-lg shadow-white/10">
                     <div className="grid grid-cols-4 gap-4">
                       {platforms.map((platform, i) => (

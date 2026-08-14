@@ -202,6 +202,8 @@ export const translations: Record<string, string> = {
   Recharger: "Top up",
   "Offre valable jusqu'au 1er Septembre 2026 ou jusqu'a epuisement des places.":
     "Offer valid until September 1, 2026 or while spots last.",
+  "Studio Photo en Vidéo :": "Photo to Video Studio:",
+  "vidéos de 30s incluses": "30s videos included",
   "Moyens de paiement acceptes": "Accepted payment methods",
   "Carte bancaire": "Bank card",
   "Visa & Mastercard acceptees": "Visa & Mastercard accepted",
@@ -209,4 +211,181 @@ export const translations: Record<string, string> = {
   "Bitcoin, USDT, ETH & plus": "Bitcoin, USDT, ETH & more",
   "Paiement securise via PayDunya (mobile money & carte) ou Trybit (crypto)":
     "Secure payment via PayDunya (mobile money & card) or Trybit (crypto)",
+
+  // ----- Section pays disponibles (AvailableCountriesSection) -----
+  "Carte bancaire & Mobile Money acceptes": "Bank card & Mobile Money accepted",
+  "Payez depuis": "Pay from",
+  "pays": "countries",
+  "Le Mobile Money (Orange Money, MTN, Moov, Wave, M-Pesa, Airtel...) est disponible dans les pays ci-dessous, et la carte bancaire Visa / Mastercard partout dans le monde.":
+    "Mobile Money (Orange Money, MTN, Moov, Wave, M-Pesa, Airtel...) is available in the countries below, and Visa / Mastercard bank cards everywhere in the world.",
+  "autres pays": "other countries",
+  "Carte bancaire Visa / Mastercard acceptee partout dans le monde.":
+    "Visa / Mastercard bank cards accepted everywhere in the world.",
+
+  // ----- Section comment ca marche (HowItWorksSection) -----
+  "Comment ca marche": "How it works",
+  "Inscris-toi": "Sign up",
+  "Cree ton compte et accede instantanement a ChapCam.":
+    "Create your account and get instant access to ChapCam.",
+  "Choisis ton apparence": "Choose your look",
+  "Selectionne le visage et le corps que tu veux utiliser en temps reel.":
+    "Select the face and body you want to use in real time.",
+  "Lance ton stream ou appel": "Start your stream or call",
+  "Utilise ChapCam sur toutes tes plateformes preferees en temps reel.":
+    "Use ChapCam on all your favorite platforms in real time.",
+  "Compatible avec": "Works with",
+
+  // ----- Section FAQ (FAQSection) -----
+  FAQ: "FAQ",
+  Questions: "Frequently",
+  frequentes: "asked questions",
+  "Tout ce que vous devez savoir sur ChapCam et le face swap en temps reel":
+    "Everything you need to know about ChapCam and real-time face swap",
+  "Vous avez d'autres questions ?": "Have more questions?",
+  "Contactez-nous sur WhatsApp": "Contact us on WhatsApp",
+  "Qu'est-ce que ChapCam ?": "What is ChapCam?",
+  "ChapCam est une application de transformation faciale en temps reel qui vous permet de changer votre apparence pendant vos appels video. Rendez-vous sur chapcam.com pour decouvrir toutes nos fonctionnalites.":
+    "ChapCam is a real-time facial transformation app that lets you change your appearance during video calls. Visit chapcam.com to discover all our features.",
+  "Est-ce que ca fonctionne avec WhatsApp, Zoom, Teams ?":
+    "Does it work with WhatsApp, Zoom, Teams?",
+  "Oui ! ChapCam fonctionne avec toutes les applications de visioconference : WhatsApp, Telegram, Zoom, Microsoft Teams, Google Meet, Discord, Skype, TikTok Live, et bien d'autres. Plus d'infos sur chapcam.com.":
+    "Yes! ChapCam works with all video conferencing apps: WhatsApp, Telegram, Zoom, Microsoft Teams, Google Meet, Discord, Skype, TikTok Live, and many more. More info on chapcam.com.",
+  "Quels sont les tarifs disponibles ?": "What pricing plans are available?",
+  "ChapCam propose plusieurs formules adaptees a vos besoins : Starter (10 000 FCFA pour 1 jour), Premium (50 000 FCFA pour 90 jours), VIP PRO (85 000 FCFA pour 365 jours) et VIP DEBOUT (150 000 FCFA, 60 min). Consultez tous les details sur chapcam.com.":
+    "ChapCam offers several plans to fit your needs: Starter (10,000 FCFA for 1 day), Premium (50,000 FCFA for 90 days), VIP PRO (85,000 FCFA for 365 days) and VIP DEBOUT (150,000 FCFA, 60 min). See all details on chapcam.com.",
+  "Comment fonctionnent les points ?": "How do points work?",
+  "2 points = 1 seconde de transformation. Le plan Starter offre 500 points (4 min 10 sec), Premium offre 2 500 points (20 min 50 sec), VIP PRO offre 4 250 points (35 min 25 sec) et VIP DEBOUT offre 7 200 points (60 min).":
+    "2 points = 1 second of transformation. The Starter plan offers 500 points (4 min 10 sec), Premium offers 2,500 points (20 min 50 sec), VIP PRO offers 4,250 points (35 min 25 sec) and VIP DEBOUT offers 7,200 points (60 min).",
+  "Mes donnees sont-elles securisees ?": "Is my data secure?",
+  "Absolument. Chez ChapCam, la securite de vos donnees est notre priorite. Vos informations sont protegees et nous ne les partageons jamais avec des tiers.":
+    "Absolutely. At ChapCam, the security of your data is our priority. Your information is protected and we never share it with third parties.",
+  "Comment contacter le support ?": "How do I contact support?",
+  "Vous pouvez nous contacter via WhatsApp au +225 05 55 56 01 89 pour une assistance rapide. Notre equipe ChapCam repond generalement sous 24 heures. Visitez chapcam.com pour plus d'options de contact.":
+    "You can reach us on WhatsApp at +225 05 55 56 01 89 for quick assistance. Our ChapCam team usually replies within 24 hours. Visit chapcam.com for more contact options.",
+
+  // ----- Section tutoriel (TutorialSection) -----
+  "Guides d'installation": "Installation guides",
+  "Comment utiliser ChapCam ?": "How to use ChapCam?",
+  "Choisissez le guide adapte a votre utilisation": "Choose the guide that fits your use case",
+  "Guide WhatsApp": "WhatsApp Guide",
+  "Avec NDI (Recommande)": "With NDI (Recommended)",
+  "Guide General": "General Guide",
+  "Avec OBS Studio": "With OBS Studio",
+  "NDI est recommande pour WhatsApp et Telegram car OBS Virtual Camera n'est pas compatible avec ces applications.":
+    "NDI is recommended for WhatsApp and Telegram because OBS Virtual Camera isn't compatible with these apps.",
+  "OBS est ideal pour les appels video sur Zoom, Teams, Discord et le streaming sur TikTok Live.":
+    "OBS is ideal for video calls on Zoom, Teams, Discord and streaming on TikTok Live.",
+  ETAPE: "STEP",
+  "Etape": "Step",
+  "Instructions:": "Instructions:",
+  "Etape suivante": "Next step",
+  "Vous etes pret a utiliser ChapCam!": "You're ready to use ChapCam!",
+  "Compatible avec:": "Works with:",
+  "Ideal pour:": "Ideal for:",
+  "Telecharger gratuitement:": "Download for free:",
+  "Telecharger OBS Studio": "Download OBS Studio",
+  "Telecharger NDI Tools": "Download NDI Tools",
+  "Configurer ChapCam dans OBS": "Set up ChapCam in OBS",
+  "Ajoutez votre flux ChapCam comme source video.": "Add your ChapCam feed as a video source.",
+  "Demarrer la Camera Virtuelle": "Start the Virtual Camera",
+  "Activez la camera virtuelle OBS.": "Enable the OBS virtual camera.",
+  "Utiliser dans Zoom, Teams, Discord...": "Use in Zoom, Teams, Discord...",
+  "Selectionnez 'OBS Virtual Camera' dans vos apps.": "Select 'OBS Virtual Camera' in your apps.",
+  "Installez OBS Studio gratuitement sur votre PC.": "Install OBS Studio for free on your PC.",
+  "Allez sur obsproject.com": "Go to obsproject.com",
+  "Telechargez la version pour votre systeme (Windows/Mac)":
+    "Download the version for your system (Windows/Mac)",
+  "Installez OBS Studio": "Install OBS Studio",
+  "Ouvrez OBS Studio": "Open OBS Studio",
+  "Cliquez sur '+' dans Sources": "Click '+' under Sources",
+  "Selectionnez 'Capture de fenetre'": "Select 'Window Capture'",
+  "Choisissez la fenetre ChapCam": "Choose the ChapCam window",
+  "Dans OBS, cliquez sur 'Demarrer la camera virtuelle'":
+    "In OBS, click 'Start Virtual Camera'",
+  "La camera virtuelle est maintenant active": "The virtual camera is now active",
+  "Elle apparaitra dans vos applications": "It will appear in your applications",
+  "Ouvrez Zoom, Teams, Discord ou TikTok Live": "Open Zoom, Teams, Discord or TikTok Live",
+  "Allez dans les parametres video": "Go to the video settings",
+  "Selectionnez 'OBS Virtual Camera'": "Select 'OBS Virtual Camera'",
+  "Lancez votre appel avec votre nouveau visage!": "Start your call with your new face!",
+  "Telecharger NDI Tools ": "Download NDI Tools",
+  "NDI cree une camera virtuelle compatible WhatsApp.":
+    "NDI creates a WhatsApp-compatible virtual camera.",
+  "Allez sur ndi.tv/tools": "Go to ndi.tv/tools",
+  "Telechargez 'NDI Tools' pour Windows ou Mac": "Download 'NDI Tools' for Windows or Mac",
+  "Installez NDI Tools (inclut NDI Virtual Input)":
+    "Install NDI Tools (includes NDI Virtual Input)",
+  "Lancer ChapCam en mode NDI": "Launch ChapCam in NDI mode",
+  "Activez la sortie NDI dans ChapCam.": "Enable NDI output in ChapCam.",
+  "Ouvrez ChapCam et demarrez votre swap": "Open ChapCam and start your swap",
+  "Dans les parametres, activez 'Sortie NDI'": "In the settings, enable 'NDI Output'",
+  "ChapCam diffuse maintenant en NDI": "ChapCam is now broadcasting over NDI",
+  "Configurer NDI Virtual Input": "Set up NDI Virtual Input",
+  "Selectionnez ChapCam comme source NDI.": "Select ChapCam as the NDI source.",
+  "Ouvrez 'NDI Virtual Input' (barre des taches)":
+    "Open 'NDI Virtual Input' (taskbar)",
+  "Cliquez droit sur l'icone NDI": "Right-click the NDI icon",
+  "Selectionnez 'ChapCam' comme source": "Select 'ChapCam' as the source",
+  "La camera virtuelle NDI est active": "The NDI virtual camera is active",
+  "Utiliser dans WhatsApp ou Telegram": "Use in WhatsApp or Telegram",
+  "Selectionnez 'NDI Video' dans vos apps.": "Select 'NDI Video' in your apps.",
+  "Ouvrez WhatsApp Desktop ou Telegram": "Open WhatsApp Desktop or Telegram",
+  "Lancez un appel video": "Start a video call",
+  "Dans les parametres camera, selectionnez 'NDI Video'":
+    "In the camera settings, select 'NDI Video'",
+  "Votre visage transforme apparait dans l'appel!":
+    "Your transformed face appears in the call!",
+
+  // ----- Footer (SiteFooter) -----
+  "Plateforme d'intelligence artificielle responsable. © {year} ChapCam. Tous droits réservés.":
+    "Responsible artificial intelligence platform. © {year} ChapCam. All rights reserved.",
+  "ESIM ChapCam": "ChapCam eSIM",
+  "Conditions d'utilisation": "Terms of use",
+  "Politique de confidentialité": "Privacy policy",
+  "Politique de remboursement": "Refund policy",
+  "Contact juridique": "Legal contact",
+  "Signaler un abus": "Report abuse",
+  "Liens légaux": "Legal links",
+
+  // ----- Section fondateur (FounderSection) -----
+  FONDATEUR: "FOUNDER",
+  "La vision derriere": "The vision behind",
+  "CEO & Founder — ChapCam": "CEO & Founder — ChapCam",
+  "Senior Developer & AI Builder focused on real-time face swap and immersive communication technologies.":
+    "Senior Developer & AI Builder focused on real-time face swap and immersive communication technologies.",
+
+  // ----- Section partenariat (PartnershipSection) -----
+  PARTENARIAT: "PARTNERSHIP",
+  Travaillons: "Let's work",
+  ensemble: "together",
+  "Créateur, agence, revendeur ou média ? Contacte l'équipe ChapCam pour un partenariat, une collaboration ou toute question. On te répond rapidement par mail ou sur WhatsApp.":
+    "Creator, agency, reseller or media? Reach out to the ChapCam team for a partnership, collaboration or any question. We reply quickly by email or on WhatsApp.",
+  "Réponse rapide, assistance en direct": "Fast response, live assistance",
+  "Écrire sur WhatsApp": "Message us on WhatsApp",
+  Email: "Email",
+  "Pour les demandes détaillées & pros": "For detailed & professional requests",
+  "Nous envoyer un mail": "Send us an email",
+
+  // ----- Maquette studio (StreamStudio) -----
+  Avant: "Before",
+  Après: "After",
+  Visage: "Face",
+  Corps: "Body",
+  "Sélection d'avatar": "Avatar selection",
+  Similarité: "Similarity",
+  Expression: "Expression",
+  Éclairage: "Lighting",
+  Netteté: "Sharpness",
+  "Appliquer en direct": "Apply live",
+  Spectateurs: "Viewers",
+  "aujourd'hui": "today",
+  "Chat en direct": "Live chat",
+  "Envoyer un message…": "Send a message…",
+  "En live sur": "Live on",
+  "Incroyable !!": "Amazing!!",
+  "Wshh c'est trop réel": "Whoa this is too real",
+  "La qualité est insane !": "The quality is insane!",
+  "Tu utilises quel setup ?": "What setup are you using?",
+  "ChapCam best tool": "ChapCam best tool",
+  "on dirait un vrai jeu": "looks like a real game",
 }

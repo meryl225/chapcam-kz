@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import { Monitor, Video, Smartphone, CheckCircle, ArrowRight, Play, Download } from "lucide-react"
 import { useState } from "react"
+import { useT } from "@/lib/i18n/language-provider"
 
 // Guide OBS - Pour Zoom, Teams, Discord, TikTok Live, etc.
 const obsSteps = [
@@ -121,13 +122,14 @@ const ndiApps = [
 ]
 
 export function TutorialSection() {
+  const t = useT()
   const [activeTab, setActiveTab] = useState<'obs' | 'ndi'>('ndi')
   const [activeStep, setActiveStep] = useState(1)
 
   const currentSteps = activeTab === 'obs' ? obsSteps : ndiSteps
   const currentApps = activeTab === 'obs' ? obsApps : ndiApps
   const downloadUrl = activeTab === 'obs' ? 'https://obsproject.com' : 'https://ndi.tv/tools/'
-  const downloadText = activeTab === 'obs' ? 'Telecharger OBS Studio' : 'Telecharger NDI Tools'
+  const downloadText = activeTab === 'obs' ? t('Telecharger OBS Studio') : t('Telecharger NDI Tools')
 
   return (
     <section className="py-24 relative" id="guide">
@@ -142,14 +144,14 @@ export function TutorialSection() {
         >
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 mb-6">
             <Video className="w-4 h-4 text-[#00ff88]" />
-            <span className="text-sm text-[#00ff88] font-medium">Guides d&apos;installation</span>
+            <span className="text-sm text-[#00ff88] font-medium">{t("Guides d'installation")}</span>
           </div>
           
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            Comment utiliser ChapCam ?
+            {t("Comment utiliser ChapCam ?")}
           </h2>
           <p className="text-xl text-white/60 max-w-2xl mx-auto">
-            Choisissez le guide adapte a votre utilisation
+            {t("Choisissez le guide adapte a votre utilisation")}
           </p>
         </motion.div>
 
@@ -172,9 +174,9 @@ export function TutorialSection() {
               <div className="flex items-center gap-3">
                 <Smartphone className="w-5 h-5" />
                 <div className="text-left">
-                  <div className="text-sm font-bold">Guide WhatsApp</div>
+                  <div className="text-sm font-bold">{t("Guide WhatsApp")}</div>
                   <div className={`text-xs ${activeTab === 'ndi' ? 'text-white/80' : 'text-white/40'}`}>
-                    Avec NDI (Recommande)
+                    {t("Avec NDI (Recommande)")}
                   </div>
                 </div>
               </div>
@@ -190,9 +192,9 @@ export function TutorialSection() {
               <div className="flex items-center gap-3">
                 <Monitor className="w-5 h-5" />
                 <div className="text-left">
-                  <div className="text-sm font-bold">Guide General</div>
+                  <div className="text-sm font-bold">{t("Guide General")}</div>
                   <div className={`text-xs ${activeTab === 'obs' ? 'text-white/80' : 'text-white/40'}`}>
-                    Avec OBS Studio
+                    {t("Avec OBS Studio")}
                   </div>
                 </div>
               </div>
@@ -213,8 +215,8 @@ export function TutorialSection() {
         >
           <p className={`text-center ${activeTab === 'ndi' ? 'text-[#25D366]' : 'text-[#2D8CFF]'}`}>
             {activeTab === 'ndi' 
-              ? "NDI est recommande pour WhatsApp et Telegram car OBS Virtual Camera n'est pas compatible avec ces applications."
-              : "OBS est ideal pour les appels video sur Zoom, Teams, Discord et le streaming sur TikTok Live."
+              ? t("NDI est recommande pour WhatsApp et Telegram car OBS Virtual Camera n'est pas compatible avec ces applications.")
+              : t("OBS est ideal pour les appels video sur Zoom, Teams, Discord et le streaming sur TikTok Live.")
             }
           </p>
         </motion.div>
@@ -260,14 +262,14 @@ export function TutorialSection() {
                           ? activeTab === 'ndi' ? 'text-[#25D366]' : 'text-[#2D8CFF]'
                           : 'text-white/40'
                       }`}>
-                        ETAPE {step.id}
+                        {t("ETAPE")} {step.id}
                       </span>
                       {activeStep > step.id && (
                         <CheckCircle className={`w-4 h-4 ${activeTab === 'ndi' ? 'text-[#25D366]' : 'text-[#2D8CFF]'}`} />
                       )}
                     </div>
-                    <h3 className="text-lg font-semibold text-white mb-1">{step.title}</h3>
-                    <p className="text-white/60 text-sm">{step.description}</p>
+                    <h3 className="text-lg font-semibold text-white mb-1">{t(step.title)}</h3>
+                    <p className="text-white/60 text-sm">{t(step.description)}</p>
                   </div>
                   <ArrowRight className={`w-5 h-5 transition-transform ${
                     activeStep === step.id 
@@ -305,14 +307,14 @@ export function TutorialSection() {
                     })()}
                   </div>
                   <h4 className="text-xl font-bold text-white mb-2">
-                    Etape {activeStep}: {currentSteps[activeStep - 1].title}
+                    {t("Etape")} {activeStep}: {t(currentSteps[activeStep - 1].title)}
                   </h4>
                 </div>
               </div>
 
               {/* Step Instructions */}
               <div className="p-6">
-                <h4 className="text-lg font-semibold text-white mb-4">Instructions:</h4>
+                <h4 className="text-lg font-semibold text-white mb-4">{t("Instructions:")}</h4>
                 <ul className="space-y-3">
                   {currentSteps[activeStep - 1].details.map((detail, index) => (
                     <motion.li
@@ -329,7 +331,7 @@ export function TutorialSection() {
                           {index + 1}
                         </span>
                       </div>
-                      <span className="text-white/80">{detail}</span>
+                      <span className="text-white/80">{t(detail)}</span>
                     </motion.li>
                   ))}
                 </ul>
@@ -344,7 +346,7 @@ export function TutorialSection() {
                         : 'bg-[#2D8CFF] text-white hover:bg-[#2577e0]'
                     }`}
                   >
-                    Etape suivante
+                    {t("Etape suivante")}
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 )}
@@ -356,7 +358,7 @@ export function TutorialSection() {
                       : 'bg-[#2D8CFF]/10 border-[#2D8CFF]/30'
                   }`}>
                     <p className={`text-center font-medium ${activeTab === 'ndi' ? 'text-[#25D366]' : 'text-[#2D8CFF]'}`}>
-                      Vous etes pret a utiliser ChapCam!
+                      {t("Vous etes pret a utiliser ChapCam!")}
                     </p>
                   </div>
                 )}
@@ -366,7 +368,7 @@ export function TutorialSection() {
             {/* Compatible Apps */}
             <div className="mt-6 p-6 rounded-2xl bg-white/5 border border-white/10">
               <p className="text-sm text-white/60 mb-4 text-center">
-                {activeTab === 'ndi' ? 'Compatible avec:' : 'Ideal pour:'}
+                {activeTab === 'ndi' ? t('Compatible avec:') : t('Ideal pour:')}
               </p>
               <div className="flex flex-wrap justify-center gap-3">
                 {currentApps.map((app) => (
@@ -390,7 +392,7 @@ export function TutorialSection() {
                 ? 'bg-[#25D366]/10 border-[#25D366]/30' 
                 : 'bg-[#2D8CFF]/10 border-[#2D8CFF]/30'
             }`}>
-              <p className="text-sm text-white/80 mb-3">Telecharger gratuitement:</p>
+              <p className="text-sm text-white/80 mb-3">{t("Telecharger gratuitement:")}</p>
               <a 
                 href={downloadUrl}
                 target="_blank" 
