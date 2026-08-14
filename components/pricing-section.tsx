@@ -386,8 +386,14 @@ export function PricingSection() {
             </div>
           </div>
 
-          {/* Logos Mobile Money principaux */}
+          {/* Logos cartes + Mobile Money principaux */}
           <div className="mb-8 flex flex-wrap items-center justify-center gap-4">
+            <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white px-3">
+              <img src="/images/visa-logo.svg" alt="Visa" className="max-h-5 max-w-full object-contain" />
+            </div>
+            <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
+              <img src="/images/mastercard-logo.svg" alt="Mastercard" className="max-h-full max-w-full object-contain" />
+            </div>
             <div className="flex h-14 w-20 items-center justify-center rounded-xl bg-white p-3">
               <Image src="/images/orange-money-logo.png" alt="Orange Money" width={60} height={40} style={{ width: "auto", height: "auto" }} className="max-h-full max-w-full object-contain" />
             </div>

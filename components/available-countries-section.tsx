@@ -56,6 +56,14 @@ export function AvailableCountriesSection() {
               Visa et Mastercard sont acceptees partout dans le monde. Voici la liste complete des
               pays pris en charge.
             </p>
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <span className="flex h-11 w-16 items-center justify-center rounded-xl bg-white px-3">
+                <img src="/images/visa-logo.svg" alt="Visa" className="max-h-4 max-w-full object-contain" />
+              </span>
+              <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white p-2">
+                <img src="/images/mastercard-logo.svg" alt="Mastercard" className="max-h-full max-w-full object-contain" />
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
