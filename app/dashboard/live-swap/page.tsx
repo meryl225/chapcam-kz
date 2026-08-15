@@ -13,6 +13,7 @@ import { MobileLiveOverlay } from '@/components/live/mobile-live-overlay'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { SwapConsent, GenerateNotice } from '@/components/dashboard/swap-consent'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
+import { useT } from '@/lib/i18n/language-provider'
 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
@@ -45,6 +46,7 @@ interface Avatar {
 }
 
 export default function DashboardPage() {
+  const t = useT()
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
   const [userPoints, setUserPoints] = useState(0)
@@ -674,7 +676,7 @@ export default function DashboardPage() {
             Live Swap
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Transformez votre apparence en temps réel avec l&apos;IA.
+            {t("Transformez votre apparence en temps réel avec l'IA.")}
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
@@ -684,7 +686,7 @@ export default function DashboardPage() {
             className="hidden items-center gap-2 rounded-lg border border-hairline bg-muted px-4 py-2 text-sm font-semibold text-foreground backdrop-blur-md transition-colors hover:border-hairline-strong sm:flex"
           >
             <BookOpen className="h-4 w-4" />
-            Mes demandes
+            {t('Mes demandes')}
           </Link>
 
           {/* Recharger (orange) */}
@@ -693,7 +695,7 @@ export default function DashboardPage() {
             className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-colors hover:bg-orange-600"
           >
             <CreditCard className="h-4 w-4" />
-            Recharger
+            {t('Recharger')}
           </Link>
 
           {/* Demande d'installation (bleu) */}
@@ -702,15 +704,15 @@ export default function DashboardPage() {
             className="flex items-center gap-2 rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-colors hover:bg-[#1d4ed8]"
           >
             <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Demande d&apos;installation</span>
-            <span className="sm:hidden">Installation</span>
+            <span className="hidden sm:inline">{t("Demande d'installation")}</span>
+            <span className="sm:hidden">{t('Installation')}</span>
           </button>
 
           {/* Credits restants */}
           <div className="flex items-center gap-2 rounded-lg border border-hairline bg-muted px-4 py-2 backdrop-blur-md">
             <Coins className="w-4 h-4 text-yellow-500" />
             <span className="text-foreground font-bold">{userPoints.toLocaleString()}</span>
-            <span className="text-muted-foreground text-sm">points</span>
+            <span className="text-muted-foreground text-sm">{t('points')}</span>
             {isConnected && (
               <span
                 className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${
@@ -718,7 +720,7 @@ export default function DashboardPage() {
                     ? 'bg-yellow-500/15 text-yellow-500'
                     : 'bg-primary/15 text-primary'
                 }`}
-                title={activeResolution === '1080p' ? 'Tarif Full HD 1080p' : 'Tarif HD 720p'}
+                title={activeResolution === '1080p' ? t('Tarif Full HD 1080p') : t('Tarif HD 720p')}
               >
                 {pointsPerSecond(activeResolution)} pts/s
               </span>
@@ -734,9 +736,9 @@ export default function DashboardPage() {
           <span className="flex items-center gap-2">
             <Film className="h-4 w-4 text-primary" />
             <span className="flex flex-col">
-              <span className="text-sm font-semibold text-foreground">Source du swap</span>
+              <span className="text-sm font-semibold text-foreground">{t('Source du swap')}</span>
               <span className="text-[11px] text-muted-foreground">
-                Ta caméra en direct, ou une vidéo que tu importes.
+                {t('Ta caméra en direct, ou une vidéo que tu importes.')}
               </span>
             </span>
           </span>
@@ -759,7 +761,7 @@ export default function DashboardPage() {
                 }`}
               >
                 <Camera className="h-3.5 w-3.5" />
-                Caméra
+                {t('Caméra')}
               </button>
               <button
                 type="button"
@@ -773,7 +775,7 @@ export default function DashboardPage() {
                 }`}
               >
                 <Film className="h-3.5 w-3.5" />
-                Vidéo
+                {t('Vidéo')}
               </button>
             </div>
           </div>
@@ -796,7 +798,7 @@ export default function DashboardPage() {
               className="flex items-center gap-2 rounded-lg border border-hairline bg-black/40 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Upload className="h-3.5 w-3.5" />
-              {videoFile ? 'Changer de vidéo' : 'Importer une vidéo'}
+              {videoFile ? t('Changer de vidéo') : t('Importer une vidéo')}
             </button>
             {videoFile ? (
               <span className="flex min-w-0 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
@@ -814,7 +816,7 @@ export default function DashboardPage() {
                 )}
               </span>
             ) : (
-              <span className="text-[11px] text-muted-foreground">MP4 recommandé.</span>
+              <span className="text-[11px] text-muted-foreground">{t('MP4 recommandé.')}</span>
             )}
           </div>
         )}
@@ -826,10 +828,10 @@ export default function DashboardPage() {
           <Loader2 className="h-5 w-5 shrink-0 animate-spin text-yellow-500" />
           <div>
             <p className="text-sm font-semibold text-foreground">
-              File d&apos;attente : position {queuePosition.position} sur {queuePosition.queueSize}
+              {t('File d\'attente : position')} {queuePosition.position} {t('sur')} {queuePosition.queueSize}
             </p>
             <p className="mt-0.5 text-xs text-foreground/60">
-              Les serveurs sont très demandés. Ta session démarre dès qu&apos;une place se libère.
+              {t('Les serveurs sont très demandés. Ta session démarre dès qu\'une place se libère.')}
             </p>
           </div>
         </div>
@@ -855,10 +857,10 @@ export default function DashboardPage() {
             <div className="overflow-hidden rounded-2xl border border-hairline bg-card shadow-[0_8px_40px_rgba(0,0,0,0.4)]">
               <div className="flex items-center gap-2 border-b border-hairline bg-muted px-4 py-2.5 backdrop-blur-md">
                 <Camera className="h-4 w-4 text-blue-400" />
-                <span className="text-sm font-medium text-foreground">Caméra réelle</span>
+                <span className="text-sm font-medium text-foreground">{t('Caméra réelle')}</span>
                 {isConnected && (
                   <span className="ml-auto flex items-center gap-1.5 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-bold text-blue-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" /> EN DIRECT
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-400" /> {t('EN DIRECT')}
                   </span>
                 )}
               </div>
@@ -874,7 +876,7 @@ export default function DashboardPage() {
                 {!isConnected && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-text-faint">
                     <Camera className="mb-2 h-12 w-12 opacity-50" />
-                    <p className="text-sm">Caméra inactive</p>
+                    <p className="text-sm">{t('Caméra inactive')}</p>
                   </div>
                 )}
                 {/* Controle camera : coupe / reactive la piste video envoyee au
@@ -884,19 +886,19 @@ export default function DashboardPage() {
                   <div className="absolute inset-x-3 bottom-3 z-20 flex items-center gap-2">
                     <button
                       onClick={toggleCamera}
-                      aria-label={cameraEnabled ? 'Couper la caméra' : 'Activer la caméra'}
-                      title={cameraEnabled ? 'Couper la caméra' : 'Activer la caméra'}
+                      aria-label={cameraEnabled ? t('Couper la caméra') : t('Activer la caméra')}
+                      title={cameraEnabled ? t('Couper la caméra') : t('Activer la caméra')}
                       className="flex h-9 items-center gap-2 rounded-lg border border-hairline bg-black/50 px-3 text-xs font-medium text-foreground/90 backdrop-blur-md transition-colors hover:bg-black/70"
                     >
                       {cameraEnabled ? (
                         <>
                           <VideoIcon className="h-4 w-4" />
-                          Caméra active
+                          {t('Caméra active')}
                         </>
                       ) : (
                         <>
                           <VideoOff className="h-4 w-4 text-red-400" />
-                          Caméra coupée
+                          {t('Caméra coupée')}
                         </>
                       )}
                     </button>
@@ -909,7 +911,7 @@ export default function DashboardPage() {
             <div className="overflow-hidden rounded-2xl border border-primary/30 bg-card shadow-[0_8px_40px_rgba(0,255,136,0.12)]">
               <div className="flex items-center gap-2 border-b border-primary/20 bg-muted px-4 py-2.5 backdrop-blur-md">
                 <Zap className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium text-foreground">Caméra ChapCam</span>
+                <span className="text-sm font-medium text-foreground">{t('Caméra ChapCam')}</span>
                 <div className="ml-auto flex items-center gap-2 text-[11px]">
                   {isConnected && (
                     <>
@@ -926,18 +928,18 @@ export default function DashboardPage() {
                   {isConnected && (
                     <button
                       onClick={() => setManualFullscreen(true)}
-                      aria-label="Mode plein écran immersif"
-                      title="Mode plein écran immersif (façon mobile)"
+                      aria-label={t('Mode plein écran immersif')}
+                      title={t('Mode plein écran immersif (façon mobile)')}
                       className="flex h-7 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 text-primary transition-colors hover:bg-primary/20"
                     >
                       <Smartphone className="h-3.5 w-3.5" />
-                      <span className="text-[11px] font-medium">Plein écran</span>
+                      <span className="text-[11px] font-medium">{t('Plein écran')}</span>
                     </button>
                   )}
                   <button
                     onClick={toggleCamFullscreen}
-                    aria-label={isCamFullscreen ? 'Réduire la caméra' : 'Agrandir la caméra'}
-                    title={isCamFullscreen ? 'Réduire' : 'Agrandir en plein écran'}
+                    aria-label={isCamFullscreen ? t('Réduire la caméra') : t('Agrandir la caméra')}
+                    title={isCamFullscreen ? t('Réduire') : t('Agrandir en plein écran')}
                     className="flex h-7 w-7 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary transition-colors hover:bg-primary/20"
                   >
                     {isCamFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
@@ -974,7 +976,7 @@ export default function DashboardPage() {
           <div className="grid gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
             {/* Avatar selectionne */}
             <div className="rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
-              <p className="mb-3 text-sm font-semibold text-foreground">Avatar sélectionné</p>
+              <p className="mb-3 text-sm font-semibold text-foreground">{t('Avatar sélectionné')}</p>
               {selectedAvatar ? (
                 <div className="flex items-center gap-3">
                   <img
@@ -984,21 +986,21 @@ export default function DashboardPage() {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">{selectedAvatar.name}</p>
-                    <p className="text-xs text-foreground/40">Actif</p>
+                    <p className="text-xs text-foreground/40">{t('Actif')}</p>
                   </div>
                 </div>
               ) : (
-                <p className="text-sm text-foreground/40">Aucun avatar sélectionné</p>
+                <p className="text-sm text-foreground/40">{t('Aucun avatar sélectionné')}</p>
               )}
             </div>
 
             {/* Mes avatars */}
             <div className="min-w-0 rounded-2xl border border-hairline bg-muted p-4 backdrop-blur-xl">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground">Mes avatars</p>
+                <p className="text-sm font-semibold text-foreground">{t('Mes avatars')}</p>
                 <Link href="/dashboard/avatars" className="flex items-center gap-1 text-xs text-primary hover:underline">
                   <Plus className="h-3.5 w-3.5" />
-                  Ajouter
+                  {t('Ajouter')}
                 </Link>
               </div>
 
@@ -1010,7 +1012,7 @@ export default function DashboardPage() {
                   >
                     <Plus className="h-5 w-5" />
                   </Link>
-                  <p className="text-sm text-foreground/40">Créez votre premier avatar</p>
+                  <p className="text-sm text-foreground/40">{t('Créez votre premier avatar')}</p>
                 </div>
               ) : (
                 <div className="flex gap-3 overflow-x-auto pb-1">
@@ -1040,7 +1042,7 @@ export default function DashboardPage() {
                     className="flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-hairline-strong text-foreground/50 transition-colors hover:border-primary/40 hover:text-primary"
                   >
                     <Plus className="h-5 w-5" />
-                    <span className="text-[10px]">Ajouter</span>
+                    <span className="text-[10px]">{t('Ajouter')}</span>
                   </Link>
                 </div>
               )}
@@ -1067,7 +1069,7 @@ export default function DashboardPage() {
                     </span>
                   </span>
                   <span className="block text-[11px] text-foreground/50">
-                    Décors, styles, effets et arrière-plans en direct, sans couper la caméra.
+                    {t('Décors, styles, effets et arrière-plans en direct, sans couper la caméra.')}
                   </span>
                 </span>
               </span>
@@ -1075,7 +1077,7 @@ export default function DashboardPage() {
                 {isVip && (
                   <span className="hidden items-center gap-1 rounded-full border border-hairline bg-background/40 px-2.5 py-1 text-[11px] text-foreground/60 sm:flex">
                     <Crown className="h-3.5 w-3.5 text-primary" />
-                    Sans watermark
+                    {t('Sans watermark')}
                   </span>
                 )}
                 <ChevronDown
@@ -1094,7 +1096,7 @@ export default function DashboardPage() {
             <div className="space-y-3 rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-3">
               <div className="flex items-center justify-between gap-3">
                 <label htmlFor="codec-select" className="text-xs text-foreground/60">
-                  Codec vidéo (avancé)
+                  {t('Codec vidéo (avancé)')}
                 </label>
                 <select
                   id="codec-select"
@@ -1103,9 +1105,9 @@ export default function DashboardPage() {
                   onChange={e => setVideoCodec(e.target.value as typeof videoCodec)}
                   className="rounded-lg border border-hairline bg-black/40 px-2.5 py-1.5 text-xs font-medium text-foreground outline-none focus:border-yellow-500/50 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  <option value="">Auto</option>
-                  <option value="h264">H.264 (compatible)</option>
-                  <option value="vp9">VP9 (net)</option>
+                  <option value="">{t('Auto')}</option>
+                  <option value="h264">H.264 ({t('compatible')})</option>
+                  <option value="vp9">VP9 ({t('net')})</option>
                   <option value="vp8">VP8</option>
                 </select>
               </div>
@@ -1114,14 +1116,14 @@ export default function DashboardPage() {
             {/* Prompt libre + Enhance */}
             <div className="space-y-2">
               <label className="text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
-                Prompt personnalisé
+                {t('Prompt personnalisé')}
               </label>
               <textarea
                 value={livePrompt}
                 onChange={e => setLivePromptText(e.target.value)}
                 disabled={!isVip}
                 rows={3}
-                placeholder="Ex: dans un manoir gothique éclairé aux bougies, style cinématique..."
+                placeholder={t('Ex: dans un manoir gothique éclairé aux bougies, style cinématique...')}
                 className="w-full resize-none rounded-xl border border-hairline bg-background/60 p-3 text-sm text-foreground placeholder:text-foreground/30 focus:border-primary/50 focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
               />
               <div className="flex items-center justify-between gap-2">
@@ -1138,7 +1140,7 @@ export default function DashboardPage() {
                   >
                     {enhancePrompt && <Check className="h-3 w-3 text-black" />}
                   </span>
-                  Enhance (améliore le prompt)
+                  {t('Enhance (améliore le prompt)')}
                 </button>
                 <button
                   type="button"
@@ -1151,7 +1153,7 @@ export default function DashboardPage() {
                   ) : (
                     <Wand2 className="h-3.5 w-3.5" />
                   )}
-                  Appliquer
+                  {t('Appliquer')}
                 </button>
               </div>
             </div>
@@ -1167,7 +1169,7 @@ export default function DashboardPage() {
                   return (
                     <div key={category.id}>
                       <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-foreground/40">
-                        {category.label}
+                        {t(category.label)}
                       </p>
                       {isVisual ? (
                         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -1180,7 +1182,7 @@ export default function DashboardPage() {
                                 type="button"
                                 disabled={disabled}
                                 onClick={() => handleApplyPreset(preset.id, preset.prompt)}
-                                title={preset.label}
+                                title={t(preset.label)}
                                 className={`group relative aspect-video overflow-hidden rounded-xl border text-left transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
                                   isActive
                                     ? 'border-primary shadow-[0_0_16px_rgba(0,255,136,0.35)]'
@@ -1190,12 +1192,12 @@ export default function DashboardPage() {
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
                                   src={preset.image || '/placeholder.svg'}
-                                  alt={preset.label}
+                                  alt={t(preset.label)}
                                   className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                                 />
                                 <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                                 <span className="absolute inset-x-0 bottom-0 p-2 text-[11px] font-semibold leading-tight text-white">
-                                  {preset.label}
+                                  {t(preset.label)}
                                 </span>
                                 {isActive && (
                                   <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-black">
@@ -1225,7 +1227,7 @@ export default function DashboardPage() {
                                   : 'border-hairline text-foreground/70 hover:border-primary/40 hover:text-foreground'
                               }`}
                             >
-                              {preset.label}
+                              {t(preset.label)}
                             </button>
                           ))}
                         </div>
@@ -1239,7 +1241,7 @@ export default function DashboardPage() {
             {isVip && !isConnected && (
               <p className="mt-3 flex items-center gap-1.5 text-[11px] text-foreground/40">
                 <AlertCircle className="h-3.5 w-3.5" />
-                Démarre le Live Swap pour appliquer des scènes en direct.
+                {t('Démarre le Live Swap pour appliquer des scènes en direct.')}
               </p>
             )}
             </>
@@ -1252,10 +1254,9 @@ export default function DashboardPage() {
                   <Lock className="h-6 w-6 text-black" />
                 </span>
                 <div>
-                  <p className="text-sm font-bold text-foreground">Fonctionnalité VIP</p>
+                  <p className="text-sm font-bold text-foreground">{t('Fonctionnalité VIP')}</p>
                   <p className="mt-1 text-xs leading-relaxed text-foreground/60">
-                    Débloque les prompts Studio CHAPCAM en direct et le rendu sans watermark avec
-                    VIP PRO ou VIP DEBOUT.
+                    {t('Débloque les prompts Studio CHAPCAM en direct et le rendu sans watermark avec VIP PRO ou VIP DEBOUT.')}
                   </p>
                 </div>
                 <Link
@@ -1263,7 +1264,7 @@ export default function DashboardPage() {
                   className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-primary to-[#8b5cf6] px-5 py-2.5 text-sm font-bold text-black transition-all hover:shadow-[0_0_24px_rgba(139,92,246,0.45)]"
                 >
                   <Crown className="h-4 w-4" />
-                  Passer VIP
+                  {t('Passer VIP')}
                 </Link>
               </div>
             )}
@@ -1275,16 +1276,16 @@ export default function DashboardPage() {
             <span className="flex items-center gap-2">
               <Maximize2 className="h-4 w-4 text-primary" />
               <span className="flex flex-col">
-                <span className="text-sm font-semibold text-foreground">Résolution</span>
+                <span className="text-sm font-semibold text-foreground">{t('Résolution')}</span>
                 <span className="text-[11px] text-foreground/50">
                   {hdEnabled && isVip
                     ? `1080p Full HD — ${POINTS_PER_SECOND_HD} pts/s`
-                    : `720p — ${POINTS_PER_SECOND_SD} pts/s${isVip ? '' : ' (1080p réservé VIP)'}`}
+                    : `720p — ${POINTS_PER_SECOND_SD} pts/s${isVip ? '' : ` (${t('1080p réservé VIP')})`}`}
                 </span>
               </span>
             </span>
             <select
-              aria-label="Choisir la résolution du live swap"
+              aria-label={t('Choisir la résolution du live swap')}
               value={hdEnabled && isVip ? '1080p' : '720p'}
               disabled={isConnected}
               onChange={e => setHdEnabled(e.target.value === '1080p')}

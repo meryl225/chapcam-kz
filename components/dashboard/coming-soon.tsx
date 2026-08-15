@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowLeft, type LucideIcon } from 'lucide-react'
+import { T } from '@/components/i18n/t'
 
 interface ComingSoonProps {
   icon: LucideIcon
@@ -25,7 +26,7 @@ export function ComingSoon({
         className="mb-8 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
-        Retour au dashboard
+        <T>Retour au dashboard</T>
       </Link>
 
       <div className="rounded-2xl border border-hairline bg-card p-8 text-center md:p-12">
@@ -40,12 +41,12 @@ export function ComingSoon({
           className="mb-4 inline-block rounded-full px-3 py-1 text-xs font-bold uppercase"
           style={{ backgroundColor: glow, color: accent }}
         >
-          Bientôt disponible
+          <T>Bientôt disponible</T>
         </span>
 
-        <h1 className="mb-3 text-2xl font-bold text-foreground md:text-3xl text-balance">{title}</h1>
+        <h1 className="mb-3 text-2xl font-bold text-foreground md:text-3xl text-balance"><T>{title}</T></h1>
         <p className="mx-auto mb-8 max-w-xl text-sm leading-relaxed text-muted-foreground text-pretty">
-          {description}
+          <T>{description}</T>
         </p>
 
         <ul className="mx-auto mb-8 grid max-w-md gap-3 text-left">
@@ -58,7 +59,7 @@ export function ComingSoon({
                 className="flex h-2 w-2 shrink-0 rounded-full"
                 style={{ backgroundColor: accent }}
               />
-              {f}
+              <T>{f}</T>
             </li>
           ))}
         </ul>
@@ -67,7 +68,7 @@ export function ComingSoon({
           href="/dashboard"
           className="inline-flex items-center justify-center rounded-xl border border-hairline bg-muted px-6 py-3 text-sm font-bold text-foreground transition-colors hover:bg-muted"
         >
-          Explorer les autres outils
+          <T>Explorer les autres outils</T>
         </Link>
       </div>
     </div>

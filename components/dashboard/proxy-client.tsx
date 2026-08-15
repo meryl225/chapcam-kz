@@ -6,6 +6,7 @@ import { Shield, Copy, Check, Loader2, Globe, Zap, RefreshCw, Lock } from 'lucid
 import { CountryFlag } from '@/components/numbers/country-flag'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useT } from '@/lib/i18n/language-provider'
 
 // Pays disponibles — liste facilement extensible (garder en phase avec l'API).
 const COUNTRIES = [
@@ -35,6 +36,7 @@ type Props = {
 }
 
 export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
+  const t = useT()
   const [selected, setSelected] = useState<string | null>(null)
   const [loading, setLoading] = useState<string | null>(null)
   const [creds, setCreds] = useState<Credentials | null>(null)
@@ -57,10 +59,10 @@ export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
       if (res.ok && data.credentials) {
         setCreds(data.credentials)
       } else {
-        setError(data.error || 'Activation impossible. Réessayez.')
+        setError(data.error || t('Activation impossible. Réessayez.'))
       }
     } catch {
-      setError('Erreur de connexion. Réessayez.')
+      setError(t('Erreur de connexion. Réessayez.'))
     } finally {
       setLoading(null)
     }
@@ -77,17 +79,17 @@ export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground md:text-3xl text-balance">
-                Navigation Sécurisée
+                {t('Navigation Sécurisée')}
               </h1>
               <p className="text-sm text-muted-foreground">
-                Naviguez avec une IP résidentielle d&apos;un autre pays
+                {t('Naviguez avec une IP résidentielle d\'un autre pays')}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 rounded-2xl border border-hairline bg-card px-4 py-3">
             <Globe className="h-5 w-5 text-primary" />
             <div className="leading-tight">
-              <p className="text-xs text-muted-foreground">Quota restant</p>
+              <p className="text-xs text-muted-foreground">{t('Quota restant')}</p>
               <p className="text-sm font-bold text-foreground">
                 {remainingGb.toFixed(1)} / {quotaGb} Go
               </p>
@@ -103,10 +105,9 @@ export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
                 <Lock className="h-5 w-5 text-amber-400" />
               </div>
               <div>
-                <p className="font-bold text-foreground">Aucun forfait actif</p>
+                <p className="font-bold text-foreground">{t('Aucun forfait actif')}</p>
                 <p className="text-sm text-muted-foreground">
-                  La navigation sécurisée nécessite un forfait actif. Souscrivez pour débloquer
-                  votre quota de données proxy.
+                  {t('La navigation sécurisée nécessite un forfait actif. Souscrivez pour débloquer votre quota de données proxy.')}
                 </p>
               </div>
             </div>
@@ -115,14 +116,14 @@ export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
               className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-primary/90"
             >
               <Zap className="h-4 w-4" />
-              Voir les forfaits
+              {t('Voir les forfaits')}
             </Link>
           </div>
         )}
 
         {/* Choisir un pays */}
         <section className="mb-8 rounded-3xl border border-hairline bg-card/60 p-6 backdrop-blur-sm">
-          <h2 className="mb-4 text-lg font-bold text-foreground">Choisir un pays</h2>
+          <h2 className="mb-4 text-lg font-bold text-foreground">{t('Choisir un pays')}</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {COUNTRIES.map((c) => {
               const isActive = selected === c.code
@@ -139,7 +140,7 @@ export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
                   }`}
                 >
                   <CountryFlag code={c.code} size={40} />
-                  <span className="text-xs font-semibold text-foreground">{c.name}</span>
+                  <span className="text-xs font-semibold text-foreground">{t(c.name)}</span>
                   {isLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
                 </button>
               )
@@ -157,7 +158,7 @@ export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
           <section className="mb-8 rounded-3xl border border-hairline bg-card/60 p-6 backdrop-blur-sm">
             <div className="mb-4 flex items-center gap-2">
               <CountryFlag code={creds.country} size={24} />
-              <h2 className="text-lg font-bold text-foreground">Vos identifiants de connexion</h2>
+              <h2 className="text-lg font-bold text-foreground">{t('Vos identifiants de connexion')}</h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <CredentialField label="Host" value={creds.host ?? ''} />
@@ -167,14 +168,14 @@ export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
             </div>
             <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
               <Zap className="h-3.5 w-3.5 text-primary" />
-              Entrez ces identifiants dans votre navigateur ou votre système (voir le guide ci-dessous).
+              {t('Entrez ces identifiants dans votre navigateur ou votre système (voir le guide ci-dessous).')}
             </p>
           </section>
         )}
 
         {/* Guide d'installation */}
         <section className="mb-8 rounded-3xl border border-hairline bg-card/60 p-6 backdrop-blur-sm">
-          <h2 className="mb-4 text-lg font-bold text-foreground">Guide d&apos;installation</h2>
+          <h2 className="mb-4 text-lg font-bold text-foreground">{t('Guide d\'installation')}</h2>
           <Tabs defaultValue="browser">
             <TabsList className="mb-4 grid w-full grid-cols-1 gap-2 sm:grid-cols-3">
               <TabsTrigger value="browser">Chrome / Firefox</TabsTrigger>
@@ -185,11 +186,11 @@ export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
             <TabsContent value="browser">
               <Guide
                 steps={[
-                  'Installez l\'extension « FoxyProxy » depuis le store Chrome ou Firefox.',
-                  'Ouvrez FoxyProxy puis cliquez sur « Add » pour ajouter un nouveau proxy.',
-                  'Renseignez le Host et le Port affichés ci-dessus (type : HTTP).',
-                  'Saisissez le Username et le Password dans les champs d\'authentification.',
-                  'Activez le proxy depuis l\'icône FoxyProxy : votre IP est maintenant celle du pays choisi.',
+                  t('Installez l\'extension « FoxyProxy » depuis le store Chrome ou Firefox.'),
+                  t('Ouvrez FoxyProxy puis cliquez sur « Add » pour ajouter un nouveau proxy.'),
+                  t('Renseignez le Host et le Port affichés ci-dessus (type : HTTP).'),
+                  t('Saisissez le Username et le Password dans les champs d\'authentification.'),
+                  t('Activez le proxy depuis l\'icône FoxyProxy : votre IP est maintenant celle du pays choisi.'),
                 ]}
               />
             </TabsContent>
@@ -197,11 +198,11 @@ export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
             <TabsContent value="windows">
               <Guide
                 steps={[
-                  'Ouvrez Paramètres > Réseau et Internet > Proxy.',
-                  'Sous « Configuration manuelle du proxy », activez « Utiliser un serveur proxy ».',
-                  'Entrez le Host et le Port indiqués ci-dessus, puis enregistrez.',
-                  'Au premier site visité, Windows demande le Username et le Password : saisissez-les.',
-                  'Pour désactiver, repassez « Utiliser un serveur proxy » sur Désactivé.',
+                  t('Ouvrez Paramètres > Réseau et Internet > Proxy.'),
+                  t('Sous « Configuration manuelle du proxy », activez « Utiliser un serveur proxy ».'),
+                  t('Entrez le Host et le Port indiqués ci-dessus, puis enregistrez.'),
+                  t('Au premier site visité, Windows demande le Username et le Password : saisissez-les.'),
+                  t('Pour désactiver, repassez « Utiliser un serveur proxy » sur Désactivé.'),
                 ]}
               />
             </TabsContent>
@@ -209,11 +210,11 @@ export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
             <TabsContent value="mac">
               <Guide
                 steps={[
-                  'Ouvrez Préférences Système > Réseau.',
-                  'Sélectionnez votre connexion (Wi-Fi/Ethernet) puis « Détails… » > « Proxies ».',
-                  'Cochez « Proxy web (HTTP) » et « Proxy web sécurisé (HTTPS) ».',
-                  'Entrez le Host, le Port, puis le Username et le Password.',
-                  'Cliquez sur « OK » puis « Appliquer » : votre navigation passe par le pays choisi.',
+                  t('Ouvrez Préférences Système > Réseau.'),
+                  t('Sélectionnez votre connexion (Wi-Fi/Ethernet) puis « Détails… » > « Proxies ».'),
+                  t('Cochez « Proxy web (HTTP) » et « Proxy web sécurisé (HTTPS) ».'),
+                  t('Entrez le Host, le Port, puis le Username et le Password.'),
+                  t('Cliquez sur « OK » puis « Appliquer » : votre navigation passe par le pays choisi.'),
                 ]}
               />
             </TabsContent>
@@ -222,22 +223,22 @@ export function ProxyClient({ planLabel, quotaGb, usedGb, hasPlan }: Props) {
 
         {/* Mon abonnement */}
         <section className="rounded-3xl border border-hairline bg-card/60 p-6 backdrop-blur-sm">
-          <h2 className="mb-4 text-lg font-bold text-foreground">Mon abonnement</h2>
+          <h2 className="mb-4 text-lg font-bold text-foreground">{t('Mon abonnement')}</h2>
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Forfait actuel</p>
-              <p className="text-lg font-bold text-foreground">{planLabel}</p>
+              <p className="text-sm text-muted-foreground">{t('Forfait actuel')}</p>
+              <p className="text-lg font-bold text-foreground">{t(planLabel)}</p>
             </div>
             <Link
               href="/dashboard/plans"
               className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-primary/90"
             >
               <RefreshCw className="h-4 w-4" />
-              Recharger
+              {t('Recharger')}
             </Link>
           </div>
           <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Quota consommé</span>
+            <span className="text-muted-foreground">{t('Quota consommé')}</span>
             <span className="font-semibold text-foreground">
               {usedGb.toFixed(1)} / {quotaGb} Go
             </span>
@@ -284,6 +285,7 @@ function CredentialField({ label, value, secret }: { label: string; value: strin
 }
 
 function Guide({ steps }: { steps: string[] }) {
+  const t = useT()
   return (
     <ol className="space-y-4">
       {steps.map((step, i) => (
@@ -295,7 +297,7 @@ function Guide({ steps }: { steps: string[] }) {
             <p className="text-sm text-foreground">{step}</p>
             {/* Emplacement pour une capture d'écran (à intégrer plus tard) */}
             <div className="mt-2 flex h-28 items-center justify-center rounded-xl border border-dashed border-hairline bg-background text-xs text-text-faint">
-              Capture d&apos;écran à venir
+              {t('Capture d\'écran à venir')}
             </div>
           </div>
         </li>

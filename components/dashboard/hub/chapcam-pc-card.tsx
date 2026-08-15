@@ -3,8 +3,10 @@
 import { Check, Download, Loader2, Lock } from 'lucide-react'
 import { PC_OFFER } from '@/lib/pc-offer'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
+import { useT } from '@/lib/i18n/language-provider'
 
 export function ChapCamPcCard() {
+  const t = useT()
   // Paiement partage : choix PayDunya (mobile money/carte) ou Crypto (Trybit).
   const { startCheckout, pendingKey, error, modal } = usePaymentCheckout()
   const loading = pendingKey === PC_OFFER.id
@@ -23,14 +25,14 @@ export function ChapCamPcCard() {
         ) : (
           <>
             <Download className="h-5 w-5" />
-            Telecharger ChapCam PC
+            {t('Telecharger ChapCam PC')}
           </>
         )}
       </button>
 
       <p className="mt-2.5 flex items-center justify-center gap-1.5 text-center text-xs text-text-faint">
         <Lock className="h-3.5 w-3.5" />
-        Paiement unique securise · cle de licence envoyee par email
+        {t('Paiement unique securise · cle de licence envoyee par email')}
       </p>
 
       {error && (
@@ -44,7 +46,7 @@ export function ChapCamPcCard() {
         {PC_OFFER.features.map((f) => (
           <li key={f} className="flex items-start gap-2">
             <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" />
-            <span>{f}</span>
+            <span>{t(f)}</span>
           </li>
         ))}
       </ul>
