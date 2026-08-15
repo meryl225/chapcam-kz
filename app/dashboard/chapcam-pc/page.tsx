@@ -6,6 +6,7 @@ import { ChapCamPcCard } from '@/components/dashboard/hub/chapcam-pc-card'
 import { ChapCamPcCountdown } from '@/components/chapcam-pc-countdown'
 import { DesktopDownloadSection } from '@/components/desktop/desktop-download-section'
 import { PC_OFFER } from '@/lib/pc-offer'
+import { T } from '@/components/i18n/t'
 
 export const metadata: Metadata = {
   title: 'ChapCam PC — Logiciel Premium à vie',
@@ -36,14 +37,14 @@ export default function ChapCamPcPage() {
           className="inline-flex items-center gap-2 rounded-xl border border-hairline bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
-          Tableau de bord
+          <T>Tableau de bord</T>
         </Link>
         <Link
           href="/desktop"
           className="inline-flex items-center gap-2 rounded-xl border border-hairline bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
         >
           <Eye className="h-4 w-4" />
-          Voir l&apos;interface
+          <T>Voir l&apos;interface</T>
         </Link>
       </div>
 
@@ -54,19 +55,18 @@ export default function ChapCamPcPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-400">
               <InfinityIcon className="h-3.5 w-3.5" />
-              Logiciel premium · Licence a vie
+              <T>Logiciel premium · Licence a vie</T>
             </div>
 
             <h1 className="mt-5 text-4xl font-black leading-[1.05] text-foreground text-balance md:text-5xl">
               ChapCam PC
               <span className="block bg-gradient-to-r from-primary to-emerald-300 bg-clip-text text-transparent">
-                Logiciel a vie
+                <T>Logiciel a vie</T>
               </span>
             </h1>
 
             <p className="mt-4 max-w-md text-base leading-relaxed text-muted-foreground text-pretty">
-              Le face swap en temps reel le plus rapide, directement sur ton PC.
-              Pas d&apos;abonnement, pas de cloud, pas de limites. Tu paies une seule fois.
+              <T>Le face swap en temps reel le plus rapide, directement sur ton PC. Pas d&apos;abonnement, pas de cloud, pas de limites. Tu paies une seule fois.</T>
             </p>
 
             <div className="mt-7">
@@ -83,7 +83,7 @@ export default function ChapCamPcPage() {
                   {PC_OFFER.price.toLocaleString('fr-FR')}
                 </span>
                 <span className="pb-1.5 text-lg text-muted-foreground">FCFA</span>
-                <span className="pb-1.5 text-sm text-text-faint">· une seule fois</span>
+                <span className="pb-1.5 text-sm text-text-faint">· <T>une seule fois</T></span>
               </div>
             </div>
 
@@ -94,7 +94,7 @@ export default function ChapCamPcPage() {
             <div className="mt-5 flex max-w-md items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4">
               <MonitorCog className="mt-0.5 h-5 w-5 shrink-0 text-amber-400" />
               <p className="text-sm leading-relaxed text-amber-200/90 text-pretty">
-                <span className="font-bold text-amber-300">Config requise :</span>{' '}
+                <span className="font-bold text-amber-300"><T>Config requise :</T></span>{' '}
                 {PC_OFFER.requirement}
               </p>
             </div>
@@ -102,11 +102,8 @@ export default function ChapCamPcPage() {
             <div className="mt-3 flex max-w-md items-start gap-3 rounded-xl border border-hairline bg-card p-4">
               <Info className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
               <p className="text-sm leading-relaxed text-muted-foreground text-pretty">
-                <span className="font-bold text-foreground">Qualite du rendu :</span>{' '}
-                les performances du logiciel dependent de l&apos;etat de votre appareil
-                (puissance du processeur, carte graphique, memoire), de votre connexion
-                internet, de la qualite de l&apos;avatar choisi et de la lumiere de votre
-                environnement. Plus ces elements sont bons, plus le swap est realiste et fluide.
+                <span className="font-bold text-foreground"><T>Qualite du rendu :</T></span>{' '}
+                <T>les performances du logiciel dependent de l&apos;etat de votre appareil (puissance du processeur, carte graphique, memoire), de votre connexion internet, de la qualite de l&apos;avatar choisi et de la lumiere de votre environnement. Plus ces elements sont bons, plus le swap est realiste et fluide.</T>
               </p>
             </div>
 
@@ -140,8 +137,8 @@ export default function ChapCamPcPage() {
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15">
                 <h.icon className="h-5 w-5 text-primary" />
               </div>
-              <h3 className="mt-3 text-sm font-bold text-foreground">{h.title}</h3>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground text-pretty">{h.desc}</p>
+              <h3 className="mt-3 text-sm font-bold text-foreground"><T>{h.title}</T></h3>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground text-pretty"><T>{h.desc}</T></p>
             </div>
           ))}
         </div>
@@ -150,10 +147,10 @@ export default function ChapCamPcPage() {
       {/* COMMENT CA MARCHE */}
       <section className="mx-auto mt-16 max-w-6xl px-4 md:px-6">
         <h2 className="text-center text-2xl font-black text-foreground text-balance">
-          Comment ca marche
+          <T>Comment ca marche</T>
         </h2>
         <p className="mx-auto mt-2 max-w-lg text-center text-sm text-muted-foreground text-pretty">
-          Trois etapes simples, et le logiciel est a toi pour toujours.
+          <T>Trois etapes simples, et le logiciel est a toi pour toujours.</T>
         </p>
 
         <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -165,8 +162,8 @@ export default function ChapCamPcPage() {
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/15">
                 <s.icon className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="mt-4 text-lg font-bold text-foreground">{s.title}</h3>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground text-pretty">{s.desc}</p>
+              <h3 className="mt-4 text-lg font-bold text-foreground"><T>{s.title}</T></h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground text-pretty"><T>{s.desc}</T></p>
             </div>
           ))}
         </div>
@@ -179,7 +176,7 @@ export default function ChapCamPcPage() {
 
       {/* MENTION LEGALE */}
       <p className="mx-auto max-w-6xl px-4 pb-12 pt-8 text-center text-[11px] leading-relaxed text-text-faint md:px-6">
-        Paiement unique. Aucun remboursement apres l&apos;achat.
+        <T>Paiement unique. Aucun remboursement apres l&apos;achat.</T>
       </p>
     </div>
   )

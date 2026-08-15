@@ -422,3 +422,61 @@ export async function fulfillGeniusPayPayment(params: {
 
   return { status: 'completed', alreadyDone: false, result }
 }
+
+// ============================================================
+// Reconciliation planifiee (cron). Rattrape les paiements GeniusPay ou
+// l'utilisateur a bien ete debite mais dont la confirmation (webhook / retour
+// checkout) ne nous est jamais parvenue. On reconfirme TOUJOURS le statut
+// aupres de GeniusPay via fulfillGeniusPayPayment : rien n'est credite tant que
+// GeniusPay ne repond pas "completed". L'idempotence (processed_payments +
+// statut "approved") empeche tout double credit.
+//
+// Fenetre : on ne retente que les demandes creees entre 3 min et 72 h. On laisse
+// 3 min de grace pour ne pas courir apres le flux temps reel, et on abandonne
+// apres 72 h (au-dela, c'est un cas de reclamation manuelle, pas automatique).
+export async function reconcilePendingGeniusPay(): Promise<{
+  checked: number
+  credited: number
+  stillPending: number
+  cancelled: number
+  errors: number
+}> {
+  const admin = createAdminClient()
+  const now = Date.now()
+  const MIN_AGE_MS = 3 * 60 * 1000
+  const MAX_AGE_MS = 72 * 60 * 60 * 1000
+
+  const summary = { checked: 0, credited: 0, stillPending: 0, cancelled: 0, errors: 0 }
+
+  // Les paiements GeniusPay stockent leur reference (MTX-...) dans paydunya_token.
+  const { data: rows, error } = await admin
+    .from('payment_requests')
+    .select('id, paydunya_token, created_at')
+    .eq('status', 'pending')
+    .like('paydunya_token', 'MTX-%')
+    .gte('created_at', new Date(now - MAX_AGE_MS).toISOString())
+    .order('created_at', { ascending: true })
+    .limit(50)
+
+  if (error || !rows?.length) return summary
+
+  for (const row of rows) {
+    const reference = row.paydunya_token as string | null
+    if (!reference) continue
+    const ageMs = now - new Date(row.created_at as string).getTime()
+    if (ageMs < MIN_AGE_MS) continue
+
+    summary.checked++
+    try {
+      const outcome = await fulfillGeniusPayPayment({ reference, source: 'geniuspay_reconcile' })
+      if (outcome.status === 'completed') summary.credited++
+      else if (outcome.status === 'cancelled') summary.cancelled++
+      else if (outcome.status === 'pending') summary.stillPending++
+      else summary.errors++
+    } catch {
+      summary.errors++
+    }
+  }
+
+  return summary
+}

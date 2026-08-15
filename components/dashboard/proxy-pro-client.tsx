@@ -10,6 +10,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import type { ProxyProduct } from '@/lib/proxy/products'
+import { useT } from '@/lib/i18n/language-provider'
 
 const ICONS = {
   home: Home,
@@ -22,6 +23,7 @@ type Props = {
 }
 
 export function ProxyProClient({ products }: Props) {
+  const t = useT()
   return (
     <div className="min-h-screen px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-6xl">
@@ -34,7 +36,7 @@ export function ProxyProClient({ products }: Props) {
             <div>
               <h1 className="text-2xl font-bold text-foreground sm:text-3xl">ChapCam Proxy Pro</h1>
               <p className="text-sm text-muted-foreground">
-                Proxies résidentiels, ISP et mobiles — anonymat et fiabilité de niveau pro.
+                {t('Proxies résidentiels, ISP et mobiles — anonymat et fiabilité de niveau pro.')}
               </p>
             </div>
           </div>
@@ -53,14 +55,13 @@ export function ProxyProClient({ products }: Props) {
               <div className="relative">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7c3aed]/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-[#a78bfa]">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  Disponible maintenant
+                  {t('Disponible maintenant')}
                 </span>
                 <h2 className="mt-3 text-2xl font-bold text-white text-balance sm:text-3xl">
-                  Proxies premium avec ChapSim
+                  {t('Proxies premium avec ChapSim')}
                 </h2>
                 <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/60 text-pretty">
-                  Proxies résidentiels, mobiles et IP statiques dans 180+ pays, avec SMS OTP et
-                  numéros virtuels. Activation instantanée, sessions stables et fiables.
+                  {t('Proxies résidentiels, mobiles et IP statiques dans 180+ pays, avec SMS OTP et numéros virtuels. Activation instantanée, sessions stables et fiables.')}
                 </p>
 
                 <ul className="mt-4 grid gap-2 sm:grid-cols-2">
@@ -72,7 +73,7 @@ export function ProxyProClient({ products }: Props) {
                   ].map((f) => (
                     <li key={f} className="flex items-center gap-2 text-sm text-white/85">
                       <Check className="h-4 w-4 shrink-0 text-[#a78bfa]" />
-                      <span>{f}</span>
+                      <span>{t(f)}</span>
                     </li>
                   ))}
                 </ul>
@@ -83,7 +84,7 @@ export function ProxyProClient({ products }: Props) {
                   rel="noopener noreferrer"
                   className="group mt-6 inline-flex items-center justify-center gap-2 rounded-xl bg-[#7c3aed] px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-[#6d28d9]"
                 >
-                  Obtenir sur ChapSim
+                  {t('Obtenir sur ChapSim')}
                   <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </a>
               </div>
@@ -123,7 +124,7 @@ export function ProxyProClient({ products }: Props) {
               >
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <h2 className="text-lg font-bold leading-tight text-foreground text-balance">
-                    {p.name}
+                    {t(p.name)}
                   </h2>
                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15">
                     <Icon className="h-5 w-5 text-primary" />
@@ -131,14 +132,14 @@ export function ProxyProClient({ products }: Props) {
                 </div>
 
                 <p className="mb-5 text-sm leading-relaxed text-muted-foreground text-pretty">
-                  {p.tagline}
+                  {t(p.tagline)}
                 </p>
 
                 <ul className="mb-6 flex flex-col gap-3">
                   {p.features.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-sm text-foreground/90">
                       <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                      <span className="leading-snug">{f}</span>
+                      <span className="leading-snug">{t(f)}</span>
                     </li>
                   ))}
                 </ul>
@@ -150,7 +151,7 @@ export function ProxyProClient({ products }: Props) {
                     rel="noopener noreferrer"
                     className="group flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground transition-colors hover:bg-primary/90"
                   >
-                    Obtenir sur ChapSim
+                    {t('Obtenir sur ChapSim')}
                     <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                   </a>
                 </div>
