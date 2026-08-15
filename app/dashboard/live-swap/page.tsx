@@ -1321,21 +1321,21 @@ export default function DashboardPage() {
               {isConnecting ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Connexion en cours...
+                  {t('Connexion en cours...')}
                 </span>
               ) : isConnected ? (
                 <span className="flex items-center gap-2">
                   <Square className="h-5 w-5" />
-                  Arrêter le Live Swap
+                  {t('Arrêter le Live Swap')}
                 </span>
               ) : (
                 <>
                   <span className="flex items-center gap-2">
                     <Zap className="h-5 w-5" />
-                    Démarrer le Live Swap
+                    {t('Démarrer le Live Swap')}
                   </span>
                   <span className="text-xs font-normal opacity-80">
-                    La transformation commencera en temps réel
+                    {t('La transformation commencera en temps réel')}
                   </span>
                 </>
               )}
@@ -1354,7 +1354,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   {isRecording ? <Square className="h-4 w-4" /> : <Disc3 className="h-4 w-4 text-red-400" />}
-                  {isRecording ? "Arrêter l'enregistrement" : 'Enregistrer le swap'}
+                  {isRecording ? t("Arrêter l'enregistrement") : t('Enregistrer le swap')}
                 </button>
               )}
               {isRecording && (
@@ -1370,16 +1370,16 @@ export default function DashboardPage() {
                     className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90"
                   >
                     <Download className="h-4 w-4" />
-                    Télécharger l&apos;enregistrement
+                    {t('Télécharger l\'enregistrement')}
                   </a>
                   <button
                     type="button"
                     onClick={clearRecording}
-                    aria-label="Supprimer l'enregistrement"
+                    aria-label={t("Supprimer l'enregistrement")}
                     className="flex items-center gap-1.5 rounded-lg border border-hairline px-3 py-2 text-xs text-foreground/60 transition-colors hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Supprimer
+                    {t('Supprimer')}
                   </button>
                 </>
               )}

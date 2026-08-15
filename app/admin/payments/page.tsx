@@ -66,6 +66,16 @@ interface PaydunyaLog {
   createdAt: string
 }
 
+interface GeniusPending {
+  id: string
+  fullName: string | null
+  email: string | null
+  plan: string | null
+  amount: number
+  reference: string
+  createdAt: string
+}
+
 interface Stats {
   total: number
   active: number
@@ -125,7 +135,12 @@ export default function AdminPaymentsPage() {
   const [installations, setInstallations] = useState<Installation[]>([])
   const [paydunyaLogs, setPaydunyaLogs] = useState<PaydunyaLog[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
-  const [tab, setTab] = useState<'abonnements' | 'installations' | 'paydunya' | 'audit'>('abonnements')
+  const [tab, setTab] = useState<'abonnements' | 'installations' | 'paydunya' | 'geniuspay' | 'audit'>('abonnements')
+  const [geniusPending, setGeniusPending] = useState<GeniusPending[]>([])
+  const [geniusLoading, setGeniusLoading] = useState(false)
+  const [geniusLoaded, setGeniusLoaded] = useState(false)
+  const [crediting, setCrediting] = useState<string | null>(null)
+  const [creditMsg, setCreditMsg] = useState<string | null>(null)
   const [audit, setAudit] = useState<AuditRow[]>([])
   const [auditStats, setAuditStats] = useState<AuditStats | null>(null)
   const [auditLoading, setAuditLoading] = useState(false)
@@ -185,6 +200,58 @@ export default function AdminPaymentsPage() {
     [load],
   )
 
+  const loadGeniusPending = useCallback(async (force = false) => {
+    if (geniusLoaded && !force) return
+    setGeniusLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/admin/payments/geniuspay-pending', { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || 'Erreur de chargement GeniusPay.')
+        return
+      }
+      setGeniusPending(data.pending || [])
+      setGeniusLoaded(true)
+    } catch {
+      setError('Erreur de connexion.')
+    } finally {
+      setGeniusLoading(false)
+    }
+  }, [geniusLoaded])
+
+  const handleGeniusCredit = useCallback(
+    async (reference: string) => {
+      setCrediting(reference)
+      setCreditMsg(null)
+      try {
+        const res = await fetch('/api/admin/payments/geniuspay-credit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reference }),
+        })
+        const data = await res.json()
+        if (data.ok) {
+          setCreditMsg(
+            data.alreadyDone
+              ? `Deja credite (${reference}).`
+              : `Credite avec succes : ${data.message || reference}`,
+          )
+          // Retirer la ligne creditee de la liste des "en attente".
+          setGeniusPending((prev) => prev.filter((p) => p.reference !== reference))
+          load(true)
+        } else {
+          setCreditMsg(`Echec : ${data.message || data.status || 'credit impossible'}`)
+        }
+      } catch {
+        setCreditMsg('Credit impossible (erreur reseau).')
+      } finally {
+        setCrediting(null)
+      }
+    },
+    [load],
+  )
+
   const loadAudit = useCallback(async (force = false) => {
     if (auditLoaded && !force) return
     setAuditLoading(true)
@@ -214,6 +281,11 @@ export default function AdminPaymentsPage() {
   useEffect(() => {
     if (tab === 'audit') loadAudit()
   }, [tab, loadAudit])
+
+  // Charge les paiements GeniusPay "en attente" a l'ouverture de l'onglet.
+  useEffect(() => {
+    if (tab === 'geniuspay') loadGeniusPending()
+  }, [tab, loadGeniusPending])
 
   // Sur l'onglet PayDunya, une recherche interroge TOUTE la base (pas
   // seulement les 200 paiements deja charges). Debounce de 350ms.
@@ -367,6 +439,9 @@ export default function AdminPaymentsPage() {
           </TabButton>
           <TabButton active={tab === 'paydunya'} onClick={() => setTab('paydunya')}>
             Paiements PayDunya ({paydunyaLogs.length})
+          </TabButton>
+          <TabButton active={tab === 'geniuspay'} onClick={() => setTab('geniuspay')}>
+            GeniusPay en attente{geniusLoaded ? ` (${geniusPending.length})` : ''}
           </TabButton>
           <TabButton active={tab === 'audit'} onClick={() => setTab('audit')}>
             Audit paiements{auditStats ? ` (${auditStats.unverified})` : ''}
@@ -642,6 +717,71 @@ export default function AdminPaymentsPage() {
                   </div>
                 )
               })}
+            </div>
+          )
+        ) : tab === 'geniuspay' ? (
+          geniusLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 animate-spin text-[#00ff88]" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/5 p-4 text-sm text-yellow-200/80">
+                <p className="flex items-center gap-2 font-semibold text-yellow-300">
+                  <AlertTriangle className="h-4 w-4" />
+                  Paiements GeniusPay non confirmes
+                </p>
+                <p className="mt-1.5 leading-relaxed">
+                  GeniusPay laisse parfois un paiement Mobile Money sur « en attente » alors que le
+                  client a bien ete debite (panne de reconciliation GeniusPay/Pawapay). Si le client
+                  fournit une preuve de debit (SMS Mobile Money), crediter ici. Le credit est
+                  idempotent : aucun risque de double credit si GeniusPay confirme plus tard.
+                </p>
+              </div>
+
+              {creditMsg && (
+                <div className="rounded-xl border border-[#00ff88]/30 bg-[#00ff88]/10 px-4 py-3 text-sm text-[#00ff88]">
+                  {creditMsg}
+                </div>
+              )}
+
+              {geniusPending.length === 0 ? (
+                <EmptyState text="Aucun paiement GeniusPay en attente." />
+              ) : (
+                geniusPending.map((p) => (
+                  <div
+                    key={p.id}
+                    className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#111] p-5 transition-colors hover:border-white/20 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate font-semibold text-white">{p.email || p.fullName || 'Inconnu'}</span>
+                        <span className="rounded-full border border-gray-500/30 bg-gray-500/15 px-2.5 py-0.5 text-xs font-bold text-gray-400">
+                          En attente
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 font-mono text-xs text-gray-400">
+                          {p.reference}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {p.plan || '—'} · {Number(p.amount).toLocaleString()} FCFA · {fmtDateTime(p.createdAt)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleGeniusCredit(p.reference)}
+                      disabled={crediting === p.reference}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#00ff88] px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
+                    >
+                      {crediting === p.reference ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Banknote className="h-4 w-4" />
+                      )}
+                      Crediter (preuve recue)
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           )
         ) : filteredLogs.length === 0 ? (
