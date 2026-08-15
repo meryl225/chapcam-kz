@@ -11,8 +11,19 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://chapcam.com'),
   title: 'ChapCam - Face Swap en Temps Reel',
   description: 'Transforme instantanement ton apparence pendant tes streams, appels WhatsApp, Telegram, Zoom, Teams et autres plateformes video.',
+  // Icone du site (onglet navigateur + resultats Google). On force l'icone
+  // ChapCam pour remplacer l'icone Vercel par defaut.
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/chapcam-icon.png', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+    apple: '/apple-icon.jpg',
+  },
 }
 
 // viewportFit: 'cover' est indispensable pour que les env(safe-area-inset-*)
