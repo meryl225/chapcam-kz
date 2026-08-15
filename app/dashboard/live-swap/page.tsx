@@ -13,6 +13,7 @@ import { MobileLiveOverlay } from '@/components/live/mobile-live-overlay'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { SwapConsent, GenerateNotice } from '@/components/dashboard/swap-consent'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
+import { useT } from '@/lib/i18n/language-provider'
 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
@@ -45,6 +46,7 @@ interface Avatar {
 }
 
 export default function DashboardPage() {
+  const t = useT()
   const [avatars, setAvatars] = useState<Avatar[]>([])
   const [selectedAvatar, setSelectedAvatar] = useState<Avatar | null>(null)
   const [userPoints, setUserPoints] = useState(0)
@@ -674,7 +676,7 @@ export default function DashboardPage() {
             Live Swap
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Transformez votre apparence en temps réel avec l&apos;IA.
+            {t("Transformez votre apparence en temps réel avec l'IA.")}
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
@@ -684,7 +686,7 @@ export default function DashboardPage() {
             className="hidden items-center gap-2 rounded-lg border border-hairline bg-muted px-4 py-2 text-sm font-semibold text-foreground backdrop-blur-md transition-colors hover:border-hairline-strong sm:flex"
           >
             <BookOpen className="h-4 w-4" />
-            Mes demandes
+            {t('Mes demandes')}
           </Link>
 
           {/* Recharger (orange) */}
@@ -693,7 +695,7 @@ export default function DashboardPage() {
             className="flex items-center gap-2 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_rgba(249,115,22,0.4)] transition-colors hover:bg-orange-600"
           >
             <CreditCard className="h-4 w-4" />
-            Recharger
+            {t('Recharger')}
           </Link>
 
           {/* Demande d'installation (bleu) */}
@@ -702,15 +704,15 @@ export default function DashboardPage() {
             className="flex items-center gap-2 rounded-lg bg-[#2563eb] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_rgba(37,99,235,0.4)] transition-colors hover:bg-[#1d4ed8]"
           >
             <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Demande d&apos;installation</span>
-            <span className="sm:hidden">Installation</span>
+            <span className="hidden sm:inline">{t("Demande d'installation")}</span>
+            <span className="sm:hidden">{t('Installation')}</span>
           </button>
 
           {/* Credits restants */}
           <div className="flex items-center gap-2 rounded-lg border border-hairline bg-muted px-4 py-2 backdrop-blur-md">
             <Coins className="w-4 h-4 text-yellow-500" />
             <span className="text-foreground font-bold">{userPoints.toLocaleString()}</span>
-            <span className="text-muted-foreground text-sm">points</span>
+            <span className="text-muted-foreground text-sm">{t('points')}</span>
             {isConnected && (
               <span
                 className={`ml-1 rounded px-1.5 py-0.5 text-[10px] font-bold ${
@@ -718,7 +720,7 @@ export default function DashboardPage() {
                     ? 'bg-yellow-500/15 text-yellow-500'
                     : 'bg-primary/15 text-primary'
                 }`}
-                title={activeResolution === '1080p' ? 'Tarif Full HD 1080p' : 'Tarif HD 720p'}
+                title={activeResolution === '1080p' ? t('Tarif Full HD 1080p') : t('Tarif HD 720p')}
               >
                 {pointsPerSecond(activeResolution)} pts/s
               </span>
@@ -734,9 +736,9 @@ export default function DashboardPage() {
           <span className="flex items-center gap-2">
             <Film className="h-4 w-4 text-primary" />
             <span className="flex flex-col">
-              <span className="text-sm font-semibold text-foreground">Source du swap</span>
+              <span className="text-sm font-semibold text-foreground">{t('Source du swap')}</span>
               <span className="text-[11px] text-muted-foreground">
-                Ta caméra en direct, ou une vidéo que tu importes.
+                {t('Ta caméra en direct, ou une vidéo que tu importes.')}
               </span>
             </span>
           </span>
@@ -759,7 +761,7 @@ export default function DashboardPage() {
                 }`}
               >
                 <Camera className="h-3.5 w-3.5" />
-                Caméra
+                {t('Caméra')}
               </button>
               <button
                 type="button"
@@ -773,7 +775,7 @@ export default function DashboardPage() {
                 }`}
               >
                 <Film className="h-3.5 w-3.5" />
-                Vidéo
+                {t('Vidéo')}
               </button>
             </div>
           </div>
@@ -796,7 +798,7 @@ export default function DashboardPage() {
               className="flex items-center gap-2 rounded-lg border border-hairline bg-black/40 px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Upload className="h-3.5 w-3.5" />
-              {videoFile ? 'Changer de vidéo' : 'Importer une vidéo'}
+              {videoFile ? t('Changer de vidéo') : t('Importer une vidéo')}
             </button>
             {videoFile ? (
               <span className="flex min-w-0 items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">

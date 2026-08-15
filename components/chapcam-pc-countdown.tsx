@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Clock } from 'lucide-react'
+import { useT } from '@/lib/i18n/language-provider'
 
 interface TimeLeft {
   hours: number
@@ -32,6 +33,7 @@ function pad(n: number): string {
 // Affiche un contour + un decompte de 3h qui se relance en boucle.
 // `compact` = version plus petite pour les bandeaux.
 export function ChapCamPcCountdown({ compact = false }: { compact?: boolean }) {
+  const t = useT()
   // null tant que le composant n'est pas monte cote client (evite le mismatch SSR)
   const [timeLeft, setTimeLeft] = useState<TimeLeft | null>(null)
 
@@ -60,7 +62,7 @@ export function ChapCamPcCountdown({ compact = false }: { compact?: boolean }) {
             compact ? 'text-[10px]' : 'text-[11px]'
           }`}
         >
-          Offre de lancement · fin dans
+          {t('Offre de lancement · fin dans')}
         </span>
       </div>
 
@@ -93,7 +95,7 @@ export function ChapCamPcCountdown({ compact = false }: { compact?: boolean }) {
           compact ? 'text-[10px]' : 'text-xs'
         }`}
       >
-        50 000 FCFA a vie pendant l&apos;offre, puis 100 000 FCFA
+        {t("50 000 FCFA a vie pendant l'offre, puis 100 000 FCFA")}
       </p>
     </div>
   )

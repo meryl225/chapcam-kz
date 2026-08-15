@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import { Download, KeyRound, Loader2, CheckCircle2, AlertCircle, Apple, Monitor } from 'lucide-react'
+import { useT } from '@/lib/i18n/language-provider'
 
 export function DesktopDownloadSection() {
+  const t = useT()
   const [licenseKey, setLicenseKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -16,7 +18,7 @@ export function DesktopDownloadSection() {
 
   const openDownload = (url: string) => {
     if (!url) {
-      setError('Le lien de telechargement est momentanement indisponible. Reessaie plus tard ou contacte le support sur chapcam.com.')
+      setError(t('Le lien de telechargement est momentanement indisponible. Reessaie plus tard ou contacte le support sur chapcam.com.'))
       return
     }
     window.open(url, '_blank', 'noopener,noreferrer')
@@ -25,7 +27,7 @@ export function DesktopDownloadSection() {
   const verifyAndDownload = async () => {
     setError(null)
     if (!licenseKey.trim()) {
-      setError('Entre ta cle de licence.')
+      setError(t('Entre ta cle de licence.'))
       return
     }
     setLoading(true)
@@ -45,10 +47,10 @@ export function DesktopDownloadSection() {
         // Si une seule plateforme est disponible, on lance directement.
         if (!mac) openDownload(win)
       } else {
-        setError(data.message || 'Cle de licence invalide.')
+        setError(data.message || t('Cle de licence invalide.'))
       }
     } catch {
-      setError('Erreur de connexion. Reessaie.')
+      setError(t('Erreur de connexion. Reessaie.'))
     } finally {
       setLoading(false)
     }
@@ -61,10 +63,10 @@ export function DesktopDownloadSection() {
     >
       <div className="mb-1 flex items-center gap-2">
         <KeyRound className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-bold text-foreground">Deja client ?</h2>
+        <h2 className="text-lg font-bold text-foreground">{t('Deja client ?')}</h2>
       </div>
       <p className="mb-5 text-sm text-muted-foreground text-pretty">
-        Entre la cle de licence recue par email pour telecharger ChapCam PC.
+        {t('Entre la cle de licence recue par email pour telecharger ChapCam PC.')}
       </p>
 
       <div className="flex flex-col gap-3 sm:flex-row">
@@ -95,7 +97,7 @@ export function DesktopDownloadSection() {
           ) : (
             <>
               <Download className="h-4 w-4" />
-              Telecharger
+              {t('Telecharger')}
             </>
           )}
         </button>
@@ -111,7 +113,7 @@ export function DesktopDownloadSection() {
         <div className="mt-4">
           <p className="mb-3 flex items-center gap-1.5 text-xs text-primary">
             <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-            Licence valide — choisis ta version.
+            {t('Licence valide — choisis ta version.')}
           </p>
           <div className="flex flex-col gap-3 sm:flex-row">
             <button
@@ -119,7 +121,7 @@ export function DesktopDownloadSection() {
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 font-bold text-black transition-colors hover:bg-primary/90"
             >
               <Monitor className="h-4 w-4" />
-              Telecharger pour Windows
+              {t('Telecharger pour Windows')}
             </button>
             {macDownloadUrl && (
               <button
@@ -127,7 +129,7 @@ export function DesktopDownloadSection() {
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-hairline bg-background px-5 py-3 font-bold text-foreground transition-colors hover:bg-card"
               >
                 <Apple className="h-4 w-4" />
-                Telecharger pour MacBook
+                {t('Telecharger pour MacBook')}
               </button>
             )}
           </div>
@@ -135,7 +137,7 @@ export function DesktopDownloadSection() {
       )}
 
       <p className="mt-4 text-xs text-text-faint text-pretty">
-        Compatible Windows et MacBook. Cle activable sur 1 ordinateur.
+        {t('Compatible Windows et MacBook. Cle activable sur 1 ordinateur.')}
       </p>
     </section>
   )

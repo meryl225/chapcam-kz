@@ -610,4 +610,41 @@ export const translations: Record<string, string> = {
   "Enregistrement…": "Saving…",
   "Je confirme": "I confirm",
   Annuler: "Cancel",
+
+  // ----- ChapCam PC : carte d'achat -----
+  "Telecharger ChapCam PC": "Download ChapCam PC",
+  "Paiement unique securise · cle de licence envoyee par email":
+    "Secure one-time payment · license key sent by email",
+  "Change uniquement le visage (le corps n'est pas transforme)":
+    "Changes only the face (the body is not transformed)",
+  "Compatible Windows et MacBook": "Compatible with Windows and MacBook",
+  "GPU dedie (PC Gamer) recommande pour de meilleures performances":
+    "Dedicated GPU (gaming PC) recommended for better performance",
+  "Face swap temps reel sur ton GPU local": "Real-time face swap on your local GPU",
+  "Camera virtuelle (WhatsApp, Zoom, Discord, TikTok Live)":
+    "Virtual camera (WhatsApp, Zoom, Discord, TikTok Live)",
+  "Aucun abonnement, paiement unique": "No subscription, one-time payment",
+  "Fonctionne sans internet": "Works without internet",
+  "Meme qualite que les meilleurs outils pro": "Same quality as the best pro tools",
+
+  // ----- ChapCam PC : compte a rebours -----
+  "Offre de lancement · fin dans": "Launch offer · ends in",
+  "50 000 FCFA a vie pendant l'offre, puis 100 000 FCFA":
+    "50,000 FCFA for life during the offer, then 100,000 FCFA",
+
+  // ----- ChapCam PC : telechargement (deja client) -----
+  "Deja client ?": "Already a customer?",
+  "Entre la cle de licence recue par email pour telecharger ChapCam PC.":
+    "Enter the license key received by email to download ChapCam PC.",
+  Telecharger: "Download",
+  "Telecharger pour Windows": "Download for Windows",
+  "Telecharger pour MacBook": "Download for MacBook",
+  "Licence valide — choisis ta version.": "Valid license — choose your version.",
+  "Compatible Windows et MacBook. Cle activable sur 1 ordinateur.":
+    "Compatible with Windows and MacBook. Key activatable on 1 computer.",
+  "Entre ta cle de licence.": "Enter your license key.",
+  "Cle de licence invalide.": "Invalid license key.",
+  "Erreur de connexion. Reessaie.": "Connection error. Please try again.",
+  "Le lien de telechargement est momentanement indisponible. Reessaie plus tard ou contacte le support sur chapcam.com.":
+    "The download link is temporarily unavailable. Try again later or contact support at chapcam.com.",
 }
