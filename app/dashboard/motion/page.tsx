@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { MotionCreditPacksSection } from "@/components/motion/credit-packs-section"
 import { ImageStudio } from "@/components/motion/image-studio"
+import { downloadVideo } from "@/lib/download-video"
 
 // Onglets du studio : deux modes image (Higgsfield Soul) + le Motion Control video.
 const TABS = ["Texte → Image", "Édition d'image", "Motion Control"] as const
@@ -69,6 +70,8 @@ export default function MotionPage() {
   // la page puis revenir ne perd plus la video.
   const [status, setStatus] = useState<Status>("idle")
   const [history, setHistory] = useState<MotionJob[]>([])
+  // id du clip en cours de téléchargement (pour l'état du bouton).
+  const [downloadingJobId, setDownloadingJobId] = useState<string | null>(null)
   const historyRef = useRef<MotionJob[]>([])
   // Solde de credits Motion (null = pas encore charge).
   const [credits, setCredits] = useState<number | null>(null)
@@ -636,14 +639,27 @@ export default function MotionPage() {
                     <div className="flex items-center justify-between gap-2 p-2">
                       <p className="truncate text-[11px] text-white/60" title={job.prompt}>{job.prompt || "Animation"}</p>
                       {job.status === "completed" && job.video_url && (
-                        <a
-                          href={job.video_url}
-                          download
-                          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white/10 px-2 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-white/20"
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!job.video_url) return
+                            setDownloadingJobId(job.id)
+                            try {
+                              await downloadVideo(job.video_url, `chapcam-motion-${job.id.slice(0, 8)}.mp4`)
+                            } finally {
+                              setDownloadingJobId(null)
+                            }
+                          }}
+                          disabled={downloadingJobId === job.id}
+                          className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-white/10 px-2 py-1 text-[11px] font-semibold text-white transition-colors hover:bg-white/20 disabled:opacity-60"
                           aria-label="Télécharger le clip"
                         >
-                          <Download className="h-3 w-3" />
-                        </a>
+                          {downloadingJobId === job.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Download className="h-3 w-3" />
+                          )}
+                        </button>
                       )}
                     </div>
                   </div>

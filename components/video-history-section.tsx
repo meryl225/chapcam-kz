@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { Download, History, Loader2, Play, RefreshCw, Trash2, X } from "lucide-react"
+import { downloadVideo } from "@/lib/download-video"
 
 // Section "Mes vidéos" : historique PERMANENT des vidéos générées par un outil,
 // re-hébergées dans le Blob privé côté serveur (les liens fournisseurs expirent).
@@ -57,28 +58,13 @@ export function VideoHistorySection({
     load()
   }, [load])
 
-  // Enregistrement fiable (mobile + ordinateur) : on récupère la vidéo en blob
-  // puis on déclenche un téléchargement via un lien temporaire. Plus robuste que
-  // l'attribut `download` seul, souvent ignoré sur iOS/Android.
+  // Enregistrement fiable (mobile + ordinateur) via le helper partagé :
+  // l'attribut `download` seul est souvent ignoré sur iOS/Android.
   const handleDownload = useCallback(async (v: HistoryVideo) => {
     if (!v.video_url) return
     setDownloadingId(v.id)
     try {
-      const res = await fetch(`${v.video_url}&download=1`)
-      if (!res.ok) throw new Error("download failed")
-      const blob = await res.blob()
-      const objectUrl = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = objectUrl
-      a.download = `chapcam-${v.tool}-${v.id.slice(0, 8)}.mp4`
-      document.body.appendChild(a)
-      a.click()
-      a.remove()
-      // Laisser le temps au navigateur de démarrer le téléchargement.
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
-    } catch {
-      // Repli : ouvrir la vidéo dans un nouvel onglet (l'utilisateur peut l'enregistrer manuellement).
-      window.open(`${v.video_url}&download=1`, "_blank")
+      await downloadVideo(v.video_url, `chapcam-${v.tool}-${v.id.slice(0, 8)}.mp4`)
     } finally {
       setDownloadingId(null)
     }

@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { TranslationCreditPacksSection } from "@/components/translation/credit-packs-section"
 import { VideoHistorySection } from "@/components/video-history-section"
+import { downloadVideo } from "@/lib/download-video"
 
 type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 
@@ -44,6 +45,8 @@ export default function VideoTranslationPage() {
   const [status, setStatus] = useState<Status>("idle")
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [credits, setCredits] = useState<number | null>(null)
+  // Téléchargement de la vidéo traduite (état du bouton).
+  const [downloading, setDownloading] = useState(false)
   // Force le rafraîchissement de la section "Mes vidéos" à chaque traduction terminée.
   const [historyRefresh, setHistoryRefresh] = useState(0)
 
@@ -387,14 +390,27 @@ export default function VideoTranslationPage() {
         <div className="flex min-h-[320px] flex-col items-center justify-center rounded-2xl border border-hairline bg-card p-6">
           {status === "completed" && videoUrl ? (
             <div className="w-full max-w-xl">
-              <video src={videoUrl} controls className="w-full rounded-xl" />
-              <a
-                href={videoUrl}
-                download
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-hairline bg-background px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+              <video src={videoUrl} controls playsInline className="w-full rounded-xl" />
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!videoUrl) return
+                  setDownloading(true)
+                  try {
+                    await downloadVideo(videoUrl, `chapcam-traduction-${Date.now()}.mp4`)
+                  } finally {
+                    setDownloading(false)
+                  }
+                }}
+                disabled={downloading}
+                className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-hairline bg-background px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-60"
               >
-                <Download className="h-4 w-4" /> Télécharger la vidéo traduite
-              </a>
+                {downloading ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Enregistrement...</>
+                ) : (
+                  <><Download className="h-4 w-4" /> Télécharger la vidéo traduite</>
+                )}
+              </button>
             </div>
           ) : busy ? (
             <div className="flex flex-col items-center text-center">
