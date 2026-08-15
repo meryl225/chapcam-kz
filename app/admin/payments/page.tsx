@@ -66,14 +66,24 @@ interface PaydunyaLog {
   createdAt: string
 }
 
-interface GeniusPending {
+interface GeniusPayment {
   id: string
   fullName: string | null
   email: string | null
   plan: string | null
   amount: number
   reference: string
+  status: string | null
   createdAt: string
+  validatedAt: string | null
+}
+
+interface GeniusSummary {
+  total: number
+  pending: number
+  approved: number
+  other: number
+  amountApproved: number
 }
 
 interface Stats {
@@ -136,7 +146,9 @@ export default function AdminPaymentsPage() {
   const [paydunyaLogs, setPaydunyaLogs] = useState<PaydunyaLog[]>([])
   const [stats, setStats] = useState<Stats | null>(null)
   const [tab, setTab] = useState<'abonnements' | 'installations' | 'paydunya' | 'geniuspay' | 'audit'>('abonnements')
-  const [geniusPending, setGeniusPending] = useState<GeniusPending[]>([])
+  const [geniusPayments, setGeniusPayments] = useState<GeniusPayment[]>([])
+  const [geniusSummary, setGeniusSummary] = useState<GeniusSummary | null>(null)
+  const [geniusFilter, setGeniusFilter] = useState<'pending' | 'approved' | 'all'>('pending')
   const [geniusLoading, setGeniusLoading] = useState(false)
   const [geniusLoaded, setGeniusLoaded] = useState(false)
   const [crediting, setCrediting] = useState<string | null>(null)
@@ -211,7 +223,8 @@ export default function AdminPaymentsPage() {
         setError(data.error || 'Erreur de chargement GeniusPay.')
         return
       }
-      setGeniusPending(data.pending || [])
+      setGeniusPayments(data.payments || [])
+      setGeniusSummary(data.summary || null)
       setGeniusLoaded(true)
     } catch {
       setError('Erreur de connexion.')
@@ -237,8 +250,23 @@ export default function AdminPaymentsPage() {
               ? `Deja credite (${reference}).`
               : `Credite avec succes : ${data.message || reference}`,
           )
-          // Retirer la ligne creditee de la liste des "en attente".
-          setGeniusPending((prev) => prev.filter((p) => p.reference !== reference))
+          // Marquer la ligne comme creditee (passe de "pending" a "approved")
+          // et rafraichir les compteurs.
+          setGeniusPayments((prev) => {
+            const next = prev.map((p) =>
+              p.reference === reference
+                ? { ...p, status: 'approved', validatedAt: new Date().toISOString() }
+                : p,
+            )
+            const pending = next.filter((p) => p.status === 'pending').length
+            const approved = next.filter((p) => p.status === 'approved').length
+            const other = next.length - pending - approved
+            const amountApproved = next
+              .filter((p) => p.status === 'approved')
+              .reduce((s, p) => s + Number(p.amount || 0), 0)
+            setGeniusSummary({ total: next.length, pending, approved, other, amountApproved })
+            return next
+          })
           load(true)
         } else {
           setCreditMsg(`Echec : ${data.message || data.status || 'credit impossible'}`)
@@ -441,7 +469,7 @@ export default function AdminPaymentsPage() {
             Paiements PayDunya ({paydunyaLogs.length})
           </TabButton>
           <TabButton active={tab === 'geniuspay'} onClick={() => setTab('geniuspay')}>
-            GeniusPay en attente{geniusLoaded ? ` (${geniusPending.length})` : ''}
+            GeniusPay{geniusLoaded ? ` (${geniusPayments.length})` : ''}
           </TabButton>
           <TabButton active={tab === 'audit'} onClick={() => setTab('audit')}>
             Audit paiements{auditStats ? ` (${auditStats.unverified})` : ''}
@@ -726,10 +754,34 @@ export default function AdminPaymentsPage() {
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Compteurs de suivi GeniusPay */}
+              {geniusSummary && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                    <p className="text-xs text-gray-500">Total</p>
+                    <p className="mt-1 text-2xl font-bold text-white">{geniusSummary.total}</p>
+                  </div>
+                  <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-4">
+                    <p className="text-xs text-yellow-300/70">En attente</p>
+                    <p className="mt-1 text-2xl font-bold text-yellow-300">{geniusSummary.pending}</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#00ff88]/20 bg-[#00ff88]/5 p-4">
+                    <p className="text-xs text-[#00ff88]/70">Credites</p>
+                    <p className="mt-1 text-2xl font-bold text-[#00ff88]">{geniusSummary.approved}</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-[#111] p-4">
+                    <p className="text-xs text-gray-500">Montant credite</p>
+                    <p className="mt-1 text-xl font-bold text-white">
+                      {geniusSummary.amountApproved.toLocaleString()} F
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/5 p-4 text-sm text-yellow-200/80">
                 <p className="flex items-center gap-2 font-semibold text-yellow-300">
                   <AlertTriangle className="h-4 w-4" />
-                  Paiements GeniusPay non confirmes
+                  Suivi des paiements GeniusPay
                 </p>
                 <p className="mt-1.5 leading-relaxed">
                   GeniusPay laisse parfois un paiement Mobile Money sur « en attente » alors que le
@@ -739,49 +791,91 @@ export default function AdminPaymentsPage() {
                 </p>
               </div>
 
+              {/* Sous-filtres de statut */}
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { id: 'pending', label: `En attente (${geniusSummary?.pending ?? 0})` },
+                  { id: 'approved', label: `Credites (${geniusSummary?.approved ?? 0})` },
+                  { id: 'all', label: `Tous (${geniusSummary?.total ?? 0})` },
+                ] as const).map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setGeniusFilter(f.id)}
+                    className={`rounded-full px-4 py-1.5 text-xs font-bold transition-colors ${
+                      geniusFilter === f.id
+                        ? 'bg-white text-black'
+                        : 'border border-white/10 bg-white/5 text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
               {creditMsg && (
                 <div className="rounded-xl border border-[#00ff88]/30 bg-[#00ff88]/10 px-4 py-3 text-sm text-[#00ff88]">
                   {creditMsg}
                 </div>
               )}
 
-              {geniusPending.length === 0 ? (
-                <EmptyState text="Aucun paiement GeniusPay en attente." />
-              ) : (
-                geniusPending.map((p) => (
-                  <div
-                    key={p.id}
-                    className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#111] p-5 transition-colors hover:border-white/20 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="truncate font-semibold text-white">{p.email || p.fullName || 'Inconnu'}</span>
-                        <span className="rounded-full border border-gray-500/30 bg-gray-500/15 px-2.5 py-0.5 text-xs font-bold text-gray-400">
-                          En attente
-                        </span>
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 font-mono text-xs text-gray-400">
-                          {p.reference}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-sm text-gray-500">
-                        {p.plan || '—'} · {Number(p.amount).toLocaleString()} FCFA · {fmtDateTime(p.createdAt)}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleGeniusCredit(p.reference)}
-                      disabled={crediting === p.reference}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#00ff88] px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
+              {(() => {
+                const filtered = geniusPayments.filter((p) =>
+                  geniusFilter === 'all' ? true : p.status === geniusFilter,
+                )
+                if (filtered.length === 0) {
+                  return <EmptyState text="Aucun paiement GeniusPay dans cette categorie." />
+                }
+                return filtered.map((p) => {
+                  const isPending = p.status === 'pending'
+                  const isApproved = p.status === 'approved'
+                  return (
+                    <div
+                      key={p.id}
+                      className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#111] p-5 transition-colors hover:border-white/20 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      {crediting === p.reference ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Banknote className="h-4 w-4" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="truncate font-semibold text-white">{p.email || p.fullName || 'Inconnu'}</span>
+                          {isApproved ? (
+                            <span className="rounded-full border border-[#00ff88]/30 bg-[#00ff88]/15 px-2.5 py-0.5 text-xs font-bold text-[#00ff88]">
+                              Credite
+                            </span>
+                          ) : isPending ? (
+                            <span className="rounded-full border border-yellow-500/30 bg-yellow-500/15 px-2.5 py-0.5 text-xs font-bold text-yellow-400">
+                              En attente
+                            </span>
+                          ) : (
+                            <span className="rounded-full border border-red-500/30 bg-red-500/15 px-2.5 py-0.5 text-xs font-bold text-red-400">
+                              {p.status || 'Inconnu'}
+                            </span>
+                          )}
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 font-mono text-xs text-gray-400">
+                            {p.reference}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm text-gray-500">
+                          {p.plan || '—'} · {Number(p.amount).toLocaleString()} FCFA · {fmtDateTime(p.createdAt)}
+                          {isApproved && p.validatedAt ? ` · credite le ${fmtDateTime(p.validatedAt)}` : ''}
+                        </p>
+                      </div>
+                      {isPending && (
+                        <button
+                          onClick={() => handleGeniusCredit(p.reference)}
+                          disabled={crediting === p.reference}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#00ff88] px-4 py-2.5 text-sm font-bold text-black transition-colors hover:bg-[#00dd77] disabled:opacity-60"
+                        >
+                          {crediting === p.reference ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Banknote className="h-4 w-4" />
+                          )}
+                          Crediter (preuve recue)
+                        </button>
                       )}
-                      Crediter (preuve recue)
-                    </button>
-                  </div>
-                ))
-              )}
+                    </div>
+                  )
+                })
+              })()}
             </div>
           )
         ) : filteredLogs.length === 0 ? (
