@@ -808,7 +808,7 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={clearVideoFile}
-                    aria-label="Retirer la vidéo"
+                    aria-label={t('Retirer la vidéo')}
                     className="shrink-0 text-foreground/50 transition-colors hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -1321,21 +1321,21 @@ export default function DashboardPage() {
               {isConnecting ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Connexion en cours...
+                  {t('Connexion en cours...')}
                 </span>
               ) : isConnected ? (
                 <span className="flex items-center gap-2">
                   <Square className="h-5 w-5" />
-                  Arrêter le Live Swap
+                  {t('Arrêter le Live Swap')}
                 </span>
               ) : (
                 <>
                   <span className="flex items-center gap-2">
                     <Zap className="h-5 w-5" />
-                    Démarrer le Live Swap
+                    {t('Démarrer le Live Swap')}
                   </span>
                   <span className="text-xs font-normal opacity-80">
-                    La transformation commencera en temps réel
+                    {t('La transformation commencera en temps réel')}
                   </span>
                 </>
               )}
@@ -1354,7 +1354,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   {isRecording ? <Square className="h-4 w-4" /> : <Disc3 className="h-4 w-4 text-red-400" />}
-                  {isRecording ? "Arrêter l'enregistrement" : 'Enregistrer le swap'}
+                  {isRecording ? t("Arrêter l'enregistrement") : t('Enregistrer le swap')}
                 </button>
               )}
               {isRecording && (
@@ -1370,16 +1370,16 @@ export default function DashboardPage() {
                     className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90"
                   >
                     <Download className="h-4 w-4" />
-                    Télécharger l&apos;enregistrement
+                    {t('Télécharger l\'enregistrement')}
                   </a>
                   <button
                     type="button"
                     onClick={clearRecording}
-                    aria-label="Supprimer l'enregistrement"
+                    aria-label={t("Supprimer l'enregistrement")}
                     className="flex items-center gap-1.5 rounded-lg border border-hairline px-3 py-2 text-xs text-foreground/60 transition-colors hover:text-red-400"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
-                    Supprimer
+                    {t('Supprimer')}
                   </button>
                 </>
               )}
@@ -1401,7 +1401,7 @@ export default function DashboardPage() {
           >
             <span className="flex items-center gap-2">
               <Settings className="h-5 w-5 text-primary" />
-              <span className="text-base font-bold text-foreground">Réglages du swap</span>
+              <span className="text-base font-bold text-foreground">{t('Réglages du swap')}</span>
             </span>
             <ChevronDown
               className={`h-5 w-5 text-foreground/50 transition-transform ${settingsOpen ? 'rotate-180' : ''}`}
@@ -1412,7 +1412,7 @@ export default function DashboardPage() {
           <>
           {/* Qualite de rendu */}
           <div>
-            <p className="mb-2 text-xs font-medium text-foreground/60">Qualité de rendu</p>
+            <p className="mb-2 text-xs font-medium text-foreground/60">{t('Qualité de rendu')}</p>
             <div className="grid grid-cols-3 gap-1 rounded-lg bg-black/40 p-1">
               {([
                 { id: 'standard', label: 'Standard' },
@@ -1426,7 +1426,7 @@ export default function DashboardPage() {
                     renderQuality === opt.id ? 'bg-primary text-black' : 'text-foreground/60 hover:text-foreground'
                   }`}
                 >
-                  {opt.label}
+                  {t(opt.label)}
                 </button>
               ))}
             </div>
@@ -1440,7 +1440,7 @@ export default function DashboardPage() {
           ]).map(s => (
             <div key={s.label}>
               <div className="mb-1.5 flex items-center justify-between">
-                <span className="text-xs font-medium text-foreground/60">{s.label}</span>
+                <span className="text-xs font-medium text-foreground/60">{t(s.label)}</span>
                 <span className="text-xs font-semibold text-primary">{s.value}%</span>
               </div>
               <input
@@ -1456,7 +1456,7 @@ export default function DashboardPage() {
 
           {/* Orientation du visage */}
           <div>
-            <p className="mb-2 text-xs font-medium text-foreground/60">Orientation du visage</p>
+            <p className="mb-2 text-xs font-medium text-foreground/60">{t('Orientation du visage')}</p>
             <div className="grid grid-cols-3 gap-2">
               {([
                 { id: 'left', label: 'Gauche' },
@@ -1473,7 +1473,7 @@ export default function DashboardPage() {
                   }`}
                 >
                   <Camera className="h-4 w-4" />
-                  {opt.label}
+                  {t(opt.label)}
                 </button>
               ))}
             </div>
@@ -1481,12 +1481,12 @@ export default function DashboardPage() {
 
           {/* Correction des couleurs */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-foreground/60">Correction des couleurs</span>
+            <span className="text-xs font-medium text-foreground/60">{t('Correction des couleurs')}</span>
             <button
               onClick={() => setColorCorrection(v => !v)}
               role="switch"
               aria-checked={colorCorrection}
-              aria-label="Correction des couleurs"
+              aria-label={t('Correction des couleurs')}
               className={`relative h-6 w-11 rounded-full transition-colors ${
                 colorCorrection ? 'bg-primary' : 'bg-white/15'
               }`}
@@ -1501,7 +1501,7 @@ export default function DashboardPage() {
 
           {/* Mode de traitement */}
           <div>
-            <p className="mb-2 text-xs font-medium text-foreground/60">Mode de traitement</p>
+            <p className="mb-2 text-xs font-medium text-foreground/60">{t('Mode de traitement')}</p>
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => handleModeChange('cloud')}
@@ -1529,7 +1529,7 @@ export default function DashboardPage() {
             </div>
             {hardware?.isGamingPC && (
               <p className="mt-2 text-[10px] text-green-400/70">
-                PC Gaming détecté — mode local forcé pour des performances optimales.
+                {t('PC Gaming détecté — mode local forcé pour des performances optimales.')}
               </p>
             )}
           </div>
@@ -1537,11 +1537,11 @@ export default function DashboardPage() {
           {/* Session info */}
           <div className="space-y-2 rounded-xl border border-hairline bg-black/30 p-3 text-xs">
             <div className="flex items-center justify-between">
-              <span className="text-foreground/50">Durée session</span>
+              <span className="text-foreground/50">{t('Durée session')}</span>
               <span className="font-medium text-foreground">{formatDuration(duration)}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-foreground/50">Points utilisés</span>
+              <span className="text-foreground/50">{t('Points utilisés')}</span>
               <span className="font-medium text-foreground">{pointsUsed} pts</span>
             </div>
           </div>

@@ -424,6 +424,164 @@ export async function fulfillGeniusPayPayment(params: {
 }
 
 // ============================================================
+// Credit MANUEL "sur preuve" (admin). A utiliser UNIQUEMENT quand le client
+// fournit une preuve de debit (SMS Mobile Money) mais que l'API GeniusPay reste
+// bloquee sur "pending" — panne de reconciliation cote GeniusPay/Pawapay.
+//
+// Contrairement a fulfillGeniusPayPayment, on NE reconfirme PAS aupres de
+// GeniusPay (son API ne dira jamais "completed" dans ce cas). L'admin se porte
+// garant via la preuve. En revanche on garde EXACTEMENT le meme verrou
+// d'idempotence (token `genius_<ref>` dans processed_payments + statut
+// "approved") : si GeniusPay finit par confirmer, ou si un webhook/reconcile
+// arrive plus tard, le credit ne sera JAMAIS double.
+export async function creditGeniusPayManually(params: {
+  reference: string
+  adminEmail: string
+}): Promise<FulfillOutcome & { message?: string }> {
+  const { reference, adminEmail } = params
+  const admin = createAdminClient()
+  const token = `genius_${reference}`
+
+  // 1) Retrouver la demande liee (source des donnees produit hors-ligne).
+  const { data: reqRow } = await admin
+    .from('payment_requests')
+    .select('*')
+    .eq('paydunya_token', reference)
+    .maybeSingle()
+
+  if (!reqRow) {
+    return { status: 'error', alreadyDone: false, message: 'Aucune demande trouvee pour cette reference.' }
+  }
+
+  // 2) Deja approuvee : rien a faire (idempotent).
+  if (reqRow.status === 'approved') {
+    return { status: 'completed', alreadyDone: true, message: 'Deja credite.' }
+  }
+
+  const productId = String(reqRow.plan || '')
+  const email = String(reqRow.email || '')
+  const fullName = String(reqRow.full_name || 'Client ChapCam')
+  const userId = (reqRow.user_id as string | null) || null
+  const kind = String((reqRow as any).kind || '')
+
+  if (!productId || !email) {
+    return { status: 'error', alreadyDone: false, message: 'Donnees produit manquantes sur la demande.' }
+  }
+
+  // 3) Idempotence ATOMIQUE : on reserve le token avant de crediter.
+  const { error: claimErr } = await admin.from('processed_payments').insert({
+    token,
+    email,
+    product_id: productId,
+    amount: reqRow.amount,
+    credited: false,
+  })
+  if (claimErr) {
+    const { data: existingClaim } = await admin
+      .from('processed_payments')
+      .select('credited')
+      .eq('token', token)
+      .maybeSingle()
+    if (existingClaim?.credited) {
+      return { status: 'completed', alreadyDone: true, message: 'Deja credite.' }
+    }
+    // Reservation existante non creditee (tentative precedente echouee) : on
+    // poursuit pour finaliser le credit.
+  }
+
+  // 4) Credit effectif via la logique partagee (points / live / pc / wallet...).
+  const isNumbersWallet = productId === 'numbers_wallet' || kind === 'numbers_wallet'
+  let result: PurchaseResult
+  try {
+    result = isNumbersWallet
+      ? await creditNumbersWallet({
+          userId,
+          email,
+          amountXof: Number(reqRow.amount || 0),
+          token,
+        })
+      : await creditPurchase(admin, { productId, email, fullName, userId })
+  } catch (e) {
+    await admin.from('processed_payments').delete().eq('token', token)
+    const reason = (e as Error)?.message || 'Exception pendant le credit'
+    await logPaymentEvent(admin, {
+      source: 'manual',
+      token,
+      email,
+      productId,
+      amount: reqRow.amount,
+      status: 'completed',
+      credited: false,
+      userLinked: !!userId,
+      failureReason: `Credit GeniusPay manuel echoue (exception) : ${reason}`,
+    })
+    return { status: 'error', alreadyDone: false, message: reason }
+  }
+
+  if (result.ok) {
+    await admin.from('processed_payments').update({ credited: true }).eq('token', token)
+  } else {
+    await admin.from('processed_payments').delete().eq('token', token)
+    await logPaymentEvent(admin, {
+      source: 'manual',
+      token,
+      email,
+      productId,
+      amount: reqRow.amount,
+      status: 'completed',
+      credited: false,
+      userLinked: result.userLinked,
+      failureReason: result.message,
+    })
+    return { status: 'error', alreadyDone: false, result, message: result.message }
+  }
+
+  await logPaymentEvent(admin, {
+    source: 'manual',
+    token,
+    email,
+    productId,
+    amount: reqRow.amount,
+    status: 'completed',
+    credited: true,
+    creditKind: result.kind,
+    userLinked: result.userLinked,
+    failureReason: null,
+  })
+
+  // 5) Marquer la demande approuvee + trace admin (auto:false, preuve client).
+  const now = new Date()
+  await admin
+    .from('payment_requests')
+    .update({
+      status: 'approved',
+      validated_at: now.toISOString(),
+      paid_amount: reqRow.amount,
+      paid_at: now.toISOString(),
+      user_id: userId,
+    })
+    .eq('id', reqRow.id)
+    .neq('status', 'approved')
+
+  await admin.from('admin_logs').insert({
+    action: 'geniuspay_manual_credit',
+    payment_request_id: reqRow.id,
+    admin_email: adminEmail,
+    details: {
+      reference,
+      product: productId,
+      amount: reqRow.amount,
+      kind: result.kind,
+      user_linked: result.userLinked,
+      auto: false,
+      proof: 'customer_debit_sms',
+    },
+  })
+
+  return { status: 'completed', alreadyDone: false, result, message: result.message }
+}
+
+// ============================================================
 // Reconciliation planifiee (cron). Rattrape les paiements GeniusPay ou
 // l'utilisateur a bien ete debite mais dont la confirmation (webhook / retour
 // checkout) ne nous est jamais parvenue. On reconfirme TOUJOURS le statut

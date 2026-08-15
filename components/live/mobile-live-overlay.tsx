@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Square, RefreshCw, Settings, X, Check, Plus, Minimize2 } from 'lucide-react'
 import Link from 'next/link'
+import { useT } from '@/lib/i18n/language-provider'
 
 interface Avatar {
   id: string
@@ -65,6 +66,7 @@ export function MobileLiveOverlay({
   onStop,
   onExitFullscreen,
 }: MobileLiveOverlayProps) {
+  const t = useT()
   const fsRemoteRef = useRef<HTMLVideoElement | null>(null)
   const fsLocalRef = useRef<HTMLVideoElement | null>(null)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -154,7 +156,7 @@ export function MobileLiveOverlay({
       }}
       onPointerDown={revealControls}
       role="dialog"
-      aria-label="Live Swap plein écran"
+      aria-label={t('Live Swap plein écran')}
     >
       {/* Camera ChapCam en plein ecran (sortie du swap) */}
       <video
@@ -198,7 +200,7 @@ export function MobileLiveOverlay({
             style={{ transform: 'scaleX(-1)' }}
           />
           <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-2 py-0.5 text-[9px] font-medium text-white/90">
-            Réelle
+            {t('Réelle')}
           </span>
         </div>
 
@@ -212,16 +214,16 @@ export function MobileLiveOverlay({
             <button
               onClick={() => { onExitFullscreen(); revealControls() }}
               className="flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-3 text-white backdrop-blur-md transition-transform active:scale-90"
-              aria-label="Quitter le plein écran"
+              aria-label={t('Quitter le plein écran')}
             >
               <Minimize2 className="h-4 w-4" />
-              <span className="text-xs font-medium">Réduire</span>
+              <span className="text-xs font-medium">{t('Réduire')}</span>
             </button>
           )}
           <div className="flex items-center gap-3 rounded-full border border-white/15 bg-black/40 px-3.5 py-2 text-white backdrop-blur-md">
             <span className="flex items-center gap-1.5 text-xs font-semibold">
               <span className={`h-2 w-2 rounded-full ${quality.color}`} />
-              {quality.label}
+              {t(quality.label)}
             </span>
             <span className="text-white/25">|</span>
             <span className="text-xs font-semibold text-emerald-400">{stats.fps} FPS</span>
@@ -233,7 +235,7 @@ export function MobileLiveOverlay({
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-500" />
             <span className="text-xs font-semibold tabular-nums">{formatDuration(duration)}</span>
             <span className="text-white/25">|</span>
-            <span className="text-[11px] text-white/70">{minutesLeft} min restantes</span>
+            <span className="text-[11px] text-white/70">{minutesLeft} {t('min restantes')}</span>
           </div>
         </div>
 
@@ -246,7 +248,7 @@ export function MobileLiveOverlay({
           <button
             onClick={() => { setAvatarSheetOpen(true); revealControls() }}
             className="flex flex-col items-center gap-1.5"
-            aria-label="Changer d'avatar"
+            aria-label={t("Changer d'avatar")}
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-md transition-transform active:scale-90">
               {selectedAvatar ? (
@@ -256,31 +258,31 @@ export function MobileLiveOverlay({
                 <RefreshCw className="h-6 w-6" />
               )}
             </span>
-            <span className="text-[11px] font-medium text-white/90">Avatar</span>
+            <span className="text-[11px] font-medium text-white/90">{t('Avatar')}</span>
           </button>
 
           {/* Stop (bouton principal) */}
           <button
             onClick={onStop}
             className="flex flex-col items-center gap-1.5"
-            aria-label="Arrêter le Live Swap"
+            aria-label={t('Arrêter le Live Swap')}
           >
             <span className="flex items-center justify-center rounded-full border-4 border-white/80 bg-red-500 text-white shadow-[0_8px_30px_rgba(239,68,68,0.5)] transition-transform active:scale-90" style={{ height: 72, width: 72 }}>
               <Square className="h-7 w-7 fill-white" />
             </span>
-            <span className="text-[11px] font-semibold text-white">Arrêter</span>
+            <span className="text-[11px] font-semibold text-white">{t('Arrêter')}</span>
           </button>
 
           {/* Reglages */}
           <button
             onClick={() => { setSettingsSheetOpen(true); revealControls() }}
             className="flex flex-col items-center gap-1.5"
-            aria-label="Réglages"
+            aria-label={t('Réglages')}
           >
             <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-white/10 text-white backdrop-blur-md transition-transform active:scale-90">
               <Settings className="h-6 w-6" />
             </span>
-            <span className="text-[11px] font-medium text-white/90">Réglages</span>
+            <span className="text-[11px] font-medium text-white/90">{t('Réglages')}</span>
           </button>
         </div>
       </div>
@@ -290,7 +292,7 @@ export function MobileLiveOverlay({
         <div className="absolute inset-0 z-10 flex flex-col justify-end" onPointerDown={(e) => e.stopPropagation()}>
           <button
             className="absolute inset-0 bg-black/50"
-            aria-label="Fermer"
+            aria-label={t('Fermer')}
             onClick={() => setAvatarSheetOpen(false)}
           />
           <div
@@ -298,14 +300,14 @@ export function MobileLiveOverlay({
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.25rem)' }}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">Changer d&apos;avatar</h2>
-              <button onClick={() => setAvatarSheetOpen(false)} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white">
+              <h2 className="text-base font-bold text-white">{t("Changer d'avatar")}</h2>
+              <button onClick={() => setAvatarSheetOpen(false)} aria-label={t('Fermer')} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
             {avatars.length === 0 ? (
               <Link href="/dashboard/avatars" className="flex items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 py-8 text-sm text-white/70">
-                <Plus className="h-4 w-4" /> Ajouter un avatar
+                <Plus className="h-4 w-4" /> {t('Ajouter un avatar')}
               </Link>
             ) : (
               <div className="grid grid-cols-4 gap-3">
@@ -338,7 +340,7 @@ export function MobileLiveOverlay({
         <div className="absolute inset-0 z-10 flex flex-col justify-end" onPointerDown={(e) => e.stopPropagation()}>
           <button
             className="absolute inset-0 bg-black/50"
-            aria-label="Fermer"
+            aria-label={t('Fermer')}
             onClick={() => setSettingsSheetOpen(false)}
           />
           <div
@@ -346,31 +348,31 @@ export function MobileLiveOverlay({
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 1.25rem)' }}
           >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-bold text-white">Session en direct</h2>
-              <button onClick={() => setSettingsSheetOpen(false)} aria-label="Fermer" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white">
+              <h2 className="text-base font-bold text-white">{t('Session en direct')}</h2>
+              <button onClick={() => setSettingsSheetOpen(false)} aria-label={t('Fermer')} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs text-white/50">Fluidité</p>
+                <p className="text-xs text-white/50">{t('Fluidité')}</p>
                 <p className="mt-1 text-xl font-bold text-emerald-400">{stats.fps} FPS</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs text-white/50">Résolution</p>
+                <p className="text-xs text-white/50">{t('Résolution')}</p>
                 <p className="mt-1 text-xl font-bold text-white">{stats.resolution}</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs text-white/50">Latence</p>
+                <p className="text-xs text-white/50">{t('Latence')}</p>
                 <p className="mt-1 text-xl font-bold text-white">{stats.latency}ms</p>
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p className="text-xs text-white/50">Temps restant</p>
+                <p className="text-xs text-white/50">{t('Temps restant')}</p>
                 <p className="mt-1 text-xl font-bold text-white">{minutesLeft} min</p>
               </div>
             </div>
             <p className="mt-4 text-center text-xs text-white/40">
-              Les réglages avancés (qualité, codec, effets) sont disponibles sur la version ordinateur.
+              {t('Les réglages avancés (qualité, codec, effets) sont disponibles sur la version ordinateur.')}
             </p>
           </div>
         </div>
