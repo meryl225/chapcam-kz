@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { CreditPacksSection } from "@/components/photo-video/credit-packs-section"
 import { VideoHistorySection } from "@/components/video-history-section"
+import { downloadVideo } from "@/lib/download-video"
 
 interface Voice {
   voice_id: string
@@ -153,6 +154,8 @@ export default function PhotoVideoPage() {
 
   const [status, setStatus] = useState<Status>("idle")
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
+  // Téléchargement de la vidéo fraîchement générée (état du bouton).
+  const [downloadingMain, setDownloadingMain] = useState(false)
   // Compteur incrémenté à chaque vidéo terminée : force la section "Mes vidéos"
   // à se rafraîchir pour afficher la nouvelle génération.
   const [historyRefresh, setHistoryRefresh] = useState(0)
@@ -419,6 +422,18 @@ export default function PhotoVideoPage() {
       toast({ title: "Erreur reseau", description: "Reessaie dans un instant.", variant: "destructive" })
     }
   }
+
+  // Enregistrement FIABLE sur mobile ET ordinateur de la vidéo générée
+  // (l'attribut HTML `download` est ignoré sur mobile -> voir lib/download-video).
+  const handleDownloadMain = useCallback(async () => {
+    if (!videoUrl) return
+    setDownloadingMain(true)
+    try {
+      await downloadVideo(videoUrl, `chapcam-photo-video-${Date.now()}.mp4`)
+    } finally {
+      setDownloadingMain(false)
+    }
+  }, [videoUrl])
 
   const toggleGesture = (value: string) => {
     setGestures((prev) => (prev.includes(value) ? prev.filter((g) => g !== value) : [...prev, value]))
@@ -902,11 +917,17 @@ export default function PhotoVideoPage() {
             {/* Actions sous l'aperçu */}
             {status === "completed" && videoUrl ? (
               <div className="mt-4 flex gap-3">
-                <a href={videoUrl} download className="flex-1">
-                  <Button className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
-                    <Download className="mr-2 h-4 w-4" /> Télécharger
-                  </Button>
-                </a>
+                <Button
+                  onClick={handleDownloadMain}
+                  disabled={downloadingMain}
+                  className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60"
+                >
+                  {downloadingMain ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enregistrement...</>
+                  ) : (
+                    <><Download className="mr-2 h-4 w-4" /> Télécharger</>
+                  )}
+                </Button>
                 <Button variant="outline" onClick={reset} className="flex-1 border-hairline-strong text-foreground hover:bg-muted">
                   Nouvelle vidéo
                 </Button>
