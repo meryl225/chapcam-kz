@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Maximize2, X, Play } from "lucide-react"
 
 type Frame = { src: string; label: string; type?: "image" | "video" }
@@ -17,19 +17,44 @@ const frames: Frame[] = [
 export function SwapDemoFrames() {
   const [index, setIndex] = useState(0)
   const [open, setOpen] = useState(false)
+  // La galerie est loin sous la ligne de flottaison. On ne telecharge la
+  // video lourde (~2,3 Mo) QUE lorsque la section approche de l'ecran, sinon
+  // elle sature la bande passante au chargement et bloque l'affichage du haut
+  // de page sur connexion mobile lente.
+  const [visible, setVisible] = useState(false)
+  const containerRef = useRef<HTMLButtonElement>(null)
 
   const current = frames[index]
   const isVideo = current.type === "video"
 
-  // Defilement automatique : les images defilent seules, la video passe
-  // au media suivant une fois sa lecture terminee (onEnded).
+  // Detecte l'entree de la galerie dans le viewport (avec une marge de 300px
+  // pour anticiper legerement le defilement).
   useEffect(() => {
-    if (isVideo) return
+    const el = containerRef.current
+    if (!el || visible) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          setVisible(true)
+          io.disconnect()
+        }
+      },
+      { rootMargin: "300px" },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [visible])
+
+  // Defilement automatique : les images defilent seules, la video passe
+  // au media suivant une fois sa lecture terminee (onEnded). Ne demarre
+  // qu'une fois la galerie visible pour ne rien charger inutilement.
+  useEffect(() => {
+    if (isVideo || !visible) return
     const interval = setInterval(() => {
       setIndex((prev) => (prev + 1) % frames.length)
     }, 1800)
     return () => clearInterval(interval)
-  }, [isVideo])
+  }, [isVideo, visible])
 
   const goNext = useCallback(() => {
     setIndex((prev) => (prev + 1) % frames.length)
@@ -50,6 +75,7 @@ export function SwapDemoFrames() {
     <>
       {/* Rectangle anime cliquable */}
       <button
+        ref={containerRef}
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Agrandir la galerie ChapCam en action"
@@ -57,13 +83,14 @@ export function SwapDemoFrames() {
       >
         <div className="relative aspect-video w-full">
           <AnimatePresence mode="wait">
-            {isVideo ? (
+            {isVideo && visible ? (
               <motion.video
                 key={current.src}
                 src={current.src}
                 autoPlay
                 muted
                 playsInline
+                preload="none"
                 onEnded={goNext}
                 initial={{ opacity: 0, scale: 1.04 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -72,6 +99,10 @@ export function SwapDemoFrames() {
                 className="absolute inset-0 h-full w-full object-cover"
                 aria-label={`ChapCam en action : ${current.label}`}
               />
+            ) : isVideo && !visible ? (
+              // Avant l'arrivee a l'ecran : placeholder leger, aucune video
+              // telechargee (les overlays LIVE/label restent visibles par-dessus).
+              <div key="video-placeholder" className="absolute inset-0 bg-black" />
             ) : (
               <motion.img
                 key={current.src}
@@ -232,7 +263,7 @@ export function SwapDemoFrames() {
                 >
                   {f.type === "video" ? (
                     <>
-                      <video src={f.src} muted playsInline className="h-full w-full object-cover" />
+                      <video src={f.src} muted playsInline preload="none" className="h-full w-full object-cover" />
                       <span className="absolute inset-0 flex items-center justify-center bg-black/40">
                         <Play className="h-4 w-4 fill-white text-white" />
                       </span>
