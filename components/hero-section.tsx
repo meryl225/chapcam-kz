@@ -74,7 +74,7 @@ export function HeroSection() {
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
-          className="order-2 flex flex-col gap-6 lg:order-1"
+          className="reveal-fallback order-2 flex flex-col gap-6 lg:order-1"
         >
           {/* Eyebrow */}
           <span className="group inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-300 shadow-[0_2px_12px_-4px_rgba(0,212,255,0.25)] backdrop-blur-md transition-all duration-300 hover:border-[#00d4ff]/40 hover:bg-white/[0.08] hover:shadow-[0_4px_20px_-4px_rgba(0,212,255,0.5)]">
@@ -229,7 +229,7 @@ export function HeroSection() {
           initial={{ opacity: 0, scale: 0.94 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, delay: 0.15 }}
-          className="order-1 flex flex-col items-center gap-6 lg:order-2 lg:items-end"
+          className="reveal-fallback order-1 flex flex-col items-center gap-6 lg:order-2 lg:items-end"
         >
           <MonitorFrame>
             <StreamStudio />

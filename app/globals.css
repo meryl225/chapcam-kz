@@ -3,6 +3,21 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ===== FILET DE SECURITE ANTI-PAGE-VIDE (mobile lent) =====
+   Le contenu critique (header + hero) utilise des animations d'entree
+   framer-motion avec opacity:0 en etat initial. Ce contenu n'apparait donc
+   qu'une fois le JavaScript hydrate. Sur reseau mobile lent/instable, si le
+   bundle JS tarde ou echoue, le contenu reste invisible -> page "vide".
+   Un petit script inline dans le <head> (independant du bundle applicatif)
+   ajoute la classe .mo-ready sur <html> apres un court delai : on force alors
+   l'affichage du contenu marque .reveal-fallback. Quand le JS fonctionne
+   normalement, l'animation d'entree est deja terminee au moment ou la classe
+   est posee, donc cette regle est neutre (pas de flash, pas d'animation cassee). */
+html.mo-ready .reveal-fallback {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 /* ===== THEME CLAIR (par defaut au niveau :root, mais l'app demarre en .dark) ===== */
 :root {
   --background: #f4f6f8;

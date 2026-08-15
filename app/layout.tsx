@@ -42,6 +42,17 @@ export default function RootLayout({
   return (
     <html lang="fr" className="bg-background" suppressHydrationWarning>
       <head>
+        {/* Filet de securite anti-page-vide : script minuscule et inline (donc
+            independant du bundle applicatif). Il revele le contenu critique
+            masque par les animations d'entree si le JS principal tarde a
+            s'hydrater sur mobile lent. Voir la regle .mo-ready dans globals.css.
+            Declenche a la fois sur window.load et via un delai de secours. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){function r(){try{document.documentElement.classList.add('mo-ready')}catch(e){}}setTimeout(r,1800);window.addEventListener('load',function(){setTimeout(r,300)})})();",
+          }}
+        />
         {/* Google AdSense : validation de la propriete du site + diffusion des annonces.
             Injecte sur toutes les pages, dans le <head>, comme demande par AdSense. */}
         <Script
