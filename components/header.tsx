@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { ChevronDown, MessageCircle } from "lucide-react"
+import { MessageCircle } from "lucide-react"
 import { LanguageToggle } from "@/components/language-toggle"
 import { useT } from "@/lib/i18n/language-provider"
 
@@ -12,10 +12,8 @@ export function Header() {
   const t = useT()
   return (
     <motion.header 
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-      className="reveal-fallback fixed top-0 left-0 right-0 z-50 px-6 py-4 backdrop-blur-xl bg-[#0a0e1a]/70 border-b border-white/5"
+      initial={false}
+      className="fixed top-0 left-0 right-0 z-50 px-6 py-4 backdrop-blur-xl bg-[#0a0e1a]/70 border-b border-white/5"
     >
       <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
         {/* Logo */}
@@ -61,7 +59,6 @@ export function Header() {
               className="whitespace-nowrap text-white/70 hover:text-white transition-colors text-sm font-medium relative group inline-flex items-center gap-1"
             >
               {t(item.name)}
-              {item.caret && <ChevronDown className="w-3.5 h-3.5 opacity-60" />}
               <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] group-hover:w-full transition-all duration-300" />
             </Link>
           ))}
