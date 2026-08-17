@@ -20,6 +20,7 @@ import {
   RotateCcw,
   Megaphone,
   Banknote,
+  Zap,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -435,6 +436,13 @@ export default function AdminPaymentsPage() {
             >
               <ArrowLeft className="h-4 w-4" />
               Abonnements
+            </Link>
+            <Link
+              href="/admin/live-minutes"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#00d4ff]/40 bg-[#0a1620] px-4 py-2.5 text-sm font-medium text-[#00d4ff] transition-colors hover:border-[#00d4ff] hover:text-white"
+            >
+              <Zap className="h-4 w-4" />
+              Minutes Live
             </Link>
             <button
               onClick={() => load(true)}

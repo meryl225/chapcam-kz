@@ -111,6 +111,40 @@ export async function grantLiveWindow(admin: Admin, userId: string, count = 1): 
     .eq('user_id', userId)
 }
 
+// Ajoute des minutes de Live Swap IMMEDIATEMENT (mode "prolongation directe").
+// Le temps est ajoute a la fenetre active en cours ; s'il n'y en a pas, une
+// fenetre demarre maintenant. Le decompte s'ecoule donc a l'horloge des l'ajout
+// (a la difference des fenetres "en attente" que l'utilisateur declenche lui-meme).
+// Retourne les secondes restantes apres ajout.
+export async function addLiveMinutes(
+  admin: Admin,
+  userId: string,
+  minutes: number,
+): Promise<{ secondsRemaining: number; expiresAt: string }> {
+  const row = await ensureLiveAccess(admin, userId)
+  const now = Date.now()
+  // Base : la fenetre active si elle court encore, sinon maintenant.
+  const currentMs = row.active_window_expires_at
+    ? new Date(row.active_window_expires_at).getTime()
+    : 0
+  const base = currentMs > now ? currentMs : now
+  const newExpiryMs = base + minutes * 60 * 1000
+  const expiresAt = new Date(newExpiryMs).toISOString()
+
+  await admin
+    .from('live_access')
+    .update({
+      active_window_expires_at: expiresAt,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+
+  return {
+    secondsRemaining: Math.max(0, Math.floor((newExpiryMs - now) / 1000)),
+    expiresAt,
+  }
+}
+
 // ============================================================
 // Token GPU : HMAC court signe avec LIVE_GPU_SHARED_SECRET.
 // Le worker GPU valide ce token avant d'accepter le flux.
