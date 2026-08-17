@@ -71,10 +71,8 @@ export function HeroSection() {
       <div className="relative mx-auto grid min-h-[calc(100vh-12rem)] max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.12fr)] lg:gap-8">
         {/* ===== Colonne copy ===== */}
         <motion.div
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7 }}
-          className="reveal-fallback order-2 flex flex-col gap-6 lg:order-1"
+          initial={false}
+          className="order-2 flex flex-col gap-6 lg:order-1"
         >
           {/* Eyebrow */}
           <span className="group inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-300 shadow-[0_2px_12px_-4px_rgba(0,212,255,0.25)] backdrop-blur-md transition-all duration-300 hover:border-[#00d4ff]/40 hover:bg-white/[0.08] hover:shadow-[0_4px_20px_-4px_rgba(0,212,255,0.5)]">
@@ -226,10 +224,8 @@ export function HeroSection() {
 
         {/* ===== Colonne studio ===== */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.94 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, delay: 0.15 }}
-          className="reveal-fallback order-1 flex flex-col items-center gap-6 lg:order-2 lg:items-end"
+          initial={false}
+          className="order-1 flex flex-col items-center gap-6 lg:order-2 lg:items-end"
         >
           <MonitorFrame>
             <StreamStudio />
@@ -240,9 +236,7 @@ export function HeroSection() {
             href="https://chapsim.app/"
             target="_blank"
             rel="noopener noreferrer"
-            initial={{ opacity: 0, y: 24 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.5 }}
+            initial={false}
             className="group relative block w-full max-w-xs overflow-hidden rounded-2xl border border-white/10 bg-[#0b1020] shadow-[0_20px_60px_-20px_rgba(99,102,241,0.5)] transition-all duration-300 hover:-translate-y-1 hover:border-[#6366f1]/50 hover:shadow-[0_28px_70px_-20px_rgba(99,102,241,0.7)]"
           >
             <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/80 backdrop-blur-sm">

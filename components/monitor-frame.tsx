@@ -23,9 +23,7 @@ export function MonitorFrame({ children }: { children: ReactNode }) {
       {/* ===== Scene en perspective 3/4 legere ===== */}
       <div className="[perspective:2000px]">
         <motion.div
-          initial={{ opacity: 0, y: 30, rotateX: 8 }}
-          animate={{ opacity: 1, y: 0, rotateX: 0 }}
-          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+          initial={false}
           className="relative [transform-style:preserve-3d]"
           style={{ transform: "rotateY(-5deg) rotateX(2deg)" }}
         >
