@@ -497,16 +497,26 @@ interface PlanGuardBannerProps {
 export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0, voiceSecondsRemaining = 0 }: PlanGuardBannerProps) {
   const t = useT()
   const pathname = usePathname()
-  const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false
 
   // La page Voice Swap utilise un credit distinct (minutes ChapVoice). Si
   // l'utilisateur a des minutes de voix, on ne montre pas la banniere "points".
   const onVoiceSwap = pathname === '/dashboard/voice-swap'
   if (onVoiceSwap && voiceSecondsRemaining > 0) return null
 
-  const showBanner = plan === 'free' || isExpired || !isActive || pointsRemaining <= 0
+  // Fenetre de grace (identique a lib/live-guard) : apres expiration, les points
+  // restants restent utilisables pendant GRACE_DAYS jours.
+  const GRACE_DAYS = 7
+  const expiryMs = expiresAt ? new Date(expiresAt).getTime() : null
+  const expiredBeyondGrace =
+    expiryMs !== null && (Date.now() - expiryMs) / 86_400_000 > GRACE_DAYS
 
-  if (!showBanner) return null
+  // Le bandeau reflete la VRAIE capacite a swaper (cf. checkLiveAccess) : tant
+  // que l'utilisateur a des minutes/points utilisables, on ne l'affiche pas —
+  // meme si son forfait est expire (il consomme ses minutes restantes). On ne
+  // nag que s'il n'a plus de points, si le compte est desactive, ou si la grace
+  // est depassee (les points vont etre remis a zero).
+  const canSwap = isActive && pointsRemaining > 0 && !expiredBeyondGrace
+  if (canSwap) return null
 
   return (
     <div className="fixed left-0 right-0 top-14 z-40 flex items-center justify-between bg-orange-500 px-4 py-2 md:left-[240px] md:top-0">
