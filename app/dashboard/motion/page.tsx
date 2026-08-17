@@ -203,7 +203,17 @@ export default function MotionPage() {
         toast({ title: "Vidéo prête !", description: "Ton clip Motion a été généré." })
       } else if (json.status === "failed" || json.status === "nsfw") {
         setHistory((prev) => prev.map((j) => (j.request_id === job.request_id ? { ...j, status: "failed" } : j)))
-        toast({ title: "Échec de la génération", description: json.error || "La vidéo n'a pas pu être générée.", variant: "destructive" })
+        // Le serveur rembourse le crédit Motion sur un échec (dont refus de
+        // modération) : on rafraîchit le solde affiché s'il est renvoyé.
+        if (typeof json.remaining === "number") setCredits(Math.max(0, json.remaining))
+        const moderated = json.code === "moderation" || json.status === "nsfw"
+        toast({
+          title: moderated ? "Génération refusée" : "Échec de la génération",
+          description:
+            (json.error || "La vidéo n'a pas pu être générée.") +
+            (json.refunded ? " Ton crédit Motion a été remboursé." : ""),
+          variant: "destructive",
+        })
       }
     } catch {
       // retry au prochain tick
@@ -276,6 +286,9 @@ export default function MotionPage() {
             // Solde epuise / pas de forfait : synchroniser l'affichage a 0.
             if (json.code === "quota_exhausted" || json.code === "no_plan") setCredits(0)
             toast({ title: "Crédits Motion épuisés", description: json.error, variant: "destructive" })
+          } else if (res.status === 422 || json.code === "moderation") {
+            // Refus de moderation au lancement : aucun credit deduit.
+            toast({ title: "Génération refusée", description: json.error || "Image ou vidéo refusée par la modération.", variant: "destructive" })
           } else {
             toast({ title: "Erreur", description: json.error || "Impossible de lancer le transfert de mouvement.", variant: "destructive" })
           }
