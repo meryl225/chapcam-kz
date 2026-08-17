@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { UserPlus, Loader2, ArrowLeft, Check, UserMinus, Trash2, Droplet, DropletOff, Mic } from 'lucide-react'
+import { UserPlus, Loader2, ArrowLeft, Check, UserMinus, Trash2, Droplet, DropletOff, Mic, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { PLANS } from '@/lib/plans'
 import { LIVE_OFFERS } from '@/lib/live-offers'
@@ -21,6 +21,10 @@ export default function AdminSubscriptionsPage() {
   const [voiceMinutes, setVoiceMinutes] = useState('')
   const [voiceValidity, setVoiceValidity] = useState('')
   const [voiceBusy, setVoiceBusy] = useState(false)
+  const [toolEmail, setToolEmail] = useState('')
+  const [toolName, setToolName] = useState<'photo-video' | 'motion' | 'translation'>('photo-video')
+  const [toolAmount, setToolAmount] = useState('')
+  const [toolBusy, setToolBusy] = useState(false)
 
   const selectedPlan = PLANS.find((p) => p.id === plan)
   const selectedLiveOffer = LIVE_OFFERS.find((o) => o.id === plan)
@@ -143,6 +147,37 @@ export default function AdminSubscriptionsPage() {
       setToast({ type: 'err', msg: 'Erreur de connexion' })
     } finally {
       setVoiceBusy(false)
+    }
+  }
+
+  const handleToolCredit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const target = toolEmail.trim()
+    const amount = Number(toolAmount)
+    if (!target || !Number.isFinite(amount) || amount <= 0) {
+      setToast({ type: 'err', msg: 'Entrez un email et un nombre de credits valide.' })
+      return
+    }
+    setToolBusy(true)
+    setToast(null)
+    try {
+      const res = await fetch('/api/admin/tool-credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: target, tool: toolName, amount }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setToast({ type: 'ok', msg: data.message || 'Credits ajoutes' })
+        setToolEmail('')
+        setToolAmount('')
+      } else {
+        setToast({ type: 'err', msg: data.error || 'Erreur' })
+      }
+    } catch {
+      setToast({ type: 'err', msg: 'Erreur de connexion' })
+    } finally {
+      setToolBusy(false)
     }
   }
 
@@ -478,6 +513,87 @@ export default function AdminSubscriptionsPage() {
                 <>
                   <Mic className="h-5 w-5" />
                   Crediter les minutes
+                </>
+              )}
+            </button>
+          </form>
+        </div>
+
+        <div className="mt-8 rounded-2xl border border-violet-500/30 bg-[#120a1f] p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-violet-500/15">
+              <Sparkles className="h-6 w-6 text-violet-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Ajouter des credits d&apos;outil</h2>
+              <p className="text-sm text-gray-400">
+                Credite manuellement les outils Photo en Video, Motion Control ou Traduction Video.
+                1 credit = 1 generation. Les credits s&apos;accumulent au solde existant.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleToolCredit} className="flex flex-col gap-4">
+            <div>
+              <label className={labelClass}>Email de l&apos;utilisateur</label>
+              <input
+                type="email"
+                required
+                value={toolEmail}
+                onChange={(e) => setToolEmail(e.target.value)}
+                className="w-full rounded-xl border border-gray-700 bg-[#0a0a0a] px-4 py-3 text-white outline-none transition-colors focus:border-violet-500"
+                placeholder="utilisateur@exemple.com"
+              />
+              <p className="mt-1 text-xs text-gray-500">Le compte doit deja exister avec cet email.</p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className={labelClass}>Outil</label>
+                <select
+                  value={toolName}
+                  onChange={(e) => setToolName(e.target.value as typeof toolName)}
+                  className="w-full rounded-xl border border-gray-700 bg-[#0a0a0a] px-4 py-3 text-white outline-none transition-colors focus:border-violet-500"
+                >
+                  <option value="photo-video">Photo en Video (30s / credit)</option>
+                  <option value="motion">Motion Control (1 clip / credit)</option>
+                  <option value="translation">Traduction Video (1 video / credit)</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Credits a ajouter</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10000}
+                  required
+                  value={toolAmount}
+                  onChange={(e) => setToolAmount(e.target.value)}
+                  className="w-full rounded-xl border border-gray-700 bg-[#0a0a0a] px-4 py-3 text-white outline-none transition-colors focus:border-violet-500"
+                  placeholder="10"
+                />
+              </div>
+            </div>
+
+            <p className="rounded-lg border border-gray-800 bg-[#0a0a0a] px-3 py-2 text-xs text-gray-500">
+              Chaque solde d&apos;outil est separe des points Live Swap et des autres outils. Le
+              credit est immediat et s&apos;ajoute au solde restant du client.
+            </p>
+
+            <button
+              type="submit"
+              disabled={toolBusy}
+              className="flex items-center justify-center gap-2 rounded-2xl bg-violet-500 py-4 font-semibold text-white transition-colors hover:bg-violet-600 disabled:opacity-60"
+            >
+              {toolBusy ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Credit en cours...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-5 w-5" />
+                  Ajouter les credits
                 </>
               )}
             </button>
