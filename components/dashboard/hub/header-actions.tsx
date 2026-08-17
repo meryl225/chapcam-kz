@@ -2,17 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { CreditCard, ClipboardList, Download, ChevronRight, Clock, Loader2 } from 'lucide-react'
+import { CreditCard, ClipboardList, Download, ChevronRight } from 'lucide-react'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
-import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
-import { MINUTES_OFFER } from '@/lib/minutes-offers'
 import { useT } from '@/lib/i18n/language-provider'
 
 export function HeaderActions() {
   const t = useT()
   const [showInstallModal, setShowInstallModal] = useState(false)
-  const { startCheckout, pendingKey, modal } = usePaymentCheckout()
-  const minutesLoading = pendingKey === MINUTES_OFFER.id
 
   return (
     <>
@@ -38,25 +34,6 @@ export function HeaderActions() {
             </span>
             <ChevronRight className="h-4 w-4 shrink-0 text-text-faint transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-primary" />
           </Link>
-
-          {/* Ajouter des minutes : credite des minutes de swap SANS changer le
-              forfait (meme en VIP). 4 min = 10 000 F. */}
-          <button
-            onClick={() => startCheckout(MINUTES_OFFER.id)}
-            disabled={minutesLoading}
-            className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[#a855f7]/10 disabled:opacity-60"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#a855f7]/15 text-[#c084fc] transition-transform duration-300 group-hover:scale-105">
-              {minutesLoading ? <Loader2 className="h-[18px] w-[18px] animate-spin" /> : <Clock className="h-[18px] w-[18px]" />}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold text-foreground">{t('Ajouter des minutes')}</span>
-              <span className="block truncate text-[11px] text-text-faint">
-                {t('4 min de swap · 10 000 F, ton forfait ne change pas')}
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-text-faint transition-transform duration-300 group-hover:translate-x-0.5 group-hover:text-[#c084fc]" />
-          </button>
 
           {/* Mes demandes */}
           <Link
@@ -97,7 +74,6 @@ export function HeaderActions() {
       </div>
 
       <InstallationRequestModal open={showInstallModal} onClose={() => setShowInstallModal(false)} />
-      {modal}
     </>
   )
 }

@@ -8,6 +8,8 @@ import { useLucy21 } from '@/hooks/use-lucy-21'
 import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
 import { pointsPerSecond, POINTS_PER_SECOND_SD, POINTS_PER_SECOND_HD } from '@/lib/swap-pricing'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
+import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
+import { MINUTES_OFFER } from '@/lib/minutes-offers'
 import { VirtualCameraIndicator } from '@/components/live/virtual-camera-indicator'
 import { MobileLiveOverlay } from '@/components/live/mobile-live-overlay'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -108,6 +110,9 @@ export default function DashboardPage() {
   const [showModeSettings, setShowModeSettings] = useState(false)
   const [stats, setStats] = useState({ fps: 0, latency: 0, resolution: '720p' })
   const [showInstallModal, setShowInstallModal] = useState(false)
+  // Achat de minutes supplementaires (4 min = 10 000 F) SANS changer le forfait.
+  const { startCheckout, pendingKey, modal: minutesModal } = usePaymentCheckout()
+  const minutesLoading = pendingKey === MINUTES_OFFER.id
 
   // Reglages visuels (modernisation UI uniquement - n'affecte pas la logique du swap)
   const [renderQuality, setRenderQuality] = useState<'standard' | 'hd' | 'ultra'>('ultra')
@@ -697,6 +702,19 @@ export default function DashboardPage() {
             <CreditCard className="h-4 w-4" />
             {t('Recharger')}
           </Link>
+
+          {/* Ajouter des minutes (violet) : credite 4 min de swap sans changer
+              le forfait, meme en VIP. */}
+          <button
+            onClick={() => startCheckout(MINUTES_OFFER.id)}
+            disabled={minutesLoading}
+            title={t('4 min de swap · 10 000 F, ton forfait ne change pas')}
+            className="flex items-center gap-2 rounded-lg bg-[#a855f7] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-colors hover:bg-[#9333ea] disabled:opacity-60"
+          >
+            {minutesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clock className="h-4 w-4" />}
+            <span className="hidden sm:inline">{t('Ajouter des minutes')}</span>
+            <span className="sm:hidden">+4 min</span>
+          </button>
 
           {/* Demande d'installation (bleu) */}
           <button
@@ -1554,6 +1572,8 @@ export default function DashboardPage() {
         open={showInstallModal}
         onClose={() => setShowInstallModal(false)}
       />
+
+      {minutesModal}
 
       {/* Mode plein ecran mobile immersif (facon FaceTime / TikTok Live).
           N'apparait que sur telephone quand le swap est connecte ; reutilise
