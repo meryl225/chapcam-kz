@@ -31,6 +31,9 @@ export const MINUTES_OFFERS: MinutesOffer[] = [
   },
 ]
 
+// Offre par defaut (pack unique 4 min) — pratique pour les boutons du hub.
+export const MINUTES_OFFER = MINUTES_OFFERS[0]
+
 export function getMinutesOffer(id: string): MinutesOffer | undefined {
   return MINUTES_OFFERS.find((o) => o.id === id)
 }

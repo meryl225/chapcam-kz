@@ -497,7 +497,6 @@ interface PlanGuardBannerProps {
 export function PlanGuardBanner({ plan, expiresAt, isActive, pointsRemaining = 0, voiceSecondsRemaining = 0 }: PlanGuardBannerProps) {
   const t = useT()
   const pathname = usePathname()
-  const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false
 
   // La page Voice Swap utilise un credit distinct (minutes ChapVoice). Si
   // l'utilisateur a des minutes de voix, on ne montre pas la banniere "points".

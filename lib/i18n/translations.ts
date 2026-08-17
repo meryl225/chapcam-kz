@@ -572,6 +572,8 @@ export const translations: Record<string, string> = {
   // ----- Dashboard : actions rapides (header) -----
   "Actions rapides": "Quick actions",
   "Ajoute des crédits de swap": "Add swap credits",
+  "Ajouter des minutes": "Add minutes",
+  "4 min de swap · 10 000 F, ton forfait ne change pas": "4 min of swap · 10,000 F, your plan stays the same",
   "Mes demandes": "My requests",
   "Suivi de tes requêtes": "Track your requests",
   "Demande d'installation": "Installation request",
