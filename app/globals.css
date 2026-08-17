@@ -37,6 +37,29 @@ html.mo-ready .reveal-fallback {
   transform: none !important;
 }
 
+/* ===== SECTIONS SOUS LA LIGNE DE FLOTTAISON (.mo-belowfold) =====
+   Ces sections (outils, fonctionnalites, tarifs, paiements, FAQ, CTA, footer...)
+   s'animent AU SCROLL (framer-motion whileInView) : chaque element demarre en
+   opacity:0 (et parfois translate/scale) dans le HTML serveur, et n'apparait
+   qu'au defilement une fois framer-motion actif.
+
+   Strategie "VISIBLE PAR DEFAUT" (sans delai) : tant que framer-motion n'a pas
+   confirme son execution (classe .mo-anim posee par <MotionReady/>), on force
+   TOUT le contenu masque de ces sections a etre visible. Consequences :
+     - JS desactive / bundle framer en echec / Safari lockdown / reseau coupe :
+       .mo-anim n'est JAMAIS pose -> le contenu reste visible en permanence. ✔
+     - JS + framer OK : .mo-anim est pose des l'hydratation -> cette regle se
+       desactive et framer reprend la main => les animations au scroll sont
+       INTACTES. Les sections concernees sont hors ecran a ce moment, donc le
+       passage "visible -> etat initial framer" ne provoque aucun flash visible. ✔
+   On ne depend d'AUCUN delai : le contenu est lisible immediatement au rendu. */
+html:not(.mo-anim) .mo-belowfold [style*='opacity:0'],
+html:not(.mo-anim) .mo-belowfold [style*='opacity: 0'],
+html:not(.mo-anim) .mo-belowfold [style*='scale(0)'] {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 /* ===== THEME CLAIR (par defaut au niveau :root, mais l'app demarre en .dark) ===== */
 :root {
   --background: #f4f6f8;

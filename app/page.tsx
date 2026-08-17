@@ -41,6 +41,12 @@ const SiteFooter = dynamic(() =>
   import("@/components/site-footer").then((m) => m.SiteFooter),
 )
 
+// Sentinelle framer-motion : partage le chunk de framer, donc ne pose la classe
+// `mo-anim` que si framer se charge vraiment (voir components/motion-ready.tsx).
+const MotionReady = dynamic(() =>
+  import("@/components/motion-ready").then((m) => m.MotionReady),
+)
+
 // Overlays flottants : charges dans un chunk separe (differe le JS client).
 const AnimatedBackground = dynamic(() =>
   import("@/components/animated-background").then((m) => m.AnimatedBackground),
@@ -69,19 +75,26 @@ export default function Home() {
       <div className="relative z-10">
         <Header />
         <HeroSection />
-        <ToolsShowcaseSection />
-        <CreatorsSection />
-        <InActionSection />
-        <RoadmapSection />
-        <HowItWorksSection />
-        <AvailableCountriesSection />
-        <PricingSection />
-        <FAQSection />
-        <TutorialSection />
-        <FounderSection />
-        <PartnershipSection />
-        <SiteFooter />
+        {/* Sections animees au scroll : gardees VISIBLES par defaut si framer
+            echoue (voir .mo-belowfold dans globals.css). */}
+        <div className="mo-belowfold">
+          <ToolsShowcaseSection />
+          <CreatorsSection />
+          <InActionSection />
+          <RoadmapSection />
+          <HowItWorksSection />
+          <AvailableCountriesSection />
+          <PricingSection />
+          <FAQSection />
+          <TutorialSection />
+          <FounderSection />
+          <PartnershipSection />
+          <SiteFooter />
+        </div>
       </div>
+
+      {/* Pose `mo-anim` uniquement si framer-motion est reellement operationnel. */}
+      <MotionReady />
 
       {/* Telegram Support Button */}
       <TelegramSupport />
