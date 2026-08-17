@@ -13,7 +13,49 @@
    l'affichage du contenu marque .reveal-fallback. Quand le JS fonctionne
    normalement, l'animation d'entree est deja terminee au moment ou la classe
    est posee, donc cette regle est neutre (pas de flash, pas d'animation cassee). */
+/* 1) REVEAL PUR-CSS (independant du JS applicatif ET du bundle _next).
+   Une animation CSS "remplie" (fill: forwards) l'emporte sur le style inline
+   opacity:0 pose par framer-motion — meme si AUCUN JavaScript ne s'execute
+   (JS desactive, bundle en echec, Safari mode restreint/lockdown, reseau qui
+   coupe un chunk). Au bout de 1.2s, le contenu critique marque .reveal-fallback
+   devient donc visible quoi qu'il arrive. En fonctionnement normal, framer-motion
+   a deja termine son animation d'entree bien avant ce delai : la regle est alors
+   neutre (pas de flash, pas d'animation cassee). */
+.reveal-fallback {
+  animation: cc-reveal 0.01s linear 1.2s forwards;
+}
+@keyframes cc-reveal {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* 2) RENFORT JS : des que le script inline du <head> confirme l'execution, on
+   revele immediatement (plus rapide que l'animation ci-dessus sur reseau lent). */
 html.mo-ready .reveal-fallback {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* ===== SECTIONS SOUS LA LIGNE DE FLOTTAISON (.mo-belowfold) =====
+   Ces sections (outils, fonctionnalites, tarifs, paiements, FAQ, CTA, footer...)
+   s'animent AU SCROLL (framer-motion whileInView) : chaque element demarre en
+   opacity:0 (et parfois translate/scale) dans le HTML serveur, et n'apparait
+   qu'au defilement une fois framer-motion actif.
+
+   Strategie "VISIBLE PAR DEFAUT" (sans delai) : tant que framer-motion n'a pas
+   confirme son execution (classe .mo-anim posee par <MotionReady/>), on force
+   TOUT le contenu masque de ces sections a etre visible. Consequences :
+     - JS desactive / bundle framer en echec / Safari lockdown / reseau coupe :
+       .mo-anim n'est JAMAIS pose -> le contenu reste visible en permanence. ✔
+     - JS + framer OK : .mo-anim est pose des l'hydratation -> cette regle se
+       desactive et framer reprend la main => les animations au scroll sont
+       INTACTES. Les sections concernees sont hors ecran a ce moment, donc le
+       passage "visible -> etat initial framer" ne provoque aucun flash visible. ✔
+   On ne depend d'AUCUN delai : le contenu est lisible immediatement au rendu. */
+html:not(.mo-anim) .mo-belowfold [style*='opacity:0'],
+html:not(.mo-anim) .mo-belowfold [style*='opacity: 0'],
+html:not(.mo-anim) .mo-belowfold [style*='scale(0)'] {
   opacity: 1 !important;
   transform: none !important;
 }
