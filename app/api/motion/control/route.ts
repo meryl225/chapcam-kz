@@ -25,6 +25,10 @@ fal.config({ credentials: process.env.FAL_KEY })
 const MODELS: Record<string, string> = {
   standard: "fal-ai/kling-video/v3/standard/motion-control",
   pro: "fal-ai/kling-video/v3/pro/motion-control",
+  // Mode "Remplacer dans une video" : integre la personne de l'image dans la
+  // VIDEO source en remplacant le personnage d'origine, tout en CONSERVANT le
+  // decor, l'eclairage et les gestes de la video. (Wan 2.2 Animate - Replace)
+  replace: "fal-ai/wan/v2.2-14b/animate/replace",
 }
 const DEFAULT_MODEL = "standard"
 
@@ -129,7 +133,9 @@ export async function GET(request: NextRequest) {
   }
 
   const requestId = params.get("request_id")
-  const modelKey = params.get("model") === "pro" ? "pro" : "standard"
+  // Accepte toute clef connue (standard | pro | replace) ; sinon retombe sur le defaut.
+  const modelParam = params.get("model") || DEFAULT_MODEL
+  const modelKey = modelParam in MODELS ? modelParam : DEFAULT_MODEL
   const model = MODELS[modelKey]
 
   if (!requestId) {
@@ -241,7 +247,12 @@ export async function POST(request: NextRequest) {
     const image = form.get("image") as File | null
     const video = form.get("video") as File | null
     const prompt = (form.get("prompt") as string | null)?.trim() || ""
-    const modelKey = (form.get("model") as string | null)?.trim() === "pro" ? "pro" : "standard"
+    // 'animate' = Kling Motion Control (transfert de mouvement, nouveau decor).
+    // 'replace' = Wan Animate Replace (garde le decor/les gestes de la video,
+    // remplace seulement la personne).
+    const mode = (form.get("mode") as string | null)?.trim() === "replace" ? "replace" : "animate"
+    const tierKey = (form.get("model") as string | null)?.trim() === "pro" ? "pro" : "standard"
+    const modelKey = mode === "replace" ? "replace" : tierKey
     // 'video' = suit le mouvement de la video (max 30s), 'image' = suit l'orientation
     // de l'image (max 10s). Par defaut on privilegie le mouvement (comme Higgsfield).
     const orientation = (form.get("orientation") as string | null)?.trim() === "image" ? "image" : "video"
@@ -287,13 +298,21 @@ export async function POST(request: NextRequest) {
     const imageUrl = await fal.storage.upload(image)
     const videoUrl = await fal.storage.upload(video)
 
-    const input: Record<string, unknown> = {
-      image_url: imageUrl,
-      video_url: videoUrl,
-      character_orientation: orientation,
-      keep_original_sound: keepSound,
+    let input: Record<string, unknown>
+    if (mode === "replace") {
+      // Wan Animate Replace : seules la video source + l'image de la personne
+      // sont necessaires. Le modele conserve decor/lumiere/gestes de la video et
+      // n'utilise ni prompt ni orientation.
+      input = { video_url: videoUrl, image_url: imageUrl, video_write_mode: "balanced" }
+    } else {
+      input = {
+        image_url: imageUrl,
+        video_url: videoUrl,
+        character_orientation: orientation,
+        keep_original_sound: keepSound,
+      }
+      if (prompt) input.prompt = prompt
     }
-    if (prompt) input.prompt = prompt
 
     const { request_id } = await fal.queue.submit(model, { input })
 
