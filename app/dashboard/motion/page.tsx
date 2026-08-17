@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Upload, X, Loader2, Download, Play, Sparkles, ChevronRight, Film, ImageIcon, Video, BookOpen, History } from "lucide-react"
+import { Upload, X, Loader2, Download, Play, Sparkles, ChevronRight, Film, ImageIcon, Video, BookOpen, History, Sun, Moon, Trees, Snowflake, Clapperboard, Wand2 } from "lucide-react"
+import type { LucideIcon } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
@@ -43,6 +44,22 @@ const MODELS: { value: string; label: string; credits: number }[] = [
 ]
 const QUALITIES = ["720p", "1080p"] as const
 
+// Scenes/decors selectionnables en un clic. Chaque scene injecte une instruction
+// de fond en anglais dans le prompt final (les modeles y repondent mieux).
+// "keep" garde le decor de l'image sujet ; "custom" laisse l'utilisateur decrire.
+// NB : le fond ne peut PAS etre extrait d'une video (le modele ne transfere que
+// le mouvement), donc on n'expose que "fond de l'image" ou une nouvelle scene.
+const SCENES: { value: string; label: string; icon: LucideIcon; prompt: string }[] = [
+  { value: "keep", label: "Fond de l'image", icon: ImageIcon, prompt: "" },
+  { value: "neon", label: "Studio néon", icon: Wand2, prompt: "change the background to a dark studio with vibrant neon lights, cinematic lighting" },
+  { value: "sunset", label: "Plage · sunset", icon: Sun, prompt: "change the background to a beach at golden hour sunset with warm light" },
+  { value: "night", label: "Rue de nuit", icon: Moon, prompt: "change the background to a city street at night with colorful bokeh lights, cinematic" },
+  { value: "cinema", label: "Fond noir ciné", icon: Clapperboard, prompt: "change the background to a plain black cinematic backdrop with dramatic studio lighting" },
+  { value: "nature", label: "Nature / forêt", icon: Trees, prompt: "change the background to a lush green forest with soft natural daylight" },
+  { value: "snow", label: "Neige", icon: Snowflake, prompt: "change the background to a snowy winter landscape with soft cold light" },
+  { value: "custom", label: "Scène perso", icon: Sparkles, prompt: "" },
+]
+
 export default function MotionPage() {
   const router = useRouter()
   const { toast } = useToast()
@@ -58,6 +75,8 @@ export default function MotionPage() {
   const [refVideo, setRefVideo] = useState<File | null>(null)
   const [refVideoUrl, setRefVideoUrl] = useState<string | null>(null)
   const [prompt, setPrompt] = useState("")
+  const [scene, setScene] = useState("keep")
+  const [customScene, setCustomScene] = useState("")
   const [model, setModel] = useState("standard")
   const [quality, setQuality] = useState<(typeof QUALITIES)[number]>("720p")
   const [enhance, setEnhance] = useState(true)
@@ -205,6 +224,21 @@ export default function MotionPage() {
     return () => clearInterval(id)
   }, [hasProcessing, pollJob])
 
+  // Fragment de prompt lie a la scene choisie ("" si on garde le fond de l'image).
+  const buildScenePrompt = () => {
+    if (scene === "custom") {
+      const t = customScene.trim()
+      return t ? `change the background: ${t}` : ""
+    }
+    return SCENES.find((s) => s.value === scene)?.prompt || ""
+  }
+  // Combine le mouvement decrit par l'utilisateur + l'instruction de scene.
+  const composePrompt = (movement: string) => {
+    return [movement.trim(), buildScenePrompt()].filter(Boolean).join(". ")
+  }
+  // Une scene est "active" (autre que le fond d'origine) si elle apporte une instruction.
+  const sceneActive = scene === "custom" ? !!customScene.trim() : scene !== "keep"
+
   const handleGenerate = async () => {
     if (!file) {
       toast({ title: "Image manquante", description: "Ajoute une image sujet pour démarrer.", variant: "destructive" })
@@ -225,10 +259,11 @@ export default function MotionPage() {
       }
       setStatus("uploading")
       try {
+        const finalPrompt = composePrompt(prompt)
         const fd = new FormData()
         fd.append("image", file)
         fd.append("video", refVideo)
-        fd.append("prompt", prompt.trim())
+        fd.append("prompt", finalPrompt)
         fd.append("model", model === "pro" ? "pro" : "standard")
         fd.append("orientation", "video")
         fd.append("keep_sound", "false")
@@ -247,7 +282,7 @@ export default function MotionPage() {
           return
         }
         if (typeof json.remaining === "number") setCredits(json.remaining)
-        addJobToHistory(json.request_id, "fal", model === "pro" ? "pro" : "standard", prompt.trim())
+        addJobToHistory(json.request_id, "fal", model === "pro" ? "pro" : "standard", finalPrompt || prompt.trim())
         setStatus("idle")
         toast({ title: "Transfert de mouvement lancé", description: "Cela peut prendre 2 à 5 minutes. Tu peux quitter la page." })
       } catch {
@@ -258,15 +293,16 @@ export default function MotionPage() {
     }
 
     // MODE 2 : Animation par prompt/presets (image -> video Higgsfield).
-    if (!prompt.trim() && selectedMotions.length === 0) {
-      toast({ title: "Décris le mouvement", description: "Ajoute une vidéo de référence, un prompt, ou choisis un preset.", variant: "destructive" })
+    if (!prompt.trim() && selectedMotions.length === 0 && !sceneActive) {
+      toast({ title: "Décris le mouvement", description: "Ajoute une vidéo de référence, un prompt, une scène ou un preset.", variant: "destructive" })
       return
     }
     setStatus("uploading")
     try {
+      const finalPrompt = composePrompt(prompt)
       const fd = new FormData()
       fd.append("file", file)
-      fd.append("prompt", prompt.trim() || "subtle natural motion, cinematic")
+      fd.append("prompt", finalPrompt || "subtle natural motion, cinematic")
       fd.append("model", model === "pro" ? "standard" : model)
       fd.append("quality", quality)
       fd.append("enhance", String(enhance))
@@ -285,7 +321,7 @@ export default function MotionPage() {
         return
       }
 
-      addJobToHistory(json.request_id, "higgsfield", model === "pro" ? "standard" : model, prompt.trim() || "Animation")
+      addJobToHistory(json.request_id, "higgsfield", model === "pro" ? "standard" : model, finalPrompt || "Animation")
       setStatus("idle")
       toast({ title: "Génération lancée", description: "Cela peut prendre 1 à 3 minutes. Tu peux quitter la page." })
     } catch {
@@ -333,8 +369,8 @@ export default function MotionPage() {
     setRefVideoUrl(null)
   }
 
-  // Generation possible si : image + (video de reference OU prompt OU preset).
-  const canGenerate = !!file && (!!refVideo || !!prompt.trim() || selectedMotions.length > 0) && !busy
+  // Generation possible si : image + (video de reference OU prompt OU preset OU scene).
+  const canGenerate = !!file && (!!refVideo || !!prompt.trim() || selectedMotions.length > 0 || sceneActive) && !busy
 
   if (loading) {
     return (
@@ -478,6 +514,49 @@ export default function MotionPage() {
             <span className={`text-sm font-bold ${credits !== null && credits <= 0 ? "text-red-400" : "text-[#c6f542]"}`}>
               {credits === null ? "…" : credits}
             </span>
+          </div>
+
+          {/* Scene / decor en un clic */}
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-white/40">
+              <ImageIcon className="h-3.5 w-3.5" /> Scène / décor
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {SCENES.map((s) => {
+                const active = scene === s.value
+                const Icon = s.icon
+                return (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={() => !busy && setScene(s.value)}
+                    disabled={busy}
+                    aria-pressed={active}
+                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors disabled:opacity-50 ${
+                      active ? "bg-[#c6f542] text-black" : "bg-white/5 text-white/70 hover:bg-white/10"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="truncate">{s.label}</span>
+                  </button>
+                )
+              })}
+            </div>
+            {scene === "custom" && (
+              <input
+                value={customScene}
+                onChange={(e) => setCustomScene(e.target.value)}
+                disabled={busy}
+                maxLength={200}
+                placeholder="Décris ton décor : plateau TV, désert, néon rose..."
+                className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:border-[#c6f542]/50 focus:outline-none"
+              />
+            )}
+            <p className="mt-2 text-[11px] leading-relaxed text-white/40">
+              {scene === "keep"
+                ? "Le sujet garde le décor de son image."
+                : "Le sujet est placé dans la scène choisie. Le fond ne peut pas être extrait d'une vidéo (seul le mouvement est transféré)."}
+            </p>
           </div>
 
           {/* Prompt */}
