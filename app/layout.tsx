@@ -56,9 +56,23 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "(function(){function r(){try{document.documentElement.classList.add('mo-ready')}catch(e){}}setTimeout(r,1500);window.addEventListener('load',function(){setTimeout(r,300)});window.addEventListener('error',function(e){try{var t=e&&e.target;var src=(t&&(t.src||t.href))||'';var isChunk=/ChunkLoadError|Loading chunk/.test((e&&e.message)||'')||(t&&t.tagName==='SCRIPT'&&/\\/_next\\//.test(src));if(isChunk){r();var last=+(sessionStorage.getItem('cc_chunk_reload')||0);if(Date.now()-last>30000){sessionStorage.setItem('cc_chunk_reload',String(Date.now()));location.reload()}}}catch(_){}}, true)})();",
+              "(function(){function r(){try{document.documentElement.classList.add('mo-ready')}catch(e){}}setTimeout(r,800);window.addEventListener('load',function(){setTimeout(r,200)});window.addEventListener('error',function(e){try{var t=e&&e.target;var src=(t&&(t.src||t.href))||'';var isChunk=/ChunkLoadError|Loading chunk/.test((e&&e.message)||'')||(t&&t.tagName==='SCRIPT'&&/\\/_next\\//.test(src));if(isChunk){r();var last=+(sessionStorage.getItem('cc_chunk_reload')||0);if(Date.now()-last>30000){sessionStorage.setItem('cc_chunk_reload',String(Date.now()));location.reload()}}}catch(_){}}, true)})();",
           }}
         />
+        {/* Filet ultime pour JS TOTALEMENT desactive (ou moteur JS bloque) : le
+            script ci-dessus ne peut alors pas s'executer. On revele donc TOUT le
+            contenu masque par framer-motion (opacity:0 inline) via une regle CSS
+            pure. Comme elle est dans <noscript>, elle n'a AUCUN effet quand le JS
+            fonctionne : zero impact sur les utilisateurs normaux. */}
+        <noscript>
+          {/* eslint-disable-next-line react/no-danger */}
+          <style
+            dangerouslySetInnerHTML={{
+              __html:
+                '[style*="opacity:0"],[style*="opacity: 0"]{opacity:1!important;transform:none!important}',
+            }}
+          />
+        </noscript>
         {/* Google AdSense : validation de la propriete du site + diffusion des annonces.
             Injecte sur toutes les pages, dans le <head>, comme demande par AdSense. */}
         <Script
