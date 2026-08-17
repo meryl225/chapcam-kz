@@ -132,9 +132,9 @@ export default function AdminLiveMinutesPage() {
           </div>
 
           <p className="rounded-lg border border-[#00d4ff]/20 bg-[#0a1620] px-3 py-2 text-xs text-gray-400">
-            Mode immediat : les minutes prolongent la fenetre Live active tout de suite (ou en
-            demarrent une maintenant). Le decompte s&apos;ecoule des l&apos;ajout, meme si
-            l&apos;utilisateur n&apos;est pas connecte.
+            Les minutes sont creditees en points Live Swap (1 min = 120 points en 720p) et
+            s&apos;ajoutent au solde de l&apos;utilisateur. Elles ne se decomptent qu&apos;a
+            l&apos;utilisation reelle : rien ne se perd si l&apos;utilisateur est hors ligne.
           </p>
 
           <button
