@@ -31,6 +31,36 @@ const DEFAULT_MODEL = "standard"
 const MAX_IMAGE = 10 * 1024 * 1024 // 10 Mo
 const MAX_VIDEO = 30 * 1024 * 1024 // 30 Mo (une video de reference <=10s est legere)
 
+// Detecte si un message d'erreur fal/Kling correspond a un REFUS de moderation
+// (contenu sensible, personnalite publique/celebrite, NSFW, violence, visage
+// non detecte...) plutot qu'a une panne technique. Kling renvoie ces raisons
+// dans le message d'exception au submit, ou dans task_status_msg au polling.
+function isModerationError(msg: string): boolean {
+  const m = msg.toLowerCase()
+  return (
+    m.includes("content_policy") ||
+    m.includes("content policy") ||
+    m.includes("moderation") ||
+    m.includes("risk control") ||
+    m.includes("risk_control") ||
+    m.includes("sensitive") ||
+    m.includes("nsfw") ||
+    m.includes("public figure") ||
+    m.includes("celebrit") ||
+    m.includes("violence") ||
+    m.includes("not allowed") ||
+    m.includes("prohibited") ||
+    m.includes("flagged") ||
+    m.includes("no face") ||
+    m.includes("face not detected") ||
+    m.includes("face detection")
+  )
+}
+
+// Message clair, en francais, pour un refus de moderation.
+const MODERATION_MESSAGE =
+  "Cette generation a ete refusee par la moderation du modele. Causes frequentes : visage d'une personne reelle celebre, contenu sensible/NSFW, violence, ou visage non detecte dans l'image. Essaie avec une autre image/video."
+
 // Seed unique : un abonne actif recoit le quota Motion de son forfait la
 // premiere fois qu'il utilise la fonctionnalite (comme la photo-video).
 async function ensureCreditsForActiveSub(userId: string, planId: string): Promise<number> {
@@ -106,10 +136,46 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "request_id requis" }, { status: 400 })
   }
 
+  // Termine un job en echec : marque le job (idempotent) et REMBOURSE 1 credit
+  // Motion la premiere fois seulement. fal ne facture pas un rendu refuse par la
+  // moderation, donc l'utilisateur ne doit pas perdre son credit.
+  const finishAsFailed = async (rawMsg: string) => {
+    const moderated = isModerationError(rawMsg)
+    const justFailed = await markMotionJobFailed(user.id, requestId).catch(() => false)
+    let remaining: number | undefined
+    if (justFailed) {
+      remaining = await addMotionCredits(user.id, 1).catch(() => undefined)
+    }
+    return NextResponse.json({
+      success: true,
+      status: "failed",
+      code: moderated ? "moderation" : "failed",
+      error: moderated
+        ? MODERATION_MESSAGE
+        : "La generation a echoue. Reessaie ou change d'image/video.",
+      refunded: justFailed,
+      ...(typeof remaining === "number" ? { remaining: Math.max(0, remaining) } : {}),
+    })
+  }
+
   try {
     const status = await fal.queue.status(model, { requestId, logs: false })
-    // fal renvoie COMPLETED | IN_PROGRESS | IN_QUEUE | (erreur via exception)
+    // fal renvoie COMPLETED | IN_PROGRESS | IN_QUEUE | ERROR | (erreur via exception)
     const s = String(status.status || "").toUpperCase()
+
+    // Echec signale sans exception : recuperer la vraie raison (task_status_msg)
+    // via le resultat, puis rembourser si necessaire.
+    if (s === "ERROR" || s === "FAILED") {
+      let detail = ""
+      try {
+        const r = await fal.queue.result(model, { requestId })
+        const d = r.data as { task_status_msg?: string; message?: string } | undefined
+        detail = d?.task_status_msg || d?.message || ""
+      } catch (e) {
+        detail = e instanceof Error ? e.message : ""
+      }
+      return finishAsFailed(detail)
+    }
 
     if (s === "COMPLETED") {
       const result = await fal.queue.result(model, { requestId })
@@ -148,9 +214,11 @@ export async function GET(request: NextRequest) {
       video_url: null,
     })
   } catch (err) {
-    console.error("[MotionControl] status error:", err instanceof Error ? err.message : err)
-    await markMotionJobFailed(user.id, requestId).catch(() => {})
-    return NextResponse.json({ success: true, status: "failed", error: "La generation a echoue." })
+    const detail = err instanceof Error ? err.message : String(err)
+    console.error("[MotionControl] status error:", detail)
+    // Une exception au polling = souvent un rendu en echec (dont refus de
+    // moderation) : on remonte la vraie raison et on rembourse le credit.
+    return finishAsFailed(detail)
   }
 }
 
@@ -260,8 +328,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Erreur serveur"
     console.error("[MotionControl Error]", msg)
-    // fal renvoie souvent les erreurs de credits/validation dans le message
     const lower = msg.toLowerCase()
+    // 1) Refus de moderation au lancement (image/video/prompt refuses). Aucun
+    //    credit fal consomme et aucun credit Motion deduit a ce stade.
+    if (isModerationError(msg)) {
+      return NextResponse.json(
+        { error: MODERATION_MESSAGE, code: "moderation", detail: msg.slice(0, 200) },
+        { status: 422 },
+      )
+    }
+    // 2) Compte fal a court de credits (cote plateforme, pas l'utilisateur).
     const noCredits = lower.includes("balance") || lower.includes("credit") || lower.includes("exhausted")
     return NextResponse.json(
       {

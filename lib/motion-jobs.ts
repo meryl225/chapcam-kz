@@ -95,14 +95,22 @@ export async function markMotionJobCompleted(
   `
 }
 
-/** Marque un job comme echoue. */
-export async function markMotionJobFailed(userId: string, requestId: string): Promise<void> {
+/**
+ * Marque un job comme echoue.
+ * Ne transitionne QUE depuis 'processing' (jamais depuis 'completed'/'failed'),
+ * et renvoie true UNIQUEMENT lors de la premiere transition vers 'failed'.
+ * Permet a l'appelant de rembourser le credit une seule fois, meme si le
+ * polling repasse plusieurs fois sur un job echoue.
+ */
+export async function markMotionJobFailed(userId: string, requestId: string): Promise<boolean> {
   await ensureTable()
-  await sql`
+  const rows = (await sql`
     UPDATE motion_jobs
     SET status = 'failed', updated_at = now()
-    WHERE user_id = ${userId} AND request_id = ${requestId}
-  `
+    WHERE user_id = ${userId} AND request_id = ${requestId} AND status = 'processing'
+    RETURNING id
+  `) as { id: string }[]
+  return rows.length > 0
 }
 
 /** Liste les generations d'un utilisateur (plus recentes d'abord). */
