@@ -20,6 +20,7 @@ import { getInstallOffer, type InstallOffer } from '@/lib/install-offer'
 import { getPcOffer, getDesktopDownloadUrl, getDesktopDownloadUrlMac, type PcOffer } from '@/lib/pc-offer'
 import { getVoiceOffer, type VoiceOffer } from '@/lib/voice-offers'
 import { getPhotoVideoOffer, type PhotoVideoOffer } from '@/lib/photo-video-offers'
+import { getMinutesOffer, type MinutesOffer } from '@/lib/minutes-offers'
 import { createPcLicense } from '@/lib/pc-license'
 import { grantLiveWindow } from '@/lib/live-access'
 import {
@@ -227,6 +228,63 @@ export async function creditVoiceMinutes(
   return { now, end, secondsRemaining: prevRemaining + addSeconds }
 }
 
+// Credite des MINUTES supplementaires de Live Swap (= des POINTS) SANS changer
+// le forfait de l'utilisateur. Meme s'il est VIP, on ajoute juste ses minutes :
+//   - les points s'ACCUMULENT au solde existant (jamais on n'ecrase) ;
+//   - le nom du forfait (`plan`) reste INCHANGE ;
+//   - on garantit is_active=true et une fenetre d'expiration >= now + validityDays
+//     (jamais raccourcie) pour que les minutes achetees restent utilisables,
+//     sinon la fenetre de grace remettrait les points a zero.
+export async function creditMinutes(
+  admin: Admin,
+  userId: string,
+  email: string,
+  offer: { id: string; points: number; validityDays: number },
+): Promise<{ points: number }> {
+  const now = new Date()
+  const durationMs = offer.validityDays * 24 * 60 * 60 * 1000
+
+  const { data: existing } = await admin
+    .from('subscriptions')
+    .select('id, points, max_points, plan, expires_at, end_date')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  const prevPoints = Number(existing?.points ?? 0)
+  const prevMax = Number(existing?.max_points ?? 0)
+
+  // Fenetre de validite : on ne raccourcit JAMAIS une expiration plus lointaine
+  // (ex : VIP annuel) — on la prolonge seulement si elle est plus proche.
+  const currentExpiry = existing?.expires_at ? new Date(existing.expires_at) : null
+  const freshExpiry = new Date(now.getTime() + durationMs)
+  const end = currentExpiry && currentExpiry > freshExpiry ? currentExpiry : freshExpiry
+
+  const payload: Record<string, any> = {
+    user_id: userId,
+    email,
+    points: prevPoints + offer.points,
+    max_points: prevMax + offer.points,
+    is_active: true,
+    expires_at: end.toISOString(),
+    end_date: end.toISOString(),
+    updated_at: now.toISOString(),
+  }
+  // Ne PAS ecraser le forfait : on garde l'existant. Si l'utilisateur n'a jamais
+  // eu d'abonnement, on cree une ligne 'free' qui porte juste les minutes achetees.
+  if (!existing?.plan) payload.plan = 'free'
+
+  if (existing) {
+    const { error } = await admin.from('subscriptions').update(payload).eq('id', existing.id)
+    if (error) console.error('[fulfillment] Erreur update minutes:', error.message)
+  } else {
+    payload.start_date = now.toISOString()
+    const { error } = await admin.from('subscriptions').insert(payload)
+    if (error) console.error('[fulfillment] Erreur insert minutes:', error.message)
+  }
+
+  return { points: prevPoints + offer.points }
+}
+
 export interface PurchaseInput {
   productId: string // id de formule (plans.ts) OU id d'offre Live (live-offers.ts)
   email: string
@@ -236,7 +294,7 @@ export interface PurchaseInput {
 
 export interface PurchaseResult {
   ok: boolean
-  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' | 'translation' | 'numbers_wallet' | null
+  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' | 'translation' | 'minutes' | 'numbers_wallet' | null
   userLinked: boolean
   message: string
   licenseKey?: string
@@ -293,8 +351,9 @@ export async function creditPurchase(
   const photoOffer: PhotoVideoOffer | undefined = getPhotoVideoOffer(input.productId)
   const motionOffer: MotionOffer | undefined = getMotionOffer(input.productId)
   const translationOffer: TranslationOffer | undefined = getTranslationOffer(input.productId)
+  const minutesOffer: MinutesOffer | undefined = getMinutesOffer(input.productId)
 
-  if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer) {
+  if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer && !minutesOffer) {
     return { ok: false, kind: null, userLinked: false, message: `Produit inconnu : ${input.productId}` }
   }
 
@@ -335,7 +394,7 @@ export async function creditPurchase(
   if (!userId) {
     return {
       ok: false,
-      kind: installOffer ? 'installation' : liveOffer ? 'live' : voiceOffer ? 'voice' : photoOffer ? 'photo' : motionOffer ? 'motion' : translationOffer ? 'translation' : 'plan',
+      kind: installOffer ? 'installation' : liveOffer ? 'live' : voiceOffer ? 'voice' : photoOffer ? 'photo' : motionOffer ? 'motion' : translationOffer ? 'translation' : minutesOffer ? 'minutes' : 'plan',
       userLinked: false,
       message: `Aucun compte ChapCam ne correspond a ${input.email}.`,
     }
@@ -413,6 +472,17 @@ export async function creditPurchase(
       kind: 'translation',
       userLinked: true,
       message: `${translationOffer.name} credite (${balance} traductions disponibles).`,
+    }
+  }
+
+  if (minutesOffer) {
+    // Minutes supplementaires : on credite des points SANS changer le forfait.
+    const { points } = await creditMinutes(admin, userId, input.email, minutesOffer)
+    return {
+      ok: true,
+      kind: 'minutes',
+      userLinked: true,
+      message: `${minutesOffer.minutes} min ajoutees (solde ${points} points).`,
     }
   }
 

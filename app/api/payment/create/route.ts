@@ -9,6 +9,7 @@ import { getVoiceOffer } from '@/lib/voice-offers'
 import { getPhotoVideoOffer } from '@/lib/photo-video-offers'
 import { getMotionOffer } from '@/lib/motion-offers'
 import { getTranslationOffer } from '@/lib/translation-offers'
+import { getMinutesOffer } from '@/lib/minutes-offers'
 import { paydunyaHeaders } from '@/lib/fulfillment'
 
 export const runtime = 'nodejs'
@@ -49,55 +50,31 @@ export async function POST(request: NextRequest) {
     const photoOffer = getPhotoVideoOffer(productId)
     const motionOffer = getMotionOffer(productId)
     const translationOffer = getTranslationOffer(productId)
-    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer) {
+    const minutesOffer = getMinutesOffer(productId)
+    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer && !minutesOffer) {
       return NextResponse.json({ success: false, error: 'Produit inconnu.' }, { status: 400 })
     }
 
-    const amount = plan
-      ? plan.price
+    // Resolution du produit -> montant, type (kind) et libelle. Chaque produit
+    // est mutuellement exclusif (l'id ne matche qu'un seul catalogue).
+    const resolved = plan
+      ? { amount: plan.price, kind: 'plan' as const, label: `Formule ${plan.name} (${plan.points} points, ${plan.duration})` }
       : liveOffer
-        ? liveOffer.price
+        ? { amount: liveOffer.price, kind: 'live' as const, label: `${liveOffer.name} (${liveOffer.windowMinutes} min d'acces Live)` }
         : installOffer
-          ? installOffer.price
+          ? { amount: installOffer.price, kind: 'installation' as const, label: installOffer.name }
           : pcOffer
-            ? pcOffer.price
+            ? { amount: pcOffer.price, kind: 'pc' as const, label: `${pcOffer.name} (licence a vie)` }
             : voiceOffer
-              ? voiceOffer.price
+              ? { amount: voiceOffer.price, kind: 'voice' as const, label: `${voiceOffer.name} (${voiceOffer.minutes} min de voix)` }
               : photoOffer
-                ? photoOffer.price
+                ? { amount: photoOffer.price, kind: 'photo' as const, label: `${photoOffer.name} (${photoOffer.credits} videos de 30s)` }
                 : motionOffer
-                  ? motionOffer.price
-                  : translationOffer!.price
-    const kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' | 'translation' = plan
-      ? 'plan'
-      : liveOffer
-        ? 'live'
-        : installOffer
-          ? 'installation'
-          : pcOffer
-            ? 'pc'
-            : voiceOffer
-              ? 'voice'
-              : photoOffer
-                ? 'photo'
-                : motionOffer
-                  ? 'motion'
-                  : 'translation'
-    const label = plan
-      ? `Formule ${plan.name} (${plan.points} points, ${plan.duration})`
-      : liveOffer
-        ? `${liveOffer.name} (${liveOffer.windowMinutes} min d'acces Live)`
-        : installOffer
-          ? installOffer.name
-          : pcOffer
-            ? `${pcOffer.name} (licence a vie)`
-            : voiceOffer
-              ? `${voiceOffer.name} (${voiceOffer.minutes} min de voix)`
-              : photoOffer
-                ? `${photoOffer.name} (${photoOffer.credits} videos de 30s)`
-                : motionOffer
-                  ? `${motionOffer.name} (${motionOffer.credits} clips Motion de 10s)`
-                  : `${translationOffer!.name} (${translationOffer!.credits} traductions vidéo)`
+                  ? { amount: motionOffer.price, kind: 'motion' as const, label: `${motionOffer.name} (${motionOffer.credits} clips Motion de 10s)` }
+                  : translationOffer
+                    ? { amount: translationOffer.price, kind: 'translation' as const, label: `${translationOffer.name} (${translationOffer.credits} traductions vidéo)` }
+                    : { amount: minutesOffer!.price, kind: 'minutes' as const, label: `${minutesOffer!.name} (${minutesOffer!.points} points)` }
+    const { amount, kind, label } = resolved
 
     const headers = paydunyaHeaders()
     if (!headers) {
