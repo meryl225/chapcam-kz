@@ -521,7 +521,15 @@ export function paydunyaHeaders(): Record<string, string> | null {
   const masterKey = process.env.PAYDUNYA_MASTER_KEY
   const privateKey = process.env.PAYDUNYA_PRIVATE_KEY
   const token = process.env.PAYDUNYA_TOKEN
-  if (!masterKey || !privateKey || !token) return null
+  if (!masterKey || !privateKey || !token) {
+    const missing = [
+      !masterKey && 'MASTER_KEY',
+      !privateKey && 'PRIVATE_KEY',
+      !token && 'TOKEN',
+    ].filter(Boolean).join(', ')
+    console.warn('[fulfillment] Cles PayDunya manquantes:', missing || 'toutes')
+    return null
+  }
   return {
     'Content-Type': 'application/json',
     'PAYDUNYA-MASTER-KEY': masterKey,
@@ -534,7 +542,7 @@ export function paydunyaHeaders(): Record<string, string> | null {
 export async function confirmPaydunyaInvoice(token: string): Promise<PaydunyaConfirm | null> {
   const headers = paydunyaHeaders()
   if (!headers) {
-    console.error('[fulfillment] Cles PayDunya manquantes')
+    // already logged in paydunyaHeaders()
     return null
   }
   try {
@@ -960,3 +968,5 @@ export async function reconcilePendingPaydunya(opts?: { maxAgeDays?: number; lim
 
   return { checked: rows?.length || 0, credited, cancelled, stillPending, errors }
 }
+
+
