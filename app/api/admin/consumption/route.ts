@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminRequest } from '@/lib/admin-auth'
 import { getToolUsage, type ToolName } from '@/lib/tool-usage'
+import { getPhotoVideoTotalsForUsers } from '@/lib/photo-video-quota'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -188,6 +189,10 @@ export async function GET(req: NextRequest) {
       credits: number
       cost_usd: number
       lastUsed: string
+      // Total de credits photo->video credites a ce compte (achats de packs a la
+      // carte, inclusions de forfait ou dons admin). Permet a l'UI de distinguer
+      // un vrai compte gratuit d'un acheteur de pack sans forfait Live Swap.
+      photoCreditsTotal: number
       byTool: Record<string, { generations: number; credits: number; cost_usd: number }>
     }[]
   } = { totals: [], grandTotalCostUsd: 0, users: [] }
@@ -226,6 +231,7 @@ export async function GET(req: NextRequest) {
           credits: 0,
           cost_usd: 0,
           lastUsed: r.last_used,
+          photoCreditsTotal: 0,
           byTool: {},
         }
       cur.generations += Number(r.generations) || 0
@@ -244,6 +250,15 @@ export async function GET(req: NextRequest) {
       .map((u) => ({ ...u, cost_usd: Math.round(u.cost_usd * 100) / 100 }))
       .sort((a, b) => b.cost_usd - a.cost_usd)
       .slice(0, 200)
+
+    // Enrichir avec le total de credits photo->video credites (Neon), pour
+    // distinguer dans l'UI un acheteur de pack d'un vrai compte gratuit.
+    try {
+      const totalsByUser = await getPhotoVideoTotalsForUsers(toolUsers.map((u) => u.userId))
+      for (const u of toolUsers) u.photoCreditsTotal = totalsByUser.get(u.userId) ?? 0
+    } catch (err) {
+      console.error('[admin/consumption] Erreur lecture credits photo Neon:', err)
+    }
 
     const grandTotalCostUsd =
       Math.round(toolTotals.reduce((acc, t) => acc + (Number(t.cost_usd) || 0), 0) * 100) / 100

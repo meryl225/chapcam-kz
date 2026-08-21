@@ -50,6 +50,28 @@ export async function getPhotoVideoBalance(
   return { balance: Number(rows[0].balance), exists: true }
 }
 
+/**
+ * Total de credits photo->video DEJA credites (achats de packs a la carte,
+ * inclusions de forfait, ou dons admin) pour une liste d'utilisateurs.
+ * Sert au tableau admin a distinguer un vrai compte gratuit d'un compte qui a
+ * achete des credits photo sans souscrire de forfait Live Swap.
+ * Renvoie une Map userId -> total_credited (absent = 0).
+ */
+export async function getPhotoVideoTotalsForUsers(
+  userIds: string[],
+): Promise<Map<string, number>> {
+  const result = new Map<string, number>()
+  if (userIds.length === 0) return result
+  await ensureTable()
+  const rows = (await sql`
+    SELECT user_id, total_credited
+    FROM photo_video_credits
+    WHERE user_id = ANY(${userIds})
+  `) as { user_id: string; total_credited: number }[]
+  for (const r of rows) result.set(r.user_id, Number(r.total_credited) || 0)
+  return result
+}
+
 /** Ajoute des credits au solde (upsert, accumulation). Retourne le nouveau solde. */
 export async function addPhotoVideoCredits(userId: string, amount: number): Promise<number> {
   await ensureTable()
