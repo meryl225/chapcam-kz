@@ -7,8 +7,11 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { LanguageProvider } from '@/lib/i18n/language-provider'
 import './globals.css'
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+// display: 'swap' => le texte s'affiche immediatement avec la police de repli,
+// puis bascule sur Geist des qu'elle est prete : aucune police distante ne
+// bloque le premier rendu (pas de FOIT). Sous-ensemble latin uniquement.
+const _geist = Geist({ subsets: ["latin"], display: "swap" });
+const _geistMono = Geist_Mono({ subsets: ["latin"], display: "swap" });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://chapcam.com'),
@@ -105,11 +108,13 @@ export default function RootLayout({
           />
         </noscript>
         {/* Google AdSense : validation de la propriete du site + diffusion des annonces.
-            Injecte sur toutes les pages, dans le <head>, comme demande par AdSense. */}
+            strategy="lazyOnload" => le script publicitaire n'est charge qu'APRES que
+            la page et ses ressources essentielles soient pretes (evenement load).
+            Il ne bloque donc jamais le premier rendu ni l'interactivite de la
+            homepage. AdSense valide toujours la propriete du site normalement. */}
         <Script
           id="google-adsense"
-          async
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3679882038307653"
           crossOrigin="anonymous"
         />
