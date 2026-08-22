@@ -135,9 +135,15 @@ function addSecurityHeaders(
   // avec revalidation en arriere-plan (stale-while-revalidate). Cela evite de
   // regenerer la page a chaque visite et accelere fortement le chargement.
   if (options.allowCache) {
+    // s-maxage=600 : le CDN Vercel (points de presence proches de l'Afrique de
+    // l'Ouest) sert la page depuis le cache edge pendant 10 min -> TTFB quasi nul
+    // pour les visiteurs, au lieu de re-solliciter l'origine toutes les 60 s.
+    // stale-while-revalidate=86400 : meme apres expiration, le CDN renvoie
+    // INSTANTANEMENT la version en cache et la rafraichit en arriere-plan
+    // pendant 24 h -> l'utilisateur n'attend jamais une regeneration.
     response.headers.set(
       'Cache-Control',
-      'public, max-age=0, s-maxage=60, stale-while-revalidate=300',
+      'public, max-age=0, s-maxage=600, stale-while-revalidate=86400',
     )
   } else if (response.headers.get('x-middleware-cache') !== 'public') {
     // Pages sensibles (dashboard, auth, API) : jamais de cache.
