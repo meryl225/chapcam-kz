@@ -22,7 +22,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
-      { url: '/chapcam-icon.png', type: 'image/png' },
+      // Favicon optimise : 1.7 Ko (48px) au lieu du PNG 512px de 203 Ko qui
+      // etait telecharge au premier affichage et ralentissait le rendu mobile.
+      { url: '/chapcam-icon-48.png', type: 'image/png', sizes: '48x48' },
+      { url: '/chapcam-icon-192.png', type: 'image/png', sizes: '192x192' },
     ],
     shortcut: '/favicon.ico',
     apple: '/apple-icon.jpg',
