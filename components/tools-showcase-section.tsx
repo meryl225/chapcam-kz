@@ -4,7 +4,54 @@ import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
 import { ArrowRight, Zap, ImageIcon, Film, Languages } from "lucide-react"
+import { useEffect, useRef } from "react"
 import { useT } from "@/lib/i18n/language-provider"
+
+/**
+ * Video de demonstration qui ne se telecharge PAS a l'ouverture de la homepage.
+ * - preload="none" : aucun octet de la video n'est charge tant qu'elle n'est
+ *   pas proche de l'ecran.
+ * - IntersectionObserver : on ne declenche le chargement + la lecture que
+ *   lorsqu'elle entre dans le viewport, et on met en pause quand elle en sort.
+ * Le rendu visuel est identique (elle joue en boucle, muette, quand visible),
+ * mais on evite de telecharger la video avant que l'utilisateur y arrive.
+ */
+function InViewVideo({ src, label, className }: { src: string; label: string; className?: string }) {
+  const ref = useRef<HTMLVideoElement | null>(null)
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            // Charge puis lance la lecture uniquement une fois visible.
+            el.play().catch(() => {})
+          } else {
+            el.pause()
+          }
+        }
+      },
+      { rootMargin: "200px" }, // demarre juste avant l'entree a l'ecran
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  return (
+    <video
+      ref={ref}
+      src={src}
+      muted
+      loop
+      playsInline
+      preload="none"
+      aria-label={label}
+      className={className}
+    />
+  )
+}
 
 type Tool = {
   title: string
@@ -107,14 +154,9 @@ export function ToolsShowcaseSection() {
               >
                 {/* Media plein cadre */}
                 {tool.mediaType === "video" ? (
-                  <video
+                  <InViewVideo
                     src={tool.media}
-                    autoPlay
-                    muted
-                    loop
-                    playsInline
-                    preload="metadata"
-                    aria-label={`Demonstration ${tool.title}`}
+                    label={`Demonstration ${tool.title}`}
                     className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : (
