@@ -1,5 +1,18 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // CORRECTIF « page dé-stylée après un déploiement ».
+  // Next ajoute `?dpl=<VERCEL_DEPLOYMENT_ID>` à TOUTES les URLs d'assets statiques
+  // (JS/CSS). Le probleme : le HTML de la landing est mis en cache CDN
+  // (s-maxage + stale-while-revalidate). Apres une nouvelle publication, le CDN
+  // sert encore l'ancien HTML pendant quelques minutes ; celui-ci pointait vers
+  // l'ancien hash de CSS qui n'existait plus sur le nouveau deploiement -> 404 ->
+  // page rendue SANS aucun style (voir capture mobile Safari).
+  // En versionnant les assets avec l'ID de deploiement, ces requetes sont
+  // routees vers LEUR deploiement d'origine, garde disponible par la Skew
+  // Protection Vercel (activee, fenetre 7 jours). Le CSS repond donc toujours 200.
+  // En local (VERCEL_DEPLOYMENT_ID absent) la valeur est undefined => aucun effet.
+  deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
+
   typescript: {
     ignoreBuildErrors: true,
   },
