@@ -65,11 +65,33 @@ export default function RootLayout({
         <style
           dangerouslySetInnerHTML={{
             __html:
-              "html{background:#070c18;color:#eef2fb;" +
-              "font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
-              "-webkit-text-size-adjust:100%;text-size-adjust:100%}" +
-              "body{background:#070c18;color:#eef2fb;margin:0}" +
-              "a{color:inherit;text-decoration:none}",
+              // -- Base : fond sombre + police sans-serif + reset marges.
+              //    font-family sur html ET body pour que TOUS les descendants
+              //    (dont h1/h2/p) heritent du sans-serif (fin du rendu serif).
+              "*,*::before,*::after{box-sizing:border-box}" +
+              "html,body{background:#070c18;color:#eef2fb;margin:0;" +
+              "font-family:'Geist',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}" +
+              "html{-webkit-text-size-adjust:100%;text-size-adjust:100%}" +
+              // -- Titres : supprime le serif gras par defaut + les marges.
+              //    Reprend les poids/tailles du hero (h1 = text-5xl/black/leading-tight).
+              "h1,h2,h3,h4,h5,h6{font-family:inherit;color:#fff;margin:0;" +
+              "font-weight:900;line-height:1.05;letter-spacing:-.02em}" +
+              "h1{font-size:3rem}h2{font-size:1.875rem}h3{font-size:1.25rem}" +
+              "p{margin:0;line-height:1.6}" +
+              // -- Liens : supprime le bleu/violet souligne par defaut du navigateur.
+              "a{color:inherit;text-decoration:none}" +
+              "a:visited{color:inherit}" +
+              // -- Boutons : reset du chrome navigateur + forme pilule ChapCam.
+              "button{font-family:inherit;cursor:pointer;border:0;background:transparent;" +
+              "color:#fff;border-radius:9999px}" +
+              // -- Boutons above-the-fold cibles par leur href (selecteur stable,
+              //    independant des classes Tailwind pas encore chargees).
+              //    Se connecter = contour transparent.
+              "a[href='/auth/login'] button{padding:.5rem 1.25rem;font-weight:500;" +
+              "border:1px solid rgba(255,255,255,.1);background:transparent}" +
+              //    S'inscrire / Commencer = degrade bleu -> violet (identite ChapCam).
+              "a[href='/auth/sign-up'] button{padding:.5rem 1.25rem;font-weight:600;" +
+              "background:linear-gradient(to right,#00d4ff,#8b5cf6)}",
           }}
         />
         {/* Filet de securite anti-page-vide + auto-recuperation (script inline,
