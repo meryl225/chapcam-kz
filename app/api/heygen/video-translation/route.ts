@@ -5,9 +5,15 @@ import {
   getTranslationBalance,
   addTranslationCredits,
   deductTranslationCredits,
+  refundTranslationCredits,
 } from "@/lib/translation-quota"
 import { logToolUsage } from "@/lib/tool-usage"
-import { rehostToBlob, saveVideoHistory, isAlreadyRehosted } from "@/lib/video-history"
+import {
+  rehostToBlob,
+  saveVideoHistory,
+  isAlreadyRehosted,
+  failGenerationAndGetRefund,
+} from "@/lib/video-history"
 
 // === Traduction Video (HeyGen video-translation v3) ===
 // Flux : upload video -> asset_id, puis POST /v3/video-translations (1 langue),
@@ -116,6 +122,26 @@ export async function GET(request: NextRequest) {
 
     const providerUrl = data.url || data.video_url || null
 
+    // Vrai motif d'echec renvoye par HeyGen (ex: "No speaker is detected...",
+    // langue d'entree incorrecte). HeyGen le place dans `failure_message`.
+    const failureReason: string | null =
+      data.failure_message || data.message || data.error || null
+
+    // ECHEC : rembourser le credit deduit au lancement, EXACTEMENT UNE FOIS.
+    // La transition atomique processing->failed garantit l'idempotence meme si
+    // le client interroge le statut en boucle.
+    if (status === "failed") {
+      try {
+        const refund = await failGenerationAndGetRefund(user.id, "translation", id)
+        if (refund > 0) {
+          await refundTranslationCredits(user.id, refund)
+          console.log(`[Translation] Echec HeyGen -> ${refund} credit(s) rembourse(s) a ${user.id}`)
+        }
+      } catch (e) {
+        console.error("[Translation] Remboursement sur echec impossible:", e)
+      }
+    }
+
     // Historique PERMANENT : a la fin, re-heberger dans le Blob prive (les URLs
     // HeyGen expirent) et enregistrer. Idempotent via isAlreadyRehosted.
     let historyUrl: string | null = null
@@ -143,7 +169,9 @@ export async function GET(request: NextRequest) {
       status,
       video_url: historyUrl || providerUrl,
       output_language: data.output_language || null,
-      error: status === "failed" ? (data.message || data.error || "Traduction echouee.") : null,
+      error: status === "failed" ? (failureReason || "Traduction échouée.") : null,
+      // Indique au client que le credit a ete rendu (aucune facturation sur echec).
+      refunded: status === "failed",
     })
   } catch {
     return NextResponse.json({ status: "processing" })
@@ -246,6 +274,23 @@ export async function POST(request: NextRequest) {
 
     // 3) Deduire les credits UNIQUEMENT apres soumission reussie.
     const remaining = await deductTranslationCredits(user.id, cost)
+
+    // 3b) Enregistrer le job en cours AVEC son cout : si HeyGen echoue plus tard
+    //     (ex: aucune voix detectee, mauvaise langue), le handler de statut
+    //     remboursera EXACTEMENT ce montant, une seule fois.
+    try {
+      await saveVideoHistory({
+        userId: user.id,
+        tool: "translation",
+        providerRef: translateId,
+        blobPathname: null,
+        title: `Traduction · ${language}`,
+        status: "processing",
+        creditsCost: cost,
+      })
+    } catch (e) {
+      console.error("[Translation] Enregistrement du job en cours impossible:", e)
+    }
 
     // Journaliser la consommation par utilisateur (suivi admin + cout fournisseur estime).
     await logToolUsage({
