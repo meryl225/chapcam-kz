@@ -160,6 +160,24 @@ function addSecurityHeaders(
 }
 
 export async function middleware(request: NextRequest) {
+  // ===== Redirection www -> apex (domaine principal officiel) =====
+  // Doit etre traitee EN PREMIER, avant toute autre logique (Supabase,
+  // rate-limit, securite), pour garantir UNE SEULE redirection directe
+  // www.chapcam.com -> chapcam.com (aucune chaine de redirections).
+  // On lit le vrai hostname depuis l'en-tete Host (fiable derriere le proxy
+  // Vercel). On agit UNIQUEMENT si l'hote est exactement "www.chapcam.com" ;
+  // chapcam.com n'est donc jamais redirige vers lui-meme (pas de boucle).
+  const host = request.headers.get('host') || ''
+  if (host === 'www.chapcam.com') {
+    const url = request.nextUrl.clone()
+    url.host = 'chapcam.com'        // remplace uniquement le domaine
+    url.protocol = 'https:'         // force HTTPS
+    url.port = ''                   // pas de port explicite
+    // url.pathname et url.search sont conserves tels quels -> chemin +
+    // parametres de requete integralement preserves.
+    return NextResponse.redirect(url, 308) // 308 = redirection permanente
+  }
+
   const { pathname } = request.nextUrl
   const ip = getClientIP(request)
   const userAgent = request.headers.get('user-agent') || ''
