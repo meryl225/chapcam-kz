@@ -45,6 +45,33 @@ export default function RootLayout({
   return (
     <html lang="fr" className="bg-background" suppressHydrationWarning>
       <head>
+        {/* ===== CSS CRITIQUE INLINE (anti-FOUC au PREMIER acces) =====
+            Corrige le "flash de page en police serif / liens bleus soulignes"
+            visible UNIQUEMENT lors de la toute premiere visite sur mobile lent.
+
+            Cause : la feuille de style principale (~40 Ko gzip) est render-blocking
+            et n'est pas encore en cache au 1er acces. Sur 4G, pendant son
+            telechargement, Safari (streaming SSR Next.js) peint le HTML deja recu
+            SANS style -> fond blanc, texte serif, liens bleus. Aux visites
+            suivantes le CSS est en cache immutable, donc le probleme disparait.
+
+            Ce bloc est INLINE dans le HTML (servi frais, aucun aller-retour reseau)
+            donc il s'applique des le tout premier octet. Il reprend EXACTEMENT les
+            valeurs du theme sombre (--background:#070c18 / --foreground:#eef2fb),
+            si bien que lorsque le gros CSS arrive et prend le relais, il n'y a
+            AUCUN changement visible (pas de second flash). L'app est forcee en
+            theme sombre (defaultTheme="dark", enableSystem=false), donc ces valeurs
+            sont toujours correctes. */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html:
+              "html{background:#070c18;color:#eef2fb;" +
+              "font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
+              "-webkit-text-size-adjust:100%;text-size-adjust:100%}" +
+              "body{background:#070c18;color:#eef2fb;margin:0}" +
+              "a{color:inherit;text-decoration:none}",
+          }}
+        />
         {/* Filet de securite anti-page-vide + auto-recuperation (script inline,
             donc TOUJOURS frais : le HTML est servi en max-age=0, alors que les
             chunks /_next/static/* sont en cache immutable. Ce script s'execute
