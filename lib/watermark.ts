@@ -109,3 +109,43 @@ export function pickDecartApiKey(noWatermark: boolean): { apiKey: string | undef
   // Aucune cle configuree.
   return { apiKey: undefined, usedNoWatermark: false }
 }
+
+/**
+ * Renvoie les cles Decart candidates par ORDRE DE PRIORITE pour l'emission d'un
+ * token, sans doublon. La 1ere est la cle ideale selon la decision de watermark ;
+ * la 2eme (si differente et configuree) sert de REPLI automatique.
+ *
+ * Pourquoi : si UNE des deux cles Decart devient invalide/expiree, elle ne doit
+ * pas casser le swap pour tout un palier d'utilisateurs. Exemple reel : la cle
+ * AVEC watermark (utilisee par Starter/standard) expire -> sans repli, tous les
+ * comptes avec watermark voient "Service de transformation indisponible" alors
+ * que la cle SANS watermark fonctionne. Mieux vaut un rendu (eventuellement avec
+ * l'autre politique de watermark) qu'un service totalement indisponible.
+ */
+export function getDecartApiKeyCandidates(
+  noWatermark: boolean,
+): { apiKey: string; usedNoWatermark: boolean }[] {
+  const withWm = process.env.DECART_API_KEY
+  const withoutWm = process.env.DECART_API_KEY_NO_WATERMARK
+
+  // Ordre de preference selon la politique de watermark souhaitee.
+  const ordered: { apiKey: string | undefined; usedNoWatermark: boolean }[] = noWatermark
+    ? [
+        { apiKey: withoutWm, usedNoWatermark: true },
+        { apiKey: withWm, usedNoWatermark: false },
+      ]
+    : [
+        { apiKey: withWm, usedNoWatermark: false },
+        { apiKey: withoutWm, usedNoWatermark: true },
+      ]
+
+  // Ne garder que les cles reellement configurees (non vides) et dedupliquer.
+  const seen = new Set<string>()
+  const candidates: { apiKey: string; usedNoWatermark: boolean }[] = []
+  for (const c of ordered) {
+    if (!c.apiKey || seen.has(c.apiKey)) continue
+    seen.add(c.apiKey)
+    candidates.push({ apiKey: c.apiKey, usedNoWatermark: c.usedNoWatermark })
+  }
+  return candidates
+}

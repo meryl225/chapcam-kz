@@ -61,6 +61,10 @@ async function ensureTable(): Promise<void> {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `
+  // Cout en credits de la generation (1 = Rapide, 2 = Precision pour la
+  // traduction). Sert a rembourser le MONTANT EXACT si la generation echoue
+  // apres deduction. Ajoute a la volee pour les tables deja existantes.
+  await sql`ALTER TABLE video_history ADD COLUMN IF NOT EXISTS credits_cost INTEGER`
   await sql`CREATE INDEX IF NOT EXISTS video_history_user_idx ON video_history (user_id, created_at DESC)`
   // Un provider_ref donne n'est enregistre qu'une fois par utilisateur.
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS video_history_ref_idx ON video_history (user_id, tool, provider_ref)`
@@ -113,21 +117,52 @@ export async function saveVideoHistory(input: {
   thumbnailUrl?: string | null
   title?: string
   status?: 'processing' | 'completed' | 'failed'
+  // Cout en credits deduit pour cette generation (permet un remboursement exact
+  // en cas d'echec ulterieur). Conserve tel quel si non fourni lors d'un update.
+  creditsCost?: number | null
 }): Promise<void> {
   await ensureTable()
   await sql`
-    INSERT INTO video_history (user_id, tool, provider_ref, blob_pathname, thumbnail_url, title, status)
+    INSERT INTO video_history (user_id, tool, provider_ref, blob_pathname, thumbnail_url, title, status, credits_cost)
     VALUES (
       ${input.userId}, ${input.tool}, ${input.providerRef},
       ${input.blobPathname}, ${input.thumbnailUrl ?? null},
-      ${input.title ?? ''}, ${input.status ?? 'completed'}
+      ${input.title ?? ''}, ${input.status ?? 'completed'}, ${input.creditsCost ?? null}
     )
     ON CONFLICT (user_id, tool, provider_ref)
     DO UPDATE SET
       blob_pathname = COALESCE(EXCLUDED.blob_pathname, video_history.blob_pathname),
       thumbnail_url = COALESCE(EXCLUDED.thumbnail_url, video_history.thumbnail_url),
+      title = COALESCE(NULLIF(EXCLUDED.title, ''), video_history.title),
+      credits_cost = COALESCE(video_history.credits_cost, EXCLUDED.credits_cost),
       status = EXCLUDED.status
   `
+}
+
+/**
+ * Marque une generation comme "failed" de maniere ATOMIQUE et IDEMPOTENTE, et
+ * renvoie le cout en credits a rembourser (0 si deja traitee ou introuvable).
+ *
+ * Pourquoi : le handler de statut est appele en boucle par le client. On veut
+ * rembourser le credit EXACTEMENT UNE FOIS quand une traduction bascule en
+ * echec. La clause `status = 'processing'` garantit qu'un seul poll effectue la
+ * transition -> les polls suivants voient deja 'failed' et ne remboursent pas.
+ * On ne touche jamais une generation 'completed'.
+ */
+export async function failGenerationAndGetRefund(
+  userId: string,
+  tool: VideoTool,
+  providerRef: string,
+): Promise<number> {
+  await ensureTable()
+  const rows = (await sql`
+    UPDATE video_history
+    SET status = 'failed'
+    WHERE user_id = ${userId} AND tool = ${tool}
+      AND provider_ref = ${providerRef} AND status = 'processing'
+    RETURNING COALESCE(credits_cost, 0) AS credits_cost
+  `) as { credits_cost: number }[]
+  return rows.length > 0 ? Number(rows[0].credits_cost) : 0
 }
 
 /**

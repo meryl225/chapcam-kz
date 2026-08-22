@@ -2,7 +2,7 @@ import { createDecartClient } from '@decartai/sdk'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { resolveWatermarkForUser, pickDecartApiKey } from '@/lib/watermark'
+import { resolveWatermarkForUser, getDecartApiKeyCandidates } from '@/lib/watermark'
 import { checkLiveAccess } from '@/lib/live-guard'
 import { trackGPUUsage } from '@/lib/rate-limit'
 import { RESERVATION_SECONDS, RESERVATION_POINTS } from '@/lib/swap-pricing'
@@ -52,13 +52,16 @@ export async function GET(request: Request) {
     )
   }
 
-  // 4. Choisir la cle Decart selon le forfait (avec/sans watermark).
+  // 4. Choisir la/les cle(s) Decart selon le forfait (avec/sans watermark).
   //    Toute la decision est cote serveur : le client ne choisit jamais sa cle.
+  //    On recupere une LISTE ordonnee : la cle ideale d'abord, puis l'autre cle
+  //    en repli. Si la 1ere est invalide/expiree, on essaiera la suivante plutot
+  //    que de renvoyer un service indisponible (voir la boucle en 5.).
   const decision = await resolveWatermarkForUser(user.id)
-  const { apiKey, usedNoWatermark } = pickDecartApiKey(decision.noWatermark)
+  const keyCandidates = getDecartApiKeyCandidates(decision.noWatermark)
 
-  if (!apiKey) {
-    console.error('[Decart Token] DECART_API_KEY not configured')
+  if (keyCandidates.length === 0) {
+    console.error('[Decart Token] Aucune cle Decart configuree (DECART_API_KEY / DECART_API_KEY_NO_WATERMARK)')
     return NextResponse.json(
       { error: 'Service temporairement indisponible' },
       { status: 500 }
@@ -116,22 +119,46 @@ export async function GET(request: Request) {
   }
 
   try {
-    const client = createDecartClient({ apiKey })
-
-    // 5. Creer un token ephemere avec restrictions
-    const token = await client.tokens.create({
-      expiresIn: 300, // 5 min : reduit de moitie l'exposition GPU si le client cesse de
-                      // synchroniser, sans casser les usages tardifs (upload avatar,
-                      // changement de scene) qui reutilisent ce token pendant la session.
-      allowedModels: ['lucy-2.5', 'lucy-2.1'],
-      allowedOrigins: Array.from(allowedOrigins),
-      metadata: {
-        userId: user.id,
-        userEmail: user.email,
-        noWatermark: usedNoWatermark,
-        createdAt: new Date().toISOString()
+    // 5. Creer un token ephemere avec restrictions.
+    //    On essaie les cles candidates dans l'ordre : cle ideale, puis repli.
+    //    Une cle invalide/expiree (ex: DECART_API_KEY qui a expire) ne casse
+    //    donc plus le swap tant qu'UNE cle valide reste configuree.
+    let token: any = null
+    let usedNoWatermark = false
+    let lastErr: any = null
+    for (let i = 0; i < keyCandidates.length; i++) {
+      const cand = keyCandidates[i]
+      try {
+        const client = createDecartClient({ apiKey: cand.apiKey })
+        token = await client.tokens.create({
+          expiresIn: 300, // 5 min : reduit de moitie l'exposition GPU si le client cesse de
+                          // synchroniser, sans casser les usages tardifs (upload avatar,
+                          // changement de scene) qui reutilisent ce token pendant la session.
+          allowedModels: ['lucy-2.5', 'lucy-2.1'],
+          allowedOrigins: Array.from(allowedOrigins),
+          metadata: {
+            userId: user.id,
+            userEmail: user.email,
+            noWatermark: cand.usedNoWatermark,
+            createdAt: new Date().toISOString()
+          }
+        })
+        usedNoWatermark = cand.usedNoWatermark
+        break
+      } catch (candErr: any) {
+        lastErr = candErr
+        console.error(
+          `[Decart Token] Echec creation token avec cle #${i + 1}/${keyCandidates.length} ` +
+          `(noWatermark=${cand.usedNoWatermark}): ${candErr?.message || candErr}` +
+          (i < keyCandidates.length - 1 ? ' -> tentative avec la cle de repli' : '')
+        )
       }
-    })
+    }
+
+    // Toutes les cles ont echoue : vraie indisponibilite du service Decart.
+    if (!token) {
+      throw lastErr || new Error('Aucune cle Decart valide')
+    }
 
     console.log(
       `[Decart Token] Token cree pour user ${user.id} | plan=${decision.plan || 'none'} | ` +

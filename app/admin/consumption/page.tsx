@@ -51,6 +51,10 @@ interface ToolUser {
   credits: number
   cost_usd: number
   lastUsed: string
+  // Total de crédits photo->vidéo crédités (achat de pack à la carte, inclusion
+  // de forfait ou don admin). Sert à distinguer un acheteur de pack d'un vrai
+  // compte gratuit dans la colonne Forfait.
+  photoCreditsTotal?: number
   byTool: Partial<Record<ToolName, ToolBreakdown>>
 }
 
@@ -675,9 +679,36 @@ export default function AdminConsumptionPage() {
                           </span>
                         </td>
                         <td className="px-5 py-3">
-                          <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs capitalize text-gray-300">
-                            {u.plan || 'free'}
-                          </span>
+                          {(() => {
+                            const hasPlan = !!u.plan && u.plan.toLowerCase() !== 'free'
+                            // Compte sans forfait Live Swap mais ayant acheté des
+                            // crédits photo à la carte : ce n'est pas un compte
+                            // gratuit "inactif", on l'affiche comme acheteur de pack.
+                            const isPackBuyer = !hasPlan && (u.photoCreditsTotal ?? 0) > 0
+                            if (hasPlan) {
+                              return (
+                                <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs capitalize text-gray-300">
+                                  {u.plan}
+                                </span>
+                              )
+                            }
+                            if (isPackBuyer) {
+                              return (
+                                <span
+                                  className="inline-flex items-center gap-1 rounded-full bg-sky-400/10 px-2.5 py-0.5 text-xs font-medium text-sky-300 ring-1 ring-inset ring-sky-400/30"
+                                  title={`Sans forfait Live Swap, mais ${u.photoCreditsTotal} crédit(s) photo acheté(s) à la carte`}
+                                >
+                                  <Film className="h-3 w-3" />
+                                  Pack photo
+                                </span>
+                              )
+                            }
+                            return (
+                              <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs capitalize text-gray-300">
+                                free
+                              </span>
+                            )
+                          })()}
                         </td>
                         <td className="px-5 py-3 text-right text-sky-300">
                           {u.byTool.photo_video?.generations ?? 0}

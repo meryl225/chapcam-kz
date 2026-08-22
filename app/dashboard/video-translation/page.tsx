@@ -132,7 +132,19 @@ export default function VideoTranslationPage() {
         } else if (json.status === "failed") {
           if (pollRef.current) clearInterval(pollRef.current)
           setStatus("failed")
-          toast({ title: "Échec de la traduction", description: json.error || "La vidéo n'a pas pu être traduite.", variant: "destructive" })
+          // Le credit a ete rembourse cote serveur : rafraichir le solde affiche.
+          try {
+            const cRes = await fetch("/api/heygen/video-translation?info=quota")
+            const cJson = await cRes.json()
+            if (cRes.ok) setCredits(Math.max(0, Number(cJson.remaining) || 0))
+          } catch {
+            // non bloquant
+          }
+          toast({
+            title: "Échec de la traduction",
+            description: `${json.error || "La vidéo n'a pas pu être traduite."}${json.refunded ? " Ton crédit a été remboursé." : ""}`,
+            variant: "destructive",
+          })
         }
       } catch {
         // retry au prochain tick
