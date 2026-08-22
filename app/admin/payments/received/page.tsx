@@ -13,6 +13,8 @@ import {
   Mail,
   Calendar,
   Layers,
+  CalendarDays,
+  TrendingUp,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -36,6 +38,15 @@ interface ReceivedStats {
   totalAmount: number
   creditedCount: number
   rawCount: number
+  activeDays: number
+}
+
+// Un jour de paiements : nombre de transactions, montant encaissé, crédités.
+interface DailyPoint {
+  date: string
+  count: number
+  amount: number
+  creditedCount: number
 }
 
 function fmtDateTime(d: string | null) {
@@ -50,8 +61,21 @@ function fmtDateTime(d: string | null) {
   })
 }
 
+// "2026-08-22" -> "jeu. 22 août". Le suffixe T12 evite tout decalage de fuseau.
+function fmtDay(dateStr: string) {
+  const d = new Date(`${dateStr}T12:00:00`)
+  return d.toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  })
+}
+
+const todayKey = () => new Date().toISOString().slice(0, 10)
+
 export default function ReceivedPaymentsPage() {
   const [payments, setPayments] = useState<ReceivedPayment[]>([])
+  const [daily, setDaily] = useState<DailyPoint[]>([])
   const [stats, setStats] = useState<ReceivedStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -70,6 +94,7 @@ export default function ReceivedPaymentsPage() {
         return
       }
       setPayments(data.payments || [])
+      setDaily(data.daily || [])
       setStats(data.stats || null)
     } catch {
       setError('Erreur de connexion.')
@@ -100,6 +125,19 @@ export default function ReceivedPaymentsPage() {
   const filteredTotal = useMemo(
     () => filtered.reduce((sum, p) => sum + p.amount, 0),
     [filtered],
+  )
+
+  // 14 derniers jours pour le graphique, du plus recent au plus ancien.
+  const recentDays = useMemo(() => daily.slice(0, 14), [daily])
+  // Echelle des barres = plus gros jour de la fenetre affichee.
+  const maxDayCount = useMemo(
+    () => Math.max(1, ...recentDays.map((d) => d.count)),
+    [recentDays],
+  )
+  const tk = todayKey()
+  const todayPoint = useMemo(
+    () => daily.find((d) => d.date === tk) || null,
+    [daily, tk],
   )
 
   return (
@@ -164,6 +202,72 @@ export default function ReceivedPaymentsPage() {
               value={stats.rawCount.toLocaleString('fr-FR')}
               color="text-gray-400"
             />
+          </div>
+        )}
+
+        {/* Paiements par jour */}
+        {!loading && daily.length > 0 && (
+          <div className="mb-8 rounded-2xl border border-white/10 bg-[#111] p-5">
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="h-5 w-5 text-[#00ff88]" />
+                <h2 className="text-lg font-bold text-white">Paiements par jour</h2>
+              </div>
+              <div className="flex items-center gap-4 text-sm">
+                <span className="inline-flex items-center gap-1.5 text-gray-400">
+                  <TrendingUp className="h-4 w-4 text-[#00ff88]" />
+                  Aujourd&apos;hui
+                  <span className="font-bold text-[#00ff88]">
+                    {todayPoint ? todayPoint.count : 0} paiement
+                    {(todayPoint?.count ?? 0) > 1 ? 's' : ''}
+                  </span>
+                </span>
+                {stats && (
+                  <span className="hidden text-gray-500 sm:inline">
+                    {stats.activeDays} jour{stats.activeDays > 1 ? 's' : ''} actif
+                    {stats.activeDays > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Barres horizontales : une par jour (14 plus recents). */}
+            <div className="space-y-2.5">
+              {recentDays.map((d) => {
+                const pct = Math.round((d.count / maxDayCount) * 100)
+                const isToday = d.date === tk
+                return (
+                  <div key={d.date} className="flex items-center gap-3">
+                    <span
+                      className={`w-24 shrink-0 text-right text-xs ${
+                        isToday ? 'font-bold text-[#00ff88]' : 'text-gray-400'
+                      }`}
+                    >
+                      {fmtDay(d.date)}
+                    </span>
+                    <div className="relative h-7 flex-1 overflow-hidden rounded-lg bg-white/5">
+                      <div
+                        className={`flex h-full items-center rounded-lg transition-all ${
+                          isToday ? 'bg-[#00ff88]' : 'bg-[#00ff88]/45'
+                        }`}
+                        style={{ width: `${Math.max(pct, 6)}%` }}
+                      >
+                        <span
+                          className={`px-2 text-xs font-bold ${
+                            isToday ? 'text-black' : 'text-white'
+                          }`}
+                        >
+                          {d.count}
+                        </span>
+                      </div>
+                    </div>
+                    <span className="w-28 shrink-0 text-right text-xs font-medium text-gray-400">
+                      {d.amount.toLocaleString('fr-FR')} F
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 

@@ -108,13 +108,45 @@ export async function GET() {
     const totalAmount = payments.reduce((sum, p) => sum + p.amount, 0)
     const creditedCount = payments.filter((p) => p.credited).length
 
+    // 4) Repartition PAR JOUR (suivi du nombre de paiements entrants/jour).
+    //    On groupe par date (Africa/Abidjan = UTC+0, donc le prefixe ISO YYYY-MM-DD
+    //    correspond a la date locale). Pour chaque jour : nombre de transactions
+    //    reelles, montant encaisse, et nombre effectivement credite.
+    const dailyMap = new Map<
+      string,
+      { date: string; count: number; amount: number; creditedCount: number }
+    >()
+    for (const p of payments) {
+      const date = (p.createdAt || '').slice(0, 10)
+      if (!date) continue
+      const d = dailyMap.get(date) || { date, count: 0, amount: 0, creditedCount: 0 }
+      d.count += 1
+      d.amount += p.amount
+      if (p.credited) d.creditedCount += 1
+      dailyMap.set(date, d)
+    }
+    // Du plus recent au plus ancien.
+    const daily = [...dailyMap.values()].sort((a, b) => (a.date < b.date ? 1 : -1))
+
+    // Total du jour courant (meme convention de date que ci-dessus).
+    const todayKey = new Date().toISOString().slice(0, 10)
+    const today = dailyMap.get(todayKey) || {
+      date: todayKey,
+      count: 0,
+      amount: 0,
+      creditedCount: 0,
+    }
+
     return NextResponse.json({
       payments,
+      daily,
+      today,
       stats: {
         totalCount: payments.length,
         totalAmount,
         creditedCount,
         rawCount: rows.length,
+        activeDays: daily.length,
       },
     })
   } catch (e: any) {
