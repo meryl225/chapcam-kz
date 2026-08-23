@@ -27,9 +27,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Le <video> du navigateur envoie une requete "Range" (ex: bytes=0-) pour
+    // pouvoir demarrer la lecture et permettre le seek. On la transmet telle
+    // quelle au store Blob (qui supporte nativement les ranges) et on relaie
+    // sa reponse partielle. SANS ca, la video restait bloquee a 0:00.
+    const range = request.headers.get('range') ?? undefined
+
     const result = await get(pathname, {
       access: 'private',
       ifNoneMatch: request.headers.get('if-none-match') ?? undefined,
+      headers: range ? { Range: range } : undefined,
     })
 
     if (!result) {
@@ -53,16 +60,32 @@ export async function GET(request: NextRequest) {
     const ext = result.blob.contentType.includes('webm') ? 'webm' : 'mp4'
     const downloadName = `chapcam-${(pathname.split('/').pop() || 'video').replace(/\.(mp4|webm)$/i, '')}.${ext}`
 
+    // Métadonnées de la reponse d'origine : taille totale, portion servie.
+    const contentRange = result.headers.get('content-range') ?? undefined
+    const contentLength =
+      result.headers.get('content-length') ?? String(result.blob.size)
+
     const headers: Record<string, string> = {
       'Content-Type': result.blob.contentType,
       ETag: result.blob.etag,
       'Cache-Control': 'private, no-cache',
+      // Indispensable pour la lecture video : annonce la taille et le support
+      // des requetes partielles (seek).
+      'Accept-Ranges': 'bytes',
+      'Content-Length': contentLength,
+    }
+    if (contentRange) {
+      headers['Content-Range'] = contentRange
     }
     if (wantsDownload) {
       headers['Content-Disposition'] = `attachment; filename="${downloadName}"`
     }
 
-    return new NextResponse(result.stream, { headers })
+    // 206 Partial Content quand le client a demande une portion (lecture/seek),
+    // sinon 200 pour la reponse complete.
+    const status = range && contentRange ? 206 : 200
+
+    return new NextResponse(result.stream, { status, headers })
   } catch (error) {
     console.error('[videos/file] Erreur service video:', error)
     return NextResponse.json({ error: 'Échec du service de la vidéo' }, { status: 500 })
