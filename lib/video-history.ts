@@ -166,6 +166,27 @@ export async function failGenerationAndGetRefund(
 }
 
 /**
+ * Retrouve l'utilisateur proprietaire d'une generation a partir de sa reference
+ * fournisseur (video_id HeyGen / translation id). INDISPENSABLE pour les
+ * webhooks HeyGen : la notification serveur-a-serveur n'a AUCUNE session, on ne
+ * peut donc pas utiliser supabase.auth.getUser(). Comme une ligne "processing"
+ * est enregistree a la creation (avec le user_id), on remonte au proprietaire.
+ * provider_ref est unique cote HeyGen -> au plus un utilisateur.
+ */
+export async function findUserByProviderRef(
+  tool: VideoTool,
+  providerRef: string,
+): Promise<string | null> {
+  await ensureTable()
+  const rows = (await sql`
+    SELECT user_id FROM video_history
+    WHERE tool = ${tool} AND provider_ref = ${providerRef}
+    LIMIT 1
+  `) as { user_id: string }[]
+  return rows.length > 0 ? String(rows[0].user_id) : null
+}
+
+/**
  * Verifie qu'un provider_ref est deja enregistre AVEC un blob pour cet
  * utilisateur (permet d'eviter de re-heberger la meme video a chaque poll).
  */

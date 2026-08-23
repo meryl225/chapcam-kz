@@ -345,6 +345,25 @@ export async function POST(request: NextRequest) {
     // 3) Deduire 1 credit (1 video de 30s) seulement apres succes de la creation.
     const remaining = await deductPhotoVideoCredit(user.id)
 
+    // 3bis) Enregistrer le job "processing" AVEC le user_id. Deux buts :
+    //   - le WEBHOOK HeyGen (avatar_video.success) pourra retrouver le
+    //     proprietaire via provider_ref=video_id (aucune session cote webhook) ;
+    //   - la video apparait dans l'historique meme si l'utilisateur ferme
+    //     l'onglet avant la fin (le webhook la completera cote serveur).
+    // Idempotent : le poll GET fera un upsert -> "completed" ensuite.
+    try {
+      await saveVideoHistory({
+        userId: user.id,
+        tool: "photo_video",
+        providerRef: videoId,
+        blobPathname: null,
+        title: "Studio Photo en Vidéo",
+        status: "processing",
+      })
+    } catch (e) {
+      console.error("[PhotoVideo] Enregistrement du job en cours impossible:", e)
+    }
+
     // Journaliser la consommation par utilisateur (suivi admin + cout fournisseur estime).
     await logToolUsage({
       userId: user.id,
