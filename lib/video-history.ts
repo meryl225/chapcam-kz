@@ -83,26 +83,55 @@ export async function rehostToBlob(
   tool: VideoTool,
   ref: string,
 ): Promise<string | null> {
-  try {
-    const res = await fetch(remoteUrl)
-    if (!res.ok || !res.body) {
-      console.error('[video-history] Telechargement source echoue:', res.status)
-      return null
+  // Jusqu'a 3 tentatives : les echecs sont le plus souvent TRANSITOIRES
+  // (coupure reseau, lenteur HeyGen, timeout Blob). Sans retry, un simple hoquet
+  // laissait une ligne "completed" SANS fichier -> "Video expiree" definitive.
+  // On telecharge en memoire (buffer) pour pouvoir re-tenter l'upload sans
+  // re-telecharger inutilement quand seule l'etape "put" a echoue.
+  const MAX_ATTEMPTS = 3
+  let lastError: unknown = null
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const res = await fetch(remoteUrl)
+      if (!res.ok) {
+        // 404/410 = la source n'existe plus : inutile de reessayer.
+        if (res.status === 404 || res.status === 410) {
+          console.error('[video-history] Source introuvable (definitif):', res.status)
+          return null
+        }
+        throw new Error(`Telechargement source HTTP ${res.status}`)
+      }
+      const contentType = res.headers.get('content-type') || 'video/mp4'
+      const ext = contentType.includes('webm') ? 'webm' : 'mp4'
+      // Buffer complet : garantit un upload fiable (taille connue) et evite les
+      // flux interrompus a mi-chemin.
+      const buffer = Buffer.from(await res.arrayBuffer())
+      if (buffer.byteLength === 0) throw new Error('Corps de la video vide')
+
+      // Chemin lisible et unique : videos/<user>/<tool>/<ref>-<ts>.<ext>
+      const safeRef = ref.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'video'
+      const pathname = `videos/${userId}/${tool}/${safeRef}-${Date.now()}.${ext}`
+      const blob = await put(pathname, buffer, {
+        access: 'private',
+        contentType,
+      })
+      return blob.pathname
+    } catch (err) {
+      lastError = err
+      console.error(
+        `[video-history] Re-hebergement Blob echoue (tentative ${attempt}/${MAX_ATTEMPTS}):`,
+        err,
+      )
+      // Backoff progressif entre les tentatives (0.5s, 1s), sauf apres la derniere.
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise((r) => setTimeout(r, 500 * attempt))
+      }
     }
-    const contentType = res.headers.get('content-type') || 'video/mp4'
-    const ext = contentType.includes('webm') ? 'webm' : 'mp4'
-    // Chemin lisible et unique : videos/<user>/<tool>/<ref>-<ts>.<ext>
-    const safeRef = ref.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 40) || 'video'
-    const pathname = `videos/${userId}/${tool}/${safeRef}-${Date.now()}.${ext}`
-    const blob = await put(pathname, res.body, {
-      access: 'private',
-      contentType,
-    })
-    return blob.pathname
-  } catch (err) {
-    console.error('[video-history] Erreur re-hebergement Blob:', err)
-    return null
   }
+
+  console.error('[video-history] Re-hebergement Blob abandonne apres retries:', lastError)
+  return null
 }
 
 /**
