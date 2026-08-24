@@ -1331,7 +1331,7 @@ export default function DashboardPage() {
                 : isConnecting
                 ? 'cursor-wait bg-yellow-500 text-black'
                 : canStart
-                ? 'bg-gradient-to-r from-primary via-[#1ec8d8] to-[#8b5cf6] text-foreground shadow-[0_0_40px_rgba(0,255,136,0.35)] hover:shadow-[0_0_60px_rgba(139,92,246,0.45)]'
+                ? 'btn-glow bg-gradient-to-r from-primary via-[#1ec8d8] to-[#8b5cf6] text-foreground'
                 : 'cursor-not-allowed bg-gray-700 text-muted-foreground'
             }`}
           >

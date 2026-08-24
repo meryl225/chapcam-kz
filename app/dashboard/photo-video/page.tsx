@@ -953,7 +953,7 @@ export default function PhotoVideoPage() {
               <Button
                 onClick={handleGenerate}
                 disabled={!canGenerate}
-                className="mt-4 h-11 w-full bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="btn-glow mt-4 h-11 w-full bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {status === "uploading" ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Envoi de la photo...</>

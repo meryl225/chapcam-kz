@@ -257,6 +257,67 @@ html:not(.mo-anim) .mo-belowfold [style*='scale(0)'] {
   box-shadow: 0 0 20px rgba(0, 212, 255, 0.5), 0 0 40px rgba(0, 212, 255, 0.3);
 }
 
+/* ==========================================================================
+   Boutons d'action lumineux ChapCam (.btn-glow)
+   Classe reutilisable pour rendre TOUS les CTA principaux "premium" :
+   halo colore, leger soulevement au survol, et reflet brillant qui balaie.
+   La couleur du halo suit la variable --glow (par defaut la couleur primaire).
+   Chaque outil peut la surcharger, ex: style={{ ['--glow']: '#c6f542' }}.
+   ========================================================================== */
+.btn-glow {
+  --glow: var(--color-primary);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--glow) 45%, transparent),
+    0 8px 24px -6px color-mix(in srgb, var(--glow) 70%, transparent),
+    0 0 34px -4px color-mix(in srgb, var(--glow) 55%, transparent);
+  transition: transform 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease;
+}
+.btn-glow:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.08);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--glow) 60%, transparent),
+    0 12px 30px -6px color-mix(in srgb, var(--glow) 85%, transparent),
+    0 0 46px -2px color-mix(in srgb, var(--glow) 70%, transparent);
+}
+.btn-glow:active:not(:disabled) {
+  transform: translateY(0);
+}
+/* Reflet brillant qui traverse le bouton au survol. z-index:-1 le place
+   au-dessus du fond mais sous le texte (grace a isolation:isolate). */
+.btn-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  transform: translateX(-120%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.45),
+    transparent
+  );
+  transition: transform 0.7s ease-out;
+}
+.btn-glow:hover:not(:disabled)::before {
+  transform: translateX(120%);
+}
+.btn-glow:disabled {
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-glow,
+  .btn-glow::before {
+    transition: none;
+  }
+  .btn-glow:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
 .glow-purple {
   box-shadow: 0 0 20px rgba(139, 92, 246, 0.5), 0 0 40px rgba(139, 92, 246, 0.3);
 }

@@ -610,8 +610,8 @@ export default function VoiceSwapPage() {
       <button
         onClick={handleToggle}
         disabled={!available || busy || isTransitioning || (!isRunning && (!selectedVoice || !hasMinutes || !swapConsent))}
-        className="mb-2 flex w-full flex-col items-center justify-center rounded-2xl bg-gradient-to-r from-[#7c3aed] via-[#8b5cf6] to-[#a855f7] py-5 text-center transition-all duration-300 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-        style={{ boxShadow: '0 8px 30px rgba(124,58,237,0.4)' }}
+        className="btn-glow mb-2 flex w-full flex-col items-center justify-center rounded-2xl bg-gradient-to-r from-[#7c3aed] via-[#8b5cf6] to-[#a855f7] py-5 text-center disabled:cursor-not-allowed disabled:opacity-60"
+        style={{ ['--glow' as string]: '#8b5cf6' }}
       >
         <span className="flex items-center gap-2 text-lg font-bold text-white">
           {busy || isTransitioning ? (

@@ -18,7 +18,7 @@ export function ChapCamPcCard() {
       <button
         onClick={() => startCheckout(PC_OFFER.id)}
         disabled={loading}
-        className="group inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-primary px-5 py-4 text-base font-extrabold text-black shadow-lg shadow-primary/30 transition-all hover:brightness-110 disabled:opacity-60"
+        className="btn-glow group inline-flex w-full items-center justify-center gap-2.5 rounded-xl bg-primary px-5 py-4 text-base font-extrabold text-black hover:brightness-110 disabled:opacity-60"
       >
         {loading ? (
           <Loader2 className="h-5 w-5 animate-spin" />

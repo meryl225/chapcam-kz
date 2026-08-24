@@ -736,7 +736,8 @@ export default function MotionPage() {
           <button
             onClick={handleGenerate}
             disabled={!canGenerate}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#c6f542] py-3.5 text-sm font-bold text-black transition-colors hover:bg-[#d4ff5a] disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ ['--glow' as string]: '#c6f542' }}
+            className="btn-glow flex w-full items-center justify-center gap-2 rounded-xl bg-[#c6f542] py-3.5 text-sm font-bold text-black hover:bg-[#d4ff5a] disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy ? (
               <><Loader2 className="h-5 w-5 animate-spin" /> Génération...</>
