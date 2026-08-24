@@ -352,18 +352,22 @@ function PlansContent() {
                 <button
                   onClick={() => startCheckout(plan.id)}
                   disabled={!!pendingKey}
-                  className={`mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all disabled:opacity-60 ${
-                    plan.highlight
-                      ? 'bg-primary text-black hover:bg-primary/90'
-                      : 'bg-white text-black hover:bg-gray-200'
-                  }`}
+                  style={{
+                    // Degrade lumineux a la couleur d'accent de la carte + halo
+                    // colore : le bouton "ressort" et donne envie de cliquer.
+                    backgroundImage: `linear-gradient(180deg, ${accent} 0%, ${accent}d9 100%)`,
+                    boxShadow: `0 0 0 1px ${accent}66, 0 8px 24px -6px ${accent}b3, 0 0 32px -4px ${accent}80`,
+                  }}
+                  className="group relative mt-10 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-4 text-base font-bold text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
                 >
+                  {/* Reflet brillant qui balaie le bouton au survol */}
+                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
                   {loading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="relative h-5 w-5 animate-spin" />
                   ) : (
                     <>
-                      {t('Recharger')}
-                      <CreditCard className="h-4 w-4" />
+                      <span className="relative">{t('Recharger')}</span>
+                      <CreditCard className="relative h-5 w-5" />
                     </>
                   )}
                 </button>
@@ -388,7 +392,7 @@ function PlansContent() {
           <div className="mt-6">
             <Link
               href="/dashboard"
-              className="inline-flex items-center gap-2 rounded-xl border border-gray-700 bg-card px-5 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
+              className="inline-flex items-center gap-2 rounded-xl border border-primary/40 bg-primary/10 px-6 py-3 text-sm font-semibold text-primary shadow-[0_0_20px_-6px_var(--color-primary)] transition-all duration-300 hover:-translate-y-0.5 hover:border-primary hover:bg-primary/20 hover:shadow-[0_0_28px_-4px_var(--color-primary)]"
             >
               {t('Retour au tableau de bord')}
             </Link>
