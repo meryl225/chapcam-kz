@@ -349,10 +349,25 @@ function PlansContent() {
                   </li>
                 </ul>
 
-                <button
+                <motion.button
                   onClick={() => startCheckout(plan.id)}
                   disabled={!!pendingKey}
-                  className={`mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-all disabled:opacity-60 ${
+                  // Animation du bouton : grossit au survol, s'enfonce au clic.
+                  // On desactive l'animation quand un paiement est en cours (disabled).
+                  whileHover={pendingKey ? undefined : { scale: 1.04 }}
+                  whileTap={pendingKey ? undefined : { scale: 0.97 }}
+                  // Leger pulse continu sur le forfait mis en avant pour attirer l'oeil.
+                  animate={
+                    plan.highlight && !pendingKey
+                      ? { scale: [1, 1.02, 1] }
+                      : { scale: 1 }
+                  }
+                  transition={
+                    plan.highlight && !pendingKey
+                      ? { duration: 2, repeat: Infinity, ease: 'easeInOut' }
+                      : { type: 'spring', stiffness: 400, damping: 25 }
+                  }
+                  className={`mt-10 flex w-full items-center justify-center gap-2 rounded-2xl py-4 font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                     plan.highlight
                       ? 'bg-primary text-black hover:bg-primary/90'
                       : 'bg-white text-black hover:bg-gray-200'
@@ -366,7 +381,7 @@ function PlansContent() {
                       <CreditCard className="h-4 w-4" />
                     </>
                   )}
-                </button>
+                </motion.button>
                 </div>
               </motion.div>
             )
