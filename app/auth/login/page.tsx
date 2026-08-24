@@ -195,7 +195,8 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={resetLoading}
-                className="w-full py-4 bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] hover:from-[#00b8e6] hover:to-[#7c3aed] text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-[#00d4ff]/20"
+                style={{ ['--glow' as string]: '#00d4ff' }}
+                className="btn-glow w-full py-4 bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] hover:from-[#00b8e6] hover:to-[#7c3aed] text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {resetLoading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -271,7 +272,8 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading || (isTurnstileEnabled && !captchaToken)}
-                className="w-full py-4 bg-gradient-to-r from-[#e91e8c] to-[#8b5cf6] hover:from-[#d11a7d] hover:to-[#7c3aed] text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-[#e91e8c]/20"
+                style={{ ['--glow' as string]: '#e91e8c' }}
+                className="btn-glow w-full py-4 bg-gradient-to-r from-[#e91e8c] to-[#8b5cf6] hover:from-[#d11a7d] hover:to-[#7c3aed] text-white font-bold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">

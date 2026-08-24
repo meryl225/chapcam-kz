@@ -50,12 +50,15 @@ interface NavItem {
   icon: React.ElementType
   label: string
   color: string
+  // highlight = met l'element en avant en permanence (fond teinte + halo),
+  // meme quand il n'est pas la page active. Utilise pour "RECHARGER".
+  highlight?: boolean
 }
 
 // Elements utilitaires : lignes compactes et sobres (pas des cartes d'outils).
 const navItems: NavItem[] = [
   { href: '/dashboard/stats', icon: BarChart2, label: 'STATISTIQUES', color: '#4ade80' },
-  { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGER', color: '#facc15' },
+  { href: '/dashboard/plans', icon: CreditCard, label: 'RECHARGER', color: '#facc15', highlight: true },
   { href: '/dashboard/settings', icon: Settings, label: 'PARAMETRES', color: '#94a3b8' },
 ]
 
@@ -277,14 +280,20 @@ function SidebarContent({
               key={item.href}
               href={item.href}
               style={{ ['--nav-accent' as string]: item.color }}
-              className={`group/nav mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 ${
+              className={`group/nav mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 hover:-translate-y-px ${
                 isActivePath
                   ? 'bg-[var(--nav-accent)]/10 text-foreground shadow-sm ring-1 ring-[var(--nav-accent)]/30'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  : item.highlight
+                    ? // Mis en avant en permanence : fond teinte, bordure et halo
+                      // colore -> attire l'oeil et invite au clic comme un vrai CTA.
+                      'bg-[var(--nav-accent)]/12 text-foreground ring-1 ring-[var(--nav-accent)]/40 shadow-[0_0_20px_-6px_var(--nav-accent)] hover:bg-[var(--nav-accent)]/20 hover:shadow-[0_0_26px_-4px_var(--nav-accent)]'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
               }`}
             >
               <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-all duration-200 group-hover/nav:brightness-110 group-hover/nav:shadow-[0_4px_14px_-4px_var(--nav-accent)]"
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-all duration-200 group-hover/nav:brightness-110 group-hover/nav:shadow-[0_4px_14px_-4px_var(--nav-accent)] ${
+                  item.highlight ? 'shadow-[0_0_16px_-4px_var(--nav-accent)]' : ''
+                }`}
                 style={{ backgroundColor: 'var(--nav-accent)' }}
               >
                 <item.icon className="h-[17px] w-[17px]" strokeWidth={2.5} />

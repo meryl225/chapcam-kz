@@ -137,7 +137,7 @@ export default async function DashboardHubPage() {
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Link
                 href="/dashboard/live-swap"
-                className="group inline-flex items-center gap-2.5 rounded-2xl bg-primary px-7 py-3.5 text-base font-bold text-black shadow-[0_0_30px_rgba(0,255,136,0.4)] transition-all hover:scale-[1.02] hover:bg-primary/90 hover:shadow-[0_0_44px_rgba(0,255,136,0.55)]"
+                className="btn-glow group inline-flex items-center gap-2.5 rounded-2xl bg-primary px-7 py-3.5 text-base font-bold text-black hover:bg-primary/90"
               >
                 <Zap className="h-5 w-5" fill="currentColor" />
                 <T>Lancer le Live Swap</T>
@@ -243,7 +243,7 @@ export default async function DashboardHubPage() {
             </div>
             <Link
               href="/dashboard/plans"
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-primary px-7 py-3.5 text-base font-bold text-black shadow-[0_0_30px_rgba(0,255,136,0.4)] transition-all hover:scale-[1.02] hover:bg-primary/90"
+              className="btn-glow inline-flex shrink-0 items-center justify-center gap-2 rounded-2xl bg-primary px-7 py-3.5 text-base font-bold text-black hover:bg-primary/90"
             >
               <T>Voir les offres</T>
               <ArrowRight className="h-5 w-5" />
