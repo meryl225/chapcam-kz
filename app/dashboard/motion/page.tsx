@@ -27,7 +27,7 @@ interface Motion {
 interface MotionJob {
   id: string
   request_id: string
-  provider: "fal" | "higgsfield"
+  provider: "fal" | "higgsfield" | "kling"
   model: string
   prompt: string
   status: "processing" | "completed" | "failed"
@@ -78,9 +78,6 @@ export default function MotionPage() {
   const [scene, setScene] = useState("keep")
   const [customScene, setCustomScene] = useState("")
   const [model, setModel] = useState("standard")
-  // Mode du Motion Control : "animate" (transfert de mouvement, decor recree) ou
-  // "replace" (Wan Animate : garde le decor/les gestes de la video, remplace la personne).
-  const [controlMode, setControlMode] = useState<"animate" | "replace">("animate")
   const [quality, setQuality] = useState<(typeof QUALITIES)[number]>("720p")
   const [enhance, setEnhance] = useState(true)
   const [motions, setMotions] = useState<Motion[]>([])
@@ -104,7 +101,6 @@ export default function MotionPage() {
   // Duree max d'un clip = duree de la video de reference (borne le cout fal).
   const MOTION_MAX_SECONDS = 10
   const activeModel = MODELS.find((m) => m.value === model) ?? MODELS[0]
-  const replaceMode = controlMode === "replace"
 
   useEffect(() => {
     async function init() {
@@ -259,52 +255,8 @@ export default function MotionPage() {
       return
     }
 
-    // MODE REMPLACEMENT (Wan Animate Replace) : on garde la video source
-    // (decor, lumiere, gestes) et on remplace UNIQUEMENT la personne par celle
-    // de la photo. Necessite image + video source.
-    if (replaceMode) {
-      if (!refVideo) {
-        toast({ title: "Vidéo source manquante", description: "Ajoute la vidéo dont on garde le décor et les gestes.", variant: "destructive" })
-        return
-      }
-      if (credits !== null && credits <= 0) {
-        toast({ title: "Crédits Motion épuisés", description: "Passe à un forfait Premium, VIP PRO ou VIP DEBOUT pour obtenir des crédits Motion.", variant: "destructive" })
-        return
-      }
-      setStatus("uploading")
-      try {
-        const fd = new FormData()
-        fd.append("image", file)
-        fd.append("video", refVideo)
-        fd.append("mode", "replace")
-
-        const res = await fetch("/api/motion/control", { method: "POST", body: fd })
-        const json = await res.json()
-        if (!res.ok) {
-          setStatus("idle")
-          if (res.status === 402) {
-            if (json.code === "quota_exhausted" || json.code === "no_plan") setCredits(0)
-            toast({ title: "Crédits Motion épuisés", description: json.error, variant: "destructive" })
-          } else if (res.status === 422 || json.code === "moderation") {
-            toast({ title: "Génération refusée", description: json.error || "Image ou vidéo refusée par la modération.", variant: "destructive" })
-          } else {
-            toast({ title: "Erreur", description: json.error || "Impossible de lancer le remplacement.", variant: "destructive" })
-          }
-          return
-        }
-        if (typeof json.remaining === "number") setCredits(json.remaining)
-        addJobToHistory(json.request_id, "fal", "replace", "Remplacement dans la vidéo")
-        setStatus("idle")
-        toast({ title: "Remplacement lancé", description: "Cela peut prendre 2 à 5 minutes. Tu peux quitter la page." })
-      } catch {
-        setStatus("idle")
-        toast({ title: "Erreur réseau", description: "Réessaie dans un instant.", variant: "destructive" })
-      }
-      return
-    }
-
     // MODE 1 : Motion Control REEL — une video de reference est fournie.
-    // On transfere son mouvement sur l'image via Kling Motion Control (fal.ai).
+    // On transfere son mouvement sur l'image via l'API Kling native.
     if (refVideo) {
       // Garde-fou UX : bloquer si le solde de credits Motion est vide.
       if (credits !== null && credits <= 0) {
@@ -343,7 +295,7 @@ export default function MotionPage() {
           return
         }
         if (typeof json.remaining === "number") setCredits(json.remaining)
-        addJobToHistory(json.request_id, "fal", model === "pro" ? "pro" : "standard", finalPrompt || prompt.trim())
+        addJobToHistory(json.request_id, "kling", model === "pro" ? "pro" : "standard", finalPrompt || prompt.trim())
         setStatus("idle")
         toast({ title: "Transfert de mouvement lancé", description: "Cela peut prendre 2 à 5 minutes. Tu peux quitter la page." })
       } catch {
@@ -395,7 +347,7 @@ export default function MotionPage() {
   // suivra automatiquement jusqu'a completion, meme si on quitte la page.
   const addJobToHistory = (
     requestId: string,
-    provider: "fal" | "higgsfield",
+    provider: "fal" | "higgsfield" | "kling",
     model: string,
     prompt: string,
   ) => {
@@ -433,7 +385,7 @@ export default function MotionPage() {
   // Generation possible si : image + (video de reference OU prompt OU preset OU scene).
   const canGenerate =
     !!file &&
-    (replaceMode ? !!refVideo : !!refVideo || !!prompt.trim() || selectedMotions.length > 0 || sceneActive) &&
+    (!!refVideo || !!prompt.trim() || selectedMotions.length > 0 || sceneActive) &&
     !busy
 
   if (loading) {
@@ -488,36 +440,8 @@ export default function MotionPage() {
             </button>
             <h2 className="mt-8 text-xl font-extrabold uppercase tracking-tight text-[#c6f542]">Motion Control</h2>
             <p className="text-sm text-white/60">
-              {replaceMode ? "Remplace la personne dans une vidéo (décor conservé)" : "Anime une image avec un mouvement contrôlé"}
+              Anime une image avec un mouvement contrôlé
             </p>
-          </div>
-
-          {/* Choix du mode : animer une photo vs remplacer dans une video */}
-          <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-white/[0.03] p-1">
-            <button
-              type="button"
-              onClick={() => !busy && setControlMode("animate")}
-              disabled={busy}
-              aria-pressed={!replaceMode}
-              className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 transition-colors disabled:opacity-50 ${
-                !replaceMode ? "bg-[#c6f542] text-black" : "text-white/60 hover:bg-white/5"
-              }`}
-            >
-              <span className="flex items-center gap-1.5 text-xs font-semibold"><Sparkles className="h-3.5 w-3.5" /> Animer une photo</span>
-              <span className={`text-[10px] ${!replaceMode ? "text-black/60" : "text-white/40"}`}>Nouveau décor</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => !busy && setControlMode("replace")}
-              disabled={busy}
-              aria-pressed={replaceMode}
-              className={`flex flex-col items-center gap-0.5 rounded-lg px-2 py-2 transition-colors disabled:opacity-50 ${
-                replaceMode ? "bg-[#c6f542] text-black" : "text-white/60 hover:bg-white/5"
-              }`}
-            >
-              <span className="flex items-center gap-1.5 text-xs font-semibold"><Video className="h-3.5 w-3.5" /> Remplacer dans une vidéo</span>
-              <span className={`text-[10px] ${replaceMode ? "text-black/60" : "text-white/40"}`}>Décor conservé</span>
-            </button>
           </div>
 
           {/* Deux vignettes : image sujet + video de reference */}
@@ -546,7 +470,7 @@ export default function MotionPage() {
                 ) : (
                   <>
                     <ImageIcon className="mb-2 h-6 w-6 text-white/40" />
-                    <p className="px-2 text-center text-xs font-medium text-white/70">{replaceMode ? "Personne (photo)" : "Image sujet"}</p>
+                    <p className="px-2 text-center text-xs font-medium text-white/70">Image sujet</p>
                     <p className="mt-0.5 flex items-center gap-1 text-[10px] text-white/40"><Upload className="h-3 w-3" /> Importer</p>
                   </>
                 )}
@@ -579,23 +503,21 @@ export default function MotionPage() {
                 ) : (
                   <>
                     <Video className="mb-2 h-6 w-6 text-white/40" />
-                    <p className="px-2 text-center text-xs font-medium text-white/70">{replaceMode ? "Vidéo source" : "Vidéo de référence"}</p>
+                    <p className="px-2 text-center text-xs font-medium text-white/70">Vidéo de référence</p>
                     <p className="mt-0.5 flex items-center gap-1 text-[10px] text-white/40"><Upload className="h-3 w-3" /> Importer</p>
                   </>
                 )}
                 <input ref={refInputRef} type="file" accept="video/mp4,video/quicktime,video/webm" onChange={(e) => onSelectRef(e.target.files?.[0])} className="hidden" />
               </div>
-              <p className="mt-1.5 text-center text-[11px] text-white/40">{replaceMode ? "Requis" : "Optionnel"} · {MOTION_MAX_SECONDS}s max</p>
+              <p className="mt-1.5 text-center text-[11px] text-white/40">Optionnel · {MOTION_MAX_SECONDS}s max</p>
             </div>
           </div>
 
           {/* Explication du mode courant */}
           <div className={`rounded-lg border px-3 py-2 text-[11px] leading-relaxed transition-colors ${
-            replaceMode || refVideo ? "border-[#c6f542]/30 bg-[#c6f542]/5 text-[#c6f542]" : "border-white/10 bg-white/[0.03] text-white/50"
+            refVideo ? "border-[#c6f542]/30 bg-[#c6f542]/5 text-[#c6f542]" : "border-white/10 bg-white/[0.03] text-white/50"
           }`}>
-            {replaceMode ? (
-              <>Mode remplacement : on garde ta vidéo source telle quelle (décor, lumière, gestes) et on remplace uniquement la personne par celle de ta photo. Fournis la photo + la vidéo source ({MOTION_MAX_SECONDS}s max).</>
-            ) : refVideo ? (
+            {refVideo ? (
               <>Mode transfert de mouvement : le personnage de ton image reproduira les mouvements de la vidéo de référence (Kling Motion Control). Le clip généré dure comme la référence, {MOTION_MAX_SECONDS}s maximum.</>
             ) : (
               <>Ajoute une vidéo de référence ({MOTION_MAX_SECONDS}s max) pour transférer son mouvement, ou laisse vide et décris le mouvement au prompt pour une simple animation.</>
@@ -612,9 +534,7 @@ export default function MotionPage() {
             </span>
           </div>
 
-          {/* Reglages specifiques au mode "animer" (ignores par Wan Replace) */}
-          {!replaceMode && (
-          <>
+          {/* Reglages du Motion Control */}
           {/* Scene / decor en un clic */}
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
             <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-white/40">
@@ -729,8 +649,6 @@ export default function MotionPage() {
               ))}
             </div>
           </div>
-          </>
-          )}
 
           {/* Bouton Generate */}
           <button
@@ -741,8 +659,6 @@ export default function MotionPage() {
           >
             {busy ? (
               <><Loader2 className="h-5 w-5 animate-spin" /> Génération...</>
-            ) : replaceMode ? (
-              <>Remplacer <Sparkles className="h-4 w-4" /></>
             ) : (
               <>Generate <Sparkles className="h-4 w-4" /> {activeModel.credits}</>
             )}
