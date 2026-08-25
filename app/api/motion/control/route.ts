@@ -1,69 +1,55 @@
 import { NextRequest, NextResponse } from "next/server"
+import { put, del } from "@vercel/blob"
 import { createClient } from "@/lib/supabase/server"
-import { fal } from "@fal-ai/client"
 import { motionQuotaForPlan } from "@/lib/plans"
 import { getMotionBalance, addMotionCredits, deductMotionCredit } from "@/lib/motion-quota"
-import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, listMotionJobs } from "@/lib/motion-jobs"
+import {
+  createMotionJob,
+  markMotionJobCompleted,
+  markMotionJobFailed,
+  listMotionJobs,
+  getMotionJobInputPaths,
+  clearMotionJobInputPaths,
+} from "@/lib/motion-jobs"
 import { logToolUsage } from "@/lib/tool-usage"
 import { rehostToBlob, saveVideoHistory, isAlreadyRehosted, getBlobPathnamesByRef } from "@/lib/video-history"
+import {
+  submitMotionControl,
+  getMotionTask,
+  isModerationError,
+  MODERATION_MESSAGE,
+  getKlingApiKey,
+} from "@/lib/kling"
 
-// --- Motion Control REEL (Kling Motion Control via fal.ai) ---
-// C'est le moteur EXACT que Higgsfield expose dans son UI "Motion Control" :
-// on transfere le mouvement d'une VIDEO de reference sur une IMAGE de personnage.
-// Contrairement a Higgsfield (qui ne l'expose pas via API), fal.ai le rend
-// accessible via le modele fal-ai/kling-video/v3/*/motion-control.
+// --- Motion Control REEL (Kling Motion Control 3.0, API NATIVE) ---
+// On transfere le mouvement d'une VIDEO de reference sur une IMAGE de personnage,
+// via l'endpoint officiel POST /motion-control/kling-3.0 de Kling AI.
 //
-// Flux : on soumet image + video a la file fal (async), on renvoie le request_id,
-// puis le client poll le statut via GET ?request_id=...
+// Flux : on uploade image + video dans le Blob PUBLIC temporaire (Kling exige
+// des URLs telechargeables), on soumet la tache avec un callback_url, puis :
+//   - le webhook /api/webhook/kling finalise cote SERVEUR (meme onglet ferme) ;
+//   - en secours, le client poll GET ?request_id=... (id de tache Kling).
+// Les fichiers d'entree temporaires sont supprimes en fin de tache.
 //
-// Facturation : AUCUNE deduction pour l'instant (a brancher plus tard),
-// acces reserve aux utilisateurs connectes.
+// Facturation : INCHANGEE. 1 credit Motion par generation, deduit apres une
+// soumission reussie, rembourse une seule fois si la generation echoue (dont
+// refus de moderation).
 
-fal.config({ credentials: process.env.FAL_KEY })
+// Runtime Node.js requis (Blob + Neon), et marge de temps pour l'upload des
+// fichiers d'entree vers le Blob puis la soumission a Kling.
+export const runtime = "nodejs"
+export const maxDuration = 120
 
-// Allowlist stricte des modeles cote serveur (le client ne peut pas injecter un slug).
-const MODELS: Record<string, string> = {
-  standard: "fal-ai/kling-video/v3/standard/motion-control",
-  pro: "fal-ai/kling-video/v3/pro/motion-control",
-  // Mode "Remplacer dans une video" : integre la personne de l'image dans la
-  // VIDEO source en remplacant le personnage d'origine, tout en CONSERVANT le
-  // decor, l'eclairage et les gestes de la video. (Wan 2.2 Animate - Replace)
-  replace: "fal-ai/wan/v2.2-14b/animate/replace",
+// Tiers UI (standard/pro) -> resolution Kling. On conserve la meme UI et la meme
+// logique de credits ; seul le rendu de sortie change (720p vs 1080p).
+const RESOLUTION_BY_TIER: Record<string, "720p" | "1080p"> = {
+  standard: "720p",
+  pro: "1080p",
 }
-const DEFAULT_MODEL = "standard"
+const DEFAULT_TIER = "standard"
 
 const MAX_IMAGE = 10 * 1024 * 1024 // 10 Mo
 const MAX_VIDEO = 30 * 1024 * 1024 // 30 Mo (une video de reference <=10s est legere)
-
-// Detecte si un message d'erreur fal/Kling correspond a un REFUS de moderation
-// (contenu sensible, personnalite publique/celebrite, NSFW, violence, visage
-// non detecte...) plutot qu'a une panne technique. Kling renvoie ces raisons
-// dans le message d'exception au submit, ou dans task_status_msg au polling.
-function isModerationError(msg: string): boolean {
-  const m = msg.toLowerCase()
-  return (
-    m.includes("content_policy") ||
-    m.includes("content policy") ||
-    m.includes("moderation") ||
-    m.includes("risk control") ||
-    m.includes("risk_control") ||
-    m.includes("sensitive") ||
-    m.includes("nsfw") ||
-    m.includes("public figure") ||
-    m.includes("celebrit") ||
-    m.includes("violence") ||
-    m.includes("not allowed") ||
-    m.includes("prohibited") ||
-    m.includes("flagged") ||
-    m.includes("no face") ||
-    m.includes("face not detected") ||
-    m.includes("face detection")
-  )
-}
-
-// Message clair, en francais, pour un refus de moderation.
-const MODERATION_MESSAGE =
-  "Cette generation a ete refusee par la moderation du modele. Causes frequentes : visage d'une personne reelle celebre, contenu sensible/NSFW, violence, ou visage non detecte dans l'image. Essaie avec une autre image/video."
 
 // Seed unique : un abonne actif recoit le quota Motion de son forfait la
 // premiere fois qu'il utilise la fonctionnalite (comme la photo-video).
@@ -95,8 +81,32 @@ async function resolveBalance(
   return { balance, subActive, plan: subActive ? sub!.plan : null }
 }
 
-// GET : statut d'une generation fal (?request_id=...&model=standard|pro)
-// ou solde de credits Motion (?info=quota).
+// Supprime les fichiers Blob PUBLICS temporaires (image + video) d'un job, puis
+// vide la colonne. Non bloquant : les erreurs sont seulement journalisees.
+async function cleanupInputs(userId: string, requestId: string): Promise<void> {
+  try {
+    const paths = await getMotionJobInputPaths(userId, requestId)
+    if (paths.length === 0) return
+    await Promise.allSettled(paths.map((p) => del(p)))
+    await clearMotionJobInputPaths(userId, requestId).catch(() => {})
+  } catch (e) {
+    console.error("[MotionControl] Nettoyage des fichiers temporaires echoue:", e)
+  }
+}
+
+// Calcule l'URL absolue du webhook Kling a partir de la requete entrante
+// (ou de NEXT_PUBLIC_SITE_URL si defini). Renvoie undefined si indeterminable :
+// dans ce cas, seul le polling de secours finalise la tache.
+function resolveCallbackUrl(request: NextRequest): string | undefined {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL
+  if (explicit) return `${explicit.replace(/\/$/, "")}/api/webhook/kling`
+  const proto = request.headers.get("x-forwarded-proto") || "https"
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host")
+  return host ? `${proto}://${host}/api/webhook/kling` : undefined
+}
+
+// GET : statut d'une generation Kling (?request_id=...)
+// ou solde de credits Motion (?info=quota) ou historique (?info=history).
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -106,7 +116,7 @@ export async function GET(request: NextRequest) {
 
   const params = new URL(request.url).searchParams
 
-  // Mode "quota" : solde de credits Motion (independant de fal).
+  // Mode "quota" : solde de credits Motion.
   if (params.get("info") === "quota") {
     const { balance, plan } = await resolveBalance(supabase, user.id)
     return NextResponse.json({ success: true, plan, remaining: Math.max(0, balance) })
@@ -116,9 +126,9 @@ export async function GET(request: NextRequest) {
   if (params.get("info") === "history") {
     try {
       const jobs = await listMotionJobs(user.id, 30)
-      // Preferer la copie Blob PERMANENTE quand elle existe : les URLs fal
-      // expirent, donc on remplace video_url par la route Blob durable pour les
-      // clips deja re-heberges. Les autres gardent leur URL fal (encore valide).
+      // Preferer la copie Blob PERMANENTE quand elle existe : les URLs Kling
+      // expirent (30 jours), donc on remplace video_url par la route Blob durable
+      // pour les clips deja re-heberges. Les autres gardent leur URL fournisseur.
       const blobByRef: Record<string, string> = await getBlobPathnamesByRef(user.id, "motion").catch(() => ({}))
       const durableJobs = jobs.map((j) => {
         const pathname = blobByRef[j.request_id]
@@ -133,18 +143,13 @@ export async function GET(request: NextRequest) {
   }
 
   const requestId = params.get("request_id")
-  // Accepte toute clef connue (standard | pro | replace) ; sinon retombe sur le defaut.
-  const modelParam = params.get("model") || DEFAULT_MODEL
-  const modelKey = modelParam in MODELS ? modelParam : DEFAULT_MODEL
-  const model = MODELS[modelKey]
-
   if (!requestId) {
     return NextResponse.json({ error: "request_id requis" }, { status: 400 })
   }
 
   // Termine un job en echec : marque le job (idempotent) et REMBOURSE 1 credit
-  // Motion la premiere fois seulement. fal ne facture pas un rendu refuse par la
-  // moderation, donc l'utilisateur ne doit pas perdre son credit.
+  // Motion la premiere fois seulement. Kling ne facture pas un rendu refuse par
+  // la moderation, donc l'utilisateur ne doit pas perdre son credit.
   const finishAsFailed = async (rawMsg: string) => {
     const moderated = isModerationError(rawMsg)
     const justFailed = await markMotionJobFailed(user.id, requestId).catch(() => false)
@@ -152,6 +157,8 @@ export async function GET(request: NextRequest) {
     if (justFailed) {
       remaining = await addMotionCredits(user.id, 1).catch(() => undefined)
     }
+    // Les fichiers d'entree ne servent plus : on les supprime.
+    await cleanupInputs(user.id, requestId)
     return NextResponse.json({
       success: true,
       status: "failed",
@@ -165,34 +172,19 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const status = await fal.queue.status(model, { requestId, logs: false })
-    // fal renvoie COMPLETED | IN_PROGRESS | IN_QUEUE | ERROR | (erreur via exception)
-    const s = String(status.status || "").toUpperCase()
+    const task = await getMotionTask(requestId)
 
-    // Echec signale sans exception : recuperer la vraie raison (task_status_msg)
-    // via le resultat, puis rembourser si necessaire.
-    if (s === "ERROR" || s === "FAILED") {
-      let detail = ""
-      try {
-        const r = await fal.queue.result(model, { requestId })
-        const d = r.data as { task_status_msg?: string; message?: string } | undefined
-        detail = d?.task_status_msg || d?.message || ""
-      } catch (e) {
-        detail = e instanceof Error ? e.message : ""
-      }
-      return finishAsFailed(detail)
+    if (task.status === "failed") {
+      return finishAsFailed(task.message)
     }
 
-    if (s === "COMPLETED") {
-      const result = await fal.queue.result(model, { requestId })
-      const videoUrl = (result.data as { video?: { url?: string } })?.video?.url || null
-      // Persister le resultat : la video reste retrouvable meme si l'utilisateur
-      // avait quitte la page pendant le rendu.
+    if (task.status === "succeeded") {
+      const videoUrl = task.videoUrl
       let historyUrl: string | null = null
       if (videoUrl) {
         await markMotionJobCompleted(user.id, requestId, videoUrl).catch(() => {})
-        // Historique PERMANENT : les URLs fal expirent aussi -> on re-heberge la
-        // video dans le Blob prive (idempotent via isAlreadyRehosted).
+        // Historique PERMANENT : les URLs Kling expirent -> re-hebergement Blob
+        // prive (idempotent via isAlreadyRehosted).
         try {
           const already = await isAlreadyRehosted(user.id, "motion", requestId)
           if (!already) {
@@ -210,31 +202,40 @@ export async function GET(request: NextRequest) {
         } catch (e) {
           console.error("[MotionControl] Historique non enregistre:", e)
         }
+        // Fichiers d'entree devenus inutiles.
+        await cleanupInputs(user.id, requestId)
       }
       return NextResponse.json({ success: true, status: "completed", video_url: historyUrl || videoUrl })
     }
 
+    // submitted | processing
     return NextResponse.json({
       success: true,
-      status: s === "IN_PROGRESS" ? "in_progress" : "queued",
+      status: task.status === "processing" ? "in_progress" : "queued",
       video_url: null,
     })
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err)
     console.error("[MotionControl] status error:", detail)
-    // Une exception au polling = souvent un rendu en echec (dont refus de
-    // moderation) : on remonte la vraie raison et on rembourse le credit.
-    return finishAsFailed(detail)
+    // Une erreur transitoire de polling ne doit PAS marquer le job en echec
+    // (le webhook peut encore finaliser). On renvoie un statut "en cours".
+    return NextResponse.json({ success: true, status: "in_progress", video_url: null })
   }
 }
 
-// POST : lance un motion-transfer. multipart/form-data :
+// POST : lance un transfert de mouvement Kling. multipart/form-data :
 // image (File requis), video (File requis), prompt (opt), model (standard|pro),
 // orientation (video|image), keep_sound (bool)
 export async function POST(request: NextRequest) {
+  // Chemins Blob temporaires uploades : on les garde pour pouvoir nettoyer en
+  // cas d'echec de soumission (sinon ils resteraient publics inutilement).
+  const uploadedPaths: string[] = []
   try {
-    if (!process.env.FAL_KEY) {
-      return NextResponse.json({ error: "Cle fal manquante cote serveur." }, { status: 500 })
+    if (!getKlingApiKey()) {
+      return NextResponse.json(
+        { error: "Cle API Kling manquante cote serveur. Ajoute KLING_API_KEY." },
+        { status: 500 },
+      )
     }
 
     const supabase = await createClient()
@@ -247,14 +248,9 @@ export async function POST(request: NextRequest) {
     const image = form.get("image") as File | null
     const video = form.get("video") as File | null
     const prompt = (form.get("prompt") as string | null)?.trim() || ""
-    // 'animate' = Kling Motion Control (transfert de mouvement, nouveau decor).
-    // 'replace' = Wan Animate Replace (garde le decor/les gestes de la video,
-    // remplace seulement la personne).
-    const mode = (form.get("mode") as string | null)?.trim() === "replace" ? "replace" : "animate"
     const tierKey = (form.get("model") as string | null)?.trim() === "pro" ? "pro" : "standard"
-    const modelKey = mode === "replace" ? "replace" : tierKey
     // 'video' = suit le mouvement de la video (max 30s), 'image' = suit l'orientation
-    // de l'image (max 10s). Par defaut on privilegie le mouvement (comme Higgsfield).
+    // de l'image (max 10s). Par defaut on privilegie le mouvement.
     const orientation = (form.get("orientation") as string | null)?.trim() === "image" ? "image" : "video"
     const keepSound = (form.get("keep_sound") as string | null) === "true"
 
@@ -277,7 +273,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Video de reference trop volumineuse (max 30 Mo / ~10s)." }, { status: 400 })
     }
 
-    // Verifier le SOLDE de credits Motion AVANT tout appel fal (protege la marge).
+    // Verifier le SOLDE de credits Motion AVANT tout upload/appel Kling.
     const { balance, subActive } = await resolveBalance(supabase, user.id)
     if (balance <= 0) {
       return NextResponse.json(
@@ -292,76 +288,95 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const model = MODELS[modelKey] || MODELS[DEFAULT_MODEL]
+    // Kling exige des URLs PUBLIQUES telechargeables pour l'image et la video.
+    // On les uploade dans le Blob public sous un prefixe temporaire ; ils seront
+    // supprimes en fin de tache (succes/echec) via cleanupInputs.
+    const stamp = Date.now()
+    const imgExt = image.type === "image/png" ? "png" : image.type === "image/webp" ? "webp" : "jpg"
+    const vidExt = video.type === "video/webm" ? "webm" : video.type === "video/quicktime" ? "mov" : "mp4"
+    const imgBuf = Buffer.from(await image.arrayBuffer())
+    const vidBuf = Buffer.from(await video.arrayBuffer())
 
-    // fal auto-uploade les binaires vers son propre stockage -> pas besoin de Supabase.
-    const imageUrl = await fal.storage.upload(image)
-    const videoUrl = await fal.storage.upload(video)
+    const imageBlob = await put(`motion-input/${user.id}/${stamp}-image.${imgExt}`, imgBuf, {
+      access: "public",
+      contentType: image.type,
+    })
+    uploadedPaths.push(imageBlob.pathname)
+    const videoBlob = await put(`motion-input/${user.id}/${stamp}-video.${vidExt}`, vidBuf, {
+      access: "public",
+      contentType: video.type,
+    })
+    uploadedPaths.push(videoBlob.pathname)
 
-    let input: Record<string, unknown>
-    if (mode === "replace") {
-      // Wan Animate Replace : seules la video source + l'image de la personne
-      // sont necessaires. Le modele conserve decor/lumiere/gestes de la video et
-      // n'utilise ni prompt ni orientation.
-      input = { video_url: videoUrl, image_url: imageUrl, video_write_mode: "balanced" }
-    } else {
-      input = {
-        image_url: imageUrl,
-        video_url: videoUrl,
-        character_orientation: orientation,
-        keep_original_sound: keepSound,
-      }
-      if (prompt) input.prompt = prompt
-    }
+    // Soumission a Kling Motion Control 3.0 avec callback pour la finalisation
+    // serveur-a-serveur (le polling reste un secours cote client).
+    const { taskId } = await submitMotionControl({
+      imageUrl: imageBlob.url,
+      videoUrl: videoBlob.url,
+      prompt,
+      orientation,
+      resolution: RESOLUTION_BY_TIER[tierKey] || RESOLUTION_BY_TIER[DEFAULT_TIER],
+      audio: keepSound ? "original" : "off",
+      callbackUrl: resolveCallbackUrl(request),
+      externalTaskId: `${user.id.slice(0, 8)}-${stamp}`,
+    })
 
-    const { request_id } = await fal.queue.submit(model, { input })
-
-    // Persister le job AVANT de repondre : l'historique et la reprise du polling
-    // au retour sur la page en dependent.
+    // Persister le job AVANT de repondre : l'historique, la reprise du polling et
+    // le webhook (qui retrouve le proprietaire par request_id) en dependent.
     await createMotionJob({
       userId: user.id,
-      requestId: request_id,
-      provider: "fal",
-      model: modelKey,
+      requestId: taskId,
+      provider: "kling",
+      model: tierKey,
       prompt,
+      inputPaths: uploadedPaths,
     }).catch(() => {})
 
-    // Deduire 1 credit UNIQUEMENT apres une soumission fal reussie.
+    // Deduire 1 credit UNIQUEMENT apres une soumission Kling reussie.
     const remaining = await deductMotionCredit(user.id)
 
-    // Journaliser la consommation par utilisateur (suivi admin + cout fournisseur estime).
+    // Journaliser la consommation par utilisateur (suivi admin + cout estime).
     await logToolUsage({
       userId: user.id,
-      tool: 'motion',
+      tool: "motion",
       credits: 1,
-      meta: { model: modelKey },
+      meta: { model: tierKey, provider: "kling" },
     })
 
     return NextResponse.json({
       success: true,
-      request_id,
-      model: modelKey,
+      request_id: taskId,
+      model: tierKey,
       status: "queued",
       remaining: Math.max(0, remaining),
     })
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Erreur serveur"
     console.error("[MotionControl Error]", msg)
+    // La soumission a echoue : supprimer les fichiers temporaires deja uploades.
+    if (uploadedPaths.length) {
+      await Promise.allSettled(uploadedPaths.map((p) => del(p))).catch(() => {})
+    }
     const lower = msg.toLowerCase()
     // 1) Refus de moderation au lancement (image/video/prompt refuses). Aucun
-    //    credit fal consomme et aucun credit Motion deduit a ce stade.
+    //    credit Motion deduit a ce stade.
     if (isModerationError(msg)) {
       return NextResponse.json(
         { error: MODERATION_MESSAGE, code: "moderation", detail: msg.slice(0, 200) },
         { status: 422 },
       )
     }
-    // 2) Compte fal a court de credits (cote plateforme, pas l'utilisateur).
-    const noCredits = lower.includes("balance") || lower.includes("credit") || lower.includes("exhausted")
+    // 2) Compte Kling a court de credits (cote plateforme, pas l'utilisateur).
+    const noCredits =
+      lower.includes("balance") ||
+      lower.includes("insufficient") ||
+      lower.includes("quota") ||
+      lower.includes("resource pack") ||
+      lower.includes("credit")
     return NextResponse.json(
       {
         error: noCredits
-          ? "Le compte fal n'a plus de credits. Contactez l'administrateur."
+          ? "Le compte Kling n'a plus de credits. Contactez l'administrateur."
           : "Echec du lancement de la generation.",
         code: noCredits ? "no_credit" : "failed",
         detail: msg.slice(0, 200),
