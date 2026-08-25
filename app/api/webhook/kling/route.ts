@@ -46,6 +46,12 @@ async function cleanupInputs(userId: string, requestId: string, paths: string[])
   }
 }
 
+// Simple sonde de sante : permet de verifier d'un coup d'oeil (navigateur/curl)
+// que la route est bien deployee. Kling envoie ses callbacks en POST.
+export async function GET() {
+  return NextResponse.json({ ok: true, service: "kling-webhook" })
+}
+
 export async function POST(request: NextRequest) {
   // 1) CORPS BRUT indispensable : la signature porte sur ces octets exacts ;
   //    re-serialiser le JSON casserait le HMAC.
