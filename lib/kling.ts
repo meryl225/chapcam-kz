@@ -9,13 +9,19 @@ import crypto from 'node:crypto'
 //        l'ancienne version de l'API ; le nouveau standard utilise une cle API
 //        unique — cf. doc "Authentication").
 // Domaine : api-singapore.klingai.com (utilisateurs hors Chine).
-// Motion Control 3.0 : POST /motion-control/kling-3.0
+// Motion Control 2.6 : POST /motion-control/kling-2.6
+//   -> ~2x moins cher que la 3.0 (720p : 0,5 unit/s au lieu de 0,9 ;
+//      1080p : 0,8 unit/s au lieu de 1,2). Meme schema de requete que la 3.0.
+//      Pour repasser en 3.0, remplacer MOTION_CONTROL_ENDPOINT par 'kling-3.0'.
 // Statut (polling de secours) : GET /tasks?task_ids=<id>
 // Fin de tache : callback serveur-a-serveur via options.callback_url
 //                (protocole "New Callback Function") + verification de signature.
 // ============================================================
 
 const API_BASE = 'https://api-singapore.klingai.com'
+// Modele Motion Control utilise (endpoint). 'kling-2.6' = meilleur rapport
+// cout/nombre de videos ; 'kling-3.0' = qualite maximale mais ~2x plus cher.
+const MOTION_CONTROL_ENDPOINT = 'kling-2.6'
 
 /**
  * Recupere la cle API Kling (Bearer). On accepte KLING_API_KEY en priorite,
@@ -69,8 +75,9 @@ export interface KlingTaskResult {
 }
 
 /**
- * Soumet une tache Motion Control 3.0 : transfert du mouvement d'une VIDEO de
- * reference sur une IMAGE de personnage. Retourne l'id de tache genere par Kling.
+ * Soumet une tache Motion Control (modele MOTION_CONTROL_ENDPOINT, 2.6 par
+ * defaut) : transfert du mouvement d'une VIDEO de reference sur une IMAGE de
+ * personnage. Retourne l'id de tache genere par Kling.
  * Leve une erreur (message Kling) si la soumission echoue.
  */
 export async function submitMotionControl(input: KlingSubmitInput): Promise<KlingSubmitResult> {
@@ -98,7 +105,7 @@ export async function submitMotionControl(input: KlingSubmitInput): Promise<Klin
     },
   }
 
-  const res = await fetch(`${API_BASE}/motion-control/kling-3.0`, {
+  const res = await fetch(`${API_BASE}/motion-control/${MOTION_CONTROL_ENDPOINT}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

@@ -21,9 +21,10 @@ import {
   getKlingApiKey,
 } from "@/lib/kling"
 
-// --- Motion Control REEL (Kling Motion Control 3.0, API NATIVE) ---
+// --- Motion Control REEL (Kling Motion Control 2.6, API NATIVE) ---
 // On transfere le mouvement d'une VIDEO de reference sur une IMAGE de personnage,
-// via l'endpoint officiel POST /motion-control/kling-3.0 de Kling AI.
+// via l'endpoint officiel POST /motion-control/kling-2.6 de Kling AI (le modele
+// exact est defini par MOTION_CONTROL_ENDPOINT dans lib/kling.ts).
 //
 // Flux : on uploade image + video dans le Blob PUBLIC temporaire (Kling exige
 // des URLs telechargeables), on soumet la tache avec un callback_url, puis :
@@ -308,7 +309,7 @@ export async function POST(request: NextRequest) {
     })
     uploadedPaths.push(videoBlob.pathname)
 
-    // Soumission a Kling Motion Control 3.0 avec callback pour la finalisation
+    // Soumission a Kling Motion Control 2.6 avec callback pour la finalisation
     // serveur-a-serveur (le polling reste un secours cote client).
     const { taskId } = await submitMotionControl({
       imageUrl: imageBlob.url,
