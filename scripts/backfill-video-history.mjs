@@ -74,10 +74,18 @@ async function rehost(url, userId, tool, ref) {
 }
 
 async function main() {
+  // Cible : toute ligne SANS fichier permanent dont la generation peut etre
+  // terminee cote fournisseur. On inclut :
+  //  - status='completed' sans blob (echec du re-hebergement initial) ;
+  //  - status='processing' (l'utilisateur a ferme l'onglet avant la fin ->
+  //    finalisation client jamais executee). freshUrl() ne renvoie une URL que
+  //    si le fournisseur confirme la fin, donc les vraies "en cours" sont
+  //    ignorees sans risque.
   const rows = await sql`
     SELECT id, user_id, tool, provider_ref
     FROM video_history
-    WHERE status='completed' AND blob_pathname IS NULL AND provider_ref IS NOT NULL
+    WHERE blob_pathname IS NULL AND provider_ref IS NOT NULL
+      AND status IN ('completed', 'processing')
     ORDER BY created_at DESC`
   console.log(`A traiter : ${rows.length} ligne(s)`)
 
@@ -100,7 +108,9 @@ async function main() {
             console.log(`  [rehost echoue] ${row.tool} ${row.provider_ref}`)
             return
           }
-          await sql`UPDATE video_history SET blob_pathname=${pathname} WHERE id=${row.id} AND blob_pathname IS NULL`
+          // On fixe aussi le statut a 'completed' : couvre les lignes qui
+          // etaient restees bloquees en 'processing'.
+          await sql`UPDATE video_history SET blob_pathname=${pathname}, status='completed' WHERE id=${row.id} AND blob_pathname IS NULL`
           ok++
           console.log(`  [OK] ${row.tool} ${row.provider_ref} -> ${pathname}`)
         } catch (e) {

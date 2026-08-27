@@ -29,18 +29,28 @@ export async function GET(request: NextRequest) {
   try {
     const items = await listVideoHistory(user.id, tool)
 
-    // AUTO-REPARATION : certaines lignes "completed" n'ont pas de blob (echec du
-    // re-hebergement au moment de la generation). Tant que la video est encore
-    // chez HeyGen (~7j), on la re-heberge a la demande ici. Borne a quelques
-    // reparations par requete pour ne pas ralentir le chargement de la page ;
-    // les videos restantes seront reparees aux prochains "Actualiser".
+    // AUTO-REPARATION a la demande. Deux cas sont rattrapes ici :
+    //  1) lignes "completed" sans blob (echec du re-hebergement initial) ;
+    //  2) lignes "processing" ANCIENNES : l'utilisateur a ferme l'onglet avant
+    //     que le fichier soit pret, donc la finalisation cote client n'a jamais
+    //     eu lieu. repairVideoRow reinterroge le fournisseur et ne finalise que
+    //     si la generation est reellement terminee (sinon no-op sur une vraie
+    //     video encore en cours). Tant que la source fournisseur est valide
+    //     (HeyGen ~7j, Kling ~30j) la video est recuperee et rendue permanente.
+    // Borne a quelques reparations par requete pour ne pas ralentir la page ;
+    // le reste sera repare aux prochains "Actualiser".
     const MAX_REPAIRS = 4
-    const repairable = items.filter(
-      (v) =>
-        v.status === 'completed' &&
-        !v.blob_pathname &&
-        !!v.provider_ref, // tous les outils sont reparables (HeyGen + Kling/Motion)
-    )
+    const STALE_PROCESSING_MS = 3 * 60 * 1000 // 3 min : au-dela, on reconcilie
+    const now = Date.now()
+    const repairable = items.filter((v) => {
+      if (!v.provider_ref) return false
+      if (v.status === 'completed' && !v.blob_pathname) return true
+      if (v.status === 'processing') {
+        const age = now - new Date(v.created_at).getTime()
+        return age > STALE_PROCESSING_MS
+      }
+      return false
+    })
     const healed = new Map<string, string>()
     if (repairable.length > 0) {
       const batch = repairable.slice(0, MAX_REPAIRS)
@@ -65,11 +75,13 @@ export async function GET(request: NextRequest) {
     // pathname brut : le client n'a jamais besoin de connaitre le store Blob.
     const videos = items.map((v) => {
       const pathname = v.blob_pathname || healed.get(v.id) || null
+      // Une ligne "processing" qui vient d'etre reparee est en realite terminee.
+      const status = healed.has(v.id) ? 'completed' : v.status
       return {
         id: v.id,
         tool: v.tool,
         title: v.title,
-        status: v.status,
+        status,
         created_at: v.created_at,
         thumbnail_url: v.thumbnail_url,
         video_url: pathname
