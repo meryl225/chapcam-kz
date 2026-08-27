@@ -17,7 +17,11 @@ interface HistoryVideo {
   status: "processing" | "completed" | "failed"
   created_at: string
   thumbnail_url: string | null
-  // URL servie par notre route privée (/api/videos/file?...), déjà prête.
+  // Player Cloudflare Stream signé (iframe HLS adaptatif) : lecture rapide,
+  // fluide sur mobile/3G, compatible iOS. Absent si la vidéo n'est pas encore
+  // dans Stream (on retombe alors sur video_url).
+  player_url: string | null
+  // Master Blob privé (/api/videos/file?...) : téléchargement + repli de lecture.
   video_url: string | null
 }
 
@@ -36,6 +40,9 @@ export function VideoHistorySection({
   // id de la vidéo en cours de téléchargement / suppression (pour l'état des boutons)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  // id de la vidéo dont le player Stream est monté (lecture à la demande : on ne
+  // charge pas 50 players d'un coup, on ne monte l'iframe qu'au clic).
+  const [playingId, setPlayingId] = useState<string | null>(null)
 
   const load = useCallback(
     async (silent = false) => {
@@ -160,21 +167,58 @@ export function VideoHistorySection({
               className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]"
             >
               <div className="relative aspect-[9/16] w-full bg-black/40">
-                {v.status === "completed" && v.video_url ? (
-                  <video
-                    src={v.video_url}
-                    controls
-                    playsInline
-                    preload="metadata"
-                    poster={v.thumbnail_url || undefined}
-                    className="h-full w-full object-cover"
-                  />
+                {v.status === "completed" && (v.player_url || v.video_url) ? (
+                  playingId === v.id && v.player_url ? (
+                    // Player Cloudflare Stream (HLS adaptatif, iOS natif).
+                    <iframe
+                      src={`${v.player_url}&autoplay=true`}
+                      title={v.title || "Vidéo"}
+                      loading="lazy"
+                      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
+                      allowFullScreen
+                      className="h-full w-full border-0"
+                    />
+                  ) : v.player_url ? (
+                    // Miniature + bouton lecture : on ne monte l'iframe qu'au clic.
+                    <button
+                      type="button"
+                      onClick={() => setPlayingId(v.id)}
+                      className="group relative h-full w-full"
+                      aria-label={`Lire ${v.title || "la vidéo"}`}
+                    >
+                      {v.thumbnail_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={v.thumbnail_url || "/placeholder.svg"}
+                          alt=""
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full bg-black/40" />
+                      )}
+                      <span className="absolute inset-0 flex items-center justify-center">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm transition-transform group-hover:scale-110">
+                          <Play className="h-6 w-6 translate-x-0.5 fill-white text-white" />
+                        </span>
+                      </span>
+                    </button>
+                  ) : (
+                    // Repli : master Blob (lecture native) si pas encore dans Stream.
+                    <video
+                      src={v.video_url as string}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      poster={v.thumbnail_url || undefined}
+                      className="h-full w-full object-cover"
+                    />
+                  )
                 ) : v.status === "failed" ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-center">
                     <X className="h-6 w-6 text-red-400" />
                     <span className="px-2 text-[11px] text-red-400">Échec</span>
                   </div>
-                ) : v.status === "completed" && !v.video_url ? (
+                ) : v.status === "completed" && !v.player_url && !v.video_url ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-2 text-center">
                     <X className="h-5 w-5 text-white/30" />
                     <span className="text-[10px] text-white/40">Vidéo expirée</span>

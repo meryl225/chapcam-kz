@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { listVideoHistory, deleteVideoHistory, type VideoTool } from '@/lib/video-history'
 import { repairVideoRow } from '@/lib/video-history-repair'
+import { getSignedStreamUrls } from '@/lib/cloudflare-stream'
 
 // L'auto-reparation peut re-heberger plusieurs videos (fetch HeyGen + upload
 // Blob) : on laisse de la marge pour eviter un timeout serverless.
@@ -71,24 +72,48 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // On expose une URL pretes a l'emploi (route de service privee) au lieu du
-    // pathname brut : le client n'a jamais besoin de connaitre le store Blob.
-    const videos = items.map((v) => {
-      const pathname = v.blob_pathname || healed.get(v.id) || null
-      // Une ligne "processing" qui vient d'etre reparee est en realite terminee.
-      const status = healed.has(v.id) ? 'completed' : v.status
-      return {
-        id: v.id,
-        tool: v.tool,
-        title: v.title,
-        status,
-        created_at: v.created_at,
-        thumbnail_url: v.thumbnail_url,
-        video_url: pathname
+    // On expose des URLs pretes a l'emploi :
+    //  - player_url / poster_url : lecture via Cloudflare Stream (HLS adaptatif,
+    //    signe, rapide en 3G, iOS natif) quand la video a un stream_uid ;
+    //  - video_url : route Blob privee, conservee comme source de TELECHARGEMENT
+    //    (master original) et comme repli de lecture si Stream absent.
+    const videos = await Promise.all(
+      items.map(async (v) => {
+        const pathname = v.blob_pathname || healed.get(v.id) || null
+        // Une ligne "processing" qui vient d'etre reparee est en realite terminee.
+        const status = healed.has(v.id) ? 'completed' : v.status
+        const blobUrl = pathname
           ? `/api/videos/file?pathname=${encodeURIComponent(pathname)}`
-          : null,
-      }
-    })
+          : null
+
+        // URLs de lecture Stream signees (jeton court, genere a chaque requete).
+        let playerUrl: string | null = null
+        let posterUrl: string | null = null
+        if (v.stream_uid) {
+          try {
+            const urls = await getSignedStreamUrls(v.stream_uid, v.stream_customer_code)
+            playerUrl = urls.iframe
+            posterUrl = urls.thumbnail
+          } catch {
+            // En cas d'echec de signature, on retombera sur video_url (Blob).
+          }
+        }
+
+        return {
+          id: v.id,
+          tool: v.tool,
+          title: v.title,
+          status,
+          created_at: v.created_at,
+          // Poster : miniature Stream signee en priorite, sinon miniature fournisseur.
+          thumbnail_url: posterUrl || v.thumbnail_url,
+          // Lecture : player Stream si dispo, sinon la route Blob.
+          player_url: playerUrl,
+          // Telechargement (et repli de lecture) : master Blob.
+          video_url: blobUrl,
+        }
+      }),
+    )
     return NextResponse.json({ success: true, videos })
   } catch (error) {
     console.error('[videos/history] Erreur:', error)

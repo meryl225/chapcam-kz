@@ -1,6 +1,11 @@
 import 'server-only'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 import { put, del } from '@vercel/blob'
+import {
+  copyBlobPathnameToStream,
+  saveStreamUidForRef,
+  deleteStream,
+} from '@/lib/cloudflare-stream'
 
 // ============================================================
 // Historique PERMANENT des videos generees par les outils IA
@@ -25,6 +30,11 @@ export interface VideoHistoryItem {
   blob_pathname: string | null
   // Miniature optionnelle (URL directe fournisseur, non critique si elle expire).
   thumbnail_url: string | null
+  // UID Cloudflare Stream (lecture HLS adaptative) + sous-domaine CDN du compte.
+  // Present des que la video a ete aspiree dans Stream ; le master Blob reste la
+  // source de telechargement.
+  stream_uid: string | null
+  stream_customer_code: string | null
   title: string
   status: 'processing' | 'completed' | 'failed'
   created_at: string
@@ -311,6 +321,18 @@ export async function finalizeCompletedVideo(input: {
     status: 'completed',
     creditsCost: creditsCost ?? null,
   })
+
+  // 5) Ingestion Cloudflare Stream (LECTURE adaptative HLS). Best-effort et non
+  //    bloquant : `copy` renvoie l'uid tout de suite (le transcodage se fait en
+  //    arriere-plan cote Cloudflare), on le persiste pour que la galerie serve
+  //    le player Stream. Si ca echoue, la lecture retombe sur le master Blob.
+  try {
+    const { uid, customerCode } = await copyBlobPathnameToStream(pathname, title || providerRef)
+    await saveStreamUidForRef(userId, tool, providerRef, uid, customerCode)
+  } catch (err) {
+    console.error('[video-history] Ingestion Cloudflare Stream echouee (non bloquant):', err)
+  }
+
   return { state: 'ready', url: fileUrl(pathname) }
 }
 
@@ -391,24 +413,30 @@ export async function deleteVideoHistory(
   id: string,
 ): Promise<boolean> {
   await ensureTable()
-  // 1) Recuperer le blob a supprimer, en s'assurant qu'il appartient a l'utilisateur.
+  // 1) Recuperer le blob + l'uid Stream a supprimer, en s'assurant qu'ils
+  //    appartiennent a l'utilisateur.
   const rows = (await sql`
-    SELECT blob_pathname FROM video_history
-    WHERE id = ${id} AND user_id = ${userId}
-    LIMIT 1
-  `) as { blob_pathname: string | null }[]
+  SELECT blob_pathname, stream_uid FROM video_history
+  WHERE id = ${id} AND user_id = ${userId}
+  LIMIT 1
+  `) as { blob_pathname: string | null; stream_uid: string | null }[]
   if (rows.length === 0) return false
-
+  
   // 2) Effacer le fichier Blob (non bloquant : on continue meme si echec).
   const pathname = rows[0].blob_pathname
   if (pathname) {
-    try {
-      await del(pathname)
-    } catch (err) {
-      console.error('[video-history] Suppression Blob echouee:', err)
-    }
+  try {
+  await del(pathname)
+  } catch (err) {
+  console.error('[video-history] Suppression Blob echouee:', err)
+  }
   }
 
+  // 2b) Effacer la video Cloudflare Stream associee (non bloquant).
+  if (rows[0].stream_uid) {
+  await deleteStream(rows[0].stream_uid)
+  }
+  
   // 3) Supprimer la ligne Neon.
   await sql`DELETE FROM video_history WHERE id = ${id} AND user_id = ${userId}`
   return true
@@ -461,14 +489,14 @@ export async function listVideoHistory(
   await ensureTable()
   const rows = tool
     ? ((await sql`
-        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, stream_uid, stream_customer_code, title, status, created_at
         FROM video_history
         WHERE user_id = ${userId} AND tool = ${tool}
         ORDER BY created_at DESC
         LIMIT ${limit}
       `) as VideoHistoryItem[])
     : ((await sql`
-        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, stream_uid, stream_customer_code, title, status, created_at
         FROM video_history
         WHERE user_id = ${userId}
         ORDER BY created_at DESC
