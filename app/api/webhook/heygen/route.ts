@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import crypto from "node:crypto"
 import {
-  rehostToBlob,
   saveVideoHistory,
-  isAlreadyRehosted,
+  finalizeCompletedVideo,
   findUserByProviderRef,
   failGenerationAndGetRefund,
 } from "@/lib/video-history"
@@ -101,22 +100,17 @@ export async function POST(request: NextRequest) {
       // Utilisateur inconnu (job non enregistre) : on acquitte sans traiter.
       if (!userId) return NextResponse.json({ ok: true, ignored: "unknown video" })
 
-      // Idempotence : deja re-heberge (ex: le poll client a devance le webhook).
-      if (await isAlreadyRehosted(userId, "photo_video", videoId)) {
-        return NextResponse.json({ ok: true, already: true })
-      }
-
-      const pathname = await rehostToBlob(url, userId, "photo_video", videoId)
-      await saveVideoHistory({
+      // GARANTIT une copie Blob permanente (idempotent + verrou anti-concurrence
+      // si le poll client tourne en parallele).
+      const fin = await finalizeCompletedVideo({
         userId,
         tool: "photo_video",
         providerRef: videoId,
-        blobPathname: pathname,
+        providerUrl: url,
         thumbnailUrl: (data.thumbnail_url as string) || null,
         title: "Studio Photo en Vidéo",
-        status: "completed",
       })
-      return NextResponse.json({ ok: true, rehosted: !!pathname })
+      return NextResponse.json({ ok: true, stored: fin.state })
     }
 
     if (eventType === "avatar_video.fail") {
@@ -149,9 +143,6 @@ export async function POST(request: NextRequest) {
 
       const userId = await findUserByProviderRef("translation", translateId)
       if (!userId) return NextResponse.json({ ok: true, ignored: "unknown translation" })
-      if (await isAlreadyRehosted(userId, "translation", translateId)) {
-        return NextResponse.json({ ok: true, already: true })
-      }
 
       // Le payload de traduction ne contient pas toujours l'URL finale : on
       // interroge l'API pour recuperer l'URL faisant autorite.
@@ -170,16 +161,15 @@ export async function POST(request: NextRequest) {
       }
       if (!providerUrl) return NextResponse.json({ ok: true, ignored: "no url" })
 
-      const pathname = await rehostToBlob(providerUrl, userId, "translation", translateId)
-      await saveVideoHistory({
+      // GARANTIT une copie Blob permanente (idempotent + verrou anti-concurrence).
+      const fin = await finalizeCompletedVideo({
         userId,
         tool: "translation",
         providerRef: translateId,
-        blobPathname: pathname,
+        providerUrl,
         title: outputLanguage ? `Traduction · ${outputLanguage}` : "Traduction Vidéo",
-        status: "completed",
       })
-      return NextResponse.json({ ok: true, rehosted: !!pathname })
+      return NextResponse.json({ ok: true, stored: fin.state })
     }
 
     if (eventType === "video_translate.fail") {

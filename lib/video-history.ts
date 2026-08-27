@@ -65,6 +65,12 @@ async function ensureTable(): Promise<void> {
   // traduction). Sert a rembourser le MONTANT EXACT si la generation echoue
   // apres deduction. Ajoute a la volee pour les tables deja existantes.
   await sql`ALTER TABLE video_history ADD COLUMN IF NOT EXISTS credits_cost INTEGER`
+  // Verrou anti-concurrence du re-hebergement : quand le client poll toutes les
+  // 5s, plusieurs requetes pourraient telecharger la MEME video en parallele.
+  // `rehost_claimed_at` = derniere reservation ; `rehost_attempts` = nombre de
+  // tentatives (borne le fallback "URL fournisseur" en dernier recours).
+  await sql`ALTER TABLE video_history ADD COLUMN IF NOT EXISTS rehost_claimed_at TIMESTAMPTZ`
+  await sql`ALTER TABLE video_history ADD COLUMN IF NOT EXISTS rehost_attempts INTEGER NOT NULL DEFAULT 0`
   await sql`CREATE INDEX IF NOT EXISTS video_history_user_idx ON video_history (user_id, created_at DESC)`
   // Un provider_ref donne n'est enregistre qu'une fois par utilisateur.
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS video_history_ref_idx ON video_history (user_id, tool, provider_ref)`
@@ -166,6 +172,140 @@ export async function saveVideoHistory(input: {
       credits_cost = COALESCE(video_history.credits_cost, EXCLUDED.credits_cost),
       status = EXCLUDED.status
   `
+}
+
+// Construit l'URL de service privee a partir d'un pathname Blob.
+function fileUrl(pathname: string): string {
+  return `/api/videos/file?pathname=${encodeURIComponent(pathname)}`
+}
+
+// Nombre max de tentatives de re-hebergement avant de servir, EN DERNIER
+// RECOURS, l'URL fournisseur (encore valide un temps) pour ne pas laisser
+// l'utilisateur bloque sur un spinner si le Blob refuse obstinement.
+const MAX_REHOST_ATTEMPTS = 6
+
+/**
+ * Resultat de finalisation d'une video terminee cote fournisseur :
+ *  - ready    : copie Blob PERMANENTE prete -> `url` = route de service privee.
+ *  - pending  : pas encore de copie permanente -> le client doit continuer a
+ *               interroger le statut (on reessaiera au prochain poll).
+ *  - fallback : le re-hebergement a echoue trop de fois -> on sert `url` =
+ *               l'URL fournisseur (temporaire) pour ne pas bloquer l'utilisateur.
+ */
+export type FinalizeResult =
+  | { state: 'ready'; url: string }
+  | { state: 'pending' }
+  | { state: 'fallback'; url: string }
+
+/**
+ * "Reserve" le re-hebergement d'une generation pour eviter que plusieurs polls
+ * simultanes telechargent la meme video en parallele. Cree la ligne
+ * d'historique (statut processing) si elle n'existe pas encore, puis tente une
+ * reservation ATOMIQUE : succes si aucun blob et si aucune reservation recente.
+ * Retourne le verrou obtenu + le nombre de tentatives deja effectuees.
+ */
+async function claimRehostSlot(
+  userId: string,
+  tool: VideoTool,
+  providerRef: string,
+  title: string,
+  staleSeconds = 45,
+): Promise<{ claimed: boolean; attempts: number }> {
+  await ensureTable()
+  // Garantir qu'une ligne existe (sans jamais ecraser un etat existant).
+  await sql`
+    INSERT INTO video_history (user_id, tool, provider_ref, blob_pathname, title, status)
+    VALUES (${userId}, ${tool}, ${providerRef}, NULL, ${title}, 'processing')
+    ON CONFLICT (user_id, tool, provider_ref) DO NOTHING
+  `
+  // Reservation atomique : un seul poll passe a la fois (verrou expirant).
+  const rows = (await sql`
+    UPDATE video_history
+    SET rehost_claimed_at = now(), rehost_attempts = COALESCE(rehost_attempts, 0) + 1
+    WHERE user_id = ${userId} AND tool = ${tool} AND provider_ref = ${providerRef}
+      AND blob_pathname IS NULL
+      AND (rehost_claimed_at IS NULL OR rehost_claimed_at < now() - make_interval(secs => ${staleSeconds}))
+    RETURNING COALESCE(rehost_attempts, 0) AS attempts
+  `) as { attempts: number }[]
+  if (rows.length > 0) return { claimed: true, attempts: Number(rows[0].attempts) }
+  // Pas de verrou : soit un autre poll s'en occupe, soit trop recent. On
+  // renvoie le compteur courant pour la logique de dernier recours.
+  const cur = (await sql`
+    SELECT COALESCE(rehost_attempts, 0) AS attempts FROM video_history
+    WHERE user_id = ${userId} AND tool = ${tool} AND provider_ref = ${providerRef}
+    LIMIT 1
+  `) as { attempts: number }[]
+  return { claimed: false, attempts: cur.length ? Number(cur[0].attempts) : 0 }
+}
+
+// Libere le verrou apres un echec pour permettre une nouvelle tentative rapide.
+async function clearRehostClaim(userId: string, tool: VideoTool, providerRef: string): Promise<void> {
+  await ensureTable()
+  await sql`
+    UPDATE video_history SET rehost_claimed_at = NULL
+    WHERE user_id = ${userId} AND tool = ${tool} AND provider_ref = ${providerRef}
+      AND blob_pathname IS NULL
+  `
+}
+
+/**
+ * Finalise une generation terminee cote fournisseur en GARANTISSANT une copie
+ * permanente dans le Blob avant de declarer "completed" au client. C'est le
+ * coeur du correctif : on ne renvoie plus jamais une URL fournisseur ephemere
+ * comme resultat "definitif" (ce qui donnait des videos "expirees" illisibles).
+ *
+ * Concurrence : protege par un verrou (claimRehostSlot) pour ne pas telecharger
+ * la meme video en parallele a chaque poll (5s). Best-effort : ne jette jamais.
+ */
+export async function finalizeCompletedVideo(input: {
+  userId: string
+  tool: VideoTool
+  providerRef: string
+  providerUrl: string
+  title: string
+  thumbnailUrl?: string | null
+  creditsCost?: number | null
+}): Promise<FinalizeResult> {
+  await ensureTable()
+  const { userId, tool, providerRef, providerUrl, title, thumbnailUrl, creditsCost } = input
+
+  // 1) Copie permanente deja presente ? (idempotent : polls suivants / webhook)
+  const existing = (await sql`
+    SELECT blob_pathname FROM video_history
+    WHERE user_id = ${userId} AND tool = ${tool} AND provider_ref = ${providerRef}
+      AND blob_pathname IS NOT NULL
+    LIMIT 1
+  `) as { blob_pathname: string }[]
+  if (existing.length > 0) return { state: 'ready', url: fileUrl(existing[0].blob_pathname) }
+
+  // 2) Verrou anti-concurrence.
+  const claim = await claimRehostSlot(userId, tool, providerRef, title)
+  if (!claim.claimed) {
+    // Un autre poll re-heberge deja, OU tentatives epuisees -> dernier recours.
+    if (claim.attempts >= MAX_REHOST_ATTEMPTS) return { state: 'fallback', url: providerUrl }
+    return { state: 'pending' }
+  }
+
+  // 3) Re-hebergement (telechargement + upload Blob, avec retries internes).
+  const pathname = await rehostToBlob(providerUrl, userId, tool, providerRef)
+  if (!pathname) {
+    await clearRehostClaim(userId, tool, providerRef).catch(() => {})
+    if (claim.attempts >= MAX_REHOST_ATTEMPTS) return { state: 'fallback', url: providerUrl }
+    return { state: 'pending' }
+  }
+
+  // 4) Copie permanente OK -> enregistrer "completed" (idempotent).
+  await saveVideoHistory({
+    userId,
+    tool,
+    providerRef,
+    blobPathname: pathname,
+    thumbnailUrl: thumbnailUrl ?? null,
+    title,
+    status: 'completed',
+    creditsCost: creditsCost ?? null,
+  })
+  return { state: 'ready', url: fileUrl(pathname) }
 }
 
 /**

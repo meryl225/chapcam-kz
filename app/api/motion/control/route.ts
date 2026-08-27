@@ -12,7 +12,7 @@ import {
   clearMotionJobInputPaths,
 } from "@/lib/motion-jobs"
 import { logToolUsage } from "@/lib/tool-usage"
-import { rehostToBlob, saveVideoHistory, isAlreadyRehosted, getBlobPathnamesByRef } from "@/lib/video-history"
+import { finalizeCompletedVideo, getBlobPathnamesByRef } from "@/lib/video-history"
 import {
   submitMotionControl,
   getMotionTask,
@@ -184,28 +184,25 @@ export async function GET(request: NextRequest) {
       let historyUrl: string | null = null
       if (videoUrl) {
         await markMotionJobCompleted(user.id, requestId, videoUrl).catch(() => {})
-        // Historique PERMANENT : les URLs Kling expirent -> re-hebergement Blob
-        // prive (idempotent via isAlreadyRehosted).
+        // Historique PERMANENT : les URLs Kling expirent (~30j) -> on GARANTIT
+        // une copie Blob privee (verrou anti-concurrence + retries internes).
         try {
-          const already = await isAlreadyRehosted(user.id, "motion", requestId)
-          if (!already) {
-            const pathname = await rehostToBlob(videoUrl, user.id, "motion", requestId)
-            await saveVideoHistory({
-              userId: user.id,
-              tool: "motion",
-              providerRef: requestId,
-              blobPathname: pathname,
-              title: "Motion Control",
-              status: "completed",
-            })
-            if (pathname) historyUrl = `/api/videos/file?pathname=${encodeURIComponent(pathname)}`
-          }
+          const fin = await finalizeCompletedVideo({
+            userId: user.id,
+            tool: "motion",
+            providerRef: requestId,
+            providerUrl: videoUrl,
+            title: "Motion Control",
+          })
+          if (fin.state === "ready" || fin.state === "fallback") historyUrl = fin.url
         } catch (e) {
-          console.error("[MotionControl] Historique non enregistre:", e)
+          console.error("[MotionControl] Finalisation historique:", e)
         }
         // Fichiers d'entree devenus inutiles.
         await cleanupInputs(user.id, requestId)
       }
+      // Kling garde l'URL ~30j : on sert l'URL fournisseur en attendant que la
+      // copie Blob permanente soit prete (la galerie basculera ensuite dessus).
       return NextResponse.json({ success: true, status: "completed", video_url: historyUrl || videoUrl })
     }
 

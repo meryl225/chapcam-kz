@@ -8,7 +8,7 @@ import {
   clearMotionJobInputPaths,
 } from "@/lib/motion-jobs"
 import { addMotionCredits } from "@/lib/motion-quota"
-import { rehostToBlob, saveVideoHistory, isAlreadyRehosted } from "@/lib/video-history"
+import { finalizeCompletedVideo } from "@/lib/video-history"
 
 // ============================================================
 // Webhook Kling : notification serveur-a-serveur quand une tache Motion Control
@@ -115,20 +115,19 @@ export async function POST(request: NextRequest) {
     if (task.status === "succeeded" && task.videoUrl) {
       await markMotionJobCompleted(userId, taskId, task.videoUrl).catch(() => {})
 
-      // Idempotence : deja re-heberge (ex: le poll client a devance le webhook).
-      if (!(await isAlreadyRehosted(userId, "motion", taskId))) {
-        const pathname = await rehostToBlob(task.videoUrl, userId, "motion", taskId)
-        await saveVideoHistory({
-          userId,
-          tool: "motion",
-          providerRef: taskId,
-          blobPathname: pathname,
-          title: "Motion Control",
-          status: "completed",
-        })
-      }
-      await cleanupInputs(userId, taskId, inputPaths)
-      return NextResponse.json({ ok: true, status: "succeeded" })
+      // GARANTIT une copie Blob permanente (idempotent + verrou anti-concurrence
+      // si le poll client tourne en meme temps). On ne nettoie les fichiers
+      // d'entree QUE si la copie est bien prete, pour laisser une chance de
+      // reparation ulterieure (via /api/videos/history) sinon.
+      const fin = await finalizeCompletedVideo({
+        userId,
+        tool: "motion",
+        providerRef: taskId,
+        providerUrl: task.videoUrl,
+        title: "Motion Control",
+      })
+      if (fin.state === "ready") await cleanupInputs(userId, taskId, inputPaths)
+      return NextResponse.json({ ok: true, status: "succeeded", stored: fin.state })
     }
 
     // ===== Echec =====

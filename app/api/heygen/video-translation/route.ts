@@ -9,9 +9,8 @@ import {
 } from "@/lib/translation-quota"
 import { logToolUsage } from "@/lib/tool-usage"
 import {
-  rehostToBlob,
   saveVideoHistory,
-  isAlreadyRehosted,
+  finalizeCompletedVideo,
   failGenerationAndGetRefund,
 } from "@/lib/video-history"
 
@@ -20,6 +19,10 @@ import {
 // puis polling GET /v3/video-translations/{id}. Facturation en credits :
 // mode Rapide = 1 credit, mode Precision = 2 credits. La video source est
 // plafonnee a 60s cote client pour borner le cout HeyGen.
+
+// Le re-hebergement Blob (telechargement de la video finale + upload) peut etre
+// long : on laisse une large marge pour ne pas couper la finalisation.
+export const maxDuration = 300
 
 const HEYGEN_API = "https://api.heygen.com"
 const HEYGEN_UPLOAD = "https://upload.heygen.com/v1/asset"
@@ -142,32 +145,37 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Historique PERMANENT : a la fin, re-heberger dans le Blob prive (les URLs
-    // HeyGen expirent) et enregistrer. Idempotent via isAlreadyRehosted.
-    let historyUrl: string | null = null
+    // Historique PERMANENT : a la fin, on GARANTIT une copie Blob privee avant
+    // de declarer la traduction "terminee" (les URLs HeyGen expirent). Tant que
+    // la copie n'est pas prete, on renvoie "processing" pour que le client
+    // continue a interroger -> plus jamais de "video expiree" illisible.
+    let effectiveStatus = status
+    let outUrl: string | null = providerUrl
     if (status === "completed" && providerUrl) {
       try {
-        const already = await isAlreadyRehosted(user.id, "translation", id)
-        if (!already) {
-          const pathname = await rehostToBlob(providerUrl, user.id, "translation", id)
-          await saveVideoHistory({
-            userId: user.id,
-            tool: "translation",
-            providerRef: id,
-            blobPathname: pathname,
-            title: data.output_language ? `Traduction · ${data.output_language}` : "Traduction Vidéo",
-            status: "completed",
-          })
-          if (pathname) historyUrl = `/api/videos/file?pathname=${encodeURIComponent(pathname)}`
+        const fin = await finalizeCompletedVideo({
+          userId: user.id,
+          tool: "translation",
+          providerRef: id,
+          providerUrl,
+          title: data.output_language ? `Traduction · ${data.output_language}` : "Traduction Vidéo",
+        })
+        if (fin.state === "ready" || fin.state === "fallback") {
+          outUrl = fin.url
+        } else {
+          effectiveStatus = "processing"
+          outUrl = null
         }
       } catch (e) {
-        console.error("[Translation] Historique non enregistre:", e)
+        console.error("[Translation] Finalisation historique:", e)
+        effectiveStatus = "processing"
+        outUrl = null
       }
     }
 
     return NextResponse.json({
-      status,
-      video_url: historyUrl || providerUrl,
+      status: effectiveStatus,
+      video_url: outUrl,
       output_language: data.output_language || null,
       error: status === "failed" ? (failureReason || "Traduction échouée.") : null,
       // Indique au client que le credit a ete rendu (aucune facturation sur echec).
