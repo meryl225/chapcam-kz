@@ -108,8 +108,14 @@ export async function rehostToBlob(
         }
         throw new Error(`Telechargement source HTTP ${res.status}`)
       }
-      const contentType = res.headers.get('content-type') || 'video/mp4'
-      const ext = contentType.includes('webm') ? 'webm' : 'mp4'
+      // CONTENT-TYPE NORMALISE : le CDN source renvoie parfois un type generique
+      // (`binary/octet-stream`) ou vide. On ne le stocke JAMAIS tel quel car
+      // Safari iOS refuse alors de lire la video (ecran noir). On force un type
+      // `video/*` fiable deduit du type source ou de l'URL.
+      const rawType = res.headers.get('content-type') || ''
+      const isWebm = rawType.includes('webm') || /\.webm(\?|$)/i.test(remoteUrl)
+      const contentType = isWebm ? 'video/webm' : 'video/mp4'
+      const ext = isWebm ? 'webm' : 'mp4'
       // Buffer complet : garantit un upload fiable (taille connue) et evite les
       // flux interrompus a mi-chemin.
       const buffer = Buffer.from(await res.arrayBuffer())

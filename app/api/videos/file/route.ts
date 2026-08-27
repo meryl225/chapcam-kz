@@ -54,10 +54,21 @@ export async function GET(request: NextRequest) {
       })
     }
 
+    // CONTENT-TYPE NORMALISE (critique pour iOS/Safari) : certaines videos ont
+    // ete stockees avec un type generique (`binary/octet-stream`) car le CDN
+    // source ne renvoyait pas de type video. Chrome desktop devine le format et
+    // lit quand meme, mais Safari iOS REFUSE de lire un media dont le type n'est
+    // pas `video/*` -> ecran noir + icone de lecture barree sur iPhone. On force
+    // donc un type video fiable, deduit de l'extension du fichier, sans avoir a
+    // re-uploader quoi que ce soit.
+    const rawType = result.blob.contentType || ''
+    const isWebm = /\.webm$/i.test(pathname) || rawType.includes('webm')
+    const safeContentType = isWebm ? 'video/webm' : 'video/mp4'
+    const ext = isWebm ? 'webm' : 'mp4'
+
     // ?download=1 -> force le telechargement (enregistrement mobile/ordinateur)
     // au lieu d'une lecture inline, avec un nom de fichier lisible.
     const wantsDownload = request.nextUrl.searchParams.get('download') === '1'
-    const ext = result.blob.contentType.includes('webm') ? 'webm' : 'mp4'
     const downloadName = `chapcam-${(pathname.split('/').pop() || 'video').replace(/\.(mp4|webm)$/i, '')}.${ext}`
 
     // Métadonnées de la reponse d'origine : taille totale, portion servie.
@@ -66,7 +77,7 @@ export async function GET(request: NextRequest) {
       result.headers.get('content-length') ?? String(result.blob.size)
 
     const headers: Record<string, string> = {
-      'Content-Type': result.blob.contentType,
+      'Content-Type': safeContentType,
       ETag: result.blob.etag,
       // Cache PRIVE autorise (jamais partage entre comptes). Chaque video a un
       // chemin unique et immuable -> on laisse le navigateur et le moteur media
