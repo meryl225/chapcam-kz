@@ -182,6 +182,19 @@ export async function middleware(request: NextRequest) {
   const ip = getClientIP(request)
   const userAgent = request.headers.get('user-agent') || ''
 
+  // ===== Streaming video : NE PAS reecrire les en-tetes =====
+  // La route /api/videos/file sert des octets video (lecture + seek) et gere
+  // elle-meme son authentification + ses en-tetes Range/cache. Si on la fait
+  // passer par addSecurityHeaders(), le middleware force
+  // `Cache-Control: no-store` : or Safari (macOS ET iOS) REFUSE alors de lire
+  // la video (son moteur media a besoin de stocker les portions d'octets) ->
+  // ecran noir + icone de lecture barree en PRODUCTION (l'apercu v0 supprime
+  // ces en-tetes, d'ou "ca marche cote v0 mais pas sur le site"). On laisse
+  // donc la reponse de la route intacte, sans aucune reecriture.
+  if (pathname === '/api/videos/file') {
+    return NextResponse.next({ request })
+  }
+
   // Webhooks serveur-a-serveur (IPN PayDunya, etc.) : ils arrivent depuis un
   // serveur (UA non-navigateur, souvent vide ou de type PHP/Guzzle) et SANS
   // cookie. Ils ne doivent jamais etre bloques par l'anti-scraping ni le

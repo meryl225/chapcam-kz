@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         status: 304,
         headers: {
           ETag: result.blob.etag,
-          'Cache-Control': 'private, no-cache',
+          'Cache-Control': 'private, max-age=3600',
         },
       })
     }
@@ -68,7 +68,11 @@ export async function GET(request: NextRequest) {
     const headers: Record<string, string> = {
       'Content-Type': result.blob.contentType,
       ETag: result.blob.etag,
-      'Cache-Control': 'private, no-cache',
+      // Cache PRIVE autorise (jamais partage entre comptes). Chaque video a un
+      // chemin unique et immuable -> on laisse le navigateur et le moteur media
+      // stocker les portions d'octets. NE PAS utiliser `no-store` ni `no-cache`
+      // ici : Safari/iOS en a besoin pour lire et seeker la video.
+      'Cache-Control': 'private, max-age=3600',
       // Indispensable pour la lecture video : annonce la taille et le support
       // des requetes partielles (seek).
       'Accept-Ranges': 'bytes',
