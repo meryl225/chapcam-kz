@@ -1,11 +1,29 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { get } from '@vercel/blob'
+import { head, issueSignedToken, presignUrl } from '@vercel/blob'
 import { createClient } from '@/lib/supabase/server'
 
 // Sert une video de l'historique depuis le store Blob PRIVE.
-// Securite : on exige un utilisateur authentifie ET on verifie que le pathname
-// demande appartient bien a cet utilisateur (prefixe videos/<user_id>/).
-// Ainsi personne ne peut lire les videos d'un autre compte en devinant un chemin.
+//
+// ARCHITECTURE (corrige le bug "500 en production uniquement") :
+// On NE fait PLUS transiter les octets de la video a travers la fonction
+// serverless. En production, les fonctions Vercel imposent une limite de taille
+// de reponse (~4,5 Mo) absente du serveur de dev de la preview v0 -> toute video
+// plus lourde renvoyait un 500 en prod alors que tout marchait en preview.
+//
+// A la place, comme le font les apps pro (URLs presignees facon S3) :
+//   1) on authentifie l'utilisateur ET on verifie que le fichier lui appartient
+//      (prefixe videos/<user_id>/) — securite STRICTEMENT identique a avant ;
+//   2) on genere une URL presignee temporaire (1h) vers le store Blob prive ;
+//   3) on redirige (303) le navigateur vers cette URL.
+// Le CDN Blob sert alors les octets directement : Range/seek natifs, aucune
+// limite de taille (gere meme les fichiers de 100+ Mo), et la fonction renvoie
+// une reponse minuscule -> plus jamais de 500.
+export const dynamic = 'force-dynamic'
+
+// Duree de validite de l'URL presignee. Large marge pour lire une video en
+// entier sans que le lien n'expire en cours de lecture.
+const PRESIGN_TTL_MS = 60 * 60 * 1000 // 1 heure
+
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const {
@@ -22,87 +40,57 @@ export async function GET(request: NextRequest) {
   }
 
   // Le chemin DOIT commencer par le prefixe de l'utilisateur courant.
+  // C'est ce qui empeche un compte de lire les videos d'un autre en devinant
+  // un chemin. (Verification inchangee par rapport a l'ancienne version.)
   if (!pathname.startsWith(`videos/${user.id}/`)) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 
   try {
-    // Le <video> du navigateur envoie une requete "Range" (ex: bytes=0-) pour
-    // pouvoir demarrer la lecture et permettre le seek. On la transmet telle
-    // quelle au store Blob (qui supporte nativement les ranges) et on relaie
-    // sa reponse partielle. SANS ca, la video restait bloquee a 0:00.
-    const range = request.headers.get('range') ?? undefined
-
-    const result = await get(pathname, {
-      access: 'private',
-      ifNoneMatch: request.headers.get('if-none-match') ?? undefined,
-      headers: range ? { Range: range } : undefined,
-    })
-
-    if (!result) {
+    // Verifie l'existence du blob. `head` deduit prive/public du token, donc pas
+    // d'option `access`. Les metadonnees stockees portent deja le bon
+    // content-type video/* et `Content-Disposition: inline` (garanti par le
+    // re-hebergement + le backfill), ce qui rend la lecture iOS/Safari fiable.
+    const meta = await head(pathname).catch(() => null)
+    if (!meta) {
       return new NextResponse('Introuvable', { status: 404 })
     }
 
-    // Non modifie : le navigateur reutilise sa copie en cache.
-    if (result.statusCode === 304) {
-      return new NextResponse(null, {
-        status: 304,
-        headers: {
-          ETag: result.blob.etag,
-          'Cache-Control': 'private, max-age=3600',
-        },
-      })
-    }
+    const validUntil = Date.now() + PRESIGN_TTL_MS
 
-    // CONTENT-TYPE NORMALISE (critique pour iOS/Safari) : certaines videos ont
-    // ete stockees avec un type generique (`binary/octet-stream`) car le CDN
-    // source ne renvoyait pas de type video. Chrome desktop devine le format et
-    // lit quand meme, mais Safari iOS REFUSE de lire un media dont le type n'est
-    // pas `video/*` -> ecran noir + icone de lecture barree sur iPhone. On force
-    // donc un type video fiable, deduit de l'extension du fichier, sans avoir a
-    // re-uploader quoi que ce soit.
-    const rawType = result.blob.contentType || ''
-    const isWebm = /\.webm$/i.test(pathname) || rawType.includes('webm')
-    const safeContentType = isWebm ? 'video/webm' : 'video/mp4'
-    const ext = isWebm ? 'webm' : 'mp4'
+    // 1) Jeton signe autorisant UNIQUEMENT la lecture (get) de CE pathname.
+    const token = await issueSignedToken({
+      pathname,
+      operations: ['get'],
+      validUntil,
+    })
 
-    // ?download=1 -> force le telechargement (enregistrement mobile/ordinateur)
-    // au lieu d'une lecture inline, avec un nom de fichier lisible.
-    const wantsDownload = request.nextUrl.searchParams.get('download') === '1'
-    const downloadName = `chapcam-${(pathname.split('/').pop() || 'video').replace(/\.(mp4|webm)$/i, '')}.${ext}`
+    // 2) URL presignee temporaire vers le store prive. useCache:false -> lit
+    //    l'origine (metadonnees a jour). Le content-type et la disposition
+    //    proviennent des metadonnees stockees du blob (video/* + inline).
+    const { presignedUrl } = await presignUrl(token, {
+      operation: 'get',
+      pathname,
+      access: 'private',
+      validUntil,
+      useCache: false,
+    })
 
-    // Métadonnées de la reponse d'origine : taille totale, portion servie.
-    const contentRange = result.headers.get('content-range') ?? undefined
-    const contentLength =
-      result.headers.get('content-length') ?? String(result.blob.size)
-
-    const headers: Record<string, string> = {
-      'Content-Type': safeContentType,
-      ETag: result.blob.etag,
-      // Cache PRIVE autorise (jamais partage entre comptes). Chaque video a un
-      // chemin unique et immuable -> on laisse le navigateur et le moteur media
-      // stocker les portions d'octets. NE PAS utiliser `no-store` ni `no-cache`
-      // ici : Safari/iOS en a besoin pour lire et seeker la video.
-      'Cache-Control': 'private, max-age=3600',
-      // Indispensable pour la lecture video : annonce la taille et le support
-      // des requetes partielles (seek).
-      'Accept-Ranges': 'bytes',
-      'Content-Length': contentLength,
-    }
-    if (contentRange) {
-      headers['Content-Range'] = contentRange
-    }
-    if (wantsDownload) {
-      headers['Content-Disposition'] = `attachment; filename="${downloadName}"`
-    }
-
-    // 206 Partial Content quand le client a demande une portion (lecture/seek),
-    // sinon 200 pour la reponse complete.
-    const status = range && contentRange ? 206 : 200
-
-    return new NextResponse(result.stream, { status, headers })
+    // 3) Redirection : le navigateur va chercher les octets sur le CDN Blob.
+    //    303 pour que la requete suivante soit bien un GET.
+    return NextResponse.redirect(presignedUrl, {
+      status: 303,
+      headers: {
+        // La redirection elle-meme ne doit pas etre mise en cache (l'URL
+        // presignee expire) ; le CDN gere le cache des octets video.
+        'Cache-Control': 'private, no-store',
+      },
+    })
   } catch (error) {
     console.error('[videos/file] Erreur service video:', error)
-    return NextResponse.json({ error: 'Échec du service de la vidéo' }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Échec du service de la vidéo' },
+      { status: 500 },
+    )
   }
 }
