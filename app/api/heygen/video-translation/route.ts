@@ -20,6 +20,10 @@ import {
 // mode Rapide = 1 credit, mode Precision = 2 credits. La video source est
 // plafonnee a 60s cote client pour borner le cout HeyGen.
 
+// Le re-hebergement Blob (telechargement de la video finale + upload) peut etre
+// long : on laisse une large marge pour ne pas couper la finalisation.
+export const maxDuration = 300
+
 const HEYGEN_API = "https://api.heygen.com"
 const HEYGEN_UPLOAD = "https://upload.heygen.com/v1/asset"
 const MAX_VIDEO = 60 * 1024 * 1024 // 60 Mo (une video <=60s en 720p reste legere)
