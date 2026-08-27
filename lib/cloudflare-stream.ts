@@ -1,6 +1,7 @@
 import 'server-only'
 import crypto from 'node:crypto'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
+import { issueSignedToken, presignUrl } from '@vercel/blob'
 
 // ============================================================
 // Cloudflare Stream : couche de LECTURE video (streaming adaptatif HLS).
@@ -137,6 +138,45 @@ export async function copyUrlToStream(url: string, name: string): Promise<CopyRe
   const customerCode = (hls.match(/customer-([a-z0-9]+)\./) || [])[1] || null
   if (customerCode) await saveCustomerCode(customerCode)
   return { uid, customerCode }
+}
+
+/**
+ * Presigne un blob PRIVE (URL temporaire fetchable) puis demande a Cloudflare
+ * Stream de l'aspirer. Retourne l'uid Stream + le code client. Utilise a
+ * l'ingestion d'une nouvelle video (apres re-hebergement Blob).
+ */
+export async function copyBlobPathnameToStream(
+  pathname: string,
+  name: string,
+): Promise<CopyResult> {
+  const validUntil = Date.now() + 60 * 60 * 1000 // 1h : large pour l'aspiration CF
+  const token = await issueSignedToken({ pathname, operations: ['get'], validUntil })
+  const { presignedUrl } = await presignUrl(token, {
+    operation: 'get',
+    pathname,
+    access: 'private',
+    validUntil,
+    useCache: false,
+  })
+  return copyUrlToStream(presignedUrl, name)
+}
+
+/**
+ * Persiste l'uid Stream (+ code client) sur la ligne d'historique. Best-effort :
+ * en cas d'echec, la lecture retombera sur le master Blob.
+ */
+export async function saveStreamUidForRef(
+  userId: string,
+  tool: string,
+  providerRef: string,
+  uid: string,
+  customerCode: string | null,
+): Promise<void> {
+  await sql`
+    UPDATE video_history
+    SET stream_uid = ${uid}, stream_customer_code = ${customerCode}
+    WHERE user_id = ${userId} AND tool = ${tool} AND provider_ref = ${providerRef}
+  `.catch(() => {})
 }
 
 // -------------------- Etat / suppression --------------------
