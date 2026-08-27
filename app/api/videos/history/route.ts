@@ -39,8 +39,7 @@ export async function GET(request: NextRequest) {
       (v) =>
         v.status === 'completed' &&
         !v.blob_pathname &&
-        v.provider_ref &&
-        (v.tool === 'photo_video' || v.tool === 'translation'),
+        !!v.provider_ref, // tous les outils sont reparables (HeyGen + Kling/Motion)
     )
     const healed = new Map<string, string>()
     if (repairable.length > 0) {
@@ -52,6 +51,7 @@ export async function GET(request: NextRequest) {
             id: v.id,
             tool: v.tool,
             providerRef: v.provider_ref as string,
+            title: v.title,
           }).catch(() => null),
         ),
       )

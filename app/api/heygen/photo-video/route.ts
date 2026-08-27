@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { photoVideoQuotaForPlan } from "@/lib/plans"
 import { getPhotoVideoBalance, addPhotoVideoCredits, deductPhotoVideoCredit } from "@/lib/photo-video-quota"
 import { logToolUsage } from "@/lib/tool-usage"
-import { rehostToBlob, saveVideoHistory, isAlreadyRehosted } from "@/lib/video-history"
+import { saveVideoHistory, finalizeCompletedVideo } from "@/lib/video-history"
 
 // Le clonage de voix HeyGen est ASYNCHRONE (~30-90s de traitement). On attend
 // que le clone soit "complete" avant de creer la video, donc la requete peut
@@ -451,37 +451,40 @@ export async function GET(request: NextRequest) {
       }).catch(() => {})
     }
 
-    // Historique PERMANENT : quand la video est prete, on la re-heberge dans le
-    // Blob prive (les URLs HeyGen expirent ~7j) et on l'enregistre pour cet
-    // utilisateur. Idempotent : on ne re-heberge pas si c'est deja fait.
-    let historyUrl: string | null = null
+    // Historique PERMANENT : quand HeyGen a fini, on GARANTIT une copie Blob
+    // privee avant de declarer la video "terminee" au client (les URLs HeyGen
+    // expirent ~7j). Tant que la copie n'est pas prete, on renvoie "processing"
+    // pour que le client continue a interroger -> plus jamais de "video expiree".
+    let effectiveStatus = data.status || "unknown" // pending | processing | completed | failed
+    let outUrl: string | null = data.video_url || null
     if (data.status === "completed" && data.video_url) {
       try {
-        const already = await isAlreadyRehosted(user.id, "photo_video", videoId)
-        if (!already) {
-          const pathname = await rehostToBlob(data.video_url, user.id, "photo_video", videoId)
-          await saveVideoHistory({
-            userId: user.id,
-            tool: "photo_video",
-            providerRef: videoId,
-            blobPathname: pathname,
-            thumbnailUrl: data.thumbnail_url || null,
-            title: "Studio Photo en Vidéo",
-            status: "completed",
-          })
-          if (pathname) historyUrl = `/api/videos/file?pathname=${encodeURIComponent(pathname)}`
+        const fin = await finalizeCompletedVideo({
+          userId: user.id,
+          tool: "photo_video",
+          providerRef: videoId,
+          providerUrl: data.video_url,
+          title: "Studio Photo en Vidéo",
+          thumbnailUrl: data.thumbnail_url || null,
+        })
+        if (fin.state === "ready" || fin.state === "fallback") {
+          outUrl = fin.url
+        } else {
+          // Copie permanente pas encore prete : ne pas declarer "termine".
+          effectiveStatus = "processing"
+          outUrl = null
         }
       } catch (e) {
-        // Non bloquant : on renvoie quand meme l'URL HeyGen au client.
-        console.error("[PhotoVideo] Historique non enregistre:", e)
+        console.error("[PhotoVideo] Finalisation historique:", e)
+        effectiveStatus = "processing"
+        outUrl = null
       }
     }
 
     return NextResponse.json({
       success: true,
-      status: data.status || "unknown", // pending | processing | completed | failed
-      // On privilegie l'URL Blob durable si disponible, sinon l'URL HeyGen.
-      video_url: historyUrl || data.video_url || null,
+      status: effectiveStatus,
+      video_url: outUrl,
       thumbnail_url: data.thumbnail_url || null,
       duration: data.duration || null,
       error: data.error || null,

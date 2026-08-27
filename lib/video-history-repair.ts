@@ -1,5 +1,6 @@
 import 'server-only'
-import { rehostToBlob, setBlobPathname, type VideoTool } from '@/lib/video-history'
+import { finalizeCompletedVideo, type VideoTool } from '@/lib/video-history'
+import { getMotionTask } from '@/lib/kling'
 
 // ============================================================
 // Auto-reparation de l'historique video.
@@ -17,11 +18,20 @@ import { rehostToBlob, setBlobPathname, type VideoTool } from '@/lib/video-histo
 
 const HEYGEN_API = 'https://api.heygen.com'
 
-/** Redemande a HeyGen une URL de telechargement fraiche pour une reference donnee. */
+/**
+ * Redemande au fournisseur une URL de telechargement fraiche pour une reference
+ * donnee : HeyGen (photo_video / translation) ou Kling (motion).
+ */
 async function fetchFreshUrl(tool: VideoTool, ref: string): Promise<string | null> {
-  const apiKey = process.env.HEYGEN_API_KEY
-  if (!apiKey) return null
   try {
+    // Motion : la source vit chez Kling (~30j). On interroge la tache par son id.
+    if (tool === 'motion') {
+      const task = await getMotionTask(ref).catch(() => null)
+      return task?.status === 'succeeded' ? task.videoUrl || null : null
+    }
+
+    const apiKey = process.env.HEYGEN_API_KEY
+    if (!apiKey) return null
     if (tool === 'photo_video') {
       const res = await fetch(
         `${HEYGEN_API}/v1/video_status.get?video_id=${encodeURIComponent(ref)}`,
@@ -60,20 +70,32 @@ export async function repairVideoRow(input: {
   id: string
   tool: VideoTool
   providerRef: string
+  title?: string
 }): Promise<string | null> {
-  const { userId, id, tool, providerRef } = input
-  // Motion re-heberge depuis fal via un autre flux ; seuls les outils HeyGen
-  // sont reparables ici a partir de la reference.
-  if (tool !== 'photo_video' && tool !== 'translation') return null
+  const { userId, tool, providerRef, title } = input
+  // Tous les outils sont reparables : HeyGen (photo_video/translation) via
+  // l'API de statut, Motion via la tache Kling (source valide ~30j).
   const freshUrl = await fetchFreshUrl(tool, providerRef)
   if (!freshUrl) return null
-  const pathname = await rehostToBlob(freshUrl, userId, tool, providerRef)
-  if (!pathname) return null
-  try {
-    await setBlobPathname(userId, id, pathname)
-  } catch (e) {
-    console.error('[video-repair] setBlobPathname echoue:', e)
-    return null
-  }
-  return pathname
+  // finalizeCompletedVideo gere le verrou anti-concurrence, le re-hebergement
+  // (avec retries) et la mise a jour "completed" de la ligne existante.
+  const fin = await finalizeCompletedVideo({
+    userId,
+    tool,
+    providerRef,
+    providerUrl: freshUrl,
+    title: title || defaultTitle(tool),
+  })
+  if (fin.state !== 'ready') return null
+  // La route d'historique attend le PATHNAME brut (elle le re-emballe ensuite
+  // en URL de service). On le decode depuis l'URL renvoyee par finalize.
+  const prefix = '/api/videos/file?pathname='
+  return fin.url.startsWith(prefix) ? decodeURIComponent(fin.url.slice(prefix.length)) : null
+}
+
+// Titre par defaut si la ligne n'en a pas (rare).
+function defaultTitle(tool: VideoTool): string {
+  if (tool === 'photo_video') return 'Studio Photo en Vidéo'
+  if (tool === 'translation') return 'Traduction Vidéo'
+  return 'Motion Control'
 }
