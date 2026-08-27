@@ -25,6 +25,11 @@ export interface VideoHistoryItem {
   blob_pathname: string | null
   // Miniature optionnelle (URL directe fournisseur, non critique si elle expire).
   thumbnail_url: string | null
+  // UID Cloudflare Stream (lecture HLS adaptative) + sous-domaine CDN du compte.
+  // Present des que la video a ete aspiree dans Stream ; le master Blob reste la
+  // source de telechargement.
+  stream_uid: string | null
+  stream_customer_code: string | null
   title: string
   status: 'processing' | 'completed' | 'failed'
   created_at: string
@@ -461,14 +466,14 @@ export async function listVideoHistory(
   await ensureTable()
   const rows = tool
     ? ((await sql`
-        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, stream_uid, stream_customer_code, title, status, created_at
         FROM video_history
         WHERE user_id = ${userId} AND tool = ${tool}
         ORDER BY created_at DESC
         LIMIT ${limit}
       `) as VideoHistoryItem[])
     : ((await sql`
-        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, stream_uid, stream_customer_code, title, status, created_at
         FROM video_history
         WHERE user_id = ${userId}
         ORDER BY created_at DESC
