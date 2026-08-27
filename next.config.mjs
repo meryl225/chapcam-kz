@@ -45,7 +45,17 @@ const nextConfig = {
         ],
       },
       {
-        source: '/api/:path*',
+        // IMPORTANT : on EXCLUT /api/videos/file de cette regle.
+        // Cette route sert des octets video (lecture + seek) et definit elle-meme
+        // `Cache-Control: private, max-age=3600`. Si on lui imposait `no-store`
+        // ici, Safari (iOS ET macOS) REFUSERAIT de lire la video -> ecran noir +
+        // icone de lecture barree EN PRODUCTION (l'apercu v0 supprime ces en-tetes,
+        // d'ou "ca marche cote v0 mais pas sur le site"). Le lookahead negatif
+        // `(?!videos/file)` laisse toutes les autres routes /api en `no-store`.
+        // Le middleware applique deja `no-store` aux autres routes API : aucune
+        // perte de securite. Le streaming video est par ailleurs bypasse dans le
+        // middleware, donc cette route n'a plus AUCUNE source de `no-store`.
+        source: '/api/((?!videos/file).*)',
         headers: [
           { key: 'Cache-Control', value: 'no-store, no-cache, must-revalidate' },
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
