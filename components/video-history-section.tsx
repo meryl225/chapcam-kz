@@ -186,16 +186,23 @@ export function VideoHistorySection({
                       className="group relative h-full w-full"
                       aria-label={`Lire ${v.title || "la vidéo"}`}
                     >
+                      {/* Fond neutre toujours present : si la miniature echoue a
+                          charger, on masque l'<img> (onError) et ce fond reste
+                          visible sous le bouton lecture -> jamais d'icone "fichier
+                          casse". */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.06] to-black/40" />
                       {v.thumbnail_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={v.thumbnail_url || "/placeholder.svg"}
                           alt=""
-                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          className="relative h-full w-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none"
+                          }}
                         />
-                      ) : (
-                        <div className="h-full w-full bg-black/40" />
-                      )}
+                      ) : null}
                       <span className="absolute inset-0 flex items-center justify-center">
                         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm transition-transform group-hover:scale-110">
                           <Play className="h-6 w-6 translate-x-0.5 fill-white text-white" />
