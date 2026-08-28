@@ -209,7 +209,7 @@ export function HeroSection() {
               <StreamStudio />
             </MonitorFrame>
 
-            <div className="mx-auto mt-8 w-[140px] sm:w-[150px] lg:absolute lg:-bottom-4 lg:right-0 lg:z-20 lg:mt-0 lg:w-[150px] xl:-right-2 xl:w-[164px]">
+            <div className="mx-auto mt-8 w-[165px] sm:w-[175px] lg:absolute lg:-bottom-5 lg:right-0 lg:z-20 lg:mt-0 lg:w-[178px] xl:-right-2 xl:w-[190px]">
               <PhoneMockup />
             </div>
           </div>
