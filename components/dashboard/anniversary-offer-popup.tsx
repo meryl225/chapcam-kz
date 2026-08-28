@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Flame, PartyPopper, Gift, ArrowRight } from 'lucide-react'
+import { X, Flame, PartyPopper, Gift, ArrowRight, Crown } from 'lucide-react'
+import { PLANS } from '@/lib/plans'
 
 // Incremente ce suffixe pour re-afficher le popup a tous les clients.
 const SEEN_KEY = 'chapcam-anniversary-3mois-seen'
@@ -10,36 +11,9 @@ const SEEN_KEY = 'chapcam-anniversary-3mois-seen'
 const END_KEY = 'chapcam-anniversary-3mois-end'
 const OFFER_DURATION_MS = 7 * 24 * 60 * 60 * 1000
 
-// Grille des tarifs anniversaire (montant FCFA -> minutes de swap).
-const OFFERS = [
-  { price: '5.000', minutes: 5, label: 'Forfait Testeur', highlight: true },
-  { price: '10.000', minutes: 10 },
-  { price: '20.000', minutes: 20 },
-  { price: '50.000', minutes: 50 },
-  { price: '100.000', minutes: 100 },
-]
-
-// Forfaits d'abonnement mis en avant (memes valeurs que lib/plans.ts).
-const PLAN_CARDS = [
-  {
-    name: 'Starter',
-    duration: '1 JOUR',
-    price: '10.000',
-    oldPrice: '12.000',
-    discount: 17,
-    validity: 'Valable 24 heures',
-    accent: 'text-cyan-400',
-  },
-  {
-    name: 'Premium',
-    duration: '90 JOURS',
-    price: '50.000',
-    oldPrice: '65.000',
-    discount: 23,
-    validity: 'Valable 3 mois',
-    accent: 'text-emerald-400',
-  },
-]
+// Formatage FCFA "10 000" (source de verite = lib/plans.ts, memes prix que la
+// page /dashboard/plans -> aucune incoherence possible).
+const fmt = (n: number) => n.toLocaleString('fr-FR').replace(/\u202f/g, ' ')
 
 function getOrCreateEnd(): number {
   try {
@@ -147,8 +121,8 @@ export function AnniversaryOfferPopup() {
             </span>
           </p>
           <p className="relative mx-auto mt-3 max-w-sm text-pretty text-sm leading-relaxed text-gray-300">
-            Pendant 7 jours seulement, profitez de nos tarifs anniversaire sur les minutes de swap
-            en direct.
+            Pendant 7 jours seulement, profitez de nos tarifs anniversaire réduits sur tous les
+            forfaits de swap en direct.
           </p>
         </div>
 
@@ -176,57 +150,45 @@ export function AnniversaryOfferPopup() {
           </div>
         </div>
 
-        {/* Grille des tarifs */}
+        {/* Forfaits reels (source = lib/plans.ts, identiques a /dashboard/plans) */}
         <div className="space-y-2.5 px-6 pt-5">
-          {OFFERS.map((offer) => (
+          {PLANS.map((plan) => (
             <div
-              key={offer.price}
+              key={plan.id}
               className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${
-                offer.highlight
+                plan.bestOffer
                   ? 'border-emerald-500/50 bg-emerald-500/10'
                   : 'border-white/10 bg-white/[0.03]'
               }`}
             >
-              <div className="flex items-baseline gap-2">
-                <span
-                  className={`text-lg font-black ${offer.highlight ? 'text-emerald-400' : 'text-white'}`}
-                >
-                  {offer.price}
-                </span>
-                <span className="text-sm text-gray-400">FCFA</span>
-                {offer.label && (
-                  <span className="ml-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
-                    {offer.label}
-                  </span>
-                )}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="truncate text-sm font-bold text-white">{plan.name}</span>
+                  {plan.bestOffer && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
+                      <Crown className="h-3 w-3" />
+                      Meilleure offre
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] uppercase tracking-wide text-gray-500">{plan.duration}</p>
               </div>
-              <span className="text-sm font-bold text-violet-300">
-                {offer.minutes} min
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Forfaits d'abonnement mis en avant */}
-        <div className="grid grid-cols-2 gap-2.5 px-6 pt-4">
-          {PLAN_CARDS.map((plan) => (
-            <div
-              key={plan.name}
-              className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5"
-            >
-              <p className="text-sm font-bold text-white">{plan.name}</p>
-              <p className="text-[11px] uppercase tracking-wide text-gray-500">{plan.duration}</p>
-              <div className="mt-2 flex items-center gap-1.5">
-                <span className="text-xs text-gray-500 line-through">{plan.oldPrice}</span>
+              <div className="flex flex-shrink-0 items-center gap-2.5">
                 <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-bold text-red-400">
                   -{plan.discount}%
                 </span>
+                <div className="text-right">
+                  <span className="text-xs text-gray-500 line-through">{fmt(plan.oldPrice)}</span>
+                  <p className="leading-none">
+                    <span
+                      className={`text-lg font-black ${plan.bestOffer ? 'text-emerald-400' : 'text-white'}`}
+                    >
+                      {fmt(plan.price)}
+                    </span>
+                    <span className="ml-1 text-xs text-gray-400">FCFA</span>
+                  </p>
+                </div>
               </div>
-              <p className="mt-0.5">
-                <span className={`text-xl font-black ${plan.accent}`}>{plan.price}</span>
-                <span className="ml-1 text-xs text-gray-400">FCFA</span>
-              </p>
-              <p className="mt-1 text-[11px] text-gray-500">{plan.validity}</p>
             </div>
           ))}
         </div>
