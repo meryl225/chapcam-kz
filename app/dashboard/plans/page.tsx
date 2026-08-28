@@ -353,15 +353,17 @@ function PlansContent() {
                   onClick={() => startCheckout(plan.id)}
                   disabled={!!pendingKey}
                   style={{
-                    // Degrade lumineux a la couleur d'accent de la carte + halo
-                    // colore : le bouton "ressort" et donne envie de cliquer.
-                    backgroundImage: `linear-gradient(180deg, ${accent} 0%, ${accent}d9 100%)`,
-                    boxShadow: `0 0 0 1px ${accent}66, 0 8px 24px -6px ${accent}b3, 0 0 32px -4px ${accent}80`,
+                    // Aspect "SaaS premium" : degrade de surface a la couleur
+                    // d'accent (plus clair en haut) + reflet superieur + fin
+                    // liseré blanc + ombre portee SOMBRE et nette. Plus de halo
+                    // colore diffus qui "bave" (rendu cheap).
+                    backgroundImage: `linear-gradient(180deg, color-mix(in srgb, #fff 18%, ${accent}) 0%, ${accent} 48%, ${accent}e6 100%)`,
+                    boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.38), 0 6px 14px -8px rgba(0,0,0,0.55), 0 2px 4px -2px ${accent}4d`,
                   }}
                   className="group relative mt-10 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-4 text-base font-bold text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {/* Reflet brillant qui balaie le bouton au survol */}
-                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
                   {loading ? (
                     <Loader2 className="relative h-5 w-5 animate-spin" />
                   ) : (
