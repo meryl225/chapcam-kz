@@ -13,7 +13,6 @@ import {
   Search,
   Check,
   Smartphone,
-  Bitcoin,
   ArrowRight,
 } from 'lucide-react'
 import { isInAppBrowser } from '@/lib/in-app-browser'
@@ -304,6 +303,7 @@ export function usePaymentCheckout() {
                   <div className="flex flex-col gap-3">
                     {country.methods.map((m, i) => {
                       const selected = method?.id === m.id
+                      const Icon = Smartphone // fallback si aucun logo operateur
                       // Vrais logos operateurs : soit la ligne agregee "Mobile
                       // Money" (cluster de tous les operateurs du pays), soit une
                       // ligne dediee a un operateur precis (son logo seul).
@@ -342,6 +342,22 @@ export function usePaymentCheckout() {
                                 />
                               </span>
                             </span>
+                          ) : rowLogos.length > 0 ? (
+                            <span className="flex shrink-0 items-center -space-x-1.5">
+                              {rowLogos.slice(0, 4).map((op) => (
+                                <span
+                                  key={op.key}
+                                  title={op.label}
+                                  className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-white ring-2 ring-[#0a0b13]"
+                                >
+                                  <img
+                                    src={op.logo || "/placeholder.svg"}
+                                    alt={op.label}
+                                    className="max-h-6 max-w-6 object-contain"
+                                  />
+                                </span>
+                              ))}
+                            </span>
                           ) : (
                             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f59e0b]/20 to-[#d97706]/10 text-[#fbbf24] ring-1 ring-inset ring-[#f59e0b]/20">
                               <Icon className="h-5 w-5" />
@@ -379,8 +395,12 @@ export function usePaymentCheckout() {
                     disabled={busy}
                     className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition-all hover:border-[#f7931a]/50 disabled:opacity-60"
                   >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f7931a]/20 to-[#26a17b]/15 text-[#f7931a] ring-1 ring-inset ring-[#f7931a]/20">
-                      {pendingMethod === 'nowpayments' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Bitcoin className="h-5 w-5" />}
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white ring-1 ring-inset ring-[#f7931a]/20">
+                      {pendingMethod === 'nowpayments' ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-[#f7931a]" />
+                      ) : (
+                        <img src="/images/bitcoin-icon.svg" alt="Bitcoin" className="h-7 w-7 object-contain" />
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[15px] font-semibold text-white">{t('Payer en cryptomonnaie')}</span>
