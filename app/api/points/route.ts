@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pointsPerSecond } from '@/lib/swap-pricing'
 import { trackGPUUsage } from '@/lib/rate-limit'
-import { GRACE_DAYS } from '@/lib/live-guard'
+import { cancelSubscription } from '@/lib/live-guard'
 
 export async function POST(request: NextRequest) {
   try {
@@ -309,23 +309,27 @@ export async function GET() {
     const expiresMs = subscription.expires_at ? new Date(subscription.expires_at).getTime() : null
     const isExpired = expiresMs !== null && expiresMs < Date.now()
 
-    // Fenetre de grace de GRACE_DAYS : passe ce delai, les points non utilises
-    // sont definitivement remis a zero (meme regle que le verrou de swap).
+    // Expiration = annulation IMMEDIATE, sans fenetre de grace. Des que la date
+    // d'expiration est depassee, le forfait est annule : points a zero, forfait
+    // desactive et repasse en 'free' (meme regle que le verrou de swap).
     let points = subscription.points || 0
-    if (isExpired && expiresMs !== null) {
-      const daysSinceExpiry = (Date.now() - expiresMs) / 86_400_000
-      if (daysSinceExpiry > GRACE_DAYS && points > 0) {
-        await supabase.from('subscriptions').update({ points: 0 }).eq('user_id', user.id)
-        points = 0
+    let plan = subscription.plan || 'free'
+    let isActive = subscription.is_active
+    if (isExpired) {
+      if (points > 0 || isActive || plan !== 'free') {
+        await cancelSubscription(user.id)
       }
+      points = 0
+      plan = 'free'
+      isActive = false
     }
 
     return NextResponse.json({
       success: true,
       points,
-      maxPoints: subscription.max_points || 0,
-      plan: subscription.plan || 'free',
-      isActive: subscription.is_active && !isExpired,
+      maxPoints: isExpired ? 0 : (subscription.max_points || 0),
+      plan,
+      isActive,
       expiresAt: subscription.expires_at
     })
 

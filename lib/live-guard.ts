@@ -1,14 +1,23 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { POINTS_PER_SECOND_SD } from '@/lib/swap-pricing'
 
 // Nombre minimal de points pour DEMARRER un swap : 1 palier de deduction (5s)
 // au tarif de base 720p (2 pts/s) = 10 points. Meme regle que le hook client.
 export const MIN_POINTS_TO_START = POINTS_PER_SECOND_SD * 5
 
-// Fenetre de grace : apres expiration de l'abonnement, le client garde acces
-// a ses points restants pendant ce nombre de jours (il a paye pour ces points).
-// Passe ce delai, les points non utilises sont definitivement perdus.
-export const GRACE_DAYS = 7
+// Expiration = annulation IMMEDIATE du forfait. Des que la date d'expiration
+// est depassee, le forfait est annule : points remis a zero, forfait desactive
+// et repasse en 'free'. Il n'y a AUCUNE fenetre de grace.
+export async function cancelSubscription(userId: string): Promise<void> {
+  // Ecriture avec le service_role : on force la remise a zero meme si la RLS
+  // publique restreint la colonne is_active / plan.
+  const admin = createAdminClient()
+  await admin
+    .from('subscriptions')
+    .update({ points: 0, is_active: false, plan: 'free' })
+    .eq('user_id', userId)
+}
 
 export type LiveGuardResult = {
   /** true => l'utilisateur peut recevoir un token Decart */
@@ -19,8 +28,6 @@ export type LiveGuardResult = {
   plan: string
   /** abonnement actif et non expire */
   isActive: boolean
-  /** true => acces accorde via la fenetre de grace (abonnement expire mais points restants) */
-  inGrace?: boolean
   /** code de refus (pour la reponse API et les logs) */
   reason: 'ok' | 'no_subscription' | 'inactive' | 'insufficient_points' | 'expired'
 }
@@ -58,24 +65,19 @@ export async function checkLiveAccess(userId: string): Promise<LiveGuardResult> 
     return { allowed: false, points, plan, isActive: false, reason: 'inactive' }
   }
 
-  // Abonnement expire : fenetre de grace. Le client peut consommer ses points
-  // restants pendant GRACE_DAYS apres l'expiration, puis c'est bloque ET les
-  // points non utilises sont definitivement remis a zero (expiration paresseuse).
-  let inGrace = false
+  // Abonnement expire : annulation IMMEDIATE, sans fenetre de grace. Des que la
+  // date d'expiration est depassee, le forfait est annule et les points restants
+  // sont definitivement remis a zero (forfait desactive et repasse en 'free').
   if (isExpired) {
-    const daysSinceExpiry = expiresMs !== null ? (now - expiresMs) / 86_400_000 : Infinity
-    if (daysSinceExpiry > GRACE_DAYS) {
-      if (points > 0) {
-        await supabase.from('subscriptions').update({ points: 0 }).eq('user_id', userId)
-      }
-      return { allowed: false, points: 0, plan, isActive: false, reason: 'expired' }
+    if (points > 0 || sub.is_active || plan !== 'free') {
+      await cancelSubscription(userId)
     }
-    inGrace = true
+    return { allowed: false, points: 0, plan: 'free', isActive: false, reason: 'expired' }
   }
 
   if (points < MIN_POINTS_TO_START) {
-    return { allowed: false, points, plan, isActive, inGrace, reason: 'insufficient_points' }
+    return { allowed: false, points, plan, isActive, reason: 'insufficient_points' }
   }
 
-  return { allowed: true, points, plan, isActive, inGrace, reason: 'ok' }
+  return { allowed: true, points, plan, isActive, reason: 'ok' }
 }
