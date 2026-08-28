@@ -31,7 +31,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "240 points (2 min)",
+      "360 points (3 min)",
       "Qualite HD"
     ],
     photoVideos: 0,
@@ -404,7 +404,7 @@ export function PricingSection() {
                   </div>
                 )}
 
-                {/* Le Forfait Testeur (5.000 F) est le pack minutes "anniv_5" (2 min)
+                {/* Le Forfait Testeur (5.000 F) est le pack minutes "anniv_5" (3 min)
                     deja cable au paiement -> on redirige vers cet identifiant. */}
                 <Link href={`/dashboard/plans?plan=${plan.id === "testeur" ? "anniv_5" : plan.id}`}>
                   <button
