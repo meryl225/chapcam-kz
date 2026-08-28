@@ -20,6 +20,20 @@ export interface MinutesOffer {
   validityDays: number // fenetre de validite garantie pour les minutes ajoutees
 }
 
+// Helper : points credites = minutes * 60s * (points/seconde 720p).
+const minutesToPoints = (min: number) => min * 60 * POINTS_PER_SECOND_SD
+
+// --- Offre ANNIVERSAIRE "3 mois" (grille en minutes affichee dans le popup et
+// sur la page de recharge). Tarif promo : 1 000 FCFA / minute de swap.
+// Ces packs creditent des POINTS et n'affectent pas le forfait de l'utilisateur.
+export const ANNIVERSARY_MINUTES_OFFERS: MinutesOffer[] = [
+  { id: 'anniv_5', name: 'Forfait Testeur — 5 minutes', price: 5000, minutes: 5, points: minutesToPoints(5), validityDays: 30 },
+  { id: 'anniv_10', name: '10 minutes de swap', price: 10000, minutes: 10, points: minutesToPoints(10), validityDays: 30 },
+  { id: 'anniv_20', name: '20 minutes de swap', price: 20000, minutes: 20, points: minutesToPoints(20), validityDays: 30 },
+  { id: 'anniv_50', name: '50 minutes de swap', price: 50000, minutes: 50, points: minutesToPoints(50), validityDays: 60 },
+  { id: 'anniv_100', name: '100 minutes de swap', price: 100000, minutes: 100, points: minutesToPoints(100), validityDays: 90 },
+]
+
 export const MINUTES_OFFERS: MinutesOffer[] = [
   {
     id: 'minutes_4',
@@ -29,10 +43,14 @@ export const MINUTES_OFFERS: MinutesOffer[] = [
     points: 4 * 60 * POINTS_PER_SECOND_SD, // 480 points
     validityDays: 30,
   },
+  // L'offre anniversaire fait partie du meme catalogue -> paiement + credit
+  // des points geres par les memes routes serveur (source de verite unique).
+  ...ANNIVERSARY_MINUTES_OFFERS,
 ]
 
-// Offre par defaut (pack unique 4 min) — pratique pour les boutons du hub.
-export const MINUTES_OFFER = MINUTES_OFFERS[0]
+// Offre par defaut (pack 4 min) utilisee par le bouton "+minutes" du Live Swap.
+// Recherche par id (et non par index) pour rester stable si le tableau evolue.
+export const MINUTES_OFFER = MINUTES_OFFERS.find((o) => o.id === 'minutes_4')!
 
 export function getMinutesOffer(id: string): MinutesOffer | undefined {
   return MINUTES_OFFERS.find((o) => o.id === id)

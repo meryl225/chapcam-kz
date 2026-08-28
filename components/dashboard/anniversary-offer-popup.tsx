@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { X, Flame, PartyPopper, Gift, ArrowRight } from 'lucide-react'
+import { ANNIVERSARY_MINUTES_OFFERS } from '@/lib/minutes-offers'
 
 // Incremente ce suffixe pour re-afficher le popup a tous les clients.
 const SEEN_KEY = 'chapcam-anniversary-3mois-seen'
@@ -10,14 +11,17 @@ const SEEN_KEY = 'chapcam-anniversary-3mois-seen'
 const END_KEY = 'chapcam-anniversary-3mois-end'
 const OFFER_DURATION_MS = 7 * 24 * 60 * 60 * 1000
 
-// Grille des tarifs anniversaire (montant FCFA -> minutes de swap en direct).
-const OFFERS = [
-  { price: '5 000', minutes: 5, label: 'Forfait Testeur', highlight: true },
-  { price: '10 000', minutes: 10 },
-  { price: '20 000', minutes: 20 },
-  { price: '50 000', minutes: 50 },
-  { price: '100 000', minutes: 100 },
-]
+// Formatage FCFA "10 000".
+const fmt = (n: number) => n.toLocaleString('fr-FR').replace(/\u202f/g, ' ')
+
+// Grille des tarifs anniversaire (source unique = lib/minutes-offers.ts ->
+// memes packs que la page de recharge, aucune incoherence possible).
+const OFFERS = ANNIVERSARY_MINUTES_OFFERS.map((o, i) => ({
+  price: fmt(o.price),
+  minutes: o.minutes,
+  label: i === 0 ? 'Forfait Testeur' : undefined,
+  highlight: i === 0,
+}))
 
 function getOrCreateEnd(): number {
   try {
