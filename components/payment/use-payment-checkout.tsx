@@ -428,17 +428,21 @@ export function usePaymentCheckout() {
               <button
                 onClick={submit}
                 disabled={busy || !method}
-                className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#7c5cff] to-[#5b3df5] px-6 py-4 text-base font-bold text-white shadow-lg shadow-[#7c5cff]/30 transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a78bfa] disabled:cursor-not-allowed disabled:opacity-50"
+                className="group relative mt-8 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-[#7c5cff] to-[#5b3df5] px-6 py-4 text-base font-bold text-white shadow-lg shadow-[#7c5cff]/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#7c5cff]/40 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a78bfa] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-lg"
               >
+                {/* Reflet lumineux qui balaie le bouton (survol + boucle lente au repos) */}
+                <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
                 {pendingMethod && pendingMethod !== 'nowpayments' ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    {t('Redirection…')}
+                    <Loader2 className="relative h-5 w-5 animate-spin" />
+                    <span className="relative">{t('Redirection…')}</span>
                   </>
                 ) : (
                   <>
-                    {priceLabel ? `${t('Continuer le paiement')} — ${priceLabel}` : t('Continuer le paiement')}
-                    <ArrowRight className="h-5 w-5" />
+                    <span className="relative">
+                      {priceLabel ? `${t('Continuer le paiement')} — ${priceLabel}` : t('Continuer le paiement')}
+                    </span>
+                    <ArrowRight className="relative h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
                   </>
                 )}
               </button>
