@@ -366,13 +366,16 @@ export function PricingSection() {
                   ))}
                 </ul>
 
-                {/* Studio Photo en Video inclus dans le forfait Live Swap */}
-                <div className="mb-8 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
-                  <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
-                  <p className="text-sm font-semibold text-emerald-300 leading-snug">
-                    {t("Studio Photo en Vidéo :")} {plan.photoVideos} {t("vidéos de 30s incluses")}
-                  </p>
-                </div>
+                {/* Studio Photo en Video inclus dans le forfait Live Swap.
+                    Non affiche pour le forfait Starter (10.000 F). */}
+                {plan.id !== "starter" && (
+                  <div className="mb-8 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+                    <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
+                    <p className="text-sm font-semibold text-emerald-300 leading-snug">
+                      {t("Studio Photo en Vidéo :")} {plan.photoVideos} {t("vidéos de 30s incluses")}
+                    </p>
+                  </div>
+                )}
 
                 <Link href={`/dashboard/plans?plan=${plan.id}`}>
                   <Button 
