@@ -42,6 +42,10 @@ function getOrCreateEnd(): number {
   return end
 }
 
+// Offre anniversaire SUSPENDUE : passe a true pour la reafficher (popup + page
+// de recharge lisent ce meme drapeau via OFFER_ACTIVE ci-dessous).
+export const OFFER_ACTIVE = false
+
 export function AnniversaryOfferPopup() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -50,6 +54,7 @@ export function AnniversaryOfferPopup() {
 
   // Affiche le popup une seule fois par client (jusqu'a fermeture).
   useEffect(() => {
+    if (!OFFER_ACTIVE) return
     try {
       const seen = localStorage.getItem(SEEN_KEY)
       if (!seen) {
@@ -96,7 +101,7 @@ export function AnniversaryOfferPopup() {
     router.push('/dashboard/plans')
   }
 
-  if (!open) return null
+  if (!OFFER_ACTIVE || !open) return null
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">

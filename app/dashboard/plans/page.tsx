@@ -8,6 +8,7 @@ import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
 import { ANNIVERSARY_MINUTES_OFFERS } from '@/lib/minutes-offers'
+import { OFFER_ACTIVE } from '@/components/dashboard/anniversary-offer-popup'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 import { PaymentBadgePopup } from '@/components/payment-badge-popup'
 import { CURRENCIES, useXofRates, formatConverted, formatXof, guessCurrency } from '@/lib/currency-convert'
@@ -123,7 +124,8 @@ function PlansContent() {
           </div>
         )}
 
-        {/* ===== Offre ANNIVERSAIRE "3 mois" : grille en minutes (achetable) ===== */}
+        {/* ===== Offre ANNIVERSAIRE "3 mois" : SUSPENDUE (OFFER_ACTIVE=false) ===== */}
+        {OFFER_ACTIVE && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -192,6 +194,7 @@ function PlansContent() {
             {t('Après les 7 jours, retour aux tarifs habituels.')}
           </p>
         </motion.div>
+        )}
 
         {/* Annonce ChapCam 2.0 : les recharges concernent le nouveau logiciel */}
         <motion.div
