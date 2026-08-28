@@ -76,8 +76,24 @@ export async function GET(request: NextRequest) {
       useCache: false,
     })
 
-    // 3) Redirection : le navigateur va chercher les octets sur le CDN Blob.
-    //    303 pour que la requete suivante soit bien un GET.
+    // 3a) MODE TELECHARGEMENT (?download=1) : on renvoie l'URL presignee en
+    //     JSON plutot que de rediriger. Pourquoi : le helper client suit alors
+    //     lui-meme cette URL via fetch pour recuperer un Blob et forcer
+    //     l'enregistrement. Cela evite qu'un `fetch()` cote client suive une
+    //     REDIRECTION 303 vers un domaine de stockage tiers
+    //     (*.blob.vercel-storage.com) — chaine que les bloqueurs de pub /
+    //     anti-pistage cassent, ce qui provoquait l'echec puis la page
+    //     "introuvable". Ici la requete reste MEME-ORIGINE (jamais bloquee) et
+    //     ne renvoie qu'un petit JSON.
+    if (request.nextUrl.searchParams.get('download') === '1') {
+      return NextResponse.json(
+        { url: presignedUrl },
+        { headers: { 'Cache-Control': 'private, no-store' } },
+      )
+    }
+
+    // 3b) MODE LECTURE (repli <video>) : redirection classique vers le CDN Blob.
+    //     303 pour que la requete suivante soit bien un GET.
     return NextResponse.redirect(presignedUrl, {
       status: 303,
       headers: {

@@ -16,13 +16,12 @@
  *          sur l'ouverture dans un nouvel onglet.
  */
 export async function downloadVideo(url: string, filename: string): Promise<boolean> {
-  // Notre route privée sert le fichier en pièce jointe avec ?download=1.
   const sameOrigin = url.startsWith("/api/videos/file")
-  const fetchUrl = sameOrigin ? `${url}&download=1` : url
-  try {
-    const res = await fetch(fetchUrl)
-    if (!res.ok) throw new Error(`download failed: ${res.status}`)
-    const blob = await res.blob()
+
+  // Déclenche l'enregistrement d'un Blob déjà récupéré via un lien objet
+  // (même-origine -> l'attribut `download` est TOUJOURS honoré, quelle que soit
+  // la disposition renvoyée par le stockage).
+  const saveBlob = (blob: Blob) => {
     const objectUrl = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = objectUrl
@@ -30,13 +29,38 @@ export async function downloadVideo(url: string, filename: string): Promise<bool
     document.body.appendChild(a)
     a.click()
     a.remove()
-    // Laisser le temps au navigateur de démarrer le téléchargement.
     setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
+  }
+
+  try {
+    if (sameOrigin) {
+      // Étape 1 : requête MÊME-ORIGINE qui renvoie l'URL présignée en JSON.
+      // (On ne laisse PAS `fetch` suivre une redirection 303 vers un domaine de
+      // stockage tiers : les bloqueurs de pub/anti-pistage cassent cette chaîne
+      // et provoquaient l'échec + la page « introuvable ».)
+      const res = await fetch(`${url}&download=1`, { credentials: "same-origin" })
+      if (!res.ok) throw new Error(`presign failed: ${res.status}`)
+      const { url: presignedUrl } = (await res.json()) as { url?: string }
+      if (!presignedUrl) throw new Error("presigned url manquante")
+      // Étape 2 : on récupère les octets directement depuis l'URL présignée
+      // (CORS *) puis on force l'enregistrement.
+      const fileRes = await fetch(presignedUrl)
+      if (!fileRes.ok) throw new Error(`fetch fichier: ${fileRes.status}`)
+      saveBlob(await fileRes.blob())
+      return true
+    }
+
+    // URL déjà directe (fournisseur / blob public) : on tente le fetch direct.
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`download failed: ${res.status}`)
+    saveBlob(await res.blob())
     return true
   } catch {
-    // Repli : ouvrir dans un nouvel onglet (utile si l'URL fournisseur est
-    // cross-origin et bloquée par CORS) — l'utilisateur enregistre manuellement.
-    window.open(fetchUrl, "_blank")
+    // Repli : ouvrir dans un nouvel onglet — l'utilisateur enregistre
+    // manuellement (utile si un blocage réseau empêche le fetch). On ouvre
+    // l'URL SANS `download=1` : la route redirige alors vers la vidéo (lisible
+    // et enregistrable via le menu contextuel), au lieu de renvoyer du JSON.
+    window.open(url, "_blank")
     return false
   }
 }
