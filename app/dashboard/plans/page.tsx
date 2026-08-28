@@ -7,7 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
-import { ANNIVERSARY_MINUTES_OFFERS } from '@/lib/minutes-offers'
+import { ANNIVERSARY_MINUTES_OFFERS, getMinutesOffer } from '@/lib/minutes-offers'
 import { OFFER_ACTIVE } from '@/components/dashboard/anniversary-offer-popup'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 import { PaymentBadgePopup } from '@/components/payment-badge-popup'
@@ -36,7 +36,9 @@ function PlansContent() {
     if (autoStarted.current) return
     const requested = searchParams.get('plan')
     if (!requested) return
-    if (getPlan(requested)) {
+    // Accepte les formules (lib/plans) ET les packs minutes (ex: Forfait Testeur
+    // "anniv_5"), tous deux resolus/cables au paiement cote serveur.
+    if (getPlan(requested) || getMinutesOffer(requested)) {
       autoStarted.current = true
       startCheckout(requested)
     }
@@ -232,6 +234,69 @@ function PlansContent() {
             </div>
           </div>
         </motion.div>
+
+        {/* Forfait Testeur (5.000 F) : pack minutes "anniv_5" (2 min, avec logo).
+            Offre permanente d'entree de gamme, ideale pour essayer ChapCam. */}
+        {(() => {
+          const testeur = getMinutesOffer('anniv_5')
+          if (!testeur) return null
+          const testeurLoading = pendingKey === testeur.id
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 flex flex-col gap-6 rounded-3xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 md:flex-row md:items-center md:justify-between md:p-8"
+            >
+              <div className="flex-1">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
+                  {t('Idéal pour tester')}
+                </div>
+                <h3 className="text-2xl font-bold text-foreground">{t('Forfait Testeur')}</h3>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-emerald-400">{formatXof(testeur.price)}</span>
+                  <span className="text-xl text-muted-foreground">FCFA</span>
+                </div>
+                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                    {formatXof(testeur.points)} {t('points')} ({testeur.minutes} {t('minutes')})
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                    {t('Transformation du visage et corps entier')}
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Droplet className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    {t('Avec logo ChapCam')} · {t('Filigrane visible sur le rendu')}
+                  </li>
+                </ul>
+              </div>
+              <button
+                onClick={() => startCheckout(testeur.id)}
+                disabled={!!pendingKey}
+                style={{
+                  // Meme rendu "SaaS premium" que les forfaits pro (accent emeraude).
+                  backgroundImage:
+                    'linear-gradient(180deg, color-mix(in srgb, #fff 18%, #00ff88) 0%, #00ff88 48%, #00ff88e6 100%)',
+                  boxShadow:
+                    'inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.38), 0 6px 14px -8px rgba(0,0,0,0.55), 0 2px 4px -2px #00ff884d',
+                }}
+                className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl px-8 py-4 text-base font-bold text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[200px]"
+              >
+                {/* Reflet brillant qui balaie le bouton au survol */}
+                <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                {testeurLoading ? (
+                  <Loader2 className="relative h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    <span className="relative">{t('Recharger')}</span>
+                    <CreditCard className="relative h-5 w-5" />
+                  </>
+                )}
+              </button>
+            </motion.div>
+          )
+        })()}
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan, index) => {

@@ -13,12 +13,11 @@ import {
   Search,
   Check,
   Smartphone,
-  Bitcoin,
   ArrowRight,
 } from 'lucide-react'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
-import { PAYMENT_COUNTRIES, type UICountry, type UICountryMethod } from '@/lib/geniuspay-countries'
+import { PAYMENT_COUNTRIES, getPaymentOperators, type UICountry, type UICountryMethod } from '@/lib/geniuspay-countries'
 import { getPlan } from '@/lib/plans'
 import { useT } from '@/lib/i18n/language-provider'
 
@@ -304,7 +303,17 @@ export function usePaymentCheckout() {
                   <div className="flex flex-col gap-3">
                     {country.methods.map((m, i) => {
                       const selected = method?.id === m.id
-                      const Icon = Smartphone
+                      const Icon = Smartphone // fallback si aucun logo operateur
+                      // Vrais logos operateurs : soit la ligne agregee "Mobile
+                      // Money" (cluster de tous les operateurs du pays), soit une
+                      // ligne dediee a un operateur precis (son logo seul).
+                      const ops = getPaymentOperators(country).filter((o) => o.logo)
+                      const rowLogos =
+                        m.kind === 'card'
+                          ? []
+                          : m.id === 'mobile'
+                            ? ops
+                            : ops.filter((o) => o.key === m.id)
                       return (
                         <button
                           key={m.id}
@@ -332,6 +341,22 @@ export function usePaymentCheckout() {
                                   className="max-h-full max-w-full object-contain"
                                 />
                               </span>
+                            </span>
+                          ) : rowLogos.length > 0 ? (
+                            <span className="flex shrink-0 items-center -space-x-1.5">
+                              {rowLogos.slice(0, 4).map((op) => (
+                                <span
+                                  key={op.key}
+                                  title={op.label}
+                                  className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-white ring-2 ring-[#0a0b13]"
+                                >
+                                  <img
+                                    src={op.logo || "/placeholder.svg"}
+                                    alt={op.label}
+                                    className="max-h-6 max-w-6 object-contain"
+                                  />
+                                </span>
+                              ))}
                             </span>
                           ) : (
                             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f59e0b]/20 to-[#d97706]/10 text-[#fbbf24] ring-1 ring-inset ring-[#f59e0b]/20">
@@ -370,8 +395,12 @@ export function usePaymentCheckout() {
                     disabled={busy}
                     className="group flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-left transition-all hover:border-[#f7931a]/50 disabled:opacity-60"
                   >
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#f7931a]/20 to-[#26a17b]/15 text-[#f7931a] ring-1 ring-inset ring-[#f7931a]/20">
-                      {pendingMethod === 'nowpayments' ? <Loader2 className="h-5 w-5 animate-spin" /> : <Bitcoin className="h-5 w-5" />}
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white ring-1 ring-inset ring-[#f7931a]/20">
+                      {pendingMethod === 'nowpayments' ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-[#f7931a]" />
+                      ) : (
+                        <img src="/images/bitcoin-icon.svg" alt="Bitcoin" className="h-7 w-7 object-contain" />
+                      )}
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="block text-[15px] font-semibold text-white">{t('Payer en cryptomonnaie')}</span>
@@ -428,17 +457,21 @@ export function usePaymentCheckout() {
               <button
                 onClick={submit}
                 disabled={busy || !method}
-                className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#7c5cff] to-[#5b3df5] px-6 py-4 text-base font-bold text-white shadow-lg shadow-[#7c5cff]/30 transition-all hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a78bfa] disabled:cursor-not-allowed disabled:opacity-50"
+                className="group relative mt-8 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-[#7c5cff] to-[#5b3df5] px-6 py-4 text-base font-bold text-white shadow-lg shadow-[#7c5cff]/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#7c5cff]/40 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a78bfa] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-lg"
               >
+                {/* Reflet lumineux qui balaie le bouton (survol + boucle lente au repos) */}
+                <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
                 {pendingMethod && pendingMethod !== 'nowpayments' ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    {t('Redirection…')}
+                    <Loader2 className="relative h-5 w-5 animate-spin" />
+                    <span className="relative">{t('Redirection…')}</span>
                   </>
                 ) : (
                   <>
-                    {priceLabel ? `${t('Continuer le paiement')} — ${priceLabel}` : t('Continuer le paiement')}
-                    <ArrowRight className="h-5 w-5" />
+                    <span className="relative">
+                      {priceLabel ? `${t('Continuer le paiement')} — ${priceLabel}` : t('Continuer le paiement')}
+                    </span>
+                    <ArrowRight className="relative h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
                   </>
                 )}
               </button>

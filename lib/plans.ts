@@ -40,8 +40,8 @@ export const PLANS: PlanConfig[] = [
     price: 10000,
     oldPrice: 12000,
     discount: 17,
-    points: 500,
-    minutes: '4 min 10 sec',
+    points: 720, // 6 min a 720p (120 pts/min)
+    minutes: '6 min',
     photoVideoQuota: 2,
     features: ['Transformation du visage et corps entier', 'Qualite HD'],
     popular: false,
@@ -57,8 +57,8 @@ export const PLANS: PlanConfig[] = [
     price: 50000,
     oldPrice: 65000,
     discount: 23,
-    points: 2500,
-    minutes: '20 min 50 sec',
+    points: 3600, // 30 min a 720p (120 pts/min)
+    minutes: '30 min',
     photoVideoQuota: 5,
     features: [
       'Transformation du visage et corps entier',
@@ -80,8 +80,8 @@ export const PLANS: PlanConfig[] = [
     price: 85000,
     oldPrice: 110000,
     discount: 23,
-    points: 4250,
-    minutes: '35 min 25 sec',
+    points: 5400, // 45 min a 720p (120 pts/min)
+    minutes: '45 min',
     photoVideoQuota: 8,
     features: [
       'Transformation du visage et corps entier',
@@ -105,8 +105,8 @@ export const PLANS: PlanConfig[] = [
     price: 150000,
     oldPrice: 180000,
     discount: 25,
-    points: 7200,
-    minutes: '60 min',
+    points: 8400, // 1 h 10 min (70 min) a 720p (120 pts/min)
+    minutes: '1 h 10 min',
     photoVideoQuota: 10,
     features: [
       'Transformation du visage et corps entier',

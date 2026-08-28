@@ -89,6 +89,7 @@ const OPERATOR_LOGOS: Record<string, string> = {
   orange_money: '/images/orange-money-logo.png',
   wave: '/images/wave-logo.png',
   mtn_money: '/images/mtn-momo-logo.jpg',
+  moov_money: '/images/moov-money-logo.png',
   airtel_money: '/images/airtel-logo.svg',
   vodafone_cash: '/images/vodafone-logo.svg',
   djamo: '/images/djamo-logo.png',

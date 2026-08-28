@@ -22,6 +22,29 @@ type Watermark = "with" | "manual" | "auto"
 
 const plans = [
   {
+    id: "testeur",
+    name: "Forfait Testeur",
+    duration: "Idéal pour tester",
+    price: "5.000",
+    oldPrice: "",
+    discount: 0,
+    currency: "FCFA",
+    features: [
+      "Transformation du visage et corps entier",
+      "240 points (2 min)",
+      "Qualite HD"
+    ],
+    photoVideos: 0,
+    validity: "Valable 30 jours",
+    color: "#00ff88",
+    bgGradient: "from-emerald-500/20 to-emerald-600/5",
+    popular: false,
+    highlight: false,
+    bestOffer: false,
+    watermark: "with" as Watermark,
+    icon: Star
+  },
+  {
     id: "starter",
     name: "Starter",
     duration: "1 JOUR",
@@ -31,7 +54,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "500 points (4 min 10 sec)",
+      "720 points (6 min)",
       "Qualite HD 1080p"
     ],
     photoVideos: 2,
@@ -54,7 +77,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "2 500 points (20 min 50 sec)",
+      "3 600 points (30 min)",
       "Rendu sans logo ChapCam inclus",
       "Qualite 4K Ultra HD",
       "Support prioritaire"
@@ -80,7 +103,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "4 250 points (35 min 25 sec)",
+      "5 400 points (45 min)",
       "Rendu Full HD 1080p sans logo",
       "Studio CHAPCAM : scènes en direct (décors, styles, effets)",
       "Prompts personnalisés en direct + Enhance",
@@ -108,7 +131,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "7 200 points (60 min)",
+      "8 400 points (1 h 10 min)",
       "Rendu Full HD 1080p sans logo",
       "Studio CHAPCAM complet : scènes en direct (décors, styles, effets, arrière-plans)",
       "Prompts personnalisés illimités en direct + Enhance",
@@ -224,7 +247,7 @@ export function PricingSection() {
         </motion.div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
           {plans.map((plan, index) => {
             const Icon = plan.icon
             return (
@@ -250,10 +273,12 @@ export function PricingSection() {
                     : "border border-white/10 bg-[#111] hover:border-white/30"
                 }`}
               >
-                {/* Discount Badge */}
-                <div className="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                  -{plan.discount}%
-                </div>
+                {/* Discount Badge (masque si aucune reduction, ex: Forfait Testeur) */}
+                {plan.discount > 0 && (
+                  <div className="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                    -{plan.discount}%
+                  </div>
+                )}
 
                 {/* Badge du haut : "POPULAIRE" pour VIP PRO, "MEILLEURE OFFRE" pour VIP DEBOUT (premium) */}
                 {plan.id === "vipdebout" ? (
@@ -285,11 +310,13 @@ export function PricingSection() {
                 </div>
 
                 <div className="mb-8">
-                  {/* Old Price Strikethrough */}
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-gray-500 text-xl line-through">{plan.oldPrice}</span>
-                    <span className="text-red-400 text-sm font-semibold">-{plan.discount}%</span>
-                  </div>
+                  {/* Old Price Strikethrough (masque pour le Forfait Testeur) */}
+                  {plan.oldPrice && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-gray-500 text-xl line-through">{plan.oldPrice}</span>
+                      <span className="text-red-400 text-sm font-semibold">-{plan.discount}%</span>
+                    </div>
+                  )}
                   {/* New Price */}
                   <span
                     className="text-5xl font-black"
@@ -366,24 +393,36 @@ export function PricingSection() {
                   ))}
                 </ul>
 
-                {/* Studio Photo en Video inclus dans le forfait Live Swap */}
-                <div className="mb-8 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
-                  <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
-                  <p className="text-sm font-semibold text-emerald-300 leading-snug">
-                    {t("Studio Photo en Vidéo :")} {plan.photoVideos} {t("vidéos de 30s incluses")}
-                  </p>
-                </div>
+                {/* Studio Photo en Video inclus dans le forfait Live Swap.
+                    Non affiche pour Starter (10.000 F) ni le Forfait Testeur. */}
+                {plan.id !== "starter" && plan.id !== "testeur" && (
+                  <div className="mb-8 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+                    <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
+                    <p className="text-sm font-semibold text-emerald-300 leading-snug">
+                      {t("Studio Photo en Vidéo :")} {plan.photoVideos} {t("vidéos de 30s incluses")}
+                    </p>
+                  </div>
+                )}
 
-                <Link href={`/dashboard/plans?plan=${plan.id}`}>
-                  <Button 
-                    className={`w-full py-6 text-base font-bold rounded-2xl transition-all ${
-                      plan.highlight 
-                        ? "bg-[#00ff88] text-black hover:bg-[#00dd77]" 
-                        : "bg-white text-black hover:bg-gray-200"
-                    }`}
+                {/* Le Forfait Testeur (5.000 F) est le pack minutes "anniv_5" (2 min)
+                    deja cable au paiement -> on redirige vers cet identifiant. */}
+                <Link href={`/dashboard/plans?plan=${plan.id === "testeur" ? "anniv_5" : plan.id}`}>
+                  <button
+                    type="button"
+                    style={{
+                      // Meme rendu "SaaS premium" que le menu de recharge :
+                      // degrade de surface vers la couleur d'accent du forfait +
+                      // liseré + ombre nette, et reflet qui balaie au survol.
+                      backgroundImage: `linear-gradient(180deg, color-mix(in srgb, #fff 18%, ${plan.color}) 0%, ${plan.color} 48%, ${plan.color}e6 100%)`,
+                      boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.38), 0 6px 14px -8px rgba(0,0,0,0.55), 0 2px 4px -2px ${plan.color}4d`,
+                    }}
+                    className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-4 text-base font-bold text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0"
                   >
-                    {t("Recharger")}
-                  </Button>
+                    {/* Reflet brillant qui balaie le bouton au survol */}
+                    <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                    <span className="relative">{t("Recharger")}</span>
+                    <CreditCard className="relative h-5 w-5" />
+                  </button>
                 </Link>
               </motion.div>
             )
