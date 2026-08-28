@@ -235,6 +235,60 @@ function PlansContent() {
           </div>
         </motion.div>
 
+        {/* Forfait Testeur (5.000 F) : pack minutes "anniv_5" (2 min, avec logo).
+            Offre permanente d'entree de gamme, ideale pour essayer ChapCam. */}
+        {(() => {
+          const testeur = getMinutesOffer('anniv_5')
+          if (!testeur) return null
+          const testeurLoading = pendingKey === testeur.id
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-8 flex flex-col gap-6 rounded-3xl border border-emerald-500/40 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 md:flex-row md:items-center md:justify-between md:p-8"
+            >
+              <div className="flex-1">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
+                  {t('Idéal pour tester')}
+                </div>
+                <h3 className="text-2xl font-bold text-foreground">{t('Forfait Testeur')}</h3>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-4xl font-bold text-emerald-400">{formatXof(testeur.price)}</span>
+                  <span className="text-xl text-muted-foreground">FCFA</span>
+                </div>
+                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                    {formatXof(testeur.points)} {t('points')} ({testeur.minutes} {t('minutes')})
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                    {t('Transformation du visage et corps entier')}
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Droplet className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                    {t('Avec logo ChapCam')} · {t('Filigrane visible sur le rendu')}
+                  </li>
+                </ul>
+              </div>
+              <button
+                onClick={() => startCheckout(testeur.id)}
+                disabled={!!pendingKey}
+                className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500 px-8 py-4 text-base font-bold text-black transition-all hover:-translate-y-0.5 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[200px]"
+              >
+                {testeurLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    <span>{t('Recharger')}</span>
+                    <CreditCard className="h-5 w-5" />
+                  </>
+                )}
+              </button>
+            </motion.div>
+          )
+        })()}
+
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           {PLANS.map((plan, index) => {
             const loading = pendingKey === plan.id
