@@ -22,6 +22,29 @@ type Watermark = "with" | "manual" | "auto"
 
 const plans = [
   {
+    id: "testeur",
+    name: "Forfait Testeur",
+    duration: "Idéal pour tester",
+    price: "5.000",
+    oldPrice: "",
+    discount: 0,
+    currency: "FCFA",
+    features: [
+      "Transformation du visage et corps entier",
+      "240 points (2 min)",
+      "Qualite HD"
+    ],
+    photoVideos: 0,
+    validity: "Valable 30 jours",
+    color: "#00ff88",
+    bgGradient: "from-emerald-500/20 to-emerald-600/5",
+    popular: false,
+    highlight: false,
+    bestOffer: false,
+    watermark: "with" as Watermark,
+    icon: Star
+  },
+  {
     id: "starter",
     name: "Starter",
     duration: "1 JOUR",
@@ -224,7 +247,7 @@ export function PricingSection() {
         </motion.div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
           {plans.map((plan, index) => {
             const Icon = plan.icon
             return (
@@ -250,10 +273,12 @@ export function PricingSection() {
                     : "border border-white/10 bg-[#111] hover:border-white/30"
                 }`}
               >
-                {/* Discount Badge */}
-                <div className="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-                  -{plan.discount}%
-                </div>
+                {/* Discount Badge (masque si aucune reduction, ex: Forfait Testeur) */}
+                {plan.discount > 0 && (
+                  <div className="absolute -top-3 -right-3 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
+                    -{plan.discount}%
+                  </div>
+                )}
 
                 {/* Badge du haut : "POPULAIRE" pour VIP PRO, "MEILLEURE OFFRE" pour VIP DEBOUT (premium) */}
                 {plan.id === "vipdebout" ? (
@@ -285,11 +310,13 @@ export function PricingSection() {
                 </div>
 
                 <div className="mb-8">
-                  {/* Old Price Strikethrough */}
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-gray-500 text-xl line-through">{plan.oldPrice}</span>
-                    <span className="text-red-400 text-sm font-semibold">-{plan.discount}%</span>
-                  </div>
+                  {/* Old Price Strikethrough (masque pour le Forfait Testeur) */}
+                  {plan.oldPrice && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-gray-500 text-xl line-through">{plan.oldPrice}</span>
+                      <span className="text-red-400 text-sm font-semibold">-{plan.discount}%</span>
+                    </div>
+                  )}
                   {/* New Price */}
                   <span
                     className="text-5xl font-black"
@@ -367,8 +394,8 @@ export function PricingSection() {
                 </ul>
 
                 {/* Studio Photo en Video inclus dans le forfait Live Swap.
-                    Non affiche pour le forfait Starter (10.000 F). */}
-                {plan.id !== "starter" && (
+                    Non affiche pour Starter (10.000 F) ni le Forfait Testeur. */}
+                {plan.id !== "starter" && plan.id !== "testeur" && (
                   <div className="mb-8 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
                     <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
                     <p className="text-sm font-semibold text-emerald-300 leading-snug">
@@ -377,7 +404,9 @@ export function PricingSection() {
                   </div>
                 )}
 
-                <Link href={`/dashboard/plans?plan=${plan.id}`}>
+                {/* Le Forfait Testeur (5.000 F) est le pack minutes "anniv_5" (2 min)
+                    deja cable au paiement -> on redirige vers cet identifiant. */}
+                <Link href={`/dashboard/plans?plan=${plan.id === "testeur" ? "anniv_5" : plan.id}`}>
                   <Button 
                     className={`w-full py-6 text-base font-bold rounded-2xl transition-all ${
                       plan.highlight 

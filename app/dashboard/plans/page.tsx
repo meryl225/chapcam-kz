@@ -7,7 +7,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
-import { ANNIVERSARY_MINUTES_OFFERS } from '@/lib/minutes-offers'
+import { ANNIVERSARY_MINUTES_OFFERS, getMinutesOffer } from '@/lib/minutes-offers'
 import { OFFER_ACTIVE } from '@/components/dashboard/anniversary-offer-popup'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 import { PaymentBadgePopup } from '@/components/payment-badge-popup'
@@ -36,7 +36,9 @@ function PlansContent() {
     if (autoStarted.current) return
     const requested = searchParams.get('plan')
     if (!requested) return
-    if (getPlan(requested)) {
+    // Accepte les formules (lib/plans) ET les packs minutes (ex: Forfait Testeur
+    // "anniv_5"), tous deux resolus/cables au paiement cote serveur.
+    if (getPlan(requested) || getMinutesOffer(requested)) {
       autoStarted.current = true
       startCheckout(requested)
     }
