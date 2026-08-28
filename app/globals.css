@@ -269,19 +269,19 @@ html:not(.mo-anim) .mo-belowfold [style*='scale(0)'] {
   position: relative;
   overflow: hidden;
   isolation: isolate;
+  /* Ombre nette et sobre : reflet interieur subtil + elevation douce.
+     Plus de halo diffus qui "bave" autour du bouton (rendu cheap). */
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--glow) 45%, transparent),
-    0 8px 24px -6px color-mix(in srgb, var(--glow) 70%, transparent),
-    0 0 34px -4px color-mix(in srgb, var(--glow) 55%, transparent);
+    inset 0 1px 0 color-mix(in srgb, #fff 22%, transparent),
+    0 6px 16px -8px color-mix(in srgb, var(--glow) 55%, transparent);
   transition: transform 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease;
 }
 .btn-glow:hover:not(:disabled) {
   transform: translateY(-2px);
-  filter: brightness(1.08);
+  filter: brightness(1.05);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--glow) 60%, transparent),
-    0 12px 30px -6px color-mix(in srgb, var(--glow) 85%, transparent),
-    0 0 46px -2px color-mix(in srgb, var(--glow) 70%, transparent);
+    inset 0 1px 0 color-mix(in srgb, #fff 28%, transparent),
+    0 10px 22px -8px color-mix(in srgb, var(--glow) 70%, transparent);
 }
 .btn-glow:active:not(:disabled) {
   transform: translateY(0);

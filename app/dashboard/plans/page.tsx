@@ -353,10 +353,11 @@ function PlansContent() {
                   onClick={() => startCheckout(plan.id)}
                   disabled={!!pendingKey}
                   style={{
-                    // Degrade lumineux a la couleur d'accent de la carte + halo
-                    // colore : le bouton "ressort" et donne envie de cliquer.
+                    // Degrade lumineux a la couleur d'accent de la carte + ombre
+                    // sobre (reflet interieur + elevation douce). Plus de halo
+                    // diffus qui "bave" autour du bouton (rendu cheap).
                     backgroundImage: `linear-gradient(180deg, ${accent} 0%, ${accent}d9 100%)`,
-                    boxShadow: `0 0 0 1px ${accent}66, 0 8px 24px -6px ${accent}b3, 0 0 32px -4px ${accent}80`,
+                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.28), 0 6px 16px -8px ${accent}99`,
                   }}
                   className="group relative mt-10 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-4 text-base font-bold text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
                 >
