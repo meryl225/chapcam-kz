@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Flame, PartyPopper, Gift, ArrowRight, Crown } from 'lucide-react'
-import { PLANS } from '@/lib/plans'
+import { X, Flame, PartyPopper, Gift, ArrowRight } from 'lucide-react'
 
 // Incremente ce suffixe pour re-afficher le popup a tous les clients.
 const SEEN_KEY = 'chapcam-anniversary-3mois-seen'
@@ -11,9 +10,14 @@ const SEEN_KEY = 'chapcam-anniversary-3mois-seen'
 const END_KEY = 'chapcam-anniversary-3mois-end'
 const OFFER_DURATION_MS = 7 * 24 * 60 * 60 * 1000
 
-// Formatage FCFA "10 000" (source de verite = lib/plans.ts, memes prix que la
-// page /dashboard/plans -> aucune incoherence possible).
-const fmt = (n: number) => n.toLocaleString('fr-FR').replace(/\u202f/g, ' ')
+// Grille des tarifs anniversaire (montant FCFA -> minutes de swap en direct).
+const OFFERS = [
+  { price: '5 000', minutes: 5, label: 'Forfait Testeur', highlight: true },
+  { price: '10 000', minutes: 10 },
+  { price: '20 000', minutes: 20 },
+  { price: '50 000', minutes: 50 },
+  { price: '100 000', minutes: 100 },
+]
 
 function getOrCreateEnd(): number {
   try {
@@ -121,8 +125,8 @@ export function AnniversaryOfferPopup() {
             </span>
           </p>
           <p className="relative mx-auto mt-3 max-w-sm text-pretty text-sm leading-relaxed text-gray-300">
-            Pendant 7 jours seulement, profitez de nos tarifs anniversaire réduits sur tous les
-            forfaits de swap en direct.
+            Pendant 7 jours seulement, profitez de nos tarifs anniversaire sur les minutes de swap
+            en direct.
           </p>
         </div>
 
@@ -150,45 +154,33 @@ export function AnniversaryOfferPopup() {
           </div>
         </div>
 
-        {/* Forfaits reels (source = lib/plans.ts, identiques a /dashboard/plans) */}
+        {/* Grille des tarifs anniversaire (montant FCFA -> minutes) */}
         <div className="space-y-2.5 px-6 pt-5">
-          {PLANS.map((plan) => (
+          {OFFERS.map((offer) => (
             <div
-              key={plan.id}
+              key={offer.price}
               className={`flex items-center justify-between rounded-2xl border px-4 py-3 ${
-                plan.bestOffer
+                offer.highlight
                   ? 'border-emerald-500/50 bg-emerald-500/10'
                   : 'border-white/10 bg-white/[0.03]'
               }`}
             >
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="truncate text-sm font-bold text-white">{plan.name}</span>
-                  {plan.bestOffer && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
-                      <Crown className="h-3 w-3" />
-                      Meilleure offre
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] uppercase tracking-wide text-gray-500">{plan.duration}</p>
-              </div>
-              <div className="flex flex-shrink-0 items-center gap-2.5">
-                <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-bold text-red-400">
-                  -{plan.discount}%
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span
+                  className={`text-lg font-black ${offer.highlight ? 'text-emerald-400' : 'text-white'}`}
+                >
+                  {offer.price}
                 </span>
-                <div className="text-right">
-                  <span className="text-xs text-gray-500 line-through">{fmt(plan.oldPrice)}</span>
-                  <p className="leading-none">
-                    <span
-                      className={`text-lg font-black ${plan.bestOffer ? 'text-emerald-400' : 'text-white'}`}
-                    >
-                      {fmt(plan.price)}
-                    </span>
-                    <span className="ml-1 text-xs text-gray-400">FCFA</span>
-                  </p>
-                </div>
+                <span className="text-sm text-gray-400">FCFA</span>
+                {offer.label && (
+                  <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
+                    {offer.label}
+                  </span>
+                )}
               </div>
+              <span className="flex-shrink-0 text-sm font-bold text-violet-300">
+                {offer.minutes} minutes
+              </span>
             </div>
           ))}
         </div>
