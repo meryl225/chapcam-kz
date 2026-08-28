@@ -235,7 +235,7 @@ function PlansContent() {
           </div>
         </motion.div>
 
-        {/* Forfait Testeur (5.000 F) : pack minutes "anniv_5" (2 min, avec logo).
+        {/* Forfait Testeur (5.000 F) : pack minutes "anniv_5" (3 min, avec logo).
             Offre permanente d'entree de gamme, ideale pour essayer ChapCam. */}
         {(() => {
           const testeur = getMinutesOffer('anniv_5')
