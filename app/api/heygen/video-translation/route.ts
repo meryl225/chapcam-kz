@@ -145,10 +145,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Historique PERMANENT : a la fin, on GARANTIT une copie Blob privee avant
-    // de declarer la traduction "terminee" (les URLs HeyGen expirent). Tant que
-    // la copie n'est pas prete, on renvoie "processing" pour que le client
-    // continue a interroger -> plus jamais de "video expiree" illisible.
+    // IMPORTANT (anti spinner infini) : des que HeyGen a fini, la traduction
+    // DOIT etre montree a l'utilisateur. On tente une copie Blob permanente
+    // (les URLs HeyGen expirent), mais on ne BLOQUE JAMAIS l'affichage dessus :
+    // si elle n'est pas encore prete, on sert l'URL fournisseur (valide ~7j) et
+    // on declare "completed". La copie permanente est ensuite garantie par
+    // l'auto-reparation de la galerie « Mes videos ».
     let effectiveStatus = status
     let outUrl: string | null = providerUrl
     if (status === "completed" && providerUrl) {
@@ -160,17 +162,12 @@ export async function GET(request: NextRequest) {
           providerUrl,
           title: data.output_language ? `Traduction · ${data.output_language}` : "Traduction Vidéo",
         })
-        if (fin.state === "ready" || fin.state === "fallback") {
-          outUrl = fin.url
-        } else {
-          effectiveStatus = "processing"
-          outUrl = null
-        }
+        outUrl = fin.state === "ready" || fin.state === "fallback" ? fin.url : providerUrl
       } catch (e) {
-        console.error("[Translation] Finalisation historique:", e)
-        effectiveStatus = "processing"
-        outUrl = null
+        console.error("[Translation] Finalisation historique (non bloquant):", e)
+        outUrl = providerUrl
       }
+      effectiveStatus = "completed"
     }
 
     return NextResponse.json({

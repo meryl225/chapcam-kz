@@ -458,6 +458,15 @@ export async function GET(request: NextRequest) {
     let effectiveStatus = data.status || "unknown" // pending | processing | completed | failed
     let outUrl: string | null = data.video_url || null
     if (data.status === "completed" && data.video_url) {
+      // IMPORTANT (anti spinner infini) : des que HeyGen a fini, la video DOIT
+      // etre montree a l'utilisateur. On tente une copie Blob permanente, mais
+      // on ne BLOQUE JAMAIS l'affichage dessus : si elle n'est pas encore prete
+      // (ou si le re-hebergement echoue transitoirement), on sert l'URL
+      // fournisseur (valide ~7j) et la generation est declaree "completed".
+      // La copie permanente est garantie ensuite par l'auto-reparation de la
+      // galerie « Mes videos » (qui rattrape les lignes processing/sans-blob).
+      // Auparavant, on renvoyait "processing"/null tant que le Blob n'etait pas
+      // pret -> spinner infini quand la copie tardait, sur desktop ET mobile.
       try {
         const fin = await finalizeCompletedVideo({
           userId: user.id,
@@ -467,18 +476,15 @@ export async function GET(request: NextRequest) {
           title: "Studio Photo en Vidéo",
           thumbnailUrl: data.thumbnail_url || null,
         })
-        if (fin.state === "ready" || fin.state === "fallback") {
-          outUrl = fin.url
-        } else {
-          // Copie permanente pas encore prete : ne pas declarer "termine".
-          effectiveStatus = "processing"
-          outUrl = null
-        }
+        // Copie Blob prete -> URL permanente. Sinon (pending/fallback) -> URL
+        // fournisseur temporaire pour un affichage immediat.
+        outUrl = fin.state === "ready" || fin.state === "fallback" ? fin.url : data.video_url
       } catch (e) {
-        console.error("[PhotoVideo] Finalisation historique:", e)
-        effectiveStatus = "processing"
-        outUrl = null
+        console.error("[PhotoVideo] Finalisation historique (non bloquant):", e)
+        outUrl = data.video_url
       }
+      // Dans tous les cas, la video est prete a etre visionnee.
+      effectiveStatus = "completed"
     }
 
     return NextResponse.json({
