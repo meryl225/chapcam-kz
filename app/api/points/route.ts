@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pointsPerSecond } from '@/lib/swap-pricing'
 import { trackGPUUsage } from '@/lib/rate-limit'
-import { GRACE_DAYS } from '@/lib/live-guard'
+import { cancelSubscription } from '@/lib/live-guard'
 
 export async function POST(request: NextRequest) {
   try {
