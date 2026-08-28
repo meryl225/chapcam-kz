@@ -9,11 +9,11 @@ export const MIN_POINTS_TO_START = POINTS_PER_SECOND_SD * 5
 // Expiration = annulation IMMEDIATE du forfait. Des que la date d'expiration
 // est depassee, le forfait est annule : points remis a zero, forfait desactive
 // et repasse en 'free'. Il n'y a AUCUNE fenetre de grace.
-export function cancelSubscription(userId: string): Promise<unknown> {
+export async function cancelSubscription(userId: string): Promise<void> {
   // Ecriture avec le service_role : on force la remise a zero meme si la RLS
   // publique restreint la colonne is_active / plan.
   const admin = createAdminClient()
-  return admin
+  await admin
     .from('subscriptions')
     .update({ points: 0, is_active: false, plan: 'free' })
     .eq('user_id', userId)
