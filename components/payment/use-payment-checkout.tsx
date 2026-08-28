@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { isInAppBrowser } from '@/lib/in-app-browser'
 import { InAppBrowserNotice } from '@/components/in-app-browser-notice'
-import { PAYMENT_COUNTRIES, type UICountry, type UICountryMethod } from '@/lib/geniuspay-countries'
+import { PAYMENT_COUNTRIES, getPaymentOperators, type UICountry, type UICountryMethod } from '@/lib/geniuspay-countries'
 import { getPlan } from '@/lib/plans'
 import { useT } from '@/lib/i18n/language-provider'
 
@@ -304,7 +304,16 @@ export function usePaymentCheckout() {
                   <div className="flex flex-col gap-3">
                     {country.methods.map((m, i) => {
                       const selected = method?.id === m.id
-                      const Icon = Smartphone
+                      // Vrais logos operateurs : soit la ligne agregee "Mobile
+                      // Money" (cluster de tous les operateurs du pays), soit une
+                      // ligne dediee a un operateur precis (son logo seul).
+                      const ops = getPaymentOperators(country).filter((o) => o.logo)
+                      const rowLogos =
+                        m.kind === 'card'
+                          ? []
+                          : m.id === 'mobile'
+                            ? ops
+                            : ops.filter((o) => o.key === m.id)
                       return (
                         <button
                           key={m.id}
