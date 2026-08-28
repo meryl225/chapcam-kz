@@ -353,16 +353,16 @@ function PlansContent() {
                   onClick={() => startCheckout(plan.id)}
                   disabled={!!pendingKey}
                   style={{
-                    // Degrade lumineux a la couleur d'accent de la carte + ombre
-                    // sobre (reflet interieur + elevation douce). Plus de halo
-                    // diffus qui "bave" autour du bouton (rendu cheap).
-                    backgroundImage: `linear-gradient(180deg, ${accent} 0%, ${accent}d9 100%)`,
-                    boxShadow: `inset 0 1px 0 rgba(255,255,255,0.28), 0 6px 16px -8px ${accent}99`,
+                    // Aspect "SaaS premium" : degrade de surface a la couleur
+                    // d'accent + reflet superieur + fin liseré teinte + ombre
+                    // resserree. Plus de halo diffus qui "bave" (rendu cheap).
+                    backgroundImage: `linear-gradient(180deg, color-mix(in srgb, #fff 16%, ${accent}) 0%, ${accent} 45%, ${accent}e6 100%)`,
+                    boxShadow: `inset 0 0 0 1px color-mix(in srgb, #fff 22%, transparent), inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 12px -6px ${accent}80, 0 2px 4px -2px rgba(0,0,0,0.3)`,
                   }}
                   className="group relative mt-10 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-4 text-base font-bold text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {/* Reflet brillant qui balaie le bouton au survol */}
-                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
                   {loading ? (
                     <Loader2 className="relative h-5 w-5 animate-spin" />
                   ) : (
