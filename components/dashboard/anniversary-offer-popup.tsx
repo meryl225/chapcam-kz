@@ -19,6 +19,28 @@ const OFFERS = [
   { price: '100.000', minutes: 100 },
 ]
 
+// Forfaits d'abonnement mis en avant (memes valeurs que lib/plans.ts).
+const PLAN_CARDS = [
+  {
+    name: 'Starter',
+    duration: '1 JOUR',
+    price: '10.000',
+    oldPrice: '12.000',
+    discount: 17,
+    validity: 'Valable 24 heures',
+    accent: 'text-cyan-400',
+  },
+  {
+    name: 'Premium',
+    duration: '90 JOURS',
+    price: '50.000',
+    oldPrice: '65.000',
+    discount: 23,
+    validity: 'Valable 3 mois',
+    accent: 'text-emerald-400',
+  },
+]
+
 function getOrCreateEnd(): number {
   try {
     const stored = localStorage.getItem(END_KEY)
@@ -181,6 +203,30 @@ export function AnniversaryOfferPopup() {
               <span className="text-sm font-bold text-violet-300">
                 {offer.minutes} min
               </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Forfaits d'abonnement mis en avant */}
+        <div className="grid grid-cols-2 gap-2.5 px-6 pt-4">
+          {PLAN_CARDS.map((plan) => (
+            <div
+              key={plan.name}
+              className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5"
+            >
+              <p className="text-sm font-bold text-white">{plan.name}</p>
+              <p className="text-[11px] uppercase tracking-wide text-gray-500">{plan.duration}</p>
+              <div className="mt-2 flex items-center gap-1.5">
+                <span className="text-xs text-gray-500 line-through">{plan.oldPrice}</span>
+                <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] font-bold text-red-400">
+                  -{plan.discount}%
+                </span>
+              </div>
+              <p className="mt-0.5">
+                <span className={`text-xl font-black ${plan.accent}`}>{plan.price}</span>
+                <span className="ml-1 text-xs text-gray-400">FCFA</span>
+              </p>
+              <p className="mt-1 text-[11px] text-gray-500">{plan.validity}</p>
             </div>
           ))}
         </div>
