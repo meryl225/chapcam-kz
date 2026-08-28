@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { Download, History, Loader2, Play, RefreshCw, Trash2, X } from "lucide-react"
 import { downloadVideo } from "@/lib/download-video"
+import { HlsVideoPlayer } from "@/components/hls-video-player"
 
 // Section "Mes vidéos" : historique PERMANENT des vidéos générées par un outil,
 // re-hébergées dans le Blob privé côté serveur (les liens fournisseurs expirent).
@@ -17,9 +18,10 @@ interface HistoryVideo {
   status: "processing" | "completed" | "failed"
   created_at: string
   thumbnail_url: string | null
-  // Player Cloudflare Stream signé (iframe HLS adaptatif) : lecture rapide,
-  // fluide sur mobile/3G, compatible iOS. Absent si la vidéo n'est pas encore
-  // dans Stream (on retombe alors sur video_url).
+  // Manifeste HLS Cloudflare Stream signé : lu dans un <video> natif (rapide,
+  // fluide 3G, iOS natif). Priorité de lecture. Absent si pas encore dans Stream.
+  hls_url: string | null
+  // Iframe Stream signée : repli ultime (rarement utilisé).
   player_url: string | null
   // Master Blob privé (/api/videos/file?...) : téléchargement + repli de lecture.
   video_url: string | null
@@ -167,19 +169,30 @@ export function VideoHistorySection({
               className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]"
             >
               <div className="relative aspect-[9/16] w-full bg-black/40">
-                {v.status === "completed" && (v.player_url || v.video_url) ? (
-                  playingId === v.id && v.player_url ? (
-                    // Player Cloudflare Stream (HLS adaptatif, iOS natif).
-                    <iframe
-                      src={`${v.player_url}&autoplay=true`}
-                      title={v.title || "Vidéo"}
-                      loading="lazy"
-                      allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
-                      allowFullScreen
-                      className="h-full w-full border-0"
-                    />
-                  ) : v.player_url ? (
-                    // Miniature + bouton lecture : on ne monte l'iframe qu'au clic.
+                {v.status === "completed" && (v.hls_url || v.video_url) ? (
+                  playingId === v.id ? (
+                    v.hls_url ? (
+                      // Lecture HLS signée dans un <video> NATIF (pas d'iframe
+                      // tierce -> ne peut plus être bloquée par le navigateur).
+                      <HlsVideoPlayer
+                        src={v.hls_url}
+                        poster={v.thumbnail_url}
+                        className="h-full w-full bg-black object-contain"
+                      />
+                    ) : (
+                      // Repli : master Blob (lecture native) si pas encore dans Stream.
+                      <video
+                        src={v.video_url as string}
+                        controls
+                        playsInline
+                        autoPlay
+                        preload="metadata"
+                        poster={v.thumbnail_url || undefined}
+                        className="h-full w-full object-contain"
+                      />
+                    )
+                  ) : (
+                    // Miniature + bouton lecture : on ne monte le player qu'au clic.
                     <button
                       type="button"
                       onClick={() => setPlayingId(v.id)}
@@ -209,23 +222,13 @@ export function VideoHistorySection({
                         </span>
                       </span>
                     </button>
-                  ) : (
-                    // Repli : master Blob (lecture native) si pas encore dans Stream.
-                    <video
-                      src={v.video_url as string}
-                      controls
-                      playsInline
-                      preload="metadata"
-                      poster={v.thumbnail_url || undefined}
-                      className="h-full w-full object-cover"
-                    />
                   )
                 ) : v.status === "failed" ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-center">
                     <X className="h-6 w-6 text-red-400" />
                     <span className="px-2 text-[11px] text-red-400">Échec</span>
                   </div>
-                ) : v.status === "completed" && !v.player_url && !v.video_url ? (
+                ) : v.status === "completed" && !v.hls_url && !v.video_url ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-2 text-center">
                     <X className="h-5 w-5 text-white/30" />
                     <span className="text-[10px] text-white/40">Vidéo expirée</span>

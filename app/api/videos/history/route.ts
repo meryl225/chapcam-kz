@@ -87,12 +87,19 @@ export async function GET(request: NextRequest) {
           : null
 
         // URLs de lecture Stream signees (jeton court, genere a chaque requete).
+        // On expose le manifeste HLS signe (lecture dans un <video> natif +
+        // hls.js) PLUTOT que l'iframe cloudflarestream.com : l'iframe tierce est
+        // frequemment bloquee par les bloqueurs de pub / anti-pistage / cookies
+        // tiers ("Ce contenu est bloqué"). Le HLS direct sur notre propre <video>
+        // n'est pas une iframe tierce -> rien a bloquer.
+        let hlsUrl: string | null = null
         let playerUrl: string | null = null
         let posterUrl: string | null = null
         if (v.stream_uid) {
           try {
             const urls = await getSignedStreamUrls(v.stream_uid, v.stream_customer_code)
-            playerUrl = urls.iframe
+            hlsUrl = urls.hls
+            playerUrl = urls.iframe // repli ultime
             posterUrl = urls.thumbnail
           } catch {
             // En cas d'echec de signature, on retombera sur video_url (Blob).
@@ -107,7 +114,9 @@ export async function GET(request: NextRequest) {
           created_at: v.created_at,
           // Poster : miniature Stream signee en priorite, sinon miniature fournisseur.
           thumbnail_url: posterUrl || v.thumbnail_url,
-          // Lecture : player Stream si dispo, sinon la route Blob.
+          // Lecture prioritaire : HLS signe dans un <video> natif.
+          hls_url: hlsUrl,
+          // Repli ultime : iframe Stream (rare).
           player_url: playerUrl,
           // Telechargement (et repli de lecture) : master Blob.
           video_url: blobUrl,
