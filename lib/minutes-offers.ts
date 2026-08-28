@@ -27,7 +27,7 @@ const minutesToPoints = (min: number) => min * 60 * POINTS_PER_SECOND_SD
 // sur la page de recharge). Tarif promo : 1 000 FCFA / minute de swap.
 // Ces packs creditent des POINTS et n'affectent pas le forfait de l'utilisateur.
 export const ANNIVERSARY_MINUTES_OFFERS: MinutesOffer[] = [
-  { id: 'anniv_5', name: 'Forfait Testeur — 5 minutes', price: 5000, minutes: 5, points: minutesToPoints(5), validityDays: 30 },
+  { id: 'anniv_5', name: 'Forfait Testeur — 2 minutes', price: 5000, minutes: 2, points: minutesToPoints(2), validityDays: 30 },
   { id: 'anniv_10', name: '10 minutes de swap', price: 10000, minutes: 10, points: minutesToPoints(10), validityDays: 30 },
   { id: 'anniv_20', name: '20 minutes de swap', price: 20000, minutes: 20, points: minutesToPoints(20), validityDays: 30 },
   { id: 'anniv_50', name: '50 minutes de swap', price: 50000, minutes: 50, points: minutesToPoints(50), validityDays: 60 },

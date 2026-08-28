@@ -31,7 +31,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "500 points (4 min 10 sec)",
+      "720 points (6 min)",
       "Qualite HD 1080p"
     ],
     photoVideos: 2,
@@ -54,7 +54,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "2 500 points (20 min 50 sec)",
+      "3 600 points (30 min)",
       "Rendu sans logo ChapCam inclus",
       "Qualite 4K Ultra HD",
       "Support prioritaire"
@@ -80,7 +80,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "4 250 points (35 min 25 sec)",
+      "5 400 points (45 min)",
       "Rendu Full HD 1080p sans logo",
       "Studio CHAPCAM : scènes en direct (décors, styles, effets)",
       "Prompts personnalisés en direct + Enhance",
@@ -108,7 +108,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "7 200 points (60 min)",
+      "8 400 points (1 h 10 min)",
       "Rendu Full HD 1080p sans logo",
       "Studio CHAPCAM complet : scènes en direct (décors, styles, effets, arrière-plans)",
       "Prompts personnalisés illimités en direct + Enhance",
