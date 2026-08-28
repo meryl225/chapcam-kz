@@ -137,7 +137,10 @@ export default async function DashboardHubPage() {
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Link
                 href="/dashboard/live-swap"
-                className="btn-glow group inline-flex items-center gap-2.5 rounded-2xl bg-primary px-7 py-3.5 text-base font-bold text-black hover:bg-primary/90"
+                // Vert profond (et non le neon #00ff88 qui rend le texte
+                // illisible) + texte blanc net -> lecture claire et rendu pro.
+                style={{ backgroundImage: "linear-gradient(180deg, #00c46a 0%, #009a52 100%)" }}
+                className="btn-glow group inline-flex items-center gap-2.5 rounded-2xl px-7 py-3.5 text-base font-bold text-white"
               >
                 <Zap className="h-5 w-5" fill="currentColor" />
                 <T>Lancer le Live Swap</T>
