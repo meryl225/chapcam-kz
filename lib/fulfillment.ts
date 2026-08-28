@@ -507,7 +507,21 @@ export async function creditPurchase(
 // toujours aupres de PayDunya avec nos cles serveur.
 // ------------------------------------------------------------
 
-const PAYDUNYA_BASE_URL = 'https://app.paydunya.com/api/v1'
+// Mode PayDunya : 'live' (production, defaut) ou 'test' (sandbox).
+// Se configure via la variable d'env PAYDUNYA_MODE. Utile pour tester tout le
+// flux de paiement tant que le compte marchand n'est pas active en production.
+export function paydunyaMode(): 'live' | 'test' {
+  return process.env.PAYDUNYA_MODE === 'test' ? 'test' : 'live'
+}
+
+// URL de base selon le mode (l'endpoint sandbox est different de la prod).
+export function paydunyaBaseUrl(): string {
+  return paydunyaMode() === 'test'
+    ? 'https://app.paydunya.com/sandbox-api/v1'
+    : 'https://app.paydunya.com/api/v1'
+}
+
+const PAYDUNYA_BASE_URL = paydunyaBaseUrl()
 
 export interface PaydunyaConfirm {
   status: string // 'completed' | 'cancelled' | 'pending' | ...
@@ -522,12 +536,15 @@ export function paydunyaHeaders(): Record<string, string> | null {
   const privateKey = process.env.PAYDUNYA_PRIVATE_KEY
   const token = process.env.PAYDUNYA_TOKEN
   if (!masterKey || !privateKey || !token) return null
-  return {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'PAYDUNYA-MASTER-KEY': masterKey,
     'PAYDUNYA-PRIVATE-KEY': privateKey,
     'PAYDUNYA-TOKEN': token,
   }
+  // En mode sandbox, PayDunya exige l'en-tete PAYDUNYA-MODE: test.
+  if (paydunyaMode() === 'test') headers['PAYDUNYA-MODE'] = 'test'
+  return headers
 }
 
 // Interroge l'endpoint de confirmation PayDunya pour un token de facture.
