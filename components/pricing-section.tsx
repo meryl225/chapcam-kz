@@ -407,15 +407,22 @@ export function PricingSection() {
                 {/* Le Forfait Testeur (5.000 F) est le pack minutes "anniv_5" (2 min)
                     deja cable au paiement -> on redirige vers cet identifiant. */}
                 <Link href={`/dashboard/plans?plan=${plan.id === "testeur" ? "anniv_5" : plan.id}`}>
-                  <Button 
-                    className={`w-full py-6 text-base font-bold rounded-2xl transition-all ${
-                      plan.highlight 
-                        ? "bg-[#00ff88] text-black hover:bg-[#00dd77]" 
-                        : "bg-white text-black hover:bg-gray-200"
-                    }`}
+                  <button
+                    type="button"
+                    style={{
+                      // Meme rendu "SaaS premium" que le menu de recharge :
+                      // degrade de surface vers la couleur d'accent du forfait +
+                      // liseré + ombre nette, et reflet qui balaie au survol.
+                      backgroundImage: `linear-gradient(180deg, color-mix(in srgb, #fff 18%, ${plan.color}) 0%, ${plan.color} 48%, ${plan.color}e6 100%)`,
+                      boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.38), 0 6px 14px -8px rgba(0,0,0,0.55), 0 2px 4px -2px ${plan.color}4d`,
+                    }}
+                    className="group relative flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-4 text-base font-bold text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0"
                   >
-                    {t("Recharger")}
-                  </Button>
+                    {/* Reflet brillant qui balaie le bouton au survol */}
+                    <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                    <span className="relative">{t("Recharger")}</span>
+                    <CreditCard className="relative h-5 w-5" />
+                  </button>
                 </Link>
               </motion.div>
             )
