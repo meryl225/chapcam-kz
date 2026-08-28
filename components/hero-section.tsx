@@ -6,6 +6,7 @@ import { ArrowRight, Check, TrendingUp, Star, Zap, Gauge, Sparkles, Timer, Shiel
 import { Button } from "@/components/ui/button"
 import { StreamStudio } from "@/components/stream-studio"
 import { MonitorFrame } from "@/components/monitor-frame"
+import { PhoneMockup } from "@/components/phone-mockup"
 import { motion } from "framer-motion"
 import { useT } from "@/lib/i18n/language-provider"
 
@@ -200,9 +201,18 @@ export function HeroSection() {
           initial={false}
           className="order-1 flex flex-col items-center gap-6 lg:order-2 lg:items-end"
         >
-          <MonitorFrame>
-            <StreamStudio />
-          </MonitorFrame>
+          {/* Ordinateur + smartphone : le telephone se superpose en bas a
+              droite du moniteur sur desktop, et passe sous le moniteur (centre)
+              sur mobile pour eviter tout debordement horizontal. */}
+          <div className="relative w-full">
+            <MonitorFrame>
+              <StreamStudio />
+            </MonitorFrame>
+
+            <div className="mx-auto mt-8 w-[165px] sm:w-[175px] lg:absolute lg:-bottom-5 lg:right-0 lg:z-20 lg:mt-0 lg:w-[178px] xl:-right-2 xl:w-[190px]">
+              <PhoneMockup />
+            </div>
+          </div>
 
           {/* Bannière partenaire ChapSim */}
           <motion.a

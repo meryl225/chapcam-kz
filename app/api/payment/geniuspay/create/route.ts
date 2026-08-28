@@ -9,6 +9,7 @@ import { getVoiceOffer } from '@/lib/voice-offers'
 import { getPhotoVideoOffer } from '@/lib/photo-video-offers'
 import { getMotionOffer } from '@/lib/motion-offers'
 import { getTranslationOffer } from '@/lib/translation-offers'
+import { getMinutesOffer } from '@/lib/minutes-offers'
 import { createGeniusPayPayment, geniuspayConfigured } from '@/lib/geniuspay'
 import { resolveGeniusPayMethod } from '@/lib/geniuspay-countries'
 
@@ -86,9 +87,10 @@ export async function POST(request: NextRequest) {
     const photoOffer = getPhotoVideoOffer(productId)
     const motionOffer = getMotionOffer(productId)
     const translationOffer = getTranslationOffer(productId)
+    const minutesOffer = getMinutesOffer(productId)
     if (
       !plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer &&
-      !motionOffer && !translationOffer
+      !motionOffer && !translationOffer && !minutesOffer
     ) {
       return NextResponse.json({ success: false, error: 'Produit inconnu.' }, { status: 400 })
     }
@@ -107,8 +109,10 @@ export async function POST(request: NextRequest) {
                 ? photoOffer.price
                 : motionOffer
                   ? motionOffer.price
-                  : translationOffer!.price
-    const kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' | 'translation' = plan
+                  : translationOffer
+                    ? translationOffer.price
+                    : minutesOffer!.price
+    const kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' | 'translation' | 'minutes' = plan
       ? 'plan'
       : liveOffer
         ? 'live'
@@ -122,7 +126,9 @@ export async function POST(request: NextRequest) {
                 ? 'photo'
                 : motionOffer
                   ? 'motion'
-                  : 'translation'
+                  : translationOffer
+                    ? 'translation'
+                    : 'minutes'
     const label = plan
       ? `Formule ${plan.name} (${plan.points} points, ${plan.duration})`
       : liveOffer
@@ -137,7 +143,9 @@ export async function POST(request: NextRequest) {
                 ? `${photoOffer.name} (${photoOffer.credits} videos de 30s)`
                 : motionOffer
                   ? `${motionOffer.name} (${motionOffer.credits} clips Motion de 10s)`
-                  : `${translationOffer!.name} (${translationOffer!.credits} traductions vidéo)`
+                  : translationOffer
+                    ? `${translationOffer.name} (${translationOffer.credits} traductions vidéo)`
+                    : `${minutesOffer!.name} (${minutesOffer!.points} points)`
 
     // Base URL publique (preview + prod).
     const origin =

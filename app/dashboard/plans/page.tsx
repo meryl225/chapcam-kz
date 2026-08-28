@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useRef, useState, Suspense } from 'react'
-import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift, Clapperboard } from 'lucide-react'
+import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift, Clapperboard, Flame, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { PLANS, getPlan } from '@/lib/plans'
+import { ANNIVERSARY_MINUTES_OFFERS } from '@/lib/minutes-offers'
+import { OFFER_ACTIVE } from '@/components/dashboard/anniversary-offer-popup'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 import { PaymentBadgePopup } from '@/components/payment-badge-popup'
 import { CURRENCIES, useXofRates, formatConverted, formatXof, guessCurrency } from '@/lib/currency-convert'
@@ -120,6 +122,78 @@ function PlansContent() {
           <div className="mx-auto mb-8 max-w-xl rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-center text-sm text-red-400">
             {error}
           </div>
+        )}
+
+        {/* ===== Offre ANNIVERSAIRE "3 mois" : SUSPENDUE (OFFER_ACTIVE=false) ===== */}
+        {OFFER_ACTIVE && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-12 overflow-hidden rounded-3xl border border-violet-500/40 bg-gradient-to-br from-violet-600/15 via-fuchsia-600/10 to-blue-600/15 p-6 md:p-8"
+        >
+          <div className="mb-6 text-center">
+            <span className="inline-flex items-center gap-2 rounded-full bg-red-500/20 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-red-300">
+              <Flame className="h-4 w-4" />
+              {t('Offre anniversaire — 7 jours seulement')}
+            </span>
+            <h2 className="mt-4 text-3xl font-black text-foreground md:text-4xl text-balance">
+              {t('ChapCam fête ses')}{' '}
+              <span className="bg-gradient-to-r from-blue-400 via-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
+                3 {t('mois')} !
+              </span>
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-pretty text-sm text-muted-foreground md:text-base">
+              {t('Pendant 7 jours seulement, profitez de nos tarifs anniversaire sur les minutes de swap en direct.')}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {ANNIVERSARY_MINUTES_OFFERS.map((offer, i) => {
+              const loading = pendingKey === offer.id
+              const featured = i === 0
+              return (
+                <div
+                  key={offer.id}
+                  className={`flex flex-col rounded-2xl border p-4 text-center ${
+                    featured
+                      ? 'border-emerald-500/50 bg-emerald-500/10'
+                      : 'border-white/10 bg-white/[0.03]'
+                  }`}
+                >
+                  {featured && (
+                    <span className="mb-2 inline-flex items-center justify-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
+                      <Zap className="h-3 w-3" />
+                      {t('Forfait Testeur')}
+                    </span>
+                  )}
+                  <p className={`text-2xl font-black ${featured ? 'text-emerald-400' : 'text-foreground'}`}>
+                    {formatXof(offer.price)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">FCFA</p>
+                  <p className="mt-2 text-sm font-bold text-violet-300">
+                    {offer.minutes} {t('minutes')}
+                  </p>
+                  <button
+                    onClick={() => startCheckout(offer.id)}
+                    disabled={!!pendingKey}
+                    className="btn-glow mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-500 via-violet-500 to-fuchsia-500 py-2.5 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      t('Choisir')
+                    )}
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+
+          <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+            <Gift className="h-4 w-4 text-violet-300" />
+            {t('Après les 7 jours, retour aux tarifs habituels.')}
+          </p>
+        </motion.div>
         )}
 
         {/* Annonce ChapCam 2.0 : les recharges concernent le nouveau logiciel */}

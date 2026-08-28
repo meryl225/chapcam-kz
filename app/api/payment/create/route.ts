@@ -10,12 +10,12 @@ import { getPhotoVideoOffer } from '@/lib/photo-video-offers'
 import { getMotionOffer } from '@/lib/motion-offers'
 import { getTranslationOffer } from '@/lib/translation-offers'
 import { getMinutesOffer } from '@/lib/minutes-offers'
-import { paydunyaHeaders } from '@/lib/fulfillment'
+import { paydunyaHeaders, paydunyaBaseUrl } from '@/lib/fulfillment'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const PAYDUNYA_BASE_URL = 'https://app.paydunya.com/api/v1'
+const PAYDUNYA_BASE_URL = paydunyaBaseUrl()
 
 // Cree une facture PayDunya pour une formule a points OU l'offre Live Pro.
 // Le montant et le libelle sont calcules cote serveur (source de verite),
