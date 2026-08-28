@@ -6,6 +6,7 @@ import { getRequestGeo } from '@/lib/geo'
 import { DashboardSidebar, PlanGuardBanner } from '@/components/dashboard/sidebar'
 import { TelegramSupport } from '@/components/telegram-support'
 import { ChapCam2Announcement } from '@/components/dashboard/chapcam-2-announcement'
+import { AnniversaryOfferPopup } from '@/components/dashboard/anniversary-offer-popup'
 
 /*
 subscriptions table schema:
@@ -134,6 +135,9 @@ export default async function DashboardLayout({
 
       {/* Popup d'annonce ChapCam 2.0 (affiche une fois apres connexion) */}
       <ChapCam2Announcement />
+
+      {/* Popup offre anniversaire 3 mois (affiche une fois a l'arrivee) */}
+      <AnniversaryOfferPopup />
     </div>
   )
 }
