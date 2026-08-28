@@ -258,40 +258,40 @@ html:not(.mo-anim) .mo-belowfold [style*='scale(0)'] {
 }
 
 /* ==========================================================================
-   Boutons d'action lumineux ChapCam (.btn-glow)
+   Boutons d'action ChapCam (.btn-glow)
    Classe reutilisable pour rendre TOUS les CTA principaux "premium" :
-   halo colore, leger soulevement au survol, et reflet brillant qui balaie.
-   La couleur du halo suit la variable --glow (par defaut la couleur primaire).
-   Chaque outil peut la surcharger, ex: style={{ ['--glow']: '#c6f542' }}.
+   degrade de surface subtil, fin liseré, ombre portee NEUTRE et resserree,
+   leger soulevement au survol et reflet discret qui balaie. Pas de halo
+   colore diffus (rendu cheap). --glow (par defaut la couleur primaire) ne
+   sert plus qu'a une teinte tres legere de l'ombre.
    ========================================================================== */
 .btn-glow {
   --glow: var(--color-primary);
   position: relative;
   overflow: hidden;
   isolation: isolate;
-  /* Profondeur soignee sans halo : degrade de surface subtil (plus clair en
-     haut) + fin liseré teinte + reflet interieur + ombre portee resserree.
-     Aspect "SaaS premium" plutot que neon qui bave. */
+  /* Profondeur soignee : reflet superieur subtil (plus clair en haut) + fin
+     liseré blanc + ombre portee sombre et nette. Aspect "SaaS premium". */
   background-image: linear-gradient(
     180deg,
-    color-mix(in srgb, #fff 14%, transparent),
-    transparent 45%
+    color-mix(in srgb, #fff 16%, transparent),
+    transparent 48%
   );
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--glow) 30%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 30%, transparent),
-    0 4px 12px -6px color-mix(in srgb, var(--glow) 45%, transparent),
-    0 2px 4px -2px rgba(0, 0, 0, 0.3);
+    inset 0 0 0 1px color-mix(in srgb, #fff 16%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 32%, transparent),
+    0 6px 14px -8px rgba(0, 0, 0, 0.55),
+    0 2px 4px -2px color-mix(in srgb, var(--glow) 30%, transparent);
   transition: transform 0.25s ease, filter 0.25s ease, box-shadow 0.25s ease;
 }
 .btn-glow:hover:not(:disabled) {
   transform: translateY(-1px);
-  filter: brightness(1.04);
+  filter: brightness(1.05);
   box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--glow) 45%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #fff 38%, transparent),
-    0 8px 20px -8px color-mix(in srgb, var(--glow) 60%, transparent),
-    0 2px 6px -2px rgba(0, 0, 0, 0.35);
+    inset 0 0 0 1px color-mix(in srgb, #fff 24%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent),
+    0 10px 22px -10px rgba(0, 0, 0, 0.6),
+    0 2px 6px -2px color-mix(in srgb, var(--glow) 40%, transparent);
 }
 .btn-glow:active:not(:disabled) {
   transform: translateY(0);

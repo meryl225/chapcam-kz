@@ -354,10 +354,11 @@ function PlansContent() {
                   disabled={!!pendingKey}
                   style={{
                     // Aspect "SaaS premium" : degrade de surface a la couleur
-                    // d'accent + reflet superieur + fin liseré teinte + ombre
-                    // resserree. Plus de halo diffus qui "bave" (rendu cheap).
-                    backgroundImage: `linear-gradient(180deg, color-mix(in srgb, #fff 16%, ${accent}) 0%, ${accent} 45%, ${accent}e6 100%)`,
-                    boxShadow: `inset 0 0 0 1px color-mix(in srgb, #fff 22%, transparent), inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 12px -6px ${accent}80, 0 2px 4px -2px rgba(0,0,0,0.3)`,
+                    // d'accent (plus clair en haut) + reflet superieur + fin
+                    // liseré blanc + ombre portee SOMBRE et nette. Plus de halo
+                    // colore diffus qui "bave" (rendu cheap).
+                    backgroundImage: `linear-gradient(180deg, color-mix(in srgb, #fff 18%, ${accent}) 0%, ${accent} 48%, ${accent}e6 100%)`,
+                    boxShadow: `inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.38), 0 6px 14px -8px rgba(0,0,0,0.55), 0 2px 4px -2px ${accent}4d`,
                   }}
                   className="group relative mt-10 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl py-4 text-base font-bold text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60"
                 >
