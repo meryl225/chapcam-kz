@@ -1,4 +1,9 @@
 import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { getMinutesOffer } from '@/lib/minutes-offers'
+
+// Pack de minutes qui donne droit au rendu SANS logo pendant sa validite.
+const NO_WATERMARK_MINUTES_PACK_ID = 'minutes_4'
 
 /**
  * Regles de watermark par forfait (offres de recharge) :
@@ -25,7 +30,7 @@ export type WatermarkDecision = {
   /** plan effectif retenu (pour les logs) */
   plan: string
   /** origine de la decision (pour les logs) */
-  reason: 'auto' | 'manual' | 'default'
+  reason: 'auto' | 'manual' | 'pack' | 'default'
 }
 
 type SubRow = {
@@ -79,8 +84,47 @@ export async function resolveWatermarkForUser(userId: string): Promise<Watermark
     if (manual) return { noWatermark: true, plan, reason: 'manual' }
   }
 
+  // PACK DE MINUTES "4 minutes supplementaires" (10 000 F) : rendu SANS logo
+  // pendant la validite du pack. Ce pack credite des points SANS changer le
+  // `plan` (ex : un Starter reste "starter"), donc la regle par forfait
+  // ci-dessus le laissait AVEC logo alors qu'il a paye. On regarde donc les
+  // achats approuves du pack dans sa fenetre de validite.
+  if (await hasActiveMinutesPack(userId)) {
+    return { noWatermark: true, plan, reason: 'pack' }
+  }
+
   // Tous les autres cas : avec watermark.
   return { noWatermark: false, plan, reason: 'default' }
+}
+
+// Statuts consideres comme "paye" dans payment_requests (les webhooks ecrivent
+// 'approved' ; on tolere les variantes historiques).
+const PAID_STATUSES = ['approved', 'paid', 'completed', 'success']
+
+/**
+ * true si l'utilisateur a un achat APPROUVE du pack "4 minutes" (minutes_4)
+ * encore dans sa fenetre de validite. Lecture avec le service_role : la table
+ * payment_requests n'est pas forcement lisible par le client (RLS).
+ */
+async function hasActiveMinutesPack(userId: string): Promise<boolean> {
+  const offer = getMinutesOffer(NO_WATERMARK_MINUTES_PACK_ID)
+  if (!offer) return false
+  const since = new Date(Date.now() - offer.validityDays * 24 * 60 * 60 * 1000).toISOString()
+  try {
+    const admin = createAdminClient()
+    const { data } = await admin
+      .from('payment_requests')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('plan', offer.id)
+      .in('status', PAID_STATUSES)
+      .gte('created_at', since)
+      .limit(1)
+    return Array.isArray(data) && data.length > 0
+  } catch (e) {
+    console.warn('[watermark] Lecture pack minutes echouee:', (e as Error)?.message)
+    return false
+  }
 }
 
 /**
