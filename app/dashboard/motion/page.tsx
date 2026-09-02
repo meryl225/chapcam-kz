@@ -744,7 +744,9 @@ export default function MotionPage() {
                             if (!job.video_url) return
                             setDownloadingJobId(job.id)
                             try {
-                              await downloadVideo(job.video_url, `chapcam-motion-${job.id.slice(0, 8)}.mp4`)
+                              await downloadVideo(job.video_url, `chapcam-motion-${job.id.slice(0, 8)}.mp4`, (message) =>
+                                toast({ title: "Téléchargement impossible", description: message, variant: "destructive" }),
+                              )
                             } finally {
                               setDownloadingJobId(null)
                             }

@@ -191,7 +191,14 @@ export async function middleware(request: NextRequest) {
   // ecran noir + icone de lecture barree en PRODUCTION (l'apercu v0 supprime
   // ces en-tetes, d'ou "ca marche cote v0 mais pas sur le site"). On laisse
   // donc la reponse de la route intacte, sans aucune reecriture.
-  if (pathname === '/api/videos/file') {
+  //
+  // Idem pour /api/videos/download : il streame le MP4 en `attachment`, avec
+  // l'autorisation DANS l'URL (jeton signe, 10 min). Sur iPhone/Android, c'est
+  // souvent le gestionnaire de telechargement du systeme qui refait la requete,
+  // avec un User-Agent court/atypique et sans cookies : l'anti-bot ci-dessous
+  // le bloquerait (403 -> fichier "Introuvable"). La route verifie elle-meme le
+  // jeton, on la laisse donc passer intacte.
+  if (pathname === '/api/videos/file' || pathname === '/api/videos/download') {
     return NextResponse.next({ request })
   }
 

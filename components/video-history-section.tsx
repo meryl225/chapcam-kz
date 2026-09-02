@@ -1,8 +1,8 @@
 "use client"
 
 import { useCallback, useEffect, useState } from "react"
-import { Download, History, Loader2, Play, RefreshCw, Trash2, X } from "lucide-react"
-import { downloadVideo } from "@/lib/download-video"
+import { AlertCircle, Download, History, Loader2, Play, RefreshCw, Trash2, X } from "lucide-react"
+import { downloadHistoryVideo } from "@/lib/download-video"
 import { HlsVideoPlayer } from "@/components/hls-video-player"
 
 // Section "Mes vidéos" : historique PERMANENT des vidéos générées par un outil,
@@ -41,6 +41,8 @@ export function VideoHistorySection({
   const [reloading, setReloading] = useState(false)
   // id de la vidéo en cours de téléchargement / suppression (pour l'état des boutons)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  // Message d'erreur de téléchargement (fichier disparu, session expirée...).
+  const [downloadError, setDownloadError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   // id de la vidéo dont le player Stream est monté (lecture à la demande : on ne
   // charge pas 50 players d'un coup, on ne monte l'iframe qu'au clic).
@@ -67,13 +69,16 @@ export function VideoHistorySection({
     load()
   }, [load])
 
-  // Enregistrement fiable (mobile + ordinateur) via le helper partagé :
-  // l'attribut `download` seul est souvent ignoré sur iOS/Android.
+  // Enregistrement fiable (iPhone Safari, Android, ordinateur) : on passe l'ID
+  // de la vidéo ; le serveur relit le CHEMIN PERMANENT en base, vérifie que le
+  // fichier existe vraiment, puis fournit un lien signé qui streame le MP4 avec
+  // le bon nom de fichier. Si le fichier n'existe plus : message clair ici.
   const handleDownload = useCallback(async (v: HistoryVideo) => {
-    if (!v.video_url) return
+    setDownloadError(null)
     setDownloadingId(v.id)
     try {
-      await downloadVideo(v.video_url, `chapcam-${v.tool}-${v.id.slice(0, 8)}.mp4`)
+      const r = await downloadHistoryVideo({ id: v.id })
+      if (!r.ok) setDownloadError(r.error || "Téléchargement impossible.")
     } finally {
       setDownloadingId(null)
     }
@@ -146,6 +151,26 @@ export function VideoHistorySection({
           Actualiser
         </button>
       </div>
+
+      {downloadError && (
+        <div
+          role="alert"
+          className="mb-3 flex items-start justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-sm text-red-200"
+        >
+          <span className="inline-flex items-start gap-2">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+            <span>{downloadError}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setDownloadError(null)}
+            className="shrink-0 rounded-md p-1 text-red-200/70 hover:bg-red-500/20 hover:text-red-100"
+            aria-label="Fermer le message"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03] py-14">
