@@ -19,6 +19,63 @@ export async function cancelSubscription(userId: string): Promise<void> {
     .eq('user_id', userId)
 }
 
+// ---------------------------------------------------------------------------
+// VERROU DE SESSION UNIQUE (anti double facturation)
+// Un compte ne peut avoir qu'UNE session live facturee a la fois. Le verrou est
+// stocke sur subscriptions.active_session_id / active_session_at :
+//   - reclame a l'emission du token ET a chaque heartbeat de la session ;
+//   - un autre sessionId est REFUSE tant que le verrou est "frais" (< LOCK_TTL) ;
+//   - considere perime si aucun heartbeat depuis LOCK_TTL_MS (client mort) ;
+//   - libere a l'arret propre (saveSession).
+// Cas reel : deux onglets/appareils ouverts sur le meme compte -> 2 boucles de
+// heartbeat en parallele -> ~2x les points debites pour un seul swap.
+// ---------------------------------------------------------------------------
+export const LOCK_TTL_MS = 60_000
+
+export type ClaimResult = { ok: true } | { ok: false; conflict: true; activeSince: string | null }
+
+export async function claimLiveSession(userId: string, sessionId: string): Promise<ClaimResult> {
+  const admin = createAdminClient()
+  const { data: sub } = await admin
+    .from('subscriptions')
+    .select('id, active_session_id, active_session_at')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (!sub) return { ok: true }
+
+  const now = Date.now()
+  const lockedBy: string | null = sub.active_session_id ?? null
+  const lockedAtMs = sub.active_session_at ? new Date(sub.active_session_at).getTime() : 0
+  const lockFresh = lockedBy !== null && now - lockedAtMs < LOCK_TTL_MS
+
+  if (lockedBy && lockedBy !== sessionId && lockFresh) {
+    return { ok: false, conflict: true, activeSince: sub.active_session_at ?? null }
+  }
+
+  // Reclamer / rafraichir le verrou. La clause .or() rend l'ecriture atomique :
+  // on n'ecrase le verrou que s'il est libre, a nous, ou perime.
+  const staleBefore = new Date(now - LOCK_TTL_MS).toISOString()
+  const { data: updated } = await admin
+    .from('subscriptions')
+    .update({ active_session_id: sessionId, active_session_at: new Date(now).toISOString() })
+    .eq('id', sub.id)
+    .or(`active_session_id.is.null,active_session_id.eq.${sessionId},active_session_at.lt.${staleBefore}`)
+    .select('id')
+  if (!updated || updated.length === 0) {
+    return { ok: false, conflict: true, activeSince: sub.active_session_at ?? null }
+  }
+  return { ok: true }
+}
+
+export async function releaseLiveSession(userId: string, sessionId: string): Promise<void> {
+  const admin = createAdminClient()
+  await admin
+    .from('subscriptions')
+    .update({ active_session_id: null, active_session_at: null })
+    .eq('user_id', userId)
+    .eq('active_session_id', sessionId)
+}
+
 export type LiveGuardResult = {
   /** true => l'utilisateur peut recevoir un token Decart */
   allowed: boolean

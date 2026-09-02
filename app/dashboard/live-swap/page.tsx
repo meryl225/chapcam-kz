@@ -321,6 +321,15 @@ export default function DashboardPage() {
           setUserPoints(data.currentPoints)
         }
         if (data.depleted) handleStopSwapAndSave()
+      } else if (res.status === 409 || data?.code === 'session_conflict') {
+        // Une AUTRE session (autre onglet / appareil) est deja facturee sur ce
+        // compte : on coupe CE swap sans re-tenter, sinon les deux boucles
+        // debiteraient en parallele (double facturation).
+        console.warn('[LiveSwap] Conflit de session : arret de ce swap.')
+        handleStopSwapAndSave()
+        if (typeof window !== 'undefined') {
+          window.alert('Un autre swap est deja en cours sur ce compte (autre onglet ou appareil). Ce swap a ete arrete.')
+        }
       } else {
         // Echec -> on remet le lot en attente pour re-essayer au prochain tick.
         pendingSyncRef.current += chunk
