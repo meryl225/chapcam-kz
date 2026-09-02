@@ -457,11 +457,13 @@ export default function PhotoVideoPage() {
     if (!videoUrl) return
     setDownloadingMain(true)
     try {
-      await downloadVideo(videoUrl, `chapcam-photo-video-${Date.now()}.mp4`)
+      await downloadVideo(videoUrl, `chapcam-photo-video-${Date.now()}.mp4`, (message) =>
+        toast({ title: "Téléchargement impossible", description: message, variant: "destructive" }),
+      )
     } finally {
       setDownloadingMain(false)
     }
-  }, [videoUrl])
+  }, [videoUrl, toast])
 
   const toggleGesture = (value: string) => {
     setGestures((prev) => (prev.includes(value) ? prev.filter((g) => g !== value) : [...prev, value]))

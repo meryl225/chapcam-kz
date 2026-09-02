@@ -409,7 +409,9 @@ export default function VideoTranslationPage() {
                   if (!videoUrl) return
                   setDownloading(true)
                   try {
-                    await downloadVideo(videoUrl, `chapcam-traduction-${Date.now()}.mp4`)
+                    await downloadVideo(videoUrl, `chapcam-traduction-${Date.now()}.mp4`, (message) =>
+                      toast({ title: "Téléchargement impossible", description: message, variant: "destructive" }),
+                    )
                   } finally {
                     setDownloading(false)
                   }
