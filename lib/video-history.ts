@@ -480,6 +480,26 @@ export async function setBlobPathname(
   `
 }
 
+/**
+ * Recupere UNE video de l'historique appartenant a l'utilisateur, par id.
+ * Sert au telechargement : on repart TOUJOURS du chemin PERMANENT stocke en
+ * base (`blob_pathname`), jamais d'une URL signee (qui expire).
+ */
+export async function getVideoHistoryItem(
+  userId: string,
+  id: string,
+): Promise<Pick<VideoHistoryItem, 'id' | 'tool' | 'blob_pathname' | 'title' | 'status' | 'created_at'> | null> {
+  await ensureTable()
+  const rows = (await sql`
+    SELECT id, tool, blob_pathname, title, status, created_at
+    FROM video_history
+    WHERE id = ${id} AND user_id = ${userId}
+    LIMIT 1
+  `) as Pick<VideoHistoryItem, 'id' | 'tool' | 'blob_pathname' | 'title' | 'status' | 'created_at'>[]
+  if (rows.length === 0) return null
+  return { ...rows[0], id: String(rows[0].id) }
+}
+
 /** Liste l'historique d'un utilisateur, tous outils ou filtre par outil. */
 export async function listVideoHistory(
   userId: string,

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { getDownloadUrl, head, issueSignedToken, presignUrl } from '@vercel/blob'
+import { head, issueSignedToken, presignUrl } from '@vercel/blob'
 import { createClient } from '@/lib/supabase/server'
+import { buildDownloadFilename, createDownloadToken } from '@/lib/video-download-token'
 
 // Sert une video de l'historique depuis le store Blob PRIVE.
 //
@@ -46,14 +47,38 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 
+  // MODE TELECHARGEMENT (anciens liens `?download=1`) : on delegue au nouveau
+  // mecanisme /api/videos/download (jeton signe dans l'URL, streaming avec
+  // `Content-Type: video/mp4` + `Content-Disposition: attachment; filename=
+  // "chapcam-....mp4"`). Il fonctionne meme si le gestionnaire de
+  // telechargement du telephone refait la requete sans cookies.
+  if (request.nextUrl.searchParams.get('download') === '1') {
+    const m = pathname.match(/^videos\/[^/]+\/([^/]+)\/([^/]+?)(?:-\d+)?\.(mp4|webm)$/i)
+    const filename = buildDownloadFilename({
+      tool: m?.[1] ?? 'video',
+      id: m?.[2] ?? 'video',
+      createdAt: null,
+      pathname,
+    })
+    const token = createDownloadToken({ pathname, userId: user.id, filename })
+    return NextResponse.redirect(
+      new URL(`/api/videos/download?t=${encodeURIComponent(token)}`, request.nextUrl.origin),
+      { status: 303, headers: { 'Cache-Control': 'private, no-store' } },
+    )
+  }
+
   try {
-    // Verifie l'existence du blob. `head` deduit prive/public du token, donc pas
-    // d'option `access`. Les metadonnees stockees portent deja le bon
-    // content-type video/* et `Content-Disposition: inline` (garanti par le
-    // re-hebergement + le backfill), ce qui rend la lecture iOS/Safari fiable.
-    const meta = await head(pathname).catch(() => null)
+    // Verifie l'existence du blob (2 essais : un hoquet reseau vers l'API Blob
+    // ne doit pas produire un faux "introuvable"). `head` deduit prive/public
+    // du token, donc pas d'option `access`. Les metadonnees stockees portent
+    // deja le bon content-type video/* et `Content-Disposition: inline`.
+    let meta = await head(pathname).catch(() => null)
+    if (!meta) meta = await head(pathname).catch(() => null)
     if (!meta) {
-      return new NextResponse('Introuvable', { status: 404 })
+      return NextResponse.json(
+        { error: 'Ce fichier n’existe plus dans le stockage.' },
+        { status: 410, headers: { 'Cache-Control': 'private, no-store' } },
+      )
     }
 
     const validUntil = Date.now() + PRESIGN_TTL_MS
@@ -76,23 +101,7 @@ export async function GET(request: NextRequest) {
       useCache: false,
     })
 
-    // 3a) MODE TELECHARGEMENT (?download=1) : TELECHARGEMENT EN 1 CLIC.
-    //     Le navigateur NAVIGUE vers cette route (simple <a href>, aucun fetch
-    //     JS), on le redirige vers l'URL presignee suffixee `?download=1` : le
-    //     CDN Blob renvoie alors `Content-Disposition: attachment` (verifie),
-    //     donc le navigateur ENREGISTRE le fichier au lieu de le lire.
-    //     Pourquoi c'est la methode la plus fiable : une navigation n'est
-    //     soumise ni a la CSP connect-src, ni au CORS, ni aux bloqueurs de
-    //     fetch ; aucune copie en memoire (OK pour les gros fichiers et les
-    //     mobiles) ; fonctionne sur iOS Safari, Android Chrome et desktop.
-    if (request.nextUrl.searchParams.get('download') === '1') {
-      return NextResponse.redirect(getDownloadUrl(presignedUrl), {
-        status: 303,
-        headers: { 'Cache-Control': 'private, no-store' },
-      })
-    }
-
-    // 3b) MODE LECTURE (<video>) : redirection classique vers le CDN Blob.
+    // 3) MODE LECTURE (<video>) : redirection classique vers le CDN Blob.
     //     303 pour que la requete suivante soit bien un GET.
     return NextResponse.redirect(presignedUrl, {
       status: 303,
