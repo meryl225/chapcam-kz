@@ -10,6 +10,20 @@ const HEYGEN_API = "https://api.heygen.com"
 // Meme borne que la page : ~14 caracteres/seconde pour 30s -> ~420 caracteres.
 const MAX_SCRIPT_CHARS = 30 * 14
 
+// Detecte le VRAI format audio sur les premiers octets (l'extension de l'URL
+// HeyGen ne correspond pas au contenu).
+function sniffAudioType(buf: Buffer): string | null {
+  if (buf.length < 12) return null
+  if (buf.subarray(0, 4).toString("ascii") === "RIFF" && buf.subarray(8, 12).toString("ascii") === "WAVE") {
+    return "audio/wav"
+  }
+  if (buf.subarray(0, 3).toString("ascii") === "ID3") return "audio/mpeg"
+  if (buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0) return "audio/mpeg"
+  if (buf.subarray(0, 4).toString("ascii") === "OggS") return "audio/ogg"
+  if (buf.subarray(4, 8).toString("ascii") === "ftyp") return "audio/mp4"
+  return null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const apiKey = process.env.HEYGEN_API_KEY
@@ -66,10 +80,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Aucun audio renvoye par HeyGen." }, { status: 502 })
     }
 
-    return NextResponse.json({
-      success: true,
-      audio_url: audioUrl,
-      duration: json?.data?.duration ?? null,
+    // IMPORTANT : HeyGen renvoie une URL en ".wav" dont le CONTENU est du MP3.
+    // Plusieurs navigateurs (Safari / iOS surtout) se fient a l'extension,
+    // tentent de decoder du WAV, echouent, et le lecteur reste muet -> "les
+    // clients n'arrivent pas a ecouter la voix". On telecharge donc l'audio
+    // cote serveur et on le renvoie NOUS-MEMES avec le bon Content-Type
+    // (detecte sur les octets), en meme origine : plus d'ambiguite de format,
+    // plus de CORS / CSP / bloqueurs, lecture fiable partout.
+    const audioRes = await fetch(audioUrl)
+    if (!audioRes.ok) {
+      return NextResponse.json({ error: "Audio HeyGen inaccessible." }, { status: 502 })
+    }
+    const buf = Buffer.from(await audioRes.arrayBuffer())
+    const contentType = sniffAudioType(buf) || audioRes.headers.get("content-type") || "audio/mpeg"
+
+    return new NextResponse(buf, {
+      status: 200,
+      headers: {
+        "Content-Type": contentType,
+        "Content-Length": String(buf.length),
+        "Cache-Control": "private, no-store",
+        "X-Audio-Duration": String(json?.data?.duration ?? ""),
+      },
     })
   } catch (error) {
     console.error("[HeyGen VoicePreview Error]", error)
