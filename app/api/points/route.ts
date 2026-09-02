@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { pointsPerSecond } from '@/lib/swap-pricing'
 import { trackGPUUsage } from '@/lib/rate-limit'
-import { cancelSubscription } from '@/lib/live-guard'
+import { cancelSubscription, claimLiveSession, releaseLiveSession } from '@/lib/live-guard'
 
 export async function POST(request: NextRequest) {
   try {
@@ -55,6 +55,13 @@ export async function POST(request: NextRequest) {
         duration * rate,
       ))
       const frames = Math.max(0, Math.floor(framesProcessed || 0))
+
+      // Arret propre : liberer le verrou de session unique (non bloquant).
+      if (sessionId) {
+        await releaseLiveSession(user.id, sessionId).catch((e) =>
+          console.warn('[Points] Liberation verrou session echouee:', e?.message),
+        )
+      }
 
       // Cas normal : une ligne a deja ete creee par les heartbeats. On la
       // FINALISE (avatar, totaux, finalized=true) au lieu d'en creer une 2e.
@@ -125,6 +132,26 @@ export async function POST(request: NextRequest) {
     const points = Math.max(0, Math.min(requested, maxAllowed))
     if (points <= 0) {
       return NextResponse.json({ success: false, error: 'Rien a deduire' }, { status: 400 })
+    }
+
+    // VERROU DE SESSION UNIQUE : un seul swap facture a la fois par compte.
+    // Si une AUTRE session (autre onglet / appareil) envoie encore des heartbeats,
+    // on refuse ce debit -> le client doit couper ce swap. Sans ce garde-fou,
+    // deux boucles de heartbeat debitaient le meme compte en parallele.
+    if (sessionId) {
+      const claim = await claimLiveSession(user.id, String(sessionId))
+      if (!claim.ok) {
+        console.warn(`[Points] CONFLIT session user=${user.id} session=${sessionId}`)
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Un autre swap est deja en cours sur ce compte. Ferme-le avant de continuer.',
+            code: 'session_conflict',
+            depleted: true,
+          },
+          { status: 409 },
+        )
+      }
     }
 
     // Cap quotidien de GPU (2h/jour/compte) : on comptabilise le temps reellement

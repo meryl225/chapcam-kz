@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveWatermarkForUser, getDecartApiKeyCandidates } from '@/lib/watermark'
-import { checkLiveAccess } from '@/lib/live-guard'
+import { checkLiveAccess, claimLiveSession } from '@/lib/live-guard'
 import { trackGPUUsage } from '@/lib/rate-limit'
 import { RESERVATION_SECONDS, RESERVATION_POINTS } from '@/lib/swap-pricing'
 
@@ -97,6 +97,24 @@ export async function GET(request: Request) {
   // reservation ci-dessous pour que warmup + swap actif se cumulent sur UNE
   // seule ligne swap_sessions.
   const clientSessionId = url.searchParams.get('sessionId')
+  // 4.a VERROU DE SESSION UNIQUE : refuser d'ouvrir un 2e swap si une autre
+  //     session est encore active sur ce compte (autre onglet / appareil).
+  //     C'est la cause reelle des doubles facturations constatees (2 sessions
+  //     parallele de 15 min debitees sur un seul swap).
+  if (clientSessionId) {
+    const claim = await claimLiveSession(user.id, clientSessionId)
+    if (!claim.ok) {
+      console.warn(`[Decart Token] CONFLIT session user=${user.id} session=${clientSessionId}`)
+      return NextResponse.json(
+        {
+          error: 'Un swap est deja en cours sur ce compte (autre onglet ou appareil). Ferme-le puis reessaie dans une minute.',
+          code: 'session_conflict',
+        },
+        { status: 409 },
+      )
+    }
+  }
+
   const originHeader = hdrs.get('origin')
   const forwardedHost = hdrs.get('x-forwarded-host') || hdrs.get('host')
   const forwardedProto = hdrs.get('x-forwarded-proto') || 'https'
