@@ -1,66 +1,54 @@
-// Enregistrement FIABLE d'une vidéo sur mobile ET ordinateur.
+// Téléchargement EN 1 CLIC d'une vidéo, fiable sur mobile ET ordinateur.
 //
-// Pourquoi ce helper : l'attribut HTML `download` sur un <a> est IGNORÉ par la
-// plupart des navigateurs mobiles (iOS Safari, Android Chrome) et pour toute URL
-// cross-origin. Résultat : taper « Télécharger » ouvre/joue la vidéo au lieu de
-// l'enregistrer — c'est exactement la plainte des utilisateurs.
+// Nos vidéos de l'historique sont servies par la route même-origine
+// `/api/videos/file?pathname=...`. Avec `&download=1`, cette route redirige le
+// navigateur vers une URL présignée du stockage qui répond
+// `Content-Disposition: attachment` : le navigateur ENREGISTRE donc le fichier
+// directement (boîte « Enregistrer sous » / dossier Téléchargements / feuille de
+// partage iOS), sans le lire.
 //
-// Méthode robuste : on récupère la vidéo en blob puis on déclenche un lien objet
-// temporaire. Nos vidéos sont servies par la route même-origine
-// `/api/videos/file` qui renvoie `Content-Disposition: attachment` avec
-// `?download=1`, ce qui force bien l'enregistrement.
+// Pourquoi une simple NAVIGATION plutôt qu'un `fetch()` + Blob :
+//   - une navigation n'est soumise ni à la CSP `connect-src`, ni au CORS, ni
+//     aux bloqueurs de pub/anti-pistage qui cassent les `fetch()` cross-origin
+//     (c'était la cause des échecs signalés par les utilisateurs) ;
+//   - aucune copie du fichier en mémoire (vidéos lourdes, mobiles) ;
+//   - fonctionne partout : iOS Safari, Android Chrome, desktop.
 
 /**
- * Télécharge une vidéo de façon fiable (mobile + ordinateur).
- * @returns true si le téléchargement blob a réussi, false si on a dû se rabattre
- *          sur l'ouverture dans un nouvel onglet.
+ * Déclenche l'enregistrement d'une vidéo en 1 clic.
+ * @returns true si le téléchargement direct a été déclenché, false si on est
+ *          passé par le repli (ouverture dans un nouvel onglet).
  */
 export async function downloadVideo(url: string, filename: string): Promise<boolean> {
   const sameOrigin = url.startsWith("/api/videos/file")
 
-  // Déclenche l'enregistrement d'un Blob déjà récupéré via un lien objet
-  // (même-origine -> l'attribut `download` est TOUJOURS honoré, quelle que soit
-  // la disposition renvoyée par le stockage).
-  const saveBlob = (blob: Blob) => {
-    const objectUrl = URL.createObjectURL(blob)
+  const navigateTo = (href: string) => {
     const a = document.createElement("a")
-    a.href = objectUrl
+    a.href = href
     a.download = filename
+    a.rel = "noopener"
     document.body.appendChild(a)
     a.click()
     a.remove()
-    setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
   }
 
-  try {
-    if (sameOrigin) {
-      // Étape 1 : requête MÊME-ORIGINE qui renvoie l'URL présignée en JSON.
-      // (On ne laisse PAS `fetch` suivre une redirection 303 vers un domaine de
-      // stockage tiers : les bloqueurs de pub/anti-pistage cassent cette chaîne
-      // et provoquaient l'échec + la page « introuvable ».)
-      const res = await fetch(`${url}&download=1`, { credentials: "same-origin" })
-      if (!res.ok) throw new Error(`presign failed: ${res.status}`)
-      const { url: presignedUrl } = (await res.json()) as { url?: string }
-      if (!presignedUrl) throw new Error("presigned url manquante")
-      // Étape 2 : on récupère les octets directement depuis l'URL présignée
-      // (CORS *) puis on force l'enregistrement.
-      const fileRes = await fetch(presignedUrl)
-      if (!fileRes.ok) throw new Error(`fetch fichier: ${fileRes.status}`)
-      saveBlob(await fileRes.blob())
-      return true
-    }
+  if (sameOrigin) {
+    // La route répond `attachment` -> enregistrement direct, 1 clic.
+    navigateTo(`${url}${url.includes("?") ? "&" : "?"}download=1`)
+    return true
+  }
 
-    // URL déjà directe (fournisseur / blob public) : on tente le fetch direct.
+  // URL externe (fournisseur / blob public) : on tente un fetch + Blob pour
+  // forcer l'enregistrement, avec repli sur l'ouverture dans un nouvel onglet.
+  try {
     const res = await fetch(url)
     if (!res.ok) throw new Error(`download failed: ${res.status}`)
-    saveBlob(await res.blob())
+    const objectUrl = URL.createObjectURL(await res.blob())
+    navigateTo(objectUrl)
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 4000)
     return true
   } catch {
-    // Repli : ouvrir dans un nouvel onglet — l'utilisateur enregistre
-    // manuellement (utile si un blocage réseau empêche le fetch). On ouvre
-    // l'URL SANS `download=1` : la route redirige alors vers la vidéo (lisible
-    // et enregistrable via le menu contextuel), au lieu de renvoyer du JSON.
-    window.open(url, "_blank")
+    window.open(url, "_blank", "noopener")
     return false
   }
 }

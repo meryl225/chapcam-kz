@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { head, issueSignedToken, presignUrl } from '@vercel/blob'
+import { getDownloadUrl, head, issueSignedToken, presignUrl } from '@vercel/blob'
 import { createClient } from '@/lib/supabase/server'
 
 // Sert une video de l'historique depuis le store Blob PRIVE.
@@ -76,23 +76,23 @@ export async function GET(request: NextRequest) {
       useCache: false,
     })
 
-    // 3a) MODE TELECHARGEMENT (?download=1) : on renvoie l'URL presignee en
-    //     JSON plutot que de rediriger. Pourquoi : le helper client suit alors
-    //     lui-meme cette URL via fetch pour recuperer un Blob et forcer
-    //     l'enregistrement. Cela evite qu'un `fetch()` cote client suive une
-    //     REDIRECTION 303 vers un domaine de stockage tiers
-    //     (*.blob.vercel-storage.com) — chaine que les bloqueurs de pub /
-    //     anti-pistage cassent, ce qui provoquait l'echec puis la page
-    //     "introuvable". Ici la requete reste MEME-ORIGINE (jamais bloquee) et
-    //     ne renvoie qu'un petit JSON.
+    // 3a) MODE TELECHARGEMENT (?download=1) : TELECHARGEMENT EN 1 CLIC.
+    //     Le navigateur NAVIGUE vers cette route (simple <a href>, aucun fetch
+    //     JS), on le redirige vers l'URL presignee suffixee `?download=1` : le
+    //     CDN Blob renvoie alors `Content-Disposition: attachment` (verifie),
+    //     donc le navigateur ENREGISTRE le fichier au lieu de le lire.
+    //     Pourquoi c'est la methode la plus fiable : une navigation n'est
+    //     soumise ni a la CSP connect-src, ni au CORS, ni aux bloqueurs de
+    //     fetch ; aucune copie en memoire (OK pour les gros fichiers et les
+    //     mobiles) ; fonctionne sur iOS Safari, Android Chrome et desktop.
     if (request.nextUrl.searchParams.get('download') === '1') {
-      return NextResponse.json(
-        { url: presignedUrl },
-        { headers: { 'Cache-Control': 'private, no-store' } },
-      )
+      return NextResponse.redirect(getDownloadUrl(presignedUrl), {
+        status: 303,
+        headers: { 'Cache-Control': 'private, no-store' },
+      })
     }
 
-    // 3b) MODE LECTURE (repli <video>) : redirection classique vers le CDN Blob.
+    // 3b) MODE LECTURE (<video>) : redirection classique vers le CDN Blob.
     //     303 pour que la requete suivante soit bien un GET.
     return NextResponse.redirect(presignedUrl, {
       status: 303,
