@@ -314,27 +314,55 @@ export default function PhotoVideoPage() {
       return
     }
     setPreviewing(true)
+    // Liberer l'ancien object URL (sinon fuite memoire a chaque apercu).
+    if (previewUrlAudio?.startsWith("blob:")) URL.revokeObjectURL(previewUrlAudio)
     setPreviewUrlAudio(null)
+
+    // Safari / iOS n'autorisent la lecture audio QUE dans la foulee d'un geste
+    // utilisateur. Un `play()` lance apres un fetch + setTimeout est considere
+    // hors geste et rejete en silence -> lecteur muet. On "debloque" donc un
+    // element <audio> persistant DES le clic (play/pause immediat) ; ensuite
+    // le meme element pourra jouer la source recue, meme apres l'attente reseau.
+    const player = previewAudioRef.current
+    if (player) {
+      try {
+        player.muted = true
+        await player.play().catch(() => {})
+        player.pause()
+        player.muted = false
+      } catch { /* ignore */ }
+    }
+
     try {
       const res = await fetch("/api/heygen/voice-preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: prompt.trim(), voice_id: voiceId, speed }),
       })
-      const json = await res.json()
-      if (!res.ok || !json.audio_url) {
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
         toast({ title: "Aperçu indisponible", description: json.error || "Impossible de générer l'aperçu.", variant: "destructive" })
         return
       }
-      setPreviewUrlAudio(json.audio_url)
-      // Laisser le DOM monter l'element <audio> avant de lancer la lecture.
-      setTimeout(() => previewAudioRef.current?.play().catch(() => {}), 100)
+      // Le serveur renvoie desormais les OCTETS audio (meme origine, bon type
+      // MIME) -> object URL local : aucun probleme de format, CORS ou CSP.
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      setPreviewUrlAudio(url)
+      if (player) {
+        player.src = url
+        player.load()
+        await player.play().catch((e) => {
+          console.warn("[PhotoVideo] Lecture apercu refusee :", e)
+          toast({ title: "Aperçu prêt", description: "Appuie sur lecture pour écouter la voix." })
+        })
+      }
     } catch {
       toast({ title: "Erreur réseau", description: "Réessaie dans un instant.", variant: "destructive" })
     } finally {
       setPreviewing(false)
     }
-  }, [prompt, voiceId, speed, toast])
+  }, [prompt, voiceId, speed, toast, previewUrlAudio])
 
   const startPolling = useCallback((videoId: string, cloneVoiceId: string | null) => {
     if (pollRef.current) clearInterval(pollRef.current)
@@ -764,13 +792,23 @@ export default function PhotoVideoPage() {
                     <><Volume2 className="mr-2 h-4 w-4 text-primary" /> Écouter un aperçu de la voix</>
                   )}
                 </Button>
+                {/* Element TOUJOURS monte (cache tant qu'il n'y a rien a lire) :
+                    indispensable pour le deblocage audio au clic sur Safari/iOS. */}
+                <audio
+                  ref={previewAudioRef}
+                  controls
+                  preload="auto"
+                  playsInline
+                  className={`mt-3 w-full ${previewUrlAudio ? "" : "hidden"}`}
+                />
                 {previewUrlAudio && (
-                  <audio
-                    ref={previewAudioRef}
-                    src={previewUrlAudio}
-                    controls
-                    className="mt-3 w-full"
-                  />
+                  <button
+                    type="button"
+                    onClick={() => previewAudioRef.current?.play().catch(() => {})}
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-foreground hover:bg-primary/20"
+                  >
+                    <Volume2 className="h-4 w-4 text-primary" /> Réécouter la voix
+                  </button>
                 )}
                 <p className="mt-2 text-xs text-text-faint">
                   L&apos;aperçu utilise la même voix que la vidéo finale — ce que tu entends, c&apos;est ce que tu obtiendras.
