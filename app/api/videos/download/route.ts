@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { issueSignedToken, presignUrl } from '@vercel/blob'
+import { getDownloadUrl, issueSignedToken, presignUrl } from '@vercel/blob'
 import { verifyDownloadToken } from '@/lib/video-download-token'
 
 // ============================================================
@@ -10,24 +10,16 @@ import { verifyDownloadToken } from '@/lib/video-download-token'
 // signe `t` (10 min, un fichier, un utilisateur). Puis :
 //   1) on genere une NOUVELLE signed URL du storage prive (jamais une URL
 //      signee stockee en base -> impossible qu'elle soit expiree) ;
-//   2) on STREAME les octets a travers cette fonction en imposant nos propres
-//      en-tetes : `Content-Type: video/mp4`, `Content-Disposition: attachment;
-//      filename="chapcam-....mp4"`, `Accept-Ranges`, `Content-Length` ;
-//   3) on relaie les requetes `Range` (206) : indispensable pour iOS, qui
-//      telecharge souvent par morceaux, et pour la reprise de telechargement.
-//
-// Pourquoi streamer plutot que rediriger vers le storage : c'est le SEUL moyen
-// de garantir le vrai nom de fichier .mp4 et le bon Content-Type sur tous les
-// appareils (le storage impose son propre nom). Le streaming n'est pas soumis
-// a la limite de 4,5 Mo des reponses Vercel (elle ne concerne que les reponses
-// non streamees) -> les videos lourdes passent.
+//   2) on verifie que le fichier existe (1 octet) ;
+//   3) on REDIRIGE vers cette URL en mode telechargement (`?download=1`) : le
+//      CDN sert le .mp4 avec `Content-Type: video/mp4` et
+//      `Content-Disposition: attachment`. Simple, sans proxy ni streaming.
 //
 // Ce lien ne renvoie JAMAIS un 404/403 brut pour un fichier valide. En cas
 // d'erreur (jeton expire, fichier disparu) on renvoie une PAGE HTML CLAIRE,
 // pas un texte que le telephone enregistrerait dans un faux ".mp4".
 // ============================================================
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300 // videos lourdes / connexions lentes
 
 const PRESIGN_TTL_MS = 15 * 60 * 1000 // signed URL storage : 15 min, generee a l'instant
 
@@ -87,44 +79,23 @@ export async function GET(request: NextRequest) {
       useCache: false,
     })
 
-    // 2) Recuperer les octets (en relayant un eventuel Range).
-    const range = request.headers.get('range')
-    const upstream = await fetch(presignedUrl, {
-      headers: range ? { Range: range } : undefined,
-      cache: 'no-store',
-    })
-
-    if (upstream.status === 404 || upstream.status === 410) {
+    // 2) Le fichier existe-t-il ? On demande juste le premier octet au CDN.
+    const probe = await fetch(presignedUrl, { headers: { Range: 'bytes=0-0' }, cache: 'no-store' })
+    if (probe.status === 404 || probe.status === 410) {
       return errorPage('Vidéo introuvable', 'Ce fichier n’existe plus dans le stockage : il a peut-être été supprimé ou a expiré. Tu peux régénérer la vidéo depuis le studio.', 410)
     }
-    if (upstream.status === 416) {
-      return new NextResponse(null, { status: 416, headers: { 'Content-Range': `bytes */${upstream.headers.get('content-length') ?? '*'}` } })
-    }
-    if (!upstream.ok || !upstream.body) {
-      console.error('[videos/download] Storage HTTP', upstream.status, 'pour', pathname)
-      return errorPage('Téléchargement indisponible', 'Le stockage n’a pas répondu correctement. Réessaie dans un instant.', 502)
-    }
 
-    // 3) En-tetes de telechargement maitrises par NOUS.
-    const isWebm = /\.webm$/i.test(pathname)
-    const contentType = isWebm ? 'video/webm' : 'video/mp4'
-    const safeName = filename.replace(/[^\w.-]/g, '_')
-    const headers = new Headers({
-      'Content-Type': contentType,
-      'Content-Disposition': `attachment; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
-      'Accept-Ranges': 'bytes',
-      'Cache-Control': 'private, no-store',
-      'X-Content-Type-Options': 'nosniff',
+    // 3) SIMPLE : redirection vers l'URL signee en mode telechargement.
+    //    Le CDN du storage repond lui-meme `Content-Type: video/mp4` +
+    //    `Content-Disposition: attachment` (verifie) : le navigateur enregistre
+    //    le .mp4 directement. Aucun proxy, aucun streaming via nos fonctions,
+    //    donc rien qui puisse planter ou depasser une limite.
+    return NextResponse.redirect(getDownloadUrl(presignedUrl), {
+      status: 302,
+      headers: { 'Cache-Control': 'private, no-store' },
     })
-    const len = upstream.headers.get('content-length')
-    if (len) headers.set('Content-Length', len)
-    const contentRange = upstream.headers.get('content-range')
-    if (contentRange) headers.set('Content-Range', contentRange)
-
-    // Streaming direct : aucune copie complete en memoire, pas de limite 4,5 Mo.
-    return new NextResponse(upstream.body, { status: upstream.status === 206 ? 206 : 200, headers })
   } catch (error) {
-    console.error('[videos/download] Erreur:', error)
+    console.error('[videos/download] Erreur:', (error as Error)?.message, error)
     return errorPage('Téléchargement indisponible', 'Une erreur est survenue. Réessaie dans un instant.', 500)
   }
 }
