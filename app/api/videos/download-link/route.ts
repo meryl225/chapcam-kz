@@ -89,11 +89,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Accès refusé à ce fichier.', code: 'forbidden' }, { status: 403 })
     }
 
-    // 3) Le fichier existe-t-il REELLEMENT dans le storage ? (2 essais : un
-    //    hoquet reseau vers l'API Blob ne doit pas produire une fausse erreur.)
-    let meta = await head(pathname).catch(() => null)
-    if (!meta) meta = await head(pathname).catch(() => null)
-    if (!meta) {
+    // 3) Le fichier existe-t-il REELLEMENT dans le storage ?
+    //    On ne renvoie "n'existe plus" QUE si l'API Blob repond explicitement
+    //    "not found". Toute autre erreur (reseau, quota, token de prod ne
+    //    couvrant pas cette operation...) NE DOIT PAS bloquer : les fichiers
+    //    sont bien la (les miniatures se lisent), et c'est la route de
+    //    streaming qui tranchera avec le CDN (410 si vraiment absent).
+    let meta: Awaited<ReturnType<typeof head>> | null = null
+    let definitelyMissing = false
+    for (let attempt = 0; attempt < 2 && !meta && !definitelyMissing; attempt++) {
+      try {
+        meta = await head(pathname)
+      } catch (e) {
+        const err = e as { name?: string; message?: string; status?: number }
+        const msg = `${err?.name ?? ''} ${err?.message ?? ''}`.toLowerCase()
+        if (err?.name === 'BlobNotFoundError' || err?.status === 404 || msg.includes('not found') || msg.includes('does not exist')) {
+          definitelyMissing = true
+        } else {
+          console.warn(`[videos/download-link] head() indisponible (essai ${attempt + 1}):`, err?.message)
+        }
+      }
+    }
+    if (definitelyMissing) {
       return NextResponse.json(
         {
           error: 'Ce fichier n’existe plus dans le stockage. Il a peut-être été supprimé ou a expiré.',
@@ -110,7 +127,7 @@ export async function POST(request: NextRequest) {
     const url = `/api/videos/download?t=${encodeURIComponent(token)}`
 
     return NextResponse.json(
-      { success: true, url, filename, size: meta.size, contentType: meta.contentType },
+      { success: true, url, filename, size: meta?.size ?? null, contentType: meta?.contentType ?? 'video/mp4' },
       { headers: { 'Cache-Control': 'private, no-store' } },
     )
   } catch (error) {
