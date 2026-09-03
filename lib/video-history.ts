@@ -1,6 +1,11 @@
 import 'server-only'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 import { put, del } from '@vercel/blob'
+import { isR2Configured, uploadVideoBuffer, headVideo, deleteVideo as deleteR2Video } from '@/lib/r2'
+
+// Cles dont la copie R2 vient d'etre VERIFIEE (HEAD) dans ce processus : permet
+// a saveVideoHistory d'enregistrer `r2_key` sans refaire un aller-retour R2.
+const r2KeysReady = new Set<string>()
 import {
   copyBlobPathnameToStream,
   saveStreamUidForRef,
@@ -28,6 +33,9 @@ export interface VideoHistoryItem {
   provider_ref: string | null
   // Chemin du blob prive (a servir via /api/videos/file?pathname=...).
   blob_pathname: string | null
+  // Cle R2 PERMANENTE (telechargement). Renseignee uniquement apres copie
+  // verifiee dans le bucket. Jamais une URL signee.
+  r2_key: string | null
   // Miniature optionnelle (URL directe fournisseur, non critique si elle expire).
   thumbnail_url: string | null
   // UID Cloudflare Stream (lecture HLS adaptative) + sous-domaine CDN du compte.
@@ -81,6 +89,9 @@ async function ensureTable(): Promise<void> {
   // tentatives (borne le fallback "URL fournisseur" en dernier recours).
   await sql`ALTER TABLE video_history ADD COLUMN IF NOT EXISTS rehost_claimed_at TIMESTAMPTZ`
   await sql`ALTER TABLE video_history ADD COLUMN IF NOT EXISTS rehost_attempts INTEGER NOT NULL DEFAULT 0`
+  // Cle R2 PERMANENTE du fichier (ex : videos/{userId}/{videoId}.mp4). Jamais
+  // une URL signee : elles sont generees a la demande au moment du clic.
+  await sql`ALTER TABLE video_history ADD COLUMN IF NOT EXISTS r2_key TEXT`
   await sql`CREATE INDEX IF NOT EXISTS video_history_user_idx ON video_history (user_id, created_at DESC)`
   // Un provider_ref donne n'est enregistre qu'une fois par utilisateur.
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS video_history_ref_idx ON video_history (user_id, tool, provider_ref)`
@@ -138,6 +149,24 @@ export async function rehostToBlob(
         access: 'private',
         contentType,
       })
+
+      // COPIE DANS CLOUDFLARE R2 (stockage permanent de telechargement), avec le
+      // MEME buffer : pas de second telechargement depuis le fournisseur. La cle
+      // R2 est la meme que le chemin Blob -> une seule valeur en base
+      // (`blob_pathname` = cle R2), verifiee par HEAD avant d'etre consideree
+      // comme presente.
+      if (isR2Configured()) {
+        try {
+          await uploadVideoBuffer(pathname, buffer, contentType)
+          const meta = await headVideo(pathname)
+          if (!meta || meta.size !== buffer.byteLength) {
+            throw new Error(`Verification R2 echouee (attendu ${buffer.byteLength}, obtenu ${meta?.size ?? 'absent'})`)
+          }
+          r2KeysReady.add(pathname)
+        } catch (r2err) {
+          console.error('[video-history] Copie R2 echouee (Blob conserve) :', r2err)
+        }
+      }
       return blob.pathname
     } catch (err) {
       lastError = err
@@ -173,21 +202,32 @@ export async function saveVideoHistory(input: {
   creditsCost?: number | null
 }): Promise<void> {
   await ensureTable()
+  // `r2_key` n'est renseignee QUE si la copie R2 a ete VERIFIEE (HEAD) juste
+  // avant : une video n'entre jamais dans "Mes videos" avec une cle R2 fantome.
+  const r2Key = input.blobPathname && r2KeysReady.has(input.blobPathname) ? input.blobPathname : null
+  if (r2Key) r2KeysReady.delete(r2Key)
   await sql`
-    INSERT INTO video_history (user_id, tool, provider_ref, blob_pathname, thumbnail_url, title, status, credits_cost)
+    INSERT INTO video_history (user_id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, title, status, credits_cost)
     VALUES (
       ${input.userId}, ${input.tool}, ${input.providerRef},
-      ${input.blobPathname}, ${input.thumbnailUrl ?? null},
+      ${input.blobPathname}, ${r2Key}, ${input.thumbnailUrl ?? null},
       ${input.title ?? ''}, ${input.status ?? 'completed'}, ${input.creditsCost ?? null}
     )
     ON CONFLICT (user_id, tool, provider_ref)
     DO UPDATE SET
       blob_pathname = COALESCE(EXCLUDED.blob_pathname, video_history.blob_pathname),
+      r2_key = COALESCE(EXCLUDED.r2_key, video_history.r2_key),
       thumbnail_url = COALESCE(EXCLUDED.thumbnail_url, video_history.thumbnail_url),
       title = COALESCE(NULLIF(EXCLUDED.title, ''), video_history.title),
       credits_cost = COALESCE(video_history.credits_cost, EXCLUDED.credits_cost),
       status = EXCLUDED.status
   `
+}
+
+/** Enregistre la cle R2 d'une ligne (apres copie verifiee, ex : migration). */
+export async function setVideoR2Key(id: string, r2Key: string): Promise<void> {
+  await ensureTable()
+  await sql`UPDATE video_history SET r2_key = ${r2Key} WHERE id = ${id}`
 }
 
 // Construit l'URL de service privee a partir d'un pathname Blob.
@@ -425,11 +465,19 @@ export async function deleteVideoHistory(
   // 2) Effacer le fichier Blob (non bloquant : on continue meme si echec).
   const pathname = rows[0].blob_pathname
   if (pathname) {
-  try {
-  await del(pathname)
-  } catch (err) {
-  console.error('[video-history] Suppression Blob echouee:', err)
-  }
+    try {
+      await del(pathname)
+    } catch (err) {
+      console.error('[video-history] Suppression Blob echouee:', err)
+    }
+    // Effacer aussi la copie R2 (meme cle).
+    if (isR2Configured()) {
+      try {
+        await deleteR2Video(pathname)
+      } catch (err) {
+        console.error('[video-history] Suppression R2 echouee:', err)
+      }
+    }
   }
 
   // 2b) Effacer la video Cloudflare Stream associee (non bloquant).
@@ -473,9 +521,11 @@ export async function setBlobPathname(
   pathname: string,
 ): Promise<void> {
   await ensureTable()
+  const r2Key = r2KeysReady.has(pathname) ? pathname : null
+  if (r2Key) r2KeysReady.delete(r2Key)
   await sql`
     UPDATE video_history
-    SET blob_pathname = ${pathname}, status = 'completed'
+    SET blob_pathname = ${pathname}, r2_key = COALESCE(${r2Key}, r2_key), status = 'completed'
     WHERE id = ${id} AND user_id = ${userId}
   `
 }
@@ -488,14 +538,34 @@ export async function setBlobPathname(
 export async function getVideoHistoryItem(
   userId: string,
   id: string,
-): Promise<Pick<VideoHistoryItem, 'id' | 'tool' | 'blob_pathname' | 'title' | 'status' | 'created_at'> | null> {
+): Promise<Pick<VideoHistoryItem, 'id' | 'tool' | 'blob_pathname' | 'r2_key' | 'title' | 'status' | 'created_at'> | null> {
   await ensureTable()
   const rows = (await sql`
-    SELECT id, tool, blob_pathname, title, status, created_at
+    SELECT id, tool, blob_pathname, r2_key, title, status, created_at
     FROM video_history
     WHERE id = ${id} AND user_id = ${userId}
     LIMIT 1
-  `) as Pick<VideoHistoryItem, 'id' | 'tool' | 'blob_pathname' | 'title' | 'status' | 'created_at'>[]
+  `) as Pick<VideoHistoryItem, 'id' | 'tool' | 'blob_pathname' | 'r2_key' | 'title' | 'status' | 'created_at'>[]
+  if (rows.length === 0) return null
+  return { ...rows[0], id: String(rows[0].id) }
+}
+
+/**
+ * Meme chose, mais par CHEMIN de stockage (cle R2 ou ancien chemin Blob).
+ * Utilise par les studios, qui ne connaissent que l'URL de lecture.
+ */
+export async function getVideoHistoryItemByPath(
+  userId: string,
+  path: string,
+): Promise<Pick<VideoHistoryItem, 'id' | 'tool' | 'blob_pathname' | 'r2_key' | 'title' | 'status' | 'created_at'> | null> {
+  await ensureTable()
+  const rows = (await sql`
+    SELECT id, tool, blob_pathname, r2_key, title, status, created_at
+    FROM video_history
+    WHERE user_id = ${userId} AND (r2_key = ${path} OR blob_pathname = ${path})
+    ORDER BY created_at DESC
+    LIMIT 1
+  `) as Pick<VideoHistoryItem, 'id' | 'tool' | 'blob_pathname' | 'r2_key' | 'title' | 'status' | 'created_at'>[]
   if (rows.length === 0) return null
   return { ...rows[0], id: String(rows[0].id) }
 }
@@ -509,14 +579,14 @@ export async function listVideoHistory(
   await ensureTable()
   const rows = tool
     ? ((await sql`
-        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, stream_uid, stream_customer_code, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, stream_uid, stream_customer_code, title, status, created_at
         FROM video_history
         WHERE user_id = ${userId} AND tool = ${tool}
         ORDER BY created_at DESC
         LIMIT ${limit}
       `) as VideoHistoryItem[])
     : ((await sql`
-        SELECT id, tool, provider_ref, blob_pathname, thumbnail_url, stream_uid, stream_customer_code, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, stream_uid, stream_customer_code, title, status, created_at
         FROM video_history
         WHERE user_id = ${userId}
         ORDER BY created_at DESC

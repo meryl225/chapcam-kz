@@ -192,12 +192,10 @@ export async function middleware(request: NextRequest) {
   // ces en-tetes, d'ou "ca marche cote v0 mais pas sur le site"). On laisse
   // donc la reponse de la route intacte, sans aucune reecriture.
   //
-  // Idem pour /api/videos/download : il streame le MP4 en `attachment`, avec
-  // l'autorisation DANS l'URL (jeton signe, 10 min). Sur iPhone/Android, c'est
-  // souvent le gestionnaire de telechargement du systeme qui refait la requete,
-  // avec un User-Agent court/atypique et sans cookies : l'anti-bot ci-dessous
-  // le bloquerait (403 -> fichier "Introuvable"). La route verifie elle-meme le
-  // jeton, on la laisse donc passer intacte.
+  // Idem pour /api/videos/download : elle verifie elle-meme la session puis
+  // redirige (302) vers une URL signee Cloudflare R2. Le telechargement final
+  // est fait par le telephone directement aupres de R2 (sans cookies), donc
+  // l'anti-bot ci-dessous n'a rien a faire ici ; on la laisse passer intacte.
   if (pathname === '/api/videos/file' || pathname === '/api/videos/download') {
     return NextResponse.next({ request })
   }

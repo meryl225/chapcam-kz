@@ -1,27 +1,25 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { getDownloadUrl, issueSignedToken, presignUrl } from '@vercel/blob'
-import { verifyDownloadToken } from '@/lib/video-download-token'
+import { createClient } from '@/lib/supabase/server'
+import { getVideoHistoryItem, getVideoHistoryItemByPath } from '@/lib/video-history'
+import { headVideo, isVideoKey, signedDownloadUrl } from '@/lib/r2'
 
 // ============================================================
-// ETAPE 2 du telechargement : SERVIR le fichier MP4.
+// TELECHARGEMENT D'UNE VIDEO — une seule route, Cloudflare R2 uniquement.
 //
-// Le navigateur (ou le gestionnaire de telechargement iOS/Android) NAVIGUE
-// vers cette URL. Aucune session requise : l'autorisation est dans le jeton
-// signe `t` (10 min, un fichier, un utilisateur). Puis :
-//   1) on genere une NOUVELLE signed URL du storage prive (jamais une URL
-//      signee stockee en base -> impossible qu'elle soit expiree) ;
-//   2) on verifie que le fichier existe (1 octet) ;
-//   3) on REDIRIGE vers cette URL en mode telechargement (`?download=1`) : le
-//      CDN sert le .mp4 avec `Content-Type: video/mp4` et
-//      `Content-Disposition: attachment`. Simple, sans proxy ni streaming.
+//   GET /api/videos/download?id=<id video_history>
 //
-// Ce lien ne renvoie JAMAIS un 404/403 brut pour un fichier valide. En cas
-// d'erreur (jeton expire, fichier disparu) on renvoie une PAGE HTML CLAIRE,
-// pas un texte que le telephone enregistrerait dans un faux ".mp4".
+//   1) session utilisateur (cookie) ;
+//   2) cle R2 PERMANENTE relue en base (jamais une URL signee) ;
+//   3) l'objet existe-t-il vraiment dans le bucket ? (HeadObject) ;
+//   4) NOUVELLE URL signee R2 generee a l'instant (10 min) avec
+//      Content-Type: video/mp4 + Content-Disposition: attachment; filename=….mp4 ;
+//   5) redirection : le navigateur enregistre le .mp4 directement
+//      (iPhone Safari, Android, ordinateur).
+//
+// Toute erreur renvoie une PAGE HTML claire (jamais un 404/403 brut que le
+// telephone enregistrerait dans un faux ".mp4").
 // ============================================================
 export const dynamic = 'force-dynamic'
-
-const PRESIGN_TTL_MS = 15 * 60 * 1000 // signed URL storage : 15 min, generee a l'instant
 
 function errorPage(title: string, message: string, status: number): NextResponse {
   const html = `<!doctype html>
@@ -39,63 +37,58 @@ function errorPage(title: string, message: string, status: number): NextResponse
     status,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
-      // Surtout PAS de Content-Disposition ici : on veut afficher la page,
-      // jamais l'enregistrer comme un fichier.
       'Cache-Control': 'private, no-store',
       'X-Content-Type-Options': 'nosniff',
     },
   })
 }
 
+function buildFilename(tool: string, id: string, createdAt: string | Date | null): string {
+  const d = createdAt ? new Date(createdAt) : new Date()
+  const ymd = Number.isNaN(d.getTime()) ? '' : `-${d.toISOString().slice(0, 10).replace(/-/g, '')}`
+  return `chapcam-${tool}${ymd}-${id.slice(0, 8)}.mp4`
+}
+
 export async function GET(request: NextRequest) {
-  const token = request.nextUrl.searchParams.get('t')
-  if (!token) {
+  const id = request.nextUrl.searchParams.get('id')?.trim()
+  const path = request.nextUrl.searchParams.get('pathname')?.trim()
+  if (!id && !path) {
     return errorPage('Lien invalide', 'Ce lien de téléchargement est incomplet. Reviens sur « Mes vidéos » et clique de nouveau sur Télécharger.', 400)
   }
 
-  const verified = verifyDownloadToken(token)
-  if (!verified.ok) {
-    if (verified.reason === 'expired') {
-      return errorPage('Lien expiré', 'Ce lien de téléchargement n’est valable que 10 minutes. Reviens sur « Mes vidéos » et clique de nouveau sur Télécharger.', 410)
-    }
-    return errorPage('Lien invalide', 'Ce lien de téléchargement n’est pas valide. Reviens sur « Mes vidéos » et clique de nouveau sur Télécharger.', 400)
-  }
-
-  const { p: pathname, u: userId, f: filename } = verified.payload
-  // Defense en profondeur : le chemin doit appartenir au proprietaire du jeton.
-  if (!pathname.startsWith(`videos/${userId}/`)) {
-    return errorPage('Accès refusé', 'Ce fichier ne t’appartient pas.', 403)
+  // 1) Session.
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return errorPage('Connexion requise', 'Ta session a expiré. Reconnecte-toi puis reviens sur « Mes vidéos » pour télécharger.', 401)
   }
 
   try {
-    // 1) NOUVELLE signed URL vers le storage prive, generee maintenant.
-    const validUntil = Date.now() + PRESIGN_TTL_MS
-    const signed = await issueSignedToken({ pathname, operations: ['get'], validUntil })
-    const { presignedUrl } = await presignUrl(signed, {
-      operation: 'get',
-      pathname,
-      access: 'private',
-      validUntil,
-      useCache: false,
-    })
-
-    // 2) Le fichier existe-t-il ? On demande juste le premier octet au CDN.
-    const probe = await fetch(presignedUrl, { headers: { Range: 'bytes=0-0' }, cache: 'no-store' })
-    if (probe.status === 404 || probe.status === 410) {
-      return errorPage('Vidéo introuvable', 'Ce fichier n’existe plus dans le stockage : il a peut-être été supprimé ou a expiré. Tu peux régénérer la vidéo depuis le studio.', 410)
+    // 2) Cle permanente depuis la base (filtree par proprietaire).
+    const item = id
+      ? await getVideoHistoryItem(user.id, id)
+      : await getVideoHistoryItemByPath(user.id, path as string)
+    if (!item) {
+      return errorPage('Vidéo introuvable', 'Cette vidéo n’existe pas dans ton historique.', 404)
+    }
+    const key = item.r2_key
+    if (!isVideoKey(key)) {
+      // Ancienne video pas encore migree dans R2.
+      return errorPage('Vidéo en cours de migration', 'Cette vidéo est en cours de transfert vers le nouveau stockage. Réessaie dans quelques minutes.', 503)
     }
 
-    // 3) SIMPLE : redirection vers l'URL signee en mode telechargement.
-    //    Le CDN du storage repond lui-meme `Content-Type: video/mp4` +
-    //    `Content-Disposition: attachment` (verifie) : le navigateur enregistre
-    //    le .mp4 directement. Aucun proxy, aucun streaming via nos fonctions,
-    //    donc rien qui puisse planter ou depasser une limite.
-    return NextResponse.redirect(getDownloadUrl(presignedUrl), {
-      status: 302,
-      headers: { 'Cache-Control': 'private, no-store' },
-    })
+    // 3) Existence REELLE dans le bucket.
+    const meta = await headVideo(key)
+    if (!meta) {
+      return errorPage('Vidéo introuvable', 'Ce fichier n’existe plus dans le stockage : il a peut-être été supprimé. Tu peux régénérer la vidéo depuis le studio.', 410)
+    }
+
+    // 4) + 5) URL signee fraiche -> redirection.
+    const filename = buildFilename(item.tool, item.id, item.created_at)
+    const url = await signedDownloadUrl(key, filename, 600)
+    return NextResponse.redirect(url, { status: 302, headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
-    console.error('[videos/download] Erreur:', (error as Error)?.message, error)
+    console.error('[videos/download] Erreur:', (error as Error)?.message)
     return errorPage('Téléchargement indisponible', 'Une erreur est survenue. Réessaie dans un instant.', 500)
   }
 }

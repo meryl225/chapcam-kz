@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { head, issueSignedToken, presignUrl } from '@vercel/blob'
 import { createClient } from '@/lib/supabase/server'
-import { buildDownloadFilename, createDownloadToken } from '@/lib/video-download-token'
 
 // Sert une video de l'historique depuis le store Blob PRIVE.
 //
@@ -47,22 +46,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 
-  // MODE TELECHARGEMENT (anciens liens `?download=1`) : on delegue au nouveau
-  // mecanisme /api/videos/download (jeton signe dans l'URL, streaming avec
-  // `Content-Type: video/mp4` + `Content-Disposition: attachment; filename=
-  // "chapcam-....mp4"`). Il fonctionne meme si le gestionnaire de
-  // telechargement du telephone refait la requete sans cookies.
+  // MODE TELECHARGEMENT (anciens liens `?download=1`) : on delegue a la route
+  // unique /api/videos/download (Cloudflare R2).
   if (request.nextUrl.searchParams.get('download') === '1') {
-    const m = pathname.match(/^videos\/[^/]+\/([^/]+)\/([^/]+?)(?:-\d+)?\.(mp4|webm)$/i)
-    const filename = buildDownloadFilename({
-      tool: m?.[1] ?? 'video',
-      id: m?.[2] ?? 'video',
-      createdAt: null,
-      pathname,
-    })
-    const token = createDownloadToken({ pathname, userId: user.id, filename })
     return NextResponse.redirect(
-      new URL(`/api/videos/download?t=${encodeURIComponent(token)}`, request.nextUrl.origin),
+      new URL(`/api/videos/download?pathname=${encodeURIComponent(pathname)}`, request.nextUrl.origin),
       { status: 303, headers: { 'Cache-Control': 'private, no-store' } },
     )
   }
