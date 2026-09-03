@@ -18,6 +18,8 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1125.0",
+    "@aws-sdk/s3-request-presigner": "^3.1125.0",
     "@decartai/sdk": "0.1.14",
     "@fal-ai/client": "^1.10.1",
     "@fal-ai/serverless-proxy": "^0.10.0",
