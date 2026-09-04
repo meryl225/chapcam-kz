@@ -20,31 +20,5 @@
       "destination": "https://chapcam.com/:path*",
       "permanent": true
     }
-  ],
-  "services": {
-    "frontend": {
-      "root": ".",
-      "framework": "nextjs"
-    },
-    "backend": {
-      "root": "backend",
-      "entrypoint": "src/server.ts"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/backend(/.*)?",
-      "destination": {
-        "type": "service",
-        "service": "backend"
-      }
-    },
-    {
-      "source": "/(.*)",
-      "destination": {
-        "type": "service",
-        "service": "frontend"
-      }
-    }
   ]
 }
