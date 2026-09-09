@@ -193,8 +193,13 @@ export default function MotionPage() {
   // Interroge le statut d'UN job (la bonne route selon le fournisseur) et met a
   // jour son entree dans l'historique. Le statut est aussi persiste cote serveur.
   const pollJob = useCallback(async (job: MotionJob) => {
-    const endpoint = job.provider === "fal" ? "/api/motion/control" : "/api/motion"
-    const url = `${endpoint}?request_id=${encodeURIComponent(job.request_id)}${job.provider === "fal" ? `&model=${job.model}` : ""}`
+    // Motion Control (Kling, ou l'ancien fournisseur "fal") se suit sur
+    // /api/motion/control ; seule l'animation image->video Higgsfield se suit
+    // sur /api/motion. Router selon le VRAI fournisseur du job : sinon un job
+    // Kling etait interroge sur l'endpoint Higgsfield (request_id inconnu) et
+    // restait bloque en "Generation..." a l'infini.
+    const endpoint = job.provider === "higgsfield" ? "/api/motion" : "/api/motion/control"
+    const url = `${endpoint}?request_id=${encodeURIComponent(job.request_id)}`
     try {
       const res = await fetch(url)
       const json = await res.json()

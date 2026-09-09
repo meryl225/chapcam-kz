@@ -88,7 +88,14 @@ export async function GET(request: NextRequest) {
     const url = await signedDownloadUrl(key, filename, 600)
     return NextResponse.redirect(url, { status: 302, headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error) {
-    console.error('[videos/download] Erreur:', (error as Error)?.message)
-    return errorPage('Téléchargement indisponible', 'Une erreur est survenue. Réessaie dans un instant.', 500)
+    const err = error as { name?: string; message?: string; Code?: string; $metadata?: { httpStatusCode?: number } }
+    // Cause technique visible (sans aucun secret) : indispensable pour
+    // diagnostiquer la production, ou le message generique cachait tout.
+    const cause = [err?.name, err?.Code, err?.$metadata?.httpStatusCode, err?.message]
+      .filter(Boolean)
+      .join(' · ')
+      .slice(0, 200)
+    console.error('[videos/download] Erreur:', cause)
+    return errorPage('Téléchargement indisponible', `Une erreur est survenue. Réessaie dans un instant. (${cause || 'erreur inconnue'})`, 500)
   }
 }
