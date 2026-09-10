@@ -18,6 +18,7 @@ import {
   getMotionTask,
   isModerationError,
   MODERATION_MESSAGE,
+  explainKlingFailure,
   getKlingApiKey,
 } from "@/lib/kling"
 
@@ -164,9 +165,7 @@ export async function GET(request: NextRequest) {
       success: true,
       status: "failed",
       code: moderated ? "moderation" : "failed",
-      error: moderated
-        ? MODERATION_MESSAGE
-        : "La generation a echoue. Reessaie ou change d'image/video.",
+      error: moderated ? MODERATION_MESSAGE : explainKlingFailure(rawMsg),
       refunded: justFailed,
       ...(typeof remaining === "number" ? { remaining: Math.max(0, remaining) } : {}),
     })

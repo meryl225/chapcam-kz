@@ -252,3 +252,37 @@ export function isModerationError(msg: string): boolean {
 // Message clair, en francais, pour un refus de moderation.
 export const MODERATION_MESSAGE =
   "Cette generation a ete refusee par la moderation du modele. Causes frequentes : visage d'une personne reelle celebre, contenu sensible/NSFW, violence, ou visage non detecte dans l'image. Essaie avec une autre image/video."
+
+/**
+ * Traduit la vraie raison d'echec renvoyee par Kling en un message francais
+ * ACTIONNABLE pour l'utilisateur. Sans ca, une erreur precise comme "Video
+ * format is invalid" etait masquee derriere un generique "la generation a
+ * echoue", et l'utilisateur ne savait pas quoi corriger.
+ */
+export function explainKlingFailure(rawMsg: string): string {
+  const m = (rawMsg || '').toLowerCase()
+
+  // Format / codec de la video de reference non supporte (cas le plus frequent :
+  // videos iPhone en HEVC/H.265 .mov, ou conteneurs exotiques).
+  if (m.includes('video format') || m.includes('format is invalid') || (m.includes('format') && m.includes('video'))) {
+    return "Le format de ta video de reference n'est pas supporte. Reexporte-la en MP4 (H.264) — sur iPhone, active Reglages > Camera > Formats > \"Le plus compatible\", ou passe la video dans un convertisseur MP4, puis reessaie."
+  }
+  // Resolution / dimensions hors limites.
+  if (m.includes('resolution') || m.includes('dimension') || m.includes('too large') || m.includes('pixel')) {
+    return "La resolution de ta video ou de ton image n'est pas acceptee. Utilise une video 720p/1080p standard (format vertical conseille) et reessaie."
+  }
+  // Duree hors bornes cote fournisseur.
+  if (m.includes('duration') || m.includes('too long') || m.includes('too short')) {
+    return "La duree de ta video de reference n'est pas acceptee. Utilise un clip de 2 a 10 secondes et reessaie."
+  }
+  // Fichier illisible / telechargement impossible cote Kling.
+  if (m.includes('download') || m.includes('cannot read') || m.includes('decode') || m.includes('corrupt') || m.includes('invalid file')) {
+    return "Kling n'a pas pu lire ton fichier (video ou image). Verifie qu'il n'est pas corrompu, reexporte-le en MP4 (H.264) / JPG, puis reessaie."
+  }
+  // Message brut disponible mais non reconnu : on le montre (borne) plutot que
+  // de le cacher, avec un conseil generique.
+  if (rawMsg && rawMsg.trim()) {
+    return `La generation a echoue (${rawMsg.trim().slice(0, 120)}). Essaie avec une autre video (MP4 H.264, 2-10s) ou une autre image.`
+  }
+  return "La generation a echoue. Reessaie avec une video MP4 (H.264) de 2 a 10s et une image nette d'une personne."
+}
