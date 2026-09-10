@@ -51,7 +51,7 @@ export function Header() {
             { name: "Tarifs", href: "#tarifs" },
             { name: "Télécharger", href: "/download" },
             { name: "Founder", href: "#founder" },
-            { name: "Partenariat", href: "#partenariat" },
+            { name: "ChapVerify", href: "/chapverify" },
           ].map((item) => (
             <Link
               key={item.name}
