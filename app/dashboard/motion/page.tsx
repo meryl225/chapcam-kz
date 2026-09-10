@@ -33,6 +33,7 @@ interface MotionJob {
   status: "processing" | "completed" | "failed"
   video_url: string | null
   created_at: string
+  error?: string | null
 }
 
 type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
@@ -210,7 +211,8 @@ export default function MotionPage() {
         setHistory((prev) => prev.map((j) => (j.request_id === job.request_id ? { ...j, status: "completed", video_url: json.video_url } : j)))
         toast({ title: "Vidéo prête !", description: "Ton clip Motion a été généré." })
       } else if (json.status === "failed" || json.status === "nsfw") {
-        setHistory((prev) => prev.map((j) => (j.request_id === job.request_id ? { ...j, status: "failed" } : j)))
+        const reason = json.error || "La vidéo n'a pas pu être générée."
+        setHistory((prev) => prev.map((j) => (j.request_id === job.request_id ? { ...j, status: "failed", error: reason } : j)))
         // Le serveur rembourse le crédit Motion sur un échec (dont refus de
         // modération) : on rafraîchit le solde affiché s'il est renvoyé.
         if (typeof json.remaining === "number") setCredits(Math.max(0, json.remaining))
@@ -521,7 +523,7 @@ export default function MotionPage() {
                 )}
                 <input ref={refInputRef} type="file" accept="video/mp4,video/quicktime,video/webm" onChange={(e) => onSelectRef(e.target.files?.[0])} className="hidden" />
               </div>
-              <p className="mt-1.5 text-center text-[11px] text-white/40">Optionnel · {MOTION_MAX_SECONDS}s max</p>
+              <p className="mt-1.5 text-center text-[11px] text-white/40">Optionnel · {MOTION_MAX_SECONDS}s max · MP4 (H.264)</p>
             </div>
           </div>
 
@@ -768,9 +770,14 @@ export default function MotionPage() {
                       {job.status === "completed" && job.video_url ? (
                         <video src={job.video_url} controls loop playsInline className="h-full w-full object-cover" />
                       ) : job.status === "failed" ? (
-                        <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-center">
-                          <X className="h-6 w-6 text-red-400" />
-                          <span className="px-2 text-[11px] text-red-400">Échec</span>
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 p-3 text-center">
+                          <X className="h-6 w-6 shrink-0 text-red-400" />
+                          <span className="text-[11px] font-semibold text-red-400">Échec</span>
+                          {job.error && (
+                            <span className="line-clamp-4 text-[10px] leading-snug text-white/50" title={job.error}>
+                              {job.error}
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-center">
