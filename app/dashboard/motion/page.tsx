@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Upload, X, Loader2, Download, Play, Sparkles, ChevronRight, Film, ImageIcon, Video, BookOpen, History, Sun, Moon, Trees, Snowflake, Clapperboard, Wand2 } from "lucide-react"
+import { Upload, X, Loader2, Download, Play, Sparkles, ChevronRight, Film, ImageIcon, Video, BookOpen, History, Sun, Moon, Trees, Snowflake, Clapperboard, Wand2, Check, Zap, Gauge } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
@@ -38,11 +38,14 @@ interface MotionJob {
 type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 
 // Modeles (mappes sur les tiers DoP cote API). Presente facon Higgsfield.
-const MODELS: { value: string; label: string; credits: number }[] = [
-  { value: "standard", label: "Motion Standard", credits: 28 },
-  { value: "pro", label: "Motion Pro", credits: 45 },
+const MODELS: { value: string; label: string; credits: number; desc: string; pro?: boolean }[] = [
+  { value: "standard", label: "Standard", credits: 1, desc: "Rendu rapide et fiable" },
+  { value: "pro", label: "Pro", credits: 2, desc: "Détails & fluidité maximum", pro: true },
 ]
-const QUALITIES = ["720p", "1080p"] as const
+const QUALITIES: { value: "720p" | "1080p"; label: string; desc: string }[] = [
+  { value: "720p", label: "720p", desc: "HD" },
+  { value: "1080p", label: "1080p", desc: "Full HD" },
+]
 
 // Scenes/decors selectionnables en un clic. Chaque scene injecte une instruction
 // de fond en anglais dans le prompt final (les modeles y repondent mieux).
@@ -78,7 +81,7 @@ export default function MotionPage() {
   const [scene, setScene] = useState("keep")
   const [customScene, setCustomScene] = useState("")
   const [model, setModel] = useState("standard")
-  const [quality, setQuality] = useState<(typeof QUALITIES)[number]>("720p")
+  const [quality, setQuality] = useState<"720p" | "1080p">("720p")
   const [enhance, setEnhance] = useState(true)
   const [motions, setMotions] = useState<Motion[]>([])
   const [selectedMotions, setSelectedMotions] = useState<string[]>([])
@@ -263,11 +266,15 @@ export default function MotionPage() {
     // MODE 1 : Motion Control REEL — une video de reference est fournie.
     // On transfere son mouvement sur l'image via l'API Kling native.
     if (refVideo) {
-      // Garde-fou UX : bloquer si le solde de credits Motion est vide.
-      if (credits !== null && credits <= 0) {
+      // Garde-fou UX : bloquer si le solde ne couvre pas le cout du modele
+      // (Standard = 1 credit, Pro = 2). Aligne sur la verification serveur.
+      if (credits !== null && credits < activeModel.credits) {
         toast({
-          title: "Crédits Motion épuisés",
-          description: "Passe à un forfait Premium, VIP PRO ou VIP DEBOUT pour obtenir des crédits Motion Control.",
+          title: "Crédits Motion insuffisants",
+          description:
+            credits > 0
+              ? `Le modèle ${activeModel.label} coûte ${activeModel.credits} crédits Motion et il t'en reste ${credits}. Choisis Standard ou recharge tes crédits.`
+              : "Passe à un forfait Premium, VIP PRO ou VIP DEBOUT pour obtenir des crédits Motion Control.",
           variant: "destructive",
         })
         return
@@ -609,49 +616,81 @@ export default function MotionPage() {
             </div>
           </div>
 
-          {/* Ligne Model */}
-          <div className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
-            <div className="px-3 pt-2.5 text-[11px] font-medium uppercase tracking-wide text-white/40">Model</div>
-            <div className="grid grid-cols-2 gap-1 p-2">
-              {MODELS.map((m) => (
-                <button
-                  key={m.value}
-                  type="button"
-                  onClick={() => !busy && setModel(m.value)}
-                  disabled={busy}
-                  aria-pressed={model === m.value}
-                  className={`rounded-lg px-2 py-2 text-center transition-colors disabled:opacity-50 ${
-                    model === m.value ? "bg-[#c6f542] text-black" : "bg-white/5 text-white/70 hover:bg-white/10"
-                  }`}
-                >
-                  <span className="block text-xs font-semibold leading-tight">{m.label.replace("Motion ", "")}</span>
-                  <span className={`block text-[10px] ${model === m.value ? "text-black/60" : "text-white/40"}`}>{m.credits} cr.</span>
-                </button>
-              ))}
+          {/* Modele : deux cartes selectionnables facon "plan" */}
+          <div>
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-white/40">
+              <Zap className="h-3.5 w-3.5" /> Modèle de rendu
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {MODELS.map((m) => {
+                const active = model === m.value
+                return (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => !busy && setModel(m.value)}
+                    disabled={busy}
+                    aria-pressed={active}
+                    className={`group relative overflow-hidden rounded-xl border p-3 text-left transition-all disabled:opacity-50 ${
+                      active
+                        ? "border-[#c6f542] bg-[#c6f542]/[0.08] shadow-[0_0_0_1px_rgba(198,245,66,0.4)]"
+                        : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className={`text-sm font-bold ${active ? "text-white" : "text-white/80"}`}>{m.label}</span>
+                      {m.pro ? (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-amber-300 to-yellow-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-black">
+                          <Sparkles className="h-2.5 w-2.5" /> Pro
+                        </span>
+                      ) : (
+                        active && (
+                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#c6f542] text-black">
+                            <Check className="h-3 w-3" />
+                          </span>
+                        )
+                      )}
+                    </div>
+                    <p className="mt-1 text-[11px] leading-snug text-white/45">{m.desc}</p>
+                    <div className="mt-2.5 flex items-center gap-1">
+                      <span className={`text-base font-bold tabular-nums ${active ? "text-[#c6f542]" : "text-white/70"}`}>{m.credits}</span>
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-white/35">crédits</span>
+                    </div>
+                    {m.pro && active && (
+                      <span className="absolute bottom-2.5 right-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#c6f542] text-black">
+                        <Check className="h-3 w-3" />
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
           </div>
 
-          {/* Ligne Quality */}
-          <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
-            <div>
-              <div className="text-[11px] font-medium uppercase tracking-wide text-white/40">Quality</div>
-              <div className="text-sm font-semibold text-white">{quality}</div>
+          {/* Qualite : controle segmente */}
+          <div>
+            <div className="mb-2 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-white/40">
+              <Gauge className="h-3.5 w-3.5" /> Qualité d&apos;export
             </div>
-            <div className="flex gap-1">
-              {QUALITIES.map((q) => (
-                <button
-                  key={q}
-                  type="button"
-                  onClick={() => !busy && setQuality(q)}
-                  disabled={busy}
-                  aria-pressed={quality === q}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
-                    quality === q ? "bg-white text-black" : "bg-white/5 text-white/60 hover:bg-white/10"
-                  }`}
-                >
-                  {q}
-                </button>
-              ))}
+            <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-black/30 p-1">
+              {QUALITIES.map((q) => {
+                const active = quality === q.value
+                return (
+                  <button
+                    key={q.value}
+                    type="button"
+                    onClick={() => !busy && setQuality(q.value)}
+                    disabled={busy}
+                    aria-pressed={active}
+                    className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-center transition-all disabled:opacity-50 ${
+                      active ? "bg-white text-black shadow-sm" : "text-white/55 hover:bg-white/5 hover:text-white/80"
+                    }`}
+                  >
+                    <span className="text-sm font-bold">{q.label}</span>
+                    <span className={`text-[10px] font-medium uppercase tracking-wide ${active ? "text-black/50" : "text-white/30"}`}>{q.desc}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
 

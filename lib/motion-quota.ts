@@ -65,19 +65,35 @@ export async function addMotionCredits(userId: string, amount: number): Promise<
   return Number(rows[0].balance)
 }
 
-/** Deduit 1 credit (1 clip). Retourne le solde restant, ou -1 si vide. */
-export async function deductMotionCredit(userId: string): Promise<number> {
+// Cout en credits Motion par modele de rendu. Source de verite PARTAGEE : la
+// route serveur (debit) et l'UI (affichage) doivent utiliser exactement ces
+// valeurs pour rester coherentes. Pro coute plus cher car son cout fournisseur
+// Kling est ~33% superieur.
+export const MOTION_COST_BY_TIER = { standard: 1, pro: 2 } as const
+export type MotionTier = keyof typeof MOTION_COST_BY_TIER
+export function motionCost(tier: string): number {
+  return MOTION_COST_BY_TIER[tier as MotionTier] ?? MOTION_COST_BY_TIER.standard
+}
+
+/**
+ * Deduit `amount` credits (1 clip = 1 a 2 credits selon le modele). La deduction
+ * est ATOMIQUE : elle n'a lieu que si le solde couvre entierement le cout, ce qui
+ * evite qu'un clip Pro passe avec un solde de 1. Retourne le solde restant, ou -1
+ * si le solde est insuffisant.
+ */
+export async function deductMotionCredit(userId: string, amount = 1): Promise<number> {
   await ensureTable()
+  const cost = Math.max(1, Math.floor(amount))
   const rows = (await sql`
     UPDATE motion_credits
-    SET balance = balance - 1, updated_at = now()
-    WHERE user_id = ${userId} AND balance > 0
+    SET balance = balance - ${cost}, updated_at = now()
+    WHERE user_id = ${userId} AND balance >= ${cost}
     RETURNING balance
   `) as { balance: number }[]
   return rows.length === 0 ? -1 : Number(rows[0].balance)
 }
 
-/** Rembourse 1 credit (si la generation echoue apres deduction). */
-export async function refundMotionCredit(userId: string): Promise<number> {
-  return addMotionCredits(userId, 1)
+/** Rembourse `amount` credits (si la generation echoue apres deduction). */
+export async function refundMotionCredit(userId: string, amount = 1): Promise<number> {
+  return addMotionCredits(userId, Math.max(1, Math.floor(amount)))
 }

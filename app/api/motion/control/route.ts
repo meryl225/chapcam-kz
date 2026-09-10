@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { uploadObject, signedObjectUrl, deleteObject } from "@/lib/r2"
 import { createClient } from "@/lib/supabase/server"
 import { motionQuotaForPlan } from "@/lib/plans"
-import { getMotionBalance, addMotionCredits, deductMotionCredit } from "@/lib/motion-quota"
+import { getMotionBalance, addMotionCredits, deductMotionCredit, motionCost } from "@/lib/motion-quota"
 import {
   createMotionJob,
   markMotionJobCompleted,
@@ -271,16 +271,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Video de reference trop volumineuse (max 30 Mo / ~10s)." }, { status: 400 })
     }
 
+    // Cout en credits selon le modele choisi (Standard = 1, Pro = 2).
+    const cost = motionCost(tierKey)
+
     // Verifier le SOLDE de credits Motion AVANT tout upload/appel Kling.
+    // Le solde doit couvrir ENTIEREMENT le cout du modele (un clip Pro exige 2).
     const { balance, subActive } = await resolveBalance(supabase, user.id)
-    if (balance <= 0) {
+    if (balance < cost) {
+      const exhausted = balance > 0 // il a des credits, mais pas assez pour le Pro
       return NextResponse.json(
         {
-          error: subActive
-            ? "Credits Motion Control epuises. Passe a un forfait superieur pour en obtenir plus."
-            : "Aucun forfait actif incluant le Motion Control. Choisis Premium, VIP PRO ou VIP DEBOUT.",
-          code: subActive ? "quota_exhausted" : "no_plan",
-          remaining: 0,
+          error: !subActive
+            ? "Aucun forfait actif incluant le Motion Control. Choisis Premium, VIP PRO ou VIP DEBOUT."
+            : exhausted
+              ? `Le modele Pro coute ${cost} credits Motion et il t'en reste ${balance}. Choisis Standard ou recharge tes credits.`
+              : "Credits Motion Control epuises. Passe a un forfait superieur pour en obtenir plus.",
+          code: !subActive ? "no_plan" : "quota_exhausted",
+          remaining: Math.max(0, balance),
+          required: cost,
         },
         { status: 402 },
       )
@@ -330,14 +338,14 @@ export async function POST(request: NextRequest) {
       inputPaths: uploadedPaths,
     }).catch(() => {})
 
-    // Deduire 1 credit UNIQUEMENT apres une soumission Kling reussie.
-    const remaining = await deductMotionCredit(user.id)
+    // Deduire le cout du modele UNIQUEMENT apres une soumission Kling reussie.
+    const remaining = await deductMotionCredit(user.id, cost)
 
     // Journaliser la consommation par utilisateur (suivi admin + cout estime).
     await logToolUsage({
       userId: user.id,
       tool: "motion",
-      credits: 1,
+      credits: cost,
       meta: { model: tierKey, provider: "kling" },
     })
 
