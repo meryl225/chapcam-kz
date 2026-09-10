@@ -115,3 +115,32 @@ export async function signedPlaybackUrl(key: string, expiresInSeconds = 3600): P
 export async function deleteVideo(key: string): Promise<void> {
   await getClient().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }))
 }
+
+// ============================================================
+// Objets GENERIQUES (fichiers d'entree temporaires, ex : image + video de
+// reference envoyees a Kling Motion Control). Le store Blob etant PRIVE, on ne
+// peut plus exposer d'URL publique ; on passe donc par R2 + URL signee courte.
+// ============================================================
+
+/** Envoie des octets quelconques dans R2 sous une cle arbitraire. */
+export async function uploadObject(key: string, buf: Buffer, contentType: string): Promise<void> {
+  await getClient().send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: buf, ContentType: contentType }))
+}
+
+/**
+ * URL signee de LECTURE d'un objet quelconque (telechargeable par un tiers,
+ * ex : les serveurs de Kling). Duree de vie par defaut : 2 h, largement de quoi
+ * laisser le fournisseur telecharger l'entree pendant tout le traitement.
+ */
+export async function signedObjectUrl(key: string, expiresInSeconds = 7200): Promise<string> {
+  return getSignedUrl(getClient(), new GetObjectCommand({ Bucket: BUCKET, Key: key }), { expiresIn: expiresInSeconds })
+}
+
+/** Supprime un objet quelconque (ne leve pas si absent). */
+export async function deleteObject(key: string): Promise<void> {
+  try {
+    await getClient().send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }))
+  } catch {
+    /* deja supprime ou introuvable : sans importance */
+  }
+}

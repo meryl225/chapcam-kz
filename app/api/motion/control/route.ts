@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { put, del } from "@vercel/blob"
+import { uploadObject, signedObjectUrl, deleteObject } from "@/lib/r2"
 import { createClient } from "@/lib/supabase/server"
 import { motionQuotaForPlan } from "@/lib/plans"
 import { getMotionBalance, addMotionCredits, deductMotionCredit } from "@/lib/motion-quota"
@@ -88,7 +88,7 @@ async function cleanupInputs(userId: string, requestId: string): Promise<void> {
   try {
     const paths = await getMotionJobInputPaths(userId, requestId)
     if (paths.length === 0) return
-    await Promise.allSettled(paths.map((p) => del(p)))
+    await Promise.allSettled(paths.map((p) => deleteObject(p)))
     await clearMotionJobInputPaths(userId, requestId).catch(() => {})
   } catch (e) {
     console.error("[MotionControl] Nettoyage des fichiers temporaires echoue:", e)
@@ -286,31 +286,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Kling exige des URLs PUBLIQUES telechargeables pour l'image et la video.
-    // On les uploade dans le Blob public sous un prefixe temporaire ; ils seront
-    // supprimes en fin de tache (succes/echec) via cleanupInputs.
+    // Kling exige des URLs telechargeables pour l'image et la video. Le store
+    // Blob etant PRIVE, on uploade les entrees dans Cloudflare R2 sous un prefixe
+    // temporaire, puis on genere des URLs signees (2 h) que les serveurs de Kling
+    // peuvent telecharger. Les objets sont supprimes en fin de tache via cleanupInputs.
     const stamp = Date.now()
     const imgExt = image.type === "image/png" ? "png" : image.type === "image/webp" ? "webp" : "jpg"
     const vidExt = video.type === "video/webm" ? "webm" : video.type === "video/quicktime" ? "mov" : "mp4"
     const imgBuf = Buffer.from(await image.arrayBuffer())
     const vidBuf = Buffer.from(await video.arrayBuffer())
 
-    const imageBlob = await put(`motion-input/${user.id}/${stamp}-image.${imgExt}`, imgBuf, {
-      access: "public",
-      contentType: image.type,
-    })
-    uploadedPaths.push(imageBlob.pathname)
-    const videoBlob = await put(`motion-input/${user.id}/${stamp}-video.${vidExt}`, vidBuf, {
-      access: "public",
-      contentType: video.type,
-    })
-    uploadedPaths.push(videoBlob.pathname)
+    const imageKey = `motion-input/${user.id}/${stamp}-image.${imgExt}`
+    const videoKey = `motion-input/${user.id}/${stamp}-video.${vidExt}`
+    await uploadObject(imageKey, imgBuf, image.type)
+    uploadedPaths.push(imageKey)
+    await uploadObject(videoKey, vidBuf, video.type)
+    uploadedPaths.push(videoKey)
+
+    const imageUrl = await signedObjectUrl(imageKey)
+    const videoUrl = await signedObjectUrl(videoKey)
 
     // Soumission a Kling Motion Control 2.6 avec callback pour la finalisation
     // serveur-a-serveur (le polling reste un secours cote client).
     const { taskId } = await submitMotionControl({
-      imageUrl: imageBlob.url,
-      videoUrl: videoBlob.url,
+      imageUrl,
+      videoUrl,
       prompt,
       orientation,
       resolution: RESOLUTION_BY_TIER[tierKey] || RESOLUTION_BY_TIER[DEFAULT_TIER],
@@ -353,7 +353,7 @@ export async function POST(request: NextRequest) {
     console.error("[MotionControl Error]", msg)
     // La soumission a echoue : supprimer les fichiers temporaires deja uploades.
     if (uploadedPaths.length) {
-      await Promise.allSettled(uploadedPaths.map((p) => del(p))).catch(() => {})
+      await Promise.allSettled(uploadedPaths.map((p) => deleteObject(p))).catch(() => {})
     }
     const lower = msg.toLowerCase()
     // 1) Refus de moderation au lancement (image/video/prompt refuses). Aucun

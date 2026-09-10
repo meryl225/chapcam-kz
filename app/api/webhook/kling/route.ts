@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { del } from "@vercel/blob"
+import { deleteObject } from "@/lib/r2"
 import { parseTaskData, verifyKlingWebhook } from "@/lib/kling"
 import {
   findMotionJobOwner,
@@ -39,7 +39,7 @@ export const maxDuration = 120
 async function cleanupInputs(userId: string, requestId: string, paths: string[]): Promise<void> {
   if (paths.length === 0) return
   try {
-    await Promise.allSettled(paths.map((p) => del(p)))
+    await Promise.allSettled(paths.map((p) => deleteObject(p)))
     await clearMotionJobInputPaths(userId, requestId).catch(() => {})
   } catch (e) {
     console.error("[Kling Webhook] Nettoyage des fichiers temporaires echoue:", e)
