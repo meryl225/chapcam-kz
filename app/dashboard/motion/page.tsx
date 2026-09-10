@@ -34,6 +34,7 @@ interface MotionJob {
   video_url: string | null
   created_at: string
   error?: string | null
+  expired?: boolean
 }
 
 type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
@@ -179,7 +180,7 @@ export default function MotionPage() {
         URL.revokeObjectURL(url)
         toast({
           title: "Vidéo trop longue",
-          description: `La vidéo de référence doit durer ${MOTION_MAX_SECONDS}s maximum (la tienne fait ${Math.round(dur)}s). Découpe-la puis réessaie.`,
+          description: `La vid��o de référence doit durer ${MOTION_MAX_SECONDS}s maximum (la tienne fait ${Math.round(dur)}s). Découpe-la puis réessaie.`,
           variant: "destructive",
         })
         return
@@ -767,8 +768,14 @@ export default function MotionPage() {
                 {history.map((job) => (
                   <div key={job.id} className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]">
                     <div className="relative aspect-[3/4] w-full bg-black/40">
-                      {job.status === "completed" && job.video_url ? (
+                      {job.status === "completed" && job.video_url && !job.expired ? (
                         <video src={job.video_url} controls loop playsInline className="h-full w-full object-cover" />
+                      ) : job.status === "completed" && job.expired ? (
+                        <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 p-3 text-center">
+                          <Film className="h-6 w-6 shrink-0 text-white/30" />
+                          <span className="text-[11px] font-semibold text-white/60">Vidéo expirée</span>
+                          <span className="text-[10px] leading-snug text-white/40">Ce clip n&apos;est plus disponible. Régénère-le pour en obtenir une nouvelle version.</span>
+                        </div>
                       ) : job.status === "failed" ? (
                         <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 p-3 text-center">
                           <X className="h-6 w-6 shrink-0 text-red-400" />
@@ -788,7 +795,7 @@ export default function MotionPage() {
                     </div>
                     <div className="flex items-center justify-between gap-2 p-2">
                       <p className="truncate text-[11px] text-white/60" title={job.prompt}>{job.prompt || "Animation"}</p>
-                      {job.status === "completed" && job.video_url && (
+                      {job.status === "completed" && job.video_url && !job.expired && (
                         <button
                           type="button"
                           onClick={async () => {

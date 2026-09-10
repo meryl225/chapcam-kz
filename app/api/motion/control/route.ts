@@ -134,9 +134,16 @@ export async function GET(request: NextRequest) {
       const blobByRef: Record<string, string> = await getBlobPathnamesByRef(user.id, "motion").catch(() => ({}))
       const durableJobs = jobs.map((j) => {
         const pathname = blobByRef[j.request_id]
-        return pathname
-          ? { ...j, video_url: `/api/videos/file?pathname=${encodeURIComponent(pathname)}` }
-          : j
+        if (pathname) {
+          // Copie permanente disponible -> URL durable, toujours lisible.
+          return { ...j, video_url: `/api/videos/file?pathname=${encodeURIComponent(pathname)}`, expired: false }
+        }
+        // Pas de copie durable : l'URL fournisseur (Kling/fal) expire et n'est
+        // souvent pas lisible dans le navigateur. On marque le clip "expire"
+        // pour afficher un etat propre plutot qu'un lecteur casse.
+        const isProviderUrl =
+          !!j.video_url && !j.video_url.startsWith("/api/videos/file")
+        return { ...j, expired: j.status === "completed" && isProviderUrl }
       })
       return NextResponse.json({ success: true, jobs: durableJobs })
     } catch {
