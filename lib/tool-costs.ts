@@ -12,12 +12,13 @@
 //   - fal.ai Kling Motion Control : cout au clip (~10 s max).
 // ============================================================
 
-export type ToolName = 'photo_video' | 'motion' | 'translation'
+export type ToolName = 'photo_video' | 'motion' | 'translation' | 'chapverify'
 
 export const TOOL_LABELS: Record<ToolName, string> = {
   photo_video: 'Studio Photo en Vidéo',
   motion: 'Motion',
   translation: 'Traduction Vidéo',
+  chapverify: 'ChapVerify',
 }
 
 // Parametres de cout par outil (modifiables).
