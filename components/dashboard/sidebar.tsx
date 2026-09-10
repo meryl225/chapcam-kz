@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, AudioLines, Globe, ChevronRight, Crown, Mic } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, ShieldCheck, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, AudioLines, Globe, ChevronRight, Crown, Mic } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -74,6 +74,7 @@ interface Tool {
 }
 
 const tools: Tool[] = [
+  { href: '/dashboard/chapverify', icon: ShieldCheck, title: 'ChapVerify', description: 'Détecte les deepfakes', badge: 'NEW', color: '#dc2626' },
   { href: '/dashboard/live-swap', icon: Zap, title: 'Live Swap', description: 'Change de visage en direct', badge: 'LIVE', color: '#3b82f6' },
   { href: '/dashboard/photo-video', icon: ImageIcon, title: 'Photos en Vidéo', description: 'Anime ta photo en vidéo', badge: 'NEW', color: '#22c55e' },
   { href: '/dashboard/motion', icon: Film, title: 'Motion', description: 'Anime ta photo en 3D', badge: 'NEW', color: '#6366f1' },

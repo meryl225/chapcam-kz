@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
 import { HeaderActions } from '@/components/dashboard/hub/header-actions'
 import { EsimPromo } from '@/components/dashboard/esim-promo'
+import { ChapVerifyPromo } from '@/components/dashboard/chapverify-promo'
 import { ConsentCard } from '@/components/dashboard/consent-card'
 import { SupportBanner } from '@/components/dashboard/support-banner'
 import { Sparkles, Crown, Check, Zap, Timer, Users, Hourglass, ArrowRight, Clock } from 'lucide-react'
@@ -148,10 +149,14 @@ export default async function DashboardHubPage() {
               </Link>
               <Link
                 href="/dashboard/plans"
-                className="inline-flex items-center gap-2 rounded-2xl border border-hairline bg-background/40 px-6 py-3.5 text-base font-semibold text-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-primary"
+                // Bleu professionnel (dégradé + halo) pour un CTA secondaire net
+                // et lisible, en écho au bouton vert principal.
+                style={{ backgroundImage: "linear-gradient(180deg, #2f7bff 0%, #1858d6 100%)" }}
+                className="group inline-flex items-center gap-2.5 rounded-2xl px-7 py-3.5 text-base font-bold text-white shadow-lg shadow-[#1858d6]/30 transition-all duration-300 hover:shadow-xl hover:shadow-[#2f7bff]/40 hover:brightness-110"
               >
                 <Sparkles className="h-5 w-5" />
                 <T>Recharger</T>
+                <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
             </div>
           </div>
@@ -162,6 +167,9 @@ export default async function DashboardHubPage() {
           </div>
         </div>
       </header>
+
+      {/* ===== Mise en avant ChapVerify (anti-deepfake) ===== */}
+      <ChapVerifyPromo />
 
       {/* ===== Bannière assistance / support ===== */}
       <SupportBanner />
