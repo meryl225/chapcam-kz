@@ -39,8 +39,8 @@ type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 
 // Modeles (mappes sur les tiers DoP cote API). Presente facon Higgsfield.
 const MODELS: { value: string; label: string; credits: number; desc: string; pro?: boolean }[] = [
-  { value: "standard", label: "Standard", credits: 28, desc: "Rendu rapide et fiable" },
-  { value: "pro", label: "Pro", credits: 45, desc: "Détails & fluidité maximum", pro: true },
+  { value: "standard", label: "Standard", credits: 1, desc: "Rendu rapide et fiable" },
+  { value: "pro", label: "Pro", credits: 2, desc: "Détails & fluidité maximum", pro: true },
 ]
 const QUALITIES: { value: "720p" | "1080p"; label: string; desc: string }[] = [
   { value: "720p", label: "720p", desc: "HD" },
@@ -266,11 +266,15 @@ export default function MotionPage() {
     // MODE 1 : Motion Control REEL — une video de reference est fournie.
     // On transfere son mouvement sur l'image via l'API Kling native.
     if (refVideo) {
-      // Garde-fou UX : bloquer si le solde de credits Motion est vide.
-      if (credits !== null && credits <= 0) {
+      // Garde-fou UX : bloquer si le solde ne couvre pas le cout du modele
+      // (Standard = 1 credit, Pro = 2). Aligne sur la verification serveur.
+      if (credits !== null && credits < activeModel.credits) {
         toast({
-          title: "Crédits Motion épuisés",
-          description: "Passe à un forfait Premium, VIP PRO ou VIP DEBOUT pour obtenir des crédits Motion Control.",
+          title: "Crédits Motion insuffisants",
+          description:
+            credits > 0
+              ? `Le modèle ${activeModel.label} coûte ${activeModel.credits} crédits Motion et il t'en reste ${credits}. Choisis Standard ou recharge tes crédits.`
+              : "Passe à un forfait Premium, VIP PRO ou VIP DEBOUT pour obtenir des crédits Motion Control.",
           variant: "destructive",
         })
         return
