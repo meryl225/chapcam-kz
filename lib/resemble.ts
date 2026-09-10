@@ -28,9 +28,10 @@ export function chapVerifyCost(media: ChapVerifyMedia): number {
   return CHAPVERIFY_COST[media] ?? 1
 }
 
-// Duree maximale analysee (secondes). Au-dela, Resemble n'analyse pas -> cout
-// fournisseur plafonne, donc marge garantie quelle que soit la duree du fichier.
-export const CHAPVERIFY_MAX_SECS = 30
+// Duree maximale analysee (secondes) pour l'audio et la video. Au-dela,
+// Resemble n'analyse pas -> cout fournisseur plafonne (facture a la seconde),
+// donc marge garantie et solde wallet preserve quelle que soit la duree du fichier.
+export const CHAPVERIFY_MAX_SECS = 8
 
 function apiKey(): string {
   const k = (process.env.RESEMBLE_API_KEY || '').trim()
