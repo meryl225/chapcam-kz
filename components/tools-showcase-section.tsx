@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { ArrowRight, Zap, ImageIcon, Film, Languages } from "lucide-react"
+import { ArrowRight, Zap, ImageIcon, Film, Languages, ShieldCheck } from "lucide-react"
 import { useEffect, useRef } from "react"
 import { useT } from "@/lib/i18n/language-provider"
 
@@ -135,6 +135,81 @@ export function ToolsShowcaseSection() {
           <p className="mt-4 text-gray-400 max-w-2xl mx-auto text-pretty">
             {t("Change ton visage, anime tes photos et traduis tes videos : tout ce qu'il te faut en un seul endroit.")}
           </p>
+        </motion.div>
+
+        {/* Carte vedette ChapVerify (anti-deepfake) : pleine largeur, mise en
+            avant comme nouveaute distincte des outils de creation. */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="mb-6"
+        >
+          <Link
+            href="/auth/sign-up"
+            className="group relative block overflow-hidden rounded-3xl border border-[#dc2626]/40 bg-[#160a0d] transition-all duration-300 hover:-translate-y-1 hover:border-[#ef4444] hover:shadow-[0_20px_60px_-15px_#dc2626]"
+          >
+            {/* Halo + grille de scan discrete */}
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute -left-16 -top-24 h-72 w-72 rounded-full bg-[#dc2626]/25 blur-3xl" />
+              <div className="absolute -bottom-24 right-10 h-64 w-64 rounded-full bg-[#ef4444]/15 blur-3xl" />
+              <div
+                className="absolute inset-0 opacity-[0.06]"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)",
+                  backgroundSize: "40px 40px",
+                }}
+              />
+            </div>
+
+            <div className="relative z-10 flex flex-col items-start gap-6 p-8 md:flex-row md:items-center md:justify-between md:p-10">
+              <div className="flex items-start gap-5">
+                {/* Bouclier avec anneau radar anime */}
+                <span className="relative flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#dc2626] text-white shadow-[0_10px_30px_-8px_#dc2626]">
+                  <span className="absolute inset-0 rounded-2xl ring-2 ring-[#ef4444]/50 animate-ping [animation-duration:2.5s]" />
+                  <ShieldCheck className="h-8 w-8" strokeWidth={2.2} />
+                </span>
+
+                <div>
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[#dc2626]/15 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-[#f87171]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#ef4444]" />
+                      {t("Anti-deepfake")}
+                    </span>
+                    <span className="rounded-full bg-[#ef4444] px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-white">
+                      {t("Nouveau")}
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white md:text-3xl">
+                    Chap<span className="text-[#ef4444]">Verify</span>
+                  </h3>
+                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-gray-300 text-pretty">
+                    {t(
+                      "Une image, une voix ou une video te parait suspecte ? Verifie en un clic si c'est un deepfake genere par IA, avec un score de confiance.",
+                    )}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {["Image", "Voix", "Video"].map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-medium text-gray-300"
+                      >
+                        {t(tag)}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <span className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-[#dc2626] px-6 py-3.5 text-sm font-bold text-white shadow-[0_10px_30px_-8px_#dc2626] transition-all duration-300 group-hover:bg-[#ef4444] group-hover:shadow-[0_14px_40px_-8px_#ef4444]">
+                <ShieldCheck className="h-5 w-5" />
+                {t("Verifier un fichier")}
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </span>
+            </div>
+          </Link>
         </motion.div>
 
         {/* Grille de cartes 2x2 */}
