@@ -226,7 +226,7 @@ export default function ChapVerifyPage() {
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-pretty text-sm leading-relaxed text-white/60 md:text-base">
             Vérifie si une image, une voix ou une vidéo est un deepfake généré par IA. Analyse
-            professionnelle propulsée par la détection Resemble.
+            professionnelle propulsée par la détection ChapVerify.
           </p>
           <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-white/50">
             <Zap className="h-3.5 w-3.5 text-red-400" />
@@ -374,7 +374,7 @@ export default function ChapVerifyPage() {
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             {[
               { icon: Upload, title: "1. Dépose", text: "Une image, une voix ou une vidéo suspecte." },
-              { icon: Sparkles, title: "2. Analyse IA", text: "Resemble détecte les artefacts de synthèse." },
+              { icon: Sparkles, title: "2. Analyse IA", text: "ChapVerify détecte les artefacts de synthèse." },
               { icon: ShieldCheck, title: "3. Verdict", text: "Authentique ou deepfake, avec un score de confiance." },
             ].map((s) => (
               <div key={s.title} className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
