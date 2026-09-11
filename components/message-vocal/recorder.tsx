@@ -10,6 +10,8 @@ interface RecorderProps {
   onError: (message: string) => void
   accent: string
   disabled?: boolean
+  // Duree maximale d'enregistrement (s) : arret automatique atteint la limite.
+  maxSeconds?: number
 }
 
 const BAR_COUNT = 40
@@ -30,7 +32,7 @@ function fmt(sec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
-export function Recorder({ onRecorded, onError, accent, disabled }: RecorderProps) {
+export function Recorder({ onRecorded, onError, accent, disabled, maxSeconds }: RecorderProps) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [elapsed, setElapsed] = useState(0)
   const [levels, setLevels] = useState<number[]>(() => new Array(BAR_COUNT).fill(0.08))
@@ -160,6 +162,11 @@ export function Recorder({ onRecorded, onError, accent, disabled }: RecorderProp
     setLevels(new Array(BAR_COUNT).fill(0.08))
   }, [])
 
+  // Arret automatique a la limite de duree (message vocal = 15 s max).
+  useEffect(() => {
+    if (maxSeconds && phase === 'recording' && elapsed >= maxSeconds) stop()
+  }, [elapsed, phase, maxSeconds, stop])
+
   if (phase === 'idle') {
     return (
       <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.02] px-4 py-8 text-center">
@@ -174,7 +181,10 @@ export function Recorder({ onRecorded, onError, accent, disabled }: RecorderProp
           <Mic className="h-8 w-8" />
         </button>
         <p className="mt-4 text-sm font-semibold text-foreground">Appuyez pour enregistrer</p>
-        <p className="mt-1 text-xs text-muted-foreground">Parlez naturellement, votre façon de parler sera conservée.</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Parlez naturellement, votre façon de parler sera conservée.
+          {maxSeconds ? ` L'enregistrement s'arrête à ${maxSeconds} s.` : ''}
+        </p>
       </div>
     )
   }
@@ -185,7 +195,10 @@ export function Recorder({ onRecorded, onError, accent, disabled }: RecorderProp
     <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
       <div className="mb-4 flex items-center justify-center gap-2">
         <span className={`h-2.5 w-2.5 rounded-full ${isRecording ? 'animate-pulse' : ''}`} style={{ backgroundColor: isRecording ? '#ef4444' : accent }} />
-        <span className="text-2xl font-bold tabular-nums text-foreground">{fmt(elapsed)}</span>
+        <span className="text-2xl font-bold tabular-nums text-foreground">
+          {fmt(elapsed)}
+          {maxSeconds ? <span className="text-sm font-medium text-muted-foreground"> / {fmt(maxSeconds)}</span> : null}
+        </span>
         <span className="ml-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">{isRecording ? 'Enregistrement' : 'En pause'}</span>
       </div>
 

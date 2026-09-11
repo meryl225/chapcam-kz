@@ -1,16 +1,44 @@
 'use client'
 
 import { useState } from 'react'
-import { Mic, Type, Sparkles } from 'lucide-react'
+import useSWR from 'swr'
+import { Mic, Type, Sparkles, Coins, Lock } from 'lucide-react'
 import type { CatalogVoice, VoiceCatalog } from '@/lib/message-vocal/voices'
 import { VoiceChangerTab } from './voice-changer-tab'
 import { TextToSpeechTab } from './text-to-speech-tab'
 
 type Tab = 'changer' | 'tts'
 
+export interface VoiceQuota {
+  remaining: number
+  subActive: boolean
+  plan: string | null
+}
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json())
+
 export function MessageVocalClient({ catalog }: { catalog: VoiceCatalog }) {
   const [tab, setTab] = useState<Tab>('changer')
   const [selectedVoice, setSelectedVoice] = useState<CatalogVoice | null>(null)
+
+  // Solde de messages vocaux (pool partage TTS + changement de voix).
+  const { data, isLoading, mutate } = useSWR<{ remaining: number; subActive: boolean; plan: string | null }>(
+    '/api/voice/message-quota',
+    fetcher,
+    { revalidateOnFocus: false },
+  )
+  const quota: VoiceQuota = {
+    remaining: data?.remaining ?? 0,
+    subActive: !!data?.subActive,
+    plan: data?.plan ?? null,
+  }
+
+  // Applique le solde restant renvoye par l'API apres une generation reussie.
+  const onConsumed = (remaining: number) => {
+    void mutate({ remaining, subActive: quota.subActive, plan: quota.plan }, { revalidate: false })
+  }
+
+  const locked = !isLoading && quota.remaining < 1
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 md:py-10">
@@ -35,10 +63,38 @@ export function MessageVocalClient({ catalog }: { catalog: VoiceCatalog }) {
             </div>
           </div>
           <p className="mt-3 max-w-lg text-pretty text-sm leading-relaxed text-slate-300">
-            Transformez votre voix naturellement ou créez un message vocal à partir d&apos;un texte.
+            Transformez votre voix naturellement ou créez un message vocal à partir d&apos;un texte. Chaque message dure 15 secondes maximum.
           </p>
+
+          {/* Compteur de messages vocaux restants */}
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2">
+            <Coins className="h-4 w-4 text-[#00d4ff]" />
+            <span className="text-sm font-semibold text-white">
+              {isLoading ? 'Chargement…' : `${quota.remaining} message${quota.remaining > 1 ? 's' : ''} vocal${quota.remaining > 1 ? 'aux' : ''} restant${quota.remaining > 1 ? 's' : ''}`}
+            </span>
+          </div>
         </div>
       </div>
+
+      {/* Etat verrouille : plus de credits ou pas d'abonnement */}
+      {locked && (
+        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-4">
+          <Lock className="mt-0.5 h-5 w-5 shrink-0 text-amber-300" />
+          <div className="text-sm text-amber-100">
+            {quota.subActive ? (
+              <>
+                <p className="font-semibold">Vous avez utilisé tous vos messages vocaux inclus.</p>
+                <p className="mt-1 text-amber-200/80">La recharge de crédits arrive bientôt. Vos messages se renouvellent au renouvellement de votre forfait.</p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold">Les messages vocaux sont inclus avec un abonnement.</p>
+                <p className="mt-1 text-amber-200/80">Choisissez un forfait (Starter à VIP DEBOUT) pour débloquer 1 à 10 messages vocaux gratuits.</p>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Onglets */}
       <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-1.5">
@@ -53,9 +109,9 @@ export function MessageVocalClient({ catalog }: { catalog: VoiceCatalog }) {
       )}
 
       {tab === 'changer' ? (
-        <VoiceChangerTab groups={catalog.groups} selectedVoice={selectedVoice} onSelectVoice={setSelectedVoice} />
+        <VoiceChangerTab groups={catalog.groups} selectedVoice={selectedVoice} onSelectVoice={setSelectedVoice} quota={quota} locked={locked} onConsumed={onConsumed} />
       ) : (
-        <TextToSpeechTab groups={catalog.groups} selectedVoice={selectedVoice} onSelectVoice={setSelectedVoice} />
+        <TextToSpeechTab groups={catalog.groups} selectedVoice={selectedVoice} onSelectVoice={setSelectedVoice} quota={quota} locked={locked} onConsumed={onConsumed} />
       )}
     </div>
   )

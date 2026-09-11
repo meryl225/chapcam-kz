@@ -4,6 +4,8 @@ import { useRef, useState } from 'react'
 import { Upload, Sparkles, Loader2, RotateCcw, Wand2, ChevronDown, SlidersHorizontal } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import type { CatalogVoice, VoiceGroup } from '@/lib/message-vocal/voices'
+import { VOICE_MESSAGE_MAX_SECONDS } from '@/lib/plans'
+import type { VoiceQuota } from './message-vocal-client'
 import { VoicePicker } from './voice-picker'
 import { AudioPlayer } from './audio-player'
 import { Recorder } from './recorder'
@@ -24,13 +26,37 @@ function triggerDownload(url: string, filename: string) {
   a.remove()
 }
 
+// Lit la duree (s) d'un fichier audio via ses metadonnees. Retourne 0 si la
+// duree n'est pas exploitable (ex: webm en streaming) : le plafond d'octets
+// serveur borne alors le cas limite.
+function getAudioDuration(file: Blob): Promise<number> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const audio = new Audio()
+    audio.preload = 'metadata'
+    audio.onloadedmetadata = () => {
+      const d = audio.duration
+      URL.revokeObjectURL(url)
+      resolve(Number.isFinite(d) ? d : 0)
+    }
+    audio.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(0)
+    }
+    audio.src = url
+  })
+}
+
 interface VoiceChangerTabProps {
   groups: VoiceGroup[]
   selectedVoice: CatalogVoice | null
   onSelectVoice: (v: CatalogVoice) => void
+  quota: VoiceQuota
+  locked: boolean
+  onConsumed: (remaining: number) => void
 }
 
-export function VoiceChangerTab({ groups, selectedVoice, onSelectVoice }: VoiceChangerTabProps) {
+export function VoiceChangerTab({ groups, selectedVoice, onSelectVoice, quota, locked, onConsumed }: VoiceChangerTabProps) {
   const { toast } = useToast()
   const [source, setSource] = useState<Source | null>(null)
   const [resultUrl, setResultUrl] = useState<string | null>(null)
@@ -57,15 +83,25 @@ export function VoiceChangerTab({ groups, selectedVoice, onSelectVoice }: VoiceC
     resetResult()
   }
 
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    if (fileRef.current) fileRef.current.value = ''
     if (!file) return
     if (!file.type.startsWith('audio/')) {
       toast({ title: 'Fichier invalide', description: 'Choisissez un fichier audio.', variant: 'destructive' })
       return
     }
+    // Rejeter les fichiers > 15 s : un message vocal dure 15 s maximum.
+    const duration = await getAudioDuration(file)
+    if (duration > VOICE_MESSAGE_MAX_SECONDS + 0.5) {
+      toast({
+        title: 'Audio trop long',
+        description: `Un message vocal dure ${VOICE_MESSAGE_MAX_SECONDS} secondes maximum (le vôtre : ${Math.round(duration)} s).`,
+        variant: 'destructive',
+      })
+      return
+    }
     setNewSource(file, URL.createObjectURL(file))
-    if (fileRef.current) fileRef.current.value = ''
   }
 
   const transform = async () => {
@@ -84,12 +120,19 @@ export function VoiceChangerTab({ groups, selectedVoice, onSelectVoice }: VoiceC
       form.append('removeNoise', String(removeNoise))
 
       const res = await fetch('/api/voice/speech-to-speech', { method: 'POST', body: form })
+      if (res.status === 402) {
+        const data = await res.json().catch(() => ({}))
+        onConsumed(0)
+        throw new Error(data.error || 'Messages vocaux épuisés.')
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || `Erreur ${res.status}`)
       }
+      const remaining = Number(res.headers.get('X-Remaining-Credits'))
       const blob = await res.blob()
       setResultUrl(URL.createObjectURL(blob))
+      if (Number.isFinite(remaining)) onConsumed(remaining)
       toast({ title: 'Voix transformée', description: `Nouvelle voix : ${selectedVoice.shortName}.` })
     } catch (e) {
       toast({ title: 'Échec de la transformation', description: (e as Error).message, variant: 'destructive' })
@@ -105,7 +148,7 @@ export function VoiceChangerTab({ groups, selectedVoice, onSelectVoice }: VoiceC
         <StepHeader n={1} title="Enregistrez ou importez un message" />
         {!source ? (
           <>
-            <Recorder onRecorded={(blob, url) => setNewSource(blob, url)} onError={(m) => toast({ title: 'Micro', description: m, variant: 'destructive' })} accent={ACCENT} disabled={transforming} />
+            <Recorder onRecorded={(blob, url) => setNewSource(blob, url)} onError={(m) => toast({ title: 'Micro', description: m, variant: 'destructive' })} accent={ACCENT} disabled={transforming || locked} maxSeconds={VOICE_MESSAGE_MAX_SECONDS} />
             <div className="mt-3 flex items-center gap-3">
               <div className="h-px flex-1 bg-white/10" />
               <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">ou</span>
@@ -171,7 +214,7 @@ export function VoiceChangerTab({ groups, selectedVoice, onSelectVoice }: VoiceC
       {/* Etape 3 : Transformer */}
       <button
         onClick={transform}
-        disabled={!source || !selectedVoice || transforming}
+        disabled={!source || !selectedVoice || transforming || locked}
         className="btn-glow flex w-full items-center justify-center gap-2.5 rounded-2xl py-4 text-base font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
         style={{ background: `linear-gradient(135deg, ${ACCENT}, #8b5cf6)` }}
       >
