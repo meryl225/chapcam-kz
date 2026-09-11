@@ -36,7 +36,7 @@ export const translations: Record<string, string> = {
   "Commencer gratuitement": "Start for free",
   "Voir la démo": "Watch the demo",
   "Créateur inscrit": "Registered creator",
-  "+15 000 créateurs": "+15,000 creators",
+  "+25 000 créateurs": "+25,000 creators",
   "déjà inscrits": "already signed up",
   "Fonctionne avec": "Works with",
   "Disponible en Afrique de l'Ouest & Centrale": "Available in West & Central Africa",

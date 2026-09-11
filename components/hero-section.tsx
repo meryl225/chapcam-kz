@@ -142,7 +142,7 @@ export function HeroSection() {
                 ))}
               </div>
               <p className="text-sm text-gray-400">
-                <span className="font-bold text-white">{t("+15 000 créateurs")}</span> {t("déjà inscrits")}
+                <span className="font-bold text-white">{t("+25 000 créateurs")}</span> {t("déjà inscrits")}
               </p>
             </div>
           </div>
