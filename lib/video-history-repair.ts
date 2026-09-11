@@ -17,15 +17,53 @@ import { getMotionTask } from '@/lib/kling'
 // ============================================================
 
 const HEYGEN_API = 'https://api.heygen.com'
+const HIGGSFIELD_API = 'https://platform.higgsfield.ai'
+
+/** En-tete d'auth Higgsfield (meme schema que la route de generation). */
+function higgsfieldAuth(): string | null {
+  const key = process.env.HIGGSFIELD_API_KEY
+  const secret = process.env.HIGGSFIELD_API_SECRET
+  if (!key || !secret) return null
+  return `Key ${key}:${secret}`
+}
+
+/**
+ * Redemande a Higgsfield une URL fraiche pour une generation image->video.
+ * Higgsfield garde le resultat accessible via son endpoint de statut, donc on
+ * peut recuperer les anciennes videos "Motion" faites avant Kling.
+ */
+async function fetchFreshHiggsfieldUrl(ref: string): Promise<string | null> {
+  const auth = higgsfieldAuth()
+  if (!auth) return null
+  try {
+    const res = await fetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(ref)}/status`, {
+      headers: { Authorization: auth },
+    })
+    if (!res.ok) return null
+    const json = await res.json().catch(() => null)
+    return json?.status === 'completed' ? json?.video?.url || null : null
+  } catch {
+    return null
+  }
+}
 
 /**
  * Redemande au fournisseur une URL de telechargement fraiche pour une reference
- * donnee : HeyGen (photo_video / translation) ou Kling (motion).
+ * donnee : HeyGen (photo_video / translation) ou Motion (Kling par defaut,
+ * Higgsfield pour les anciennes generations).
  */
-async function fetchFreshUrl(tool: VideoTool, ref: string): Promise<string | null> {
+async function fetchFreshUrl(
+  tool: VideoTool,
+  ref: string,
+  provider?: string,
+): Promise<string | null> {
   try {
-    // Motion : la source vit chez Kling (~30j). On interroge la tache par son id.
+    // Motion : selon le fournisseur d'origine. Higgsfield (ancien) ou Kling.
     if (tool === 'motion') {
+      if (provider === 'higgsfield') {
+        return await fetchFreshHiggsfieldUrl(ref)
+      }
+      // Kling (defaut) : la source vit ~30j. On interroge la tache par son id.
       const task = await getMotionTask(ref).catch(() => null)
       return task?.status === 'succeeded' ? task.videoUrl || null : null
     }
@@ -71,11 +109,13 @@ export async function repairVideoRow(input: {
   tool: VideoTool
   providerRef: string
   title?: string
+  // Fournisseur d'origine (utile pour Motion : 'kling' ou 'higgsfield').
+  provider?: string
 }): Promise<string | null> {
-  const { userId, tool, providerRef, title } = input
+  const { userId, tool, providerRef, title, provider } = input
   // Tous les outils sont reparables : HeyGen (photo_video/translation) via
-  // l'API de statut, Motion via la tache Kling (source valide ~30j).
-  const freshUrl = await fetchFreshUrl(tool, providerRef)
+  // l'API de statut, Motion via Kling (~30j) ou Higgsfield (anciennes videos).
+  const freshUrl = await fetchFreshUrl(tool, providerRef, provider)
   if (!freshUrl) return null
   // finalizeCompletedVideo gere le verrou anti-concurrence, le re-hebergement
   // (avec retries) et la mise a jour "completed" de la ligne existante.

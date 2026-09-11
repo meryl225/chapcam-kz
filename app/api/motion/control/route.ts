@@ -136,36 +136,76 @@ export async function GET(request: NextRequest) {
 
       // AUTO-REPARATION : un clip termine SANS copie permanente (echec du
       // re-hebergement initial, onglet ferme avant la fin, ou generation faite
-      // avant la mise en place du stockage permanent) apparaissait "Video
-      // expiree". Tant que la source Kling est encore valide (~30 j), on la
-      // re-heberge MAINTENANT dans Blob + R2 pour la rendre PERMANENTE et la
-      // reafficher dans l'historique. On borne le nombre de reparations par
-      // requete pour ne pas ralentir la page ; le reste sera repare aux prochains
-      // chargements. Seuls les jobs Kling sont reparables ici (source connue).
+      // AVANT la mise en place du stockage permanent) apparaissait "Video
+      // expiree". C'est le cas des premieres generations fal.ai/Higgsfield : leur
+      // URL fournisseur est encore STOCKEE dans motion_jobs.video_url et souvent
+      // toujours vivante (les URLs fal.media sont durables). On la re-heberge
+      // MAINTENANT dans Blob + R2 pour la rendre PERMANENTE et la reafficher.
+      //
+      // Deux sources de recuperation, tentees dans l'ordre :
+      //   1) l'URL fournisseur deja connue (fal / higgsfield / kling) si elle est
+      //      encore telechargeable -> re-hebergement direct ;
+      //   2) sinon, on redemande une URL fraiche au fournisseur d'origine :
+      //      Kling (tache valide ~30 j) OU Higgsfield (anciennes videos Motion,
+      //      encore accessibles via son endpoint de statut).
+      // On borne le nombre de reparations par requete pour ne pas ralentir la
+      // page ; le reste se repare aux chargements suivants.
       const MAX_REPAIRS = 4
       const STALE_PROCESSING_MS = 3 * 60 * 1000 // 3 min : au-dela, on reconcilie
       const nowMs = Date.now()
+      const FILE_PREFIX = "/api/videos/file?pathname="
+      // Fournisseurs a qui on peut redemander une URL fraiche par reference.
+      const REFETCHABLE = new Set(["kling", "higgsfield"])
+      const hasStoredProviderUrl = (j: (typeof jobs)[number]) =>
+        !!j.video_url && !j.video_url.startsWith(FILE_PREFIX)
       const repairable = jobs.filter((j) => {
-        if (j.provider !== "kling") return false
         if (blobByRef[j.request_id]) return false // deja permanent
-        if (j.status === "completed") return true
-        if (j.status === "processing") {
-          return nowMs - new Date(j.created_at).getTime() > STALE_PROCESSING_MS
+        // Termine avec une URL fournisseur encore stockee : re-hebergeable quel
+        // que soit le fournisseur (fal, higgsfield, kling).
+        if (j.status === "completed" && hasStoredProviderUrl(j)) return true
+        // Termine sans URL stockee : Kling ou Higgsfield peuvent en redonner une.
+        if (j.status === "completed" && !j.video_url && REFETCHABLE.has(j.provider)) return true
+        // Job bloque en "processing" depuis longtemps -> reconciliation fournisseur.
+        if (
+          j.status === "processing" &&
+          REFETCHABLE.has(j.provider) &&
+          nowMs - new Date(j.created_at).getTime() > STALE_PROCESSING_MS
+        ) {
+          return true
         }
         return false
       })
       if (repairable.length > 0) {
         const batch = repairable.slice(0, MAX_REPAIRS)
         const results = await Promise.all(
-          batch.map((j) =>
-            repairVideoRow({
-              userId: user.id,
-              id: j.id,
-              tool: "motion",
-              providerRef: j.request_id,
-              title: "Motion Control",
-            }).catch(() => null),
-          ),
+          batch.map(async (j) => {
+            // 1) Re-hebergement direct de l'URL fournisseur deja connue.
+            if (hasStoredProviderUrl(j)) {
+              const fin = await finalizeCompletedVideo({
+                userId: user.id,
+                tool: "motion",
+                providerRef: j.request_id,
+                providerUrl: j.video_url as string,
+                title: "Motion Control",
+              }).catch(() => null)
+              if (fin && fin.state === "ready" && fin.url.startsWith(FILE_PREFIX)) {
+                return decodeURIComponent(fin.url.slice(FILE_PREFIX.length))
+              }
+            }
+            // 2) Secours : redemander une URL fraiche au fournisseur (Kling ou
+            //    Higgsfield), puis re-hebergement permanent.
+            if (REFETCHABLE.has(j.provider)) {
+              return repairVideoRow({
+                userId: user.id,
+                id: j.id,
+                tool: "motion",
+                providerRef: j.request_id,
+                title: "Motion Control",
+                provider: j.provider,
+              }).catch(() => null)
+            }
+            return null
+          }),
         )
         batch.forEach((j, i) => {
           const pathname = results[i]
@@ -185,9 +225,10 @@ export async function GET(request: NextRequest) {
             expired: false,
           }
         }
-        // Pas de copie durable ET non recuperable (source Kling expiree > 30 j) :
-        // l'URL fournisseur ne serait plus lisible dans le navigateur. On marque
-        // le clip "expire" pour afficher un etat propre plutot qu'un lecteur casse.
+        // Pas de copie durable ET non recuperable (source fournisseur reellement
+        // morte : Kling > 30 j, ou Higgsfield/fal purge). L'URL fournisseur ne
+        // serait plus lisible dans le navigateur. On marque le clip "expire" pour
+        // afficher un etat propre plutot qu'un lecteur casse.
         const isProviderUrl =
           !!j.video_url && !j.video_url.startsWith("/api/videos/file")
         return { ...j, expired: j.status === "completed" && isProviderUrl }
