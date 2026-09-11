@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { ArrowRight, Zap, ImageIcon, Film, Languages, ShieldCheck } from "lucide-react"
+import { ArrowRight, Zap, ImageIcon, Film, Languages, ShieldCheck, Mic } from "lucide-react"
 import { useEffect, useRef } from "react"
 import { useT } from "@/lib/i18n/language-provider"
 
@@ -92,6 +92,16 @@ const tools: Tool[] = [
     color: "#6366f1",
     icon: Film,
     media: "/swap/poster-motion.png",
+    mediaType: "image",
+    href: "/auth/sign-up",
+  },
+  {
+    title: "Message Vocal",
+    description: "Change ta voix ou genere un message vocal a partir d'un texte, avec des voix ultra realistes.",
+    badge: "NOUVEAU",
+    color: "#00d4ff",
+    icon: Mic,
+    media: "/swap/poster-message-vocal.png",
     mediaType: "image",
     href: "/auth/sign-up",
   },

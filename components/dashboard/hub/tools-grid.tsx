@@ -27,6 +27,13 @@ const tools: Tool[] = [
     media: { type: 'image', src: '/swap/poster-motion.png' },
   },
   {
+    href: '/dashboard/message-vocal',
+    title: 'Message Vocal',
+    badge: 'NEW',
+    accent: '#00d4ff',
+    media: { type: 'image', src: '/swap/poster-message-vocal.png' },
+  },
+  {
     href: '/dashboard/photo-video',
     title: 'Photos en Vidéo',
     badge: 'NEW',
