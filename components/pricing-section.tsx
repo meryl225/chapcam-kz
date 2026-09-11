@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Gift, Clapperboard, Mic } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Gift, Clapperboard, Mic, ChevronDown, ChevronUp } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useState, useEffect } from "react"
@@ -160,6 +160,12 @@ export function PricingSection() {
   const t = useT()
   const { rates } = useXofRates()
   const [currencyCode, setCurrencyCode] = useState("XOF")
+  // Forfaits dont la liste d'options est repliee ("Voir plus" par carte).
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
+  // Au-dela de ce nombre d'options, on replie le surplus derriere "Voir plus"
+  // pour garder toutes les cartes a la meme hauteur.
+  const MAX_VISIBLE_FEATURES = 4
 
   // Devine la devise du visiteur au montage (cote client uniquement).
   useEffect(() => {
@@ -270,7 +276,7 @@ export function PricingSection() {
                     ? { borderColor: plan.color, boxShadow: `0 0 60px ${plan.color}55` }
                     : undefined
                 }
-                className={`relative rounded-3xl p-8 transition-all duration-300 ${
+                className={`relative flex h-full flex-col rounded-3xl p-8 transition-all duration-300 ${
                   plan.id === "vipdebout"
                     ? "border-2 bg-gradient-to-b from-[#161310] to-[#111] lg:scale-105 z-10"
                     : plan.highlight
@@ -389,14 +395,46 @@ export function PricingSection() {
                   </div>
                 )}
 
-                <ul className="space-y-4 mb-6 text-gray-300">
-                  {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <Check className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
-                      <span>{t(feature)}</span>
-                    </li>
-                  ))}
-                </ul>
+                {(() => {
+                  const isExpanded = expanded[plan.id]
+                  const hasMore = plan.features.length > MAX_VISIBLE_FEATURES
+                  const visibleFeatures =
+                    hasMore && !isExpanded ? plan.features.slice(0, MAX_VISIBLE_FEATURES) : plan.features
+                  const hiddenCount = plan.features.length - MAX_VISIBLE_FEATURES
+                  return (
+                    <div className="mb-6">
+                      <ul className="space-y-4 text-gray-300">
+                        {visibleFeatures.map((feature, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <Check className="w-5 h-5 text-emerald-400 mt-0.5 flex-shrink-0" />
+                            <span>{t(feature)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      {hasMore && (
+                        <button
+                          type="button"
+                          onClick={() => setExpanded((prev) => ({ ...prev, [plan.id]: !prev[plan.id] }))}
+                          className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold transition-colors hover:opacity-80"
+                          style={{ color: plan.id === "vipdebout" ? "#facc15" : plan.color }}
+                          aria-expanded={isExpanded}
+                        >
+                          {isExpanded ? (
+                            <>
+                              {t("Voir moins")}
+                              <ChevronUp className="h-4 w-4" />
+                            </>
+                          ) : (
+                            <>
+                              {t("Voir plus")} (+{hiddenCount})
+                              <ChevronDown className="h-4 w-4" />
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {/* Studio Photo en Video inclus dans le forfait Live Swap.
                     Non affiche pour Starter (10.000 F) ni le Forfait Testeur. */}
@@ -422,7 +460,7 @@ export function PricingSection() {
 
                 {/* Le Forfait Testeur (5.000 F) est le pack minutes "anniv_5" (3 min)
                     deja cable au paiement -> on redirige vers cet identifiant. */}
-                <Link href={`/dashboard/plans?plan=${plan.id === "testeur" ? "anniv_5" : plan.id}`}>
+                <Link className="mt-auto" href={`/dashboard/plans?plan=${plan.id === "testeur" ? "anniv_5" : plan.id}`}>
                   <button
                     type="button"
                     style={{
