@@ -13,6 +13,7 @@ import {
 } from "@/lib/motion-jobs"
 import { logToolUsage } from "@/lib/tool-usage"
 import { finalizeCompletedVideo, getBlobPathnamesByRef } from "@/lib/video-history"
+import { repairVideoRow } from "@/lib/video-history-repair"
 import {
   submitMotionControl,
   getMotionTask,
@@ -132,15 +133,61 @@ export async function GET(request: NextRequest) {
       // expirent (30 jours), donc on remplace video_url par la route Blob durable
       // pour les clips deja re-heberges. Les autres gardent leur URL fournisseur.
       const blobByRef: Record<string, string> = await getBlobPathnamesByRef(user.id, "motion").catch(() => ({}))
+
+      // AUTO-REPARATION : un clip termine SANS copie permanente (echec du
+      // re-hebergement initial, onglet ferme avant la fin, ou generation faite
+      // avant la mise en place du stockage permanent) apparaissait "Video
+      // expiree". Tant que la source Kling est encore valide (~30 j), on la
+      // re-heberge MAINTENANT dans Blob + R2 pour la rendre PERMANENTE et la
+      // reafficher dans l'historique. On borne le nombre de reparations par
+      // requete pour ne pas ralentir la page ; le reste sera repare aux prochains
+      // chargements. Seuls les jobs Kling sont reparables ici (source connue).
+      const MAX_REPAIRS = 4
+      const STALE_PROCESSING_MS = 3 * 60 * 1000 // 3 min : au-dela, on reconcilie
+      const nowMs = Date.now()
+      const repairable = jobs.filter((j) => {
+        if (j.provider !== "kling") return false
+        if (blobByRef[j.request_id]) return false // deja permanent
+        if (j.status === "completed") return true
+        if (j.status === "processing") {
+          return nowMs - new Date(j.created_at).getTime() > STALE_PROCESSING_MS
+        }
+        return false
+      })
+      if (repairable.length > 0) {
+        const batch = repairable.slice(0, MAX_REPAIRS)
+        const results = await Promise.all(
+          batch.map((j) =>
+            repairVideoRow({
+              userId: user.id,
+              id: j.id,
+              tool: "motion",
+              providerRef: j.request_id,
+              title: "Motion Control",
+            }).catch(() => null),
+          ),
+        )
+        batch.forEach((j, i) => {
+          const pathname = results[i]
+          if (pathname) blobByRef[j.request_id] = pathname
+        })
+      }
+
       const durableJobs = jobs.map((j) => {
         const pathname = blobByRef[j.request_id]
         if (pathname) {
           // Copie permanente disponible -> URL durable, toujours lisible.
-          return { ...j, video_url: `/api/videos/file?pathname=${encodeURIComponent(pathname)}`, expired: false }
+          // Une ligne qui vient d'etre reparee passe aussi en "completed".
+          return {
+            ...j,
+            status: "completed" as const,
+            video_url: `/api/videos/file?pathname=${encodeURIComponent(pathname)}`,
+            expired: false,
+          }
         }
-        // Pas de copie durable : l'URL fournisseur (Kling/fal) expire et n'est
-        // souvent pas lisible dans le navigateur. On marque le clip "expire"
-        // pour afficher un etat propre plutot qu'un lecteur casse.
+        // Pas de copie durable ET non recuperable (source Kling expiree > 30 j) :
+        // l'URL fournisseur ne serait plus lisible dans le navigateur. On marque
+        // le clip "expire" pour afficher un etat propre plutot qu'un lecteur casse.
         const isProviderUrl =
           !!j.video_url && !j.video_url.startsWith("/api/videos/file")
         return { ...j, expired: j.status === "completed" && isProviderUrl }
