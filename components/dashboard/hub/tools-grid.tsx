@@ -47,6 +47,13 @@ const tools: Tool[] = [
     accent: '#22d3ee',
     media: { type: 'image', src: '/swap/poster-video-translation.png' },
   },
+  {
+    href: '/dashboard/chapverify',
+    title: 'ChapVerify',
+    badge: 'NEW',
+    accent: '#ef4444',
+    media: { type: 'image', src: '/swap/poster-chapverify.png' },
+  },
 ]
 
 function Badge({ kind, accent }: { kind: NonNullable<Tool['badge']>; accent: string }) {
