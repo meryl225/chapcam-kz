@@ -207,3 +207,31 @@ export function translationQuotaForPlan(planId: string | null | undefined): numb
 // Duree maximale (secondes) de la video source d'une traduction. Plafonnee pour
 // borner le cout HeyGen (facture a la seconde) par credit.
 export const TRANSLATION_MAX_SECONDS = 60
+
+// --- Quota "Message Vocal" (ElevenLabs TTS + changement de voix) par forfait ---
+// 1 credit = 1 message vocal de 15 s MAX, genere via texte->voix OU voix->voix
+// (POOL PARTAGE entre les deux modes). ElevenLabs facture au caractere/seconde,
+// donc chaque message est plafonne a 15 s pour borner le cout. Tout abonne, du
+// Starter au VIP DEBOUT, recoit un quota gratuit inclus (1 a 10). Les recharges
+// de credits payantes viendront plus tard.
+export const VOICE_MESSAGE_QUOTA: Record<PlanId, number> = {
+  starter: 1,
+  standard: 2,
+  premium: 4,
+  ultimate: 6,
+  vipdebout: 10,
+}
+
+/** Quota Message Vocal accordé par un forfait. Retourne 0 si inconnu/absent. */
+export function voiceMessageQuotaForPlan(planId: string | null | undefined): number {
+  if (!planId) return 0
+  return VOICE_MESSAGE_QUOTA[planId as PlanId] ?? 0
+}
+
+// Duree maximale (secondes) d'un message vocal. Plafonne le cout ElevenLabs par
+// credit (facture au caractere en TTS, a la duree en changement de voix).
+export const VOICE_MESSAGE_MAX_SECONDS = 15
+
+// Longueur de texte maximale en TTS, calibree pour rester ~<= 15 s de parole a
+// un debit normal. Borne aussi le nombre de caracteres factures par ElevenLabs.
+export const VOICE_MESSAGE_MAX_CHARS = 240

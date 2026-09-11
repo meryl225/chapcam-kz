@@ -12,13 +12,14 @@
 //   - fal.ai Kling Motion Control : cout au clip (~10 s max).
 // ============================================================
 
-export type ToolName = 'photo_video' | 'motion' | 'translation' | 'chapverify'
+export type ToolName = 'photo_video' | 'motion' | 'translation' | 'chapverify' | 'voice_message'
 
 export const TOOL_LABELS: Record<ToolName, string> = {
   photo_video: 'Studio Photo en Vidéo',
   motion: 'Motion',
   translation: 'Traduction Vidéo',
   chapverify: 'ChapVerify',
+  voice_message: 'Message Vocal',
 }
 
 // Parametres de cout par outil (modifiables).
@@ -34,6 +35,9 @@ export const TOOL_PROVIDER_COST = {
   },
   motion: {
     flatUsd: 0.35, // estimation par clip de motion-transfer
+  },
+  voice_message: {
+    flatUsd: 0.06, // ~15 s ElevenLabs (TTS ~240 car. ou voix->voix ~15 s)
   },
 } as const
 
@@ -59,6 +63,8 @@ export function estimateToolCostUsd(
     usd = seconds * rate
   } else if (tool === 'motion') {
     usd = TOOL_PROVIDER_COST.motion.flatUsd
+  } else if (tool === 'voice_message') {
+    usd = TOOL_PROVIDER_COST.voice_message.flatUsd
   }
   // Arrondi au centime.
   return Math.round(usd * 100) / 100

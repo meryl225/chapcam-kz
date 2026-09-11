@@ -4,11 +4,14 @@ import { useState } from 'react'
 import { Sparkles, Loader2, ChevronDown, SlidersHorizontal, Wand2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import type { CatalogVoice, VoiceGroup } from '@/lib/message-vocal/voices'
+import { VOICE_MESSAGE_MAX_CHARS } from '@/lib/plans'
+import type { VoiceQuota } from './message-vocal-client'
 import { VoicePicker } from './voice-picker'
 import { AudioPlayer } from './audio-player'
 
 const ACCENT = '#8b5cf6'
-const MAX_CHARS = 5000
+// Plafond calibre pour un message vocal <= 15 s (borne aussi le cout ElevenLabs).
+const MAX_CHARS = VOICE_MESSAGE_MAX_CHARS
 
 function triggerDownload(url: string, filename: string) {
   const a = document.createElement('a')
@@ -31,9 +34,12 @@ interface TextToSpeechTabProps {
   groups: VoiceGroup[]
   selectedVoice: CatalogVoice | null
   onSelectVoice: (v: CatalogVoice) => void
+  quota: VoiceQuota
+  locked: boolean
+  onConsumed: (remaining: number) => void
 }
 
-export function TextToSpeechTab({ groups, selectedVoice, onSelectVoice }: TextToSpeechTabProps) {
+export function TextToSpeechTab({ groups, selectedVoice, onSelectVoice, quota, locked, onConsumed }: TextToSpeechTabProps) {
   const { toast } = useToast()
   const [text, setText] = useState('')
   const [resultUrl, setResultUrl] = useState<string | null>(null)
@@ -45,7 +51,7 @@ export function TextToSpeechTab({ groups, selectedVoice, onSelectVoice }: TextTo
   const [speed, setSpeed] = useState(1)
 
   const chars = text.length
-  const canGenerate = text.trim().length > 0 && !!selectedVoice && !generating && chars <= MAX_CHARS
+  const canGenerate = text.trim().length > 0 && !!selectedVoice && !generating && chars <= MAX_CHARS && !locked
 
   const generate = async () => {
     if (!selectedVoice || !text.trim()) return
@@ -70,12 +76,19 @@ export function TextToSpeechTab({ groups, selectedVoice, onSelectVoice }: TextTo
           speakerBoost: true,
         }),
       })
+      if (res.status === 402) {
+        const data = await res.json().catch(() => ({}))
+        onConsumed(0)
+        throw new Error(data.error || 'Messages vocaux épuisés.')
+      }
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
         throw new Error(data.error || `Erreur ${res.status}`)
       }
+      const remaining = Number(res.headers.get('X-Remaining-Credits'))
       const blob = await res.blob()
       setResultUrl(URL.createObjectURL(blob))
+      if (Number.isFinite(remaining)) onConsumed(remaining)
       toast({ title: 'Audio généré', description: `Voix : ${selectedVoice.shortName}.` })
     } catch (e) {
       toast({ title: 'Échec de la génération', description: (e as Error).message, variant: 'destructive' })
