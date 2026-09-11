@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState, Suspense } from 'react'
-import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift, Clapperboard, Flame, Zap } from 'lucide-react'
+import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift, Clapperboard, Flame, Zap, Mic } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
-import { PLANS, getPlan } from '@/lib/plans'
+import { PLANS, getPlan, voiceMessageQuotaForPlan, VOICE_MESSAGE_MAX_SECONDS } from '@/lib/plans'
 import { ANNIVERSARY_MINUTES_OFFERS, getMinutesOffer } from '@/lib/minutes-offers'
 import { OFFER_ACTIVE } from '@/components/dashboard/anniversary-offer-popup'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
@@ -486,6 +486,15 @@ function PlansContent() {
                     <Clapperboard className="h-5 w-5 flex-shrink-0 text-primary" />
                     {t('Studio Photo en Vidéo :')} {t('{n} vidéos de 30s incluses').replace('{n}', String(plan.photoVideoQuota))}
                   </li>
+                  {voiceMessageQuotaForPlan(plan.id) > 0 && (
+                    <li className="flex items-center gap-3 rounded-xl bg-violet-500/10 px-3 py-2 font-medium text-foreground">
+                      <Mic className="h-5 w-5 flex-shrink-0 text-violet-400" />
+                      {t('Message Vocal :')}{' '}
+                      {t('{n} messages vocaux de {s}s inclus')
+                        .replace('{n}', String(voiceMessageQuotaForPlan(plan.id)))
+                        .replace('{s}', String(VOICE_MESSAGE_MAX_SECONDS))}
+                    </li>
+                  )}
                 </ul>
 
                 <button

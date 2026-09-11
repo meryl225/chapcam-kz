@@ -204,6 +204,9 @@ export const translations: Record<string, string> = {
     "Offer valid until September 1, 2026 or while spots last.",
   "Studio Photo en Vidéo :": "Photo to Video Studio:",
   "vidéos de 30s incluses": "30s videos included",
+  "Message Vocal :": "Voice Message:",
+  "messages vocaux de 15s inclus": "15s voice messages included",
+  "{n} messages vocaux de {s}s inclus": "{n} {s}s voice messages included",
   "Afficher les prix en": "Show prices in",
   "Montants convertis a titre indicatif. Vous serez debite en FCFA (XOF).":
     "Amounts converted for reference only. You will be charged in FCFA (XOF).",

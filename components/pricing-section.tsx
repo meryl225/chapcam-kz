@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Gift, Clapperboard } from "lucide-react"
+import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Gift, Clapperboard, Mic } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { useState, useEffect } from "react"
@@ -35,6 +35,7 @@ const plans = [
       "Qualite HD"
     ],
     photoVideos: 0,
+    voiceMessages: 0,
     validity: "Valable 30 jours",
     color: "#00ff88",
     bgGradient: "from-emerald-500/20 to-emerald-600/5",
@@ -58,6 +59,7 @@ const plans = [
       "Qualite HD 1080p"
     ],
     photoVideos: 2,
+    voiceMessages: 1,
     validity: "Valable 24 heures",
     color: "#00d4ff",
     bgGradient: "from-cyan-500/20 to-blue-600/5",
@@ -83,6 +85,7 @@ const plans = [
       "Support prioritaire"
     ],
     photoVideos: 5,
+    voiceMessages: 4,
     validity: "Valable 3 mois",
     color: "#22c55e",
     bgGradient: "from-green-500/20 to-green-600/5",
@@ -112,6 +115,7 @@ const plans = [
       "Acces aux nouveautes en avant-premiere"
     ],
     photoVideos: 8,
+    voiceMessages: 6,
     validity: "Valable 1 an",
     color: "#f97316",
     bgGradient: "from-orange-500/20 to-yellow-500/5",
@@ -140,6 +144,7 @@ const plans = [
       "Acces anticipe a toutes les nouveautes"
     ],
     photoVideos: 15,
+    voiceMessages: 10,
     validity: "Valable 1 an",
     color: "#2563eb",
     bgGradient: "from-blue-500/20 to-blue-700/5",
@@ -396,10 +401,21 @@ export function PricingSection() {
                 {/* Studio Photo en Video inclus dans le forfait Live Swap.
                     Non affiche pour Starter (10.000 F) ni le Forfait Testeur. */}
                 {plan.id !== "starter" && plan.id !== "testeur" && (
-                  <div className="mb-8 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+                  <div className="mb-4 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
                     <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
                     <p className="text-sm font-semibold text-emerald-300 leading-snug">
                       {t("Studio Photo en Vidéo :")} {plan.photoVideos} {t("vidéos de 30s incluses")}
+                    </p>
+                  </div>
+                )}
+
+                {/* Message Vocal inclus : messages vocaux IA de 15s (TTS ou changement
+                    de voix). Non affiche pour le Forfait Testeur (pack minutes). */}
+                {plan.voiceMessages > 0 && (
+                  <div className="mb-8 flex items-center gap-3 rounded-2xl border border-violet-500/40 bg-violet-500/10 px-4 py-3">
+                    <Mic className="h-5 w-5 flex-shrink-0 text-violet-400" />
+                    <p className="text-sm font-semibold text-violet-300 leading-snug">
+                      {t("Message Vocal :")} {plan.voiceMessages} {t("messages vocaux de 15s inclus")}
                     </p>
                   </div>
                 )}
