@@ -3,7 +3,6 @@ import { createClient } from '@/lib/supabase/server'
 import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
 import { HeaderActions } from '@/components/dashboard/hub/header-actions'
 import { EsimPromo } from '@/components/dashboard/esim-promo'
-import { ChapVerifyPromo } from '@/components/dashboard/chapverify-promo'
 import { ConsentCard } from '@/components/dashboard/consent-card'
 import { SupportBanner } from '@/components/dashboard/support-banner'
 import { Sparkles, Crown, Check, Zap, Timer, Users, Hourglass, ArrowRight, Clock } from 'lucide-react'
@@ -167,9 +166,6 @@ export default async function DashboardHubPage() {
           </div>
         </div>
       </header>
-
-      {/* ===== Mise en avant ChapVerify (anti-deepfake) ===== */}
-      <ChapVerifyPromo />
 
       {/* ===== Bannière assistance / support ===== */}
       <SupportBanner />
