@@ -60,9 +60,9 @@ export function HeroSection() {
           className="order-2 flex flex-col gap-6 lg:order-1"
         >
           {/* Eyebrow */}
-          <span className="group inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-300 shadow-[0_2px_12px_-4px_rgba(0,212,255,0.25)] backdrop-blur-md transition-all duration-300 hover:border-[#00d4ff]/40 hover:bg-white/[0.08] hover:shadow-[0_4px_20px_-4px_rgba(0,212,255,0.5)]">
-            <TrendingUp className="h-3.5 w-3.5 text-[#00d4ff] transition-transform duration-300 group-hover:scale-110" />
-            {t("N°1 des outils de transformation en direct")}
+          <span className="group inline-flex w-fit items-center gap-2 rounded-full border border-[#00d4ff]/50 bg-gradient-to-r from-[#00d4ff]/20 via-[#8b5cf6]/20 to-[#00d4ff]/20 px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-white shadow-[0_0_24px_-4px_rgba(0,212,255,0.6)] backdrop-blur-md transition-all duration-300 hover:border-[#00d4ff] hover:shadow-[0_0_32px_-2px_rgba(0,212,255,0.85)] sm:text-sm">
+            <TrendingUp className="h-4 w-4 text-[#00d4ff] transition-transform duration-300 group-hover:scale-110" />
+            {t("1ère plateforme IA africaine et mondiale")}
           </span>
 
           {/* Titre */}
@@ -142,7 +142,7 @@ export function HeroSection() {
                 ))}
               </div>
               <p className="text-sm text-gray-400">
-                <span className="font-bold text-white">{t("+15 000 créateurs")}</span> {t("déjà inscrits")}
+                <span className="font-bold text-white">{t("+25 000 créateurs")}</span> {t("déjà inscrits")}
               </p>
             </div>
           </div>
