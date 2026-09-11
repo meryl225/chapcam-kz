@@ -1,30 +1,27 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { head, issueSignedToken, presignUrl } from '@vercel/blob'
 import { createClient } from '@/lib/supabase/server'
+import { getVideoHistoryItemByPath } from '@/lib/video-history'
+import { headVideo, isVideoKey, signedPlaybackUrl } from '@/lib/r2'
 
-// Sert une video de l'historique depuis le store Blob PRIVE, en STREAMING
-// same-origin.
+// Sert une video de l'historique pour la LECTURE (<video src=...>).
 //
-// HISTORIQUE DES BUGS "marche en preview / casse en prod" :
-//   1) Version d'origine : on bufferisait toute la video en memoire avant de la
-//      renvoyer -> les fonctions Vercel imposent une limite de reponse ~4,5 Mo
-//      (absente du dev v0) -> 500 en prod pour les gros clips.
-//   2) Version suivante : on REDIRIGEAIT (303) le <video> vers l'URL presignee
-//      du CDN Blob. Cross-origin sur un element media -> ECRAN NOIR en prod
-//      (Safari + subtilites cache/redirect), alors que l'apercu v0 (qui retire
-//      ces contraintes) l'acceptait.
+// POURQUOI CETTE VERSION : le TELECHARGEMENT (/api/videos/download) marchait
+// deja parfaitement -> il lit la cle PERMANENTE Cloudflare R2 (`r2_key`) en base
+// et redirige vers une URL signee R2. La LECTURE, elle, passait par le store
+// Blob (head + presignUrl) : un chemin DIFFERENT qui, en production, renvoyait
+// un ECRAN NOIR (le clip se telechargeait mais ne se lisait pas).
 //
-// SOLUTION ACTUELLE : on relaie les octets DEPUIS NOTRE PROPRE ORIGINE, en
-// streaming. Le navigateur ne voit qu'une seule URL same-origin (aucun
-// redirect, aucun hote tiers a autoriser) -> comportement IDENTIQUE en preview
-// et en prod. Le corps est passe en flux (`upstream.body`), donc jamais
-// bufferise -> la limite 4,5 Mo ne s'applique pas. Le seek marche via le relais
-// de l'en-tete Range (206 + Content-Range).
-//   - Auth + verification de propriete (prefixe videos/<user_id>/) inchangees.
+// On aligne donc la lecture sur le telechargement : meme source R2, meme
+// mecanique. Seule difference -> `Content-Disposition: inline` (via
+// `signedPlaybackUrl`) pour que le navigateur LISE la video au lieu de la
+// telecharger. R2 est le stockage permanent et fiable -> comportement identique
+// en preview et en prod.
+//
+// Repli : les rares anciennes videos sans `r2_key` (pas encore migrees) sont
+// encore servies via le store Blob.
 export const dynamic = 'force-dynamic'
 
-// Duree de validite de l'URL presignee interne (usage serveur uniquement, non
-// exposee au navigateur). Large marge pour lire une video entiere.
 const PRESIGN_TTL_MS = 60 * 60 * 1000 // 1 heure
 
 export async function GET(request: NextRequest) {
@@ -42,15 +39,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'pathname manquant' }, { status: 400 })
   }
 
-  // Le chemin DOIT commencer par le prefixe de l'utilisateur courant.
-  // C'est ce qui empeche un compte de lire les videos d'un autre en devinant
-  // un chemin. (Verification inchangee par rapport a l'ancienne version.)
+  // Le chemin DOIT commencer par le prefixe de l'utilisateur courant : un compte
+  // ne peut pas lire les videos d'un autre en devinant un chemin.
   if (!pathname.startsWith(`videos/${user.id}/`)) {
     return NextResponse.json({ error: 'Accès refusé' }, { status: 403 })
   }
 
-  // MODE TELECHARGEMENT (anciens liens `?download=1`) : on delegue a la route
-  // unique /api/videos/download (Cloudflare R2).
+  // ANCIENS liens `?download=1` : on delegue a la route de telechargement.
   if (request.nextUrl.searchParams.get('download') === '1') {
     return NextResponse.redirect(
       new URL(`/api/videos/download?pathname=${encodeURIComponent(pathname)}`, request.nextUrl.origin),
@@ -59,13 +54,26 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Verifie l'existence du blob (2 essais : un hoquet reseau vers l'API Blob
-    // ne doit pas produire un faux "introuvable"). `head` deduit prive/public
-    // du token, donc pas d'option `access`. Les metadonnees stockees portent
-    // deja le bon content-type video/* et `Content-Disposition: inline`.
-    let meta = await head(pathname).catch(() => null)
-    if (!meta) meta = await head(pathname).catch(() => null)
-    if (!meta) {
+    // 1) SOURCE PRINCIPALE — Cloudflare R2 (comme le telechargement qui marche).
+    //    On relit la cle R2 PERMANENTE en base (filtree par proprietaire) a
+    //    partir du chemin de lecture, on verifie que l'objet existe vraiment,
+    //    puis on redirige le <video> vers une URL signee R2 EN LECTURE (inline).
+    const item = await getVideoHistoryItemByPath(user.id, pathname).catch(() => null)
+    if (item && isVideoKey(item.r2_key)) {
+      const meta = await headVideo(item.r2_key).catch(() => null)
+      if (meta) {
+        const url = await signedPlaybackUrl(item.r2_key, 3600)
+        return NextResponse.redirect(url, {
+          status: 302,
+          headers: { 'Cache-Control': 'private, no-store' },
+        })
+      }
+    }
+
+    // 2) REPLI — anciennes videos encore uniquement dans le store Blob prive.
+    let blobMeta = await head(pathname).catch(() => null)
+    if (!blobMeta) blobMeta = await head(pathname).catch(() => null)
+    if (!blobMeta) {
       return NextResponse.json(
         { error: 'Ce fichier n’existe plus dans le stockage.' },
         { status: 410, headers: { 'Cache-Control': 'private, no-store' } },
@@ -73,16 +81,7 @@ export async function GET(request: NextRequest) {
     }
 
     const validUntil = Date.now() + PRESIGN_TTL_MS
-
-    // 1) Jeton signe autorisant UNIQUEMENT la lecture (get) de CE pathname.
-    const token = await issueSignedToken({
-      pathname,
-      operations: ['get'],
-      validUntil,
-    })
-
-    // 2) URL presignee temporaire vers le store prive. useCache:false -> lit
-    //    l'origine (metadonnees a jour).
+    const token = await issueSignedToken({ pathname, operations: ['get'], validUntil })
     const { presignedUrl } = await presignUrl(token, {
       operation: 'get',
       pathname,
@@ -90,58 +89,12 @@ export async function GET(request: NextRequest) {
       validUntil,
       useCache: false,
     })
-
-    // 3) LECTURE : on PROXY les octets en STREAMING, en same-origin.
-    //    On NE redirige PLUS le <video> vers le CDN Blob : une redirection
-    //    cross-origin (*.private.blob.vercel-storage.com) sur un element media
-    //    marche dans l'apercu v0 (indulgent) mais donne un ECRAN NOIR en
-    //    production (Safari + subtilites cache/redirect sur les medias). En
-    //    relayant le flux depuis notre propre origine, le navigateur ne voit
-    //    qu'une seule URL same-origin -> comportement IDENTIQUE partout.
-    //
-    //    Le corps est renvoye en STREAM (on passe `upstream.body` directement) :
-    //    les octets ne sont jamais bufferises en memoire par la fonction, donc
-    //    la limite ~4,5 Mo des reponses serverless ne s'applique pas (c'etait la
-    //    cause du 500 d'origine). Le seek video marche car on relaie l'en-tete
-    //    `Range` et on renvoie le 206 + `Content-Range` du store.
-    const range = request.headers.get('range')
-    const upstream = await fetch(presignedUrl, {
-      headers: range ? { Range: range } : {},
-      // Pas de cache cote fetch : on veut les octets frais du store prive.
-      cache: 'no-store',
-    })
-
-    if (!upstream.ok && upstream.status !== 206) {
-      return NextResponse.json(
-        { error: 'Ce fichier n’existe plus dans le stockage.' },
-        { status: 410, headers: { 'Cache-Control': 'private, no-store' } },
-      )
-    }
-
-    // On reconstruit des en-tetes propres pour la lecture <video> :
-    //  - content-type video/* + disposition inline (depuis les metadonnees) ;
-    //  - Accept-Ranges/Content-Range/Content-Length relayes pour le seek ;
-    //  - cache PRIVE court (jamais `no-store` : Safari a besoin de mettre les
-    //    portions d'octets en cache, sinon ecran noir).
-    const headers = new Headers()
-    headers.set('Content-Type', meta.contentType || 'video/mp4')
-    headers.set('Content-Disposition', meta.contentDisposition || 'inline')
-    headers.set('Accept-Ranges', 'bytes')
-    headers.set('Cache-Control', 'private, max-age=3600')
-    const contentRange = upstream.headers.get('content-range')
-    if (contentRange) headers.set('Content-Range', contentRange)
-    const contentLength = upstream.headers.get('content-length')
-    if (contentLength) headers.set('Content-Length', contentLength)
-
-    return new Response(upstream.body, {
-      status: upstream.status, // 206 si Range, 200 sinon
-      headers,
+    return NextResponse.redirect(presignedUrl, {
+      status: 302,
+      headers: { 'Cache-Control': 'private, no-store' },
     })
   } catch (error) {
     console.error('[videos/file] Erreur service video:', error)
-    return NextResponse.json(
-      { error: 'Échec du service de la vidéo' },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: 'Échec du service de la vidéo' }, { status: 500 })
   }
 }
