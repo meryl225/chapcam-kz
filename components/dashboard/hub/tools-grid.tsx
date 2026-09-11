@@ -27,6 +27,13 @@ const tools: Tool[] = [
     media: { type: 'image', src: '/swap/poster-motion.png' },
   },
   {
+    href: '/dashboard/message-vocal',
+    title: 'Message Vocal',
+    badge: 'NEW',
+    accent: '#00d4ff',
+    media: { type: 'image', src: '/swap/poster-message-vocal.png' },
+  },
+  {
     href: '/dashboard/photo-video',
     title: 'Photos en Vidéo',
     badge: 'NEW',
@@ -39,6 +46,13 @@ const tools: Tool[] = [
     badge: 'NEW',
     accent: '#22d3ee',
     media: { type: 'image', src: '/swap/poster-video-translation.png' },
+  },
+  {
+    href: '/dashboard/chapverify',
+    title: 'ChapVerify',
+    badge: 'NEW',
+    accent: '#ef4444',
+    media: { type: 'image', src: '/swap/poster-chapverify.png' },
   },
 ]
 
