@@ -2,26 +2,29 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { head, issueSignedToken, presignUrl } from '@vercel/blob'
 import { createClient } from '@/lib/supabase/server'
 
-// Sert une video de l'historique depuis le store Blob PRIVE.
+// Sert une video de l'historique depuis le store Blob PRIVE, en STREAMING
+// same-origin.
 //
-// ARCHITECTURE (corrige le bug "500 en production uniquement") :
-// On NE fait PLUS transiter les octets de la video a travers la fonction
-// serverless. En production, les fonctions Vercel imposent une limite de taille
-// de reponse (~4,5 Mo) absente du serveur de dev de la preview v0 -> toute video
-// plus lourde renvoyait un 500 en prod alors que tout marchait en preview.
+// HISTORIQUE DES BUGS "marche en preview / casse en prod" :
+//   1) Version d'origine : on bufferisait toute la video en memoire avant de la
+//      renvoyer -> les fonctions Vercel imposent une limite de reponse ~4,5 Mo
+//      (absente du dev v0) -> 500 en prod pour les gros clips.
+//   2) Version suivante : on REDIRIGEAIT (303) le <video> vers l'URL presignee
+//      du CDN Blob. Cross-origin sur un element media -> ECRAN NOIR en prod
+//      (Safari + subtilites cache/redirect), alors que l'apercu v0 (qui retire
+//      ces contraintes) l'acceptait.
 //
-// A la place, comme le font les apps pro (URLs presignees facon S3) :
-//   1) on authentifie l'utilisateur ET on verifie que le fichier lui appartient
-//      (prefixe videos/<user_id>/) — securite STRICTEMENT identique a avant ;
-//   2) on genere une URL presignee temporaire (1h) vers le store Blob prive ;
-//   3) on redirige (303) le navigateur vers cette URL.
-// Le CDN Blob sert alors les octets directement : Range/seek natifs, aucune
-// limite de taille (gere meme les fichiers de 100+ Mo), et la fonction renvoie
-// une reponse minuscule -> plus jamais de 500.
+// SOLUTION ACTUELLE : on relaie les octets DEPUIS NOTRE PROPRE ORIGINE, en
+// streaming. Le navigateur ne voit qu'une seule URL same-origin (aucun
+// redirect, aucun hote tiers a autoriser) -> comportement IDENTIQUE en preview
+// et en prod. Le corps est passe en flux (`upstream.body`), donc jamais
+// bufferise -> la limite 4,5 Mo ne s'applique pas. Le seek marche via le relais
+// de l'en-tete Range (206 + Content-Range).
+//   - Auth + verification de propriete (prefixe videos/<user_id>/) inchangees.
 export const dynamic = 'force-dynamic'
 
-// Duree de validite de l'URL presignee. Large marge pour lire une video en
-// entier sans que le lien n'expire en cours de lecture.
+// Duree de validite de l'URL presignee interne (usage serveur uniquement, non
+// exposee au navigateur). Large marge pour lire une video entiere.
 const PRESIGN_TTL_MS = 60 * 60 * 1000 // 1 heure
 
 export async function GET(request: NextRequest) {
@@ -79,8 +82,7 @@ export async function GET(request: NextRequest) {
     })
 
     // 2) URL presignee temporaire vers le store prive. useCache:false -> lit
-    //    l'origine (metadonnees a jour). Le content-type et la disposition
-    //    proviennent des metadonnees stockees du blob (video/* + inline).
+    //    l'origine (metadonnees a jour).
     const { presignedUrl } = await presignUrl(token, {
       operation: 'get',
       pathname,
@@ -89,15 +91,51 @@ export async function GET(request: NextRequest) {
       useCache: false,
     })
 
-    // 3) MODE LECTURE (<video>) : redirection classique vers le CDN Blob.
-    //     303 pour que la requete suivante soit bien un GET.
-    return NextResponse.redirect(presignedUrl, {
-      status: 303,
-      headers: {
-        // La redirection elle-meme ne doit pas etre mise en cache (l'URL
-        // presignee expire) ; le CDN gere le cache des octets video.
-        'Cache-Control': 'private, no-store',
-      },
+    // 3) LECTURE : on PROXY les octets en STREAMING, en same-origin.
+    //    On NE redirige PLUS le <video> vers le CDN Blob : une redirection
+    //    cross-origin (*.private.blob.vercel-storage.com) sur un element media
+    //    marche dans l'apercu v0 (indulgent) mais donne un ECRAN NOIR en
+    //    production (Safari + subtilites cache/redirect sur les medias). En
+    //    relayant le flux depuis notre propre origine, le navigateur ne voit
+    //    qu'une seule URL same-origin -> comportement IDENTIQUE partout.
+    //
+    //    Le corps est renvoye en STREAM (on passe `upstream.body` directement) :
+    //    les octets ne sont jamais bufferises en memoire par la fonction, donc
+    //    la limite ~4,5 Mo des reponses serverless ne s'applique pas (c'etait la
+    //    cause du 500 d'origine). Le seek video marche car on relaie l'en-tete
+    //    `Range` et on renvoie le 206 + `Content-Range` du store.
+    const range = request.headers.get('range')
+    const upstream = await fetch(presignedUrl, {
+      headers: range ? { Range: range } : {},
+      // Pas de cache cote fetch : on veut les octets frais du store prive.
+      cache: 'no-store',
+    })
+
+    if (!upstream.ok && upstream.status !== 206) {
+      return NextResponse.json(
+        { error: 'Ce fichier n’existe plus dans le stockage.' },
+        { status: 410, headers: { 'Cache-Control': 'private, no-store' } },
+      )
+    }
+
+    // On reconstruit des en-tetes propres pour la lecture <video> :
+    //  - content-type video/* + disposition inline (depuis les metadonnees) ;
+    //  - Accept-Ranges/Content-Range/Content-Length relayes pour le seek ;
+    //  - cache PRIVE court (jamais `no-store` : Safari a besoin de mettre les
+    //    portions d'octets en cache, sinon ecran noir).
+    const headers = new Headers()
+    headers.set('Content-Type', meta.contentType || 'video/mp4')
+    headers.set('Content-Disposition', meta.contentDisposition || 'inline')
+    headers.set('Accept-Ranges', 'bytes')
+    headers.set('Cache-Control', 'private, max-age=3600')
+    const contentRange = upstream.headers.get('content-range')
+    if (contentRange) headers.set('Content-Range', contentRange)
+    const contentLength = upstream.headers.get('content-length')
+    if (contentLength) headers.set('Content-Length', contentLength)
+
+    return new Response(upstream.body, {
+      status: upstream.status, // 206 si Range, 200 sinon
+      headers,
     })
   } catch (error) {
     console.error('[videos/file] Erreur service video:', error)
