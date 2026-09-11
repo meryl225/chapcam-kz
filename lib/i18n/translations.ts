@@ -202,6 +202,8 @@ export const translations: Record<string, string> = {
   Recharger: "Top up",
   "Offre valable jusqu'au 1er Septembre 2026 ou jusqu'a epuisement des places.":
     "Offer valid until September 1, 2026 or while spots last.",
+  "Voir plus": "See more",
+  "Voir moins": "See less",
   "Studio Photo en Vidéo :": "Photo to Video Studio:",
   "vidéos de 30s incluses": "30s videos included",
   "Message Vocal :": "Voice Message:",
