@@ -62,7 +62,7 @@ export function HeroSection() {
           {/* Eyebrow */}
           <span className="group inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-widest text-gray-300 shadow-[0_2px_12px_-4px_rgba(0,212,255,0.25)] backdrop-blur-md transition-all duration-300 hover:border-[#00d4ff]/40 hover:bg-white/[0.08] hover:shadow-[0_4px_20px_-4px_rgba(0,212,255,0.5)]">
             <TrendingUp className="h-3.5 w-3.5 text-[#00d4ff] transition-transform duration-300 group-hover:scale-110" />
-            {t("N°1 des outils de transformation en direct")}
+            {t("1ère plateforme IA africaine et mondiale")}
           </span>
 
           {/* Titre */}

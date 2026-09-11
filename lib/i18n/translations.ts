@@ -21,7 +21,7 @@ export const translations: Record<string, string> = {
   "SWAP EN TEMPS REEL": "REAL-TIME SWAP",
 
   // ----- Hero -----
-  "N°1 des outils de transformation en direct": "The #1 live transformation tool",
+  "1ère plateforme IA africaine et mondiale": "The #1 African & global AI platform",
   "La caméra IA": "The AI camera",
   des: "for",
   créateurs: "creators",
