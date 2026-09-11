@@ -15,8 +15,47 @@ import { createMotionJob, markMotionJobCompleted, markMotionJobFailed } from "@/
 // Facturation : volontairement AUCUNE deduction pour l'instant (a brancher plus
 // tard). L'acces est simplement reserve aux utilisateurs connectes.
 
+export const maxDuration = 60
+
 const HIGGSFIELD_API = "https://platform.higgsfield.ai"
 const STORAGE_BUCKET = "avatars"
+
+// Higgsfield connait des ralentissements transitoires : sans borne, un appel qui
+// pend consomme toute la duree de la fonction et retombe en 5xx. On abandonne
+// proprement au bout d'un delai et on reessaie UNE fois les erreurs transitoires
+// (timeout / 5xx upstream). Cela evite les pics de 5xx quand l'upstream tangue.
+const REQUEST_TIMEOUT_MS = 20_000
+
+async function higgsfieldFetch(
+  url: string,
+  init: RequestInit,
+  { timeoutMs = REQUEST_TIMEOUT_MS, retries = 1 } = {},
+): Promise<Response> {
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal })
+      clearTimeout(timer)
+      // 502/503/504 = upstream instable -> on retente une fois avant d'abandonner.
+      if ((res.status === 502 || res.status === 503 || res.status === 504) && attempt < retries) {
+        await new Promise((r) => setTimeout(r, 400))
+        continue
+      }
+      return res
+    } catch (err) {
+      clearTimeout(timer)
+      lastErr = err
+      // Timeout / erreur reseau : on retente une fois, sinon on propage.
+      if (attempt < retries) {
+        await new Promise((r) => setTimeout(r, 400))
+        continue
+      }
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("Higgsfield injoignable")
+}
 
 // Modeles image->video autorises (allowlist stricte cote serveur : le client
 // ne peut pas injecter un slug arbitraire). Cles = valeurs acceptees de l'UI.
@@ -53,7 +92,7 @@ export async function GET(request: NextRequest) {
   // Liste des presets de mouvement de camera (id + nom + apercu).
   if (params.get("info") === "motions") {
     try {
-      const res = await fetch(`${HIGGSFIELD_API}/v1/motions`, { headers: { Authorization: auth } })
+      const res = await higgsfieldFetch(`${HIGGSFIELD_API}/v1/motions`, { headers: { Authorization: auth } })
       const json = await res.json().catch(() => [])
       const motions = Array.isArray(json)
         ? json.map((m) => ({
@@ -76,9 +115,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await fetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(requestId)}/status`, {
+    const res = await higgsfieldFetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(requestId)}/status`, {
       headers: { Authorization: auth },
     })
+    // Un statut illisible (upstream qui tangue) ne doit PAS casser le polling du
+    // client : on renvoie "in_progress" pour qu'il reessaie au prochain tick.
+    if (!res.ok) {
+      return NextResponse.json({ success: true, status: "in_progress", video_url: null, error: null })
+    }
     const json = await res.json().catch(() => ({}))
     const statusStr = json.status || "unknown" // queued | in_progress | completed | failed | nsfw
     const videoUrl = json.video?.url || null
@@ -96,7 +140,9 @@ export async function GET(request: NextRequest) {
       error: statusStr === "nsfw" ? "Contenu refuse par la moderation." : json.error || null,
     })
   } catch {
-    return NextResponse.json({ error: "Impossible de recuperer le statut." }, { status: 502 })
+    // Timeout / reseau pendant le polling : ne pas remonter un 5xx (ce n'est pas
+    // un echec de generation). Le client retentera au prochain tick.
+    return NextResponse.json({ success: true, status: "in_progress", video_url: null, error: null })
   }
 }
 
@@ -170,7 +216,7 @@ export async function POST(request: NextRequest) {
     }
     if (motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
 
-    const res = await fetch(`${HIGGSFIELD_API}/${model}`, {
+    const res = await higgsfieldFetch(`${HIGGSFIELD_API}/${model}`, {
       method: "POST",
       headers: { Authorization: auth, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(payload),
@@ -180,17 +226,22 @@ export async function POST(request: NextRequest) {
     if (!res.ok || !json?.request_id) {
       // Nettoyer l'image hebergee si la generation n'a pas demarre.
       await admin.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {})
-      const detail = json?.detail || json?.message || json?.error || ""
-      const noCredits = typeof detail === "string" && detail.includes("credit")
+      const detail = String(json?.detail || json?.message || json?.error || "").toLowerCase()
+      // Classification large des erreurs de facturation : credit / balance / quota
+      // / insufficient / payment -> 402 (probleme cote compte, PAS un bug serveur,
+      // donc ne doit pas polluer les alertes 5xx).
+      const isBilling =
+        res.status === 402 ||
+        /credit|balance|quota|insufficient|payment|billing/.test(detail)
       return NextResponse.json(
         {
-          error: noCredits
+          error: isBilling
             ? "Le service de generation video n'a plus de credits. Contactez l'administrateur."
-            : "Echec du lancement de la generation.",
-          code: noCredits ? "no_credit" : "failed",
-          detail: typeof detail === "string" ? detail : "",
+            : "Echec du lancement de la generation. Reessayez dans un instant.",
+          code: isBilling ? "no_credit" : "failed",
+          detail,
         },
-        { status: res.status === 402 || noCredits ? 402 : 502 },
+        { status: isBilling ? 402 : 502 },
       )
     }
 
@@ -213,9 +264,20 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("[Motion Error]", error)
+    // Un abandon (timeout) ou une erreur reseau vers Higgsfield est un probleme
+    // UPSTREAM (502), pas un bug serveur (500) : on ne pollue pas les alertes 5xx
+    // internes et on invite l'utilisateur a reessayer.
+    const isUpstream =
+      error instanceof Error &&
+      (error.name === "AbortError" || /injoignable|fetch failed|network|timeout/i.test(error.message))
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
-      { status: 500 },
+      {
+        error: isUpstream
+          ? "Le service de generation video est momentanement indisponible. Reessayez dans un instant."
+          : error instanceof Error ? error.message : "Erreur serveur",
+        code: isUpstream ? "upstream_unavailable" : "server_error",
+      },
+      { status: isUpstream ? 502 : 500 },
     )
   }
 }
