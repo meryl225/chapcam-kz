@@ -15,12 +15,28 @@ export async function GET() {
   }
 
   const admin = createAdminClient()
-  const { data, error } = await admin.rpc('get_admin_stats')
+  const [{ data, error }, { data: subscriptionRows, error: subscriptionError }] = await Promise.all([
+    admin.rpc('get_admin_stats'),
+    admin.from('subscriptions').select('user_id,is_active,status,start_date,end_date,started_at,expires_at').limit(100000),
+  ])
 
-  if (error) {
-    console.error('[admin/stats] Erreur RPC:', error.message)
+  if (error || subscriptionError) {
+    console.error('[admin/stats] Erreur lecture:', error?.message || subscriptionError?.message)
     return NextResponse.json({ error: 'Erreur lecture des stats.' }, { status: 500 })
   }
+
+  const now = Date.now()
+  const activeUsers = new Set(
+    (subscriptionRows || [])
+      .filter((subscription) => {
+        if (subscription.is_active === false) return false
+        if (['cancelled', 'canceled', 'expired', 'inactive'].includes((subscription.status || '').toLowerCase())) return false
+        const start = subscription.start_date || subscription.started_at
+        const end = subscription.end_date || subscription.expires_at
+        return (!start || new Date(start).getTime() <= now) && (!end || new Date(end).getTime() >= now)
+      })
+      .map((subscription) => subscription.user_id),
+  )
 
   return NextResponse.json(
     {
@@ -28,7 +44,7 @@ export async function GET() {
       todayRegistrations: data?.todayRegistrations ?? 0,
       onlineUsers: data?.onlineUsers ?? 0,
       activeSwaps: data?.activeSwaps ?? 0,
-      activeSubscriptions: data?.activeSubscriptions ?? 0,
+      activeSubscriptions: activeUsers.size,
     },
     { headers: { 'Cache-Control': 'no-store' } },
   )
