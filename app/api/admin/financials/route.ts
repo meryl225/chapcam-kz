@@ -87,9 +87,18 @@ export async function GET() {
     if (!previous || month < previous) firstPaidMonth.set(payment.user_id, month)
   }
 
-  const rows = MONTHS.map((month, index) => {
+  const rows: Array<{
+    month: string
+    revenue: number
+    transactionsPaid: number
+    uniquePayingUsers: number
+    newPayingUsers: number
+    activeSubscribers: number
+    arppu: number
+    growthMoM: number | null
+  }> = MONTHS.map((month, index) => {
     const monthPayments = payments.filter((payment) => monthKey(paymentDate(payment) || '') === month)
-    const users = new Set(monthPayments.map((payment) => payment.user_id).filter(Boolean))
+    const users = new Set(monthPayments.map((payment) => payment.user_id).filter((userId): userId is string => Boolean(userId)))
     const revenue = monthPayments.reduce((total, payment) => total + Number(payment.paid_amount ?? payment.amount ?? 0), 0)
     const monthEnd = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0, 23, 59, 59, 999))
     const activeSubscribers = new Set(subscriptions.filter((sub) => activeAt(sub, monthEnd)).map((sub) => sub.user_id)).size
