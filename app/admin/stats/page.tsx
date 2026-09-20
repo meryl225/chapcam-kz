@@ -9,6 +9,7 @@ type Period = 'today' | '7d' | '30d' | 'all'
 interface Country { country: string; count: number }
 interface Stats { totalUsers: number; todayRegistrations: number; onlineUsers: number; activeSwaps: number; activeSubscriptions: number }
 interface Consumption { totals?: { users: number; sessions: number; points: number; seconds: number }; users?: { email: string | null; plan: string | null; sessions: number; points: number; seconds: number; lastActivity: string }[] }
+interface FinancialRow { month: string; revenue: number; transactionsPaid: number; uniquePayingUsers: number; newPayingUsers: number; activeSubscribers: number; arppu: number; growthMoM: number | null }
 
 const PERIODS: { id: Period; label: string }[] = [
   { id: 'today', label: "Aujourd'hui" },
@@ -37,6 +38,7 @@ export default function AdminStatsPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [consumption, setConsumption] = useState<Consumption | null>(null)
   const [countries, setCountries] = useState<Country[]>([])
+  const [financials, setFinancials] = useState<FinancialRow[]>([])
   const [totalLocated, setTotalLocated] = useState(0)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -46,15 +48,17 @@ export default function AdminStatsPage() {
   const load = useCallback(async () => {
     setRefreshing(true); setError(null)
     try {
-      const [s, g, c] = await Promise.all([
+      const [s, g, c, f] = await Promise.all([
         fetch('/api/admin/stats', { cache: 'no-store' }),
         fetch('/api/admin/geo', { cache: 'no-store' }),
         fetch(`/api/admin/consumption?period=${period}`, { cache: 'no-store' }),
+        fetch('/api/admin/financials', { cache: 'no-store' }),
       ])
       if (!s.ok) throw new Error(`Erreur statistiques (${s.status})`)
       const sj = await s.json(); setStats(sj)
       if (g.ok) { const gj = await g.json(); setCountries(gj.countries ?? []); setTotalLocated(gj.totalLocated ?? 0) }
       if (c.ok) setConsumption(await c.json())
+      if (f.ok) setFinancials((await f.json()).months ?? [])
       setLastUpdated(new Date())
     } catch (e) { setError(e instanceof Error ? e.message : 'Impossible de charger les données.') }
     finally { setLoading(false); setRefreshing(false) }
@@ -100,6 +104,7 @@ export default function AdminStatsPage() {
         <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5"><div className="mb-5 flex items-center justify-between"><div><h2 className="font-semibold text-white">Utilisation par compte</h2><p className="text-xs text-slate-500">Top 200, triés par points consommés</p></div><Link href="/admin/consumption" className="text-sm text-cyan-400 hover:text-cyan-300">Voir le détail</Link></div>{consumption?.users?.length ? <div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase tracking-wide text-slate-500"><tr><th className="pb-3">Compte</th><th className="pb-3">Forfait</th><th className="pb-3 text-right">Sessions</th><th className="pb-3 text-right">Points</th></tr></thead><tbody className="divide-y divide-slate-800">{consumption.users.slice(0, 8).map((u, i) => <tr key={`${u.email}-${i}`}><td className="py-3 text-slate-300">{u.email ?? 'Compte non identifié'}</td><td className="py-3 text-slate-500">{u.plan ?? '—'}</td><td className="py-3 text-right text-slate-300">{u.sessions}</td><td className="py-3 text-right font-medium text-white">{u.points.toLocaleString('fr-FR')}</td></tr>)}</tbody></table></div> : <div className="rounded-xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-500">Aucune session pour cette période.</div>}</section>
         <section className="rounded-2xl border border-slate-800 bg-slate-950/60 p-5"><div className="mb-5 flex items-center gap-2"><Globe2 className="h-4 w-4 text-cyan-300" /><div><h2 className="font-semibold text-white">Répartition géographique</h2><p className="text-xs text-slate-500">{totalLocated.toLocaleString('fr-FR')} comptes localisés par IP</p></div></div>{topCountries.length ? <div className="space-y-4">{topCountries.map(c => { const pct = totalLocated ? Math.round(c.count / totalLocated * 100) : 0; return <div key={c.country}><div className="mb-1 flex justify-between text-sm"><span>{formatCountry(c.country)}</span><span className="text-slate-500">{c.count} · {pct}%</span></div><div className="h-1.5 rounded-full bg-slate-800"><div className="h-full rounded-full bg-cyan-400" style={{ width: `${pct}%` }} /></div></div> })}</div> : <p className="text-sm text-slate-500">Aucune donnée géographique disponible.</p>}</section>
       </div>
+      <section className="mt-5 rounded-2xl border border-emerald-500/20 bg-slate-950/60 p-5"><div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><h2 className="font-semibold text-white">Tableau financier</h2><p className="mt-1 text-xs text-slate-500">Mai 2026 → septembre 2026 · Supabase uniquement · paiements validés et dédupliqués</p></div><span className="text-xs text-emerald-300">Source : payment_requests + subscriptions</span></div><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="text-xs uppercase tracking-wide text-slate-500"><tr><th className="pb-3">Mois</th><th className="pb-3 text-right">Revenus encaissés</th><th className="pb-3 text-right">Transactions</th><th className="pb-3 text-right">Payants uniques</th><th className="pb-3 text-right">Nouveaux payants</th><th className="pb-3 text-right">Abonnés actifs</th><th className="pb-3 text-right">ARPPU</th><th className="pb-3 text-right">Croissance MoM</th></tr></thead><tbody className="divide-y divide-slate-800">{financials.map((row) => <tr key={row.month}><td className="py-3 font-medium text-white">{new Date(`${row.month}-02T00:00:00Z`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</td><td className="py-3 text-right font-semibold text-emerald-300">{row.revenue.toLocaleString('fr-FR')} F</td><td className="py-3 text-right text-slate-300">{row.transactionsPaid.toLocaleString('fr-FR')}</td><td className="py-3 text-right text-slate-300">{row.uniquePayingUsers.toLocaleString('fr-FR')}</td><td className="py-3 text-right text-slate-300">{row.newPayingUsers.toLocaleString('fr-FR')}</td><td className="py-3 text-right text-cyan-300">{row.activeSubscribers.toLocaleString('fr-FR')}</td><td className="py-3 text-right text-slate-300">{row.arppu.toLocaleString('fr-FR', { maximumFractionDigits: 0 })} F</td><td className={`py-3 text-right ${row.growthMoM === null ? 'text-slate-500' : row.growthMoM >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>{row.growthMoM === null ? '—' : `${row.growthMoM >= 0 ? '+' : ''}${row.growthMoM.toFixed(1)}%`}</td></tr>)}</tbody></table></div></section>
       <section className="mt-5 rounded-2xl border border-amber-500/20 bg-amber-500/[0.04] p-5"><h2 className="font-semibold text-amber-200">Couverture des métriques</h2><div className="mt-4 grid gap-3 text-sm md:grid-cols-3"><div><p className="text-emerald-300">Connectées</p><p className="mt-1 text-slate-400">Comptes, abonnements actifs, présence, swaps, sessions, points, durée, pays.</p></div><div><p className="text-amber-300">Indisponibles actuellement</p><p className="mt-1 text-slate-400">MRR/ARR, churn, rétention cohortée, CAC, LTV, marge nette et revenu par période.</p></div><div><p className="text-slate-300">Données requises</p><p className="mt-1 text-slate-400">Événements de paiement validés, dates de renouvellement/annulation, source d’acquisition et coûts complets par outil.</p></div></div></section>
     </div>
   </main>
