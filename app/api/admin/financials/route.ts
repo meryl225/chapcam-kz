@@ -21,11 +21,8 @@ type Payment = {
 type Subscription = {
   user_id: string
   is_active: boolean | null
-  status: string | null
   started_at: string | null
   expires_at: string | null
-  start_date: string | null
-  end_date: string | null
 }
 
 const MONTHS = ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09']
@@ -37,9 +34,9 @@ function monthKey(value: string) {
 
 function isValidPayment(payment: Payment) {
   return Boolean(
-    payment.paid_at ||
-    payment.validated_at ||
-    (payment.status && VALID_STATUSES.has(payment.status.toLowerCase())),
+    (payment.paid_at || payment.validated_at) &&
+    payment.status &&
+    VALID_STATUSES.has(payment.status.toLowerCase()),
   )
 }
 
@@ -58,9 +55,9 @@ function dedupePayments(rows: Payment[]) {
 }
 
 function activeAt(sub: Subscription, date: Date) {
-  if (sub.is_active === false || ['cancelled', 'canceled', 'expired', 'inactive'].includes((sub.status || '').toLowerCase())) return false
-  const start = sub.start_date || sub.started_at
-  const end = sub.end_date || sub.expires_at
+  if (sub.is_active !== true) return false
+  const start = sub.started_at
+  const end = sub.expires_at
   return (!start || new Date(start) <= date) && (!end || new Date(end) >= date)
 }
 
@@ -70,7 +67,7 @@ export async function GET() {
 
   const [{ data: paymentRows, error: paymentError }, { data: subscriptionRows, error: subscriptionError }] = await Promise.all([
     admin.from('payment_requests').select('id,user_id,amount,paid_amount,paid_at,validated_at,created_at,status,paydunya_token,wave_transaction_reference').limit(100000),
-    admin.from('subscriptions').select('user_id,is_active,status,started_at,expires_at,start_date,end_date').limit(100000),
+    admin.from('subscriptions').select('user_id,is_active,started_at,expires_at').limit(100000),
   ])
   if (paymentError || subscriptionError) {
     console.error('[admin/financials] Supabase read error', paymentError?.message || subscriptionError?.message)
@@ -115,7 +112,21 @@ export async function GET() {
     }
   })
 
-  return NextResponse.json({ source: 'supabase.payment_requests + supabase.subscriptions', deduplicatedPayments: payments.length, months: rows }, { headers: { 'Cache-Control': 'no-store' } })
+  const historicalUsers = new Set(payments.map((payment) => payment.user_id).filter((userId): userId is string => Boolean(userId)))
+  const september = rows.find((row) => row.month === '2026-09')
+  const activeSubscribers = new Set(subscriptions.filter((sub) => activeAt(sub, new Date(Date.UTC(2026, 9, 0, 23, 59, 59, 999)))).map((sub) => sub.user_id)).size
+  return NextResponse.json({
+    source: 'supabase.payment_requests + supabase.subscriptions',
+    paymentDateColumns: ['paid_at', 'validated_at', 'created_at'],
+    deduplicatedPayments: payments.length,
+    summary: {
+      cumulativeRevenue: rows.reduce((total, row) => total + row.revenue, 0),
+      septemberRevenue: september?.revenue ?? 0,
+      historicalUniquePayingUsers: historicalUsers.size,
+      activeSubscribers,
+    },
+    months: rows,
+  }, { headers: { 'Cache-Control': 'no-store' } })
 }
 
 export { dedupePayments, activeAt }
