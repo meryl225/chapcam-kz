@@ -60,11 +60,10 @@ export default function AdminStatsPage() {
       const sj = await s.json(); setStats(sj)
       if (g.ok) { const gj = await g.json(); setCountries(gj.countries ?? []); setTotalLocated(gj.totalLocated ?? 0) }
       if (c.ok) setConsumption(await c.json())
-      if (f.ok) {
-        const financialData = await f.json()
-        setFinancials(financialData.months ?? [])
-        setFinancialSummary(financialData.summary ?? null)
-      }
+      const financialData = await f.json()
+      if (!f.ok) throw new Error(financialData.error || `Erreur financière (${f.status})`)
+      setFinancials(financialData.months ?? [])
+      setFinancialSummary(financialData.summary ?? null)
       setLastUpdated(new Date())
     } catch (e) { setError(e instanceof Error ? e.message : 'Impossible de charger les données.') }
     finally { setLoading(false); setRefreshing(false) }

@@ -62,17 +62,19 @@ function activeAt(sub: Subscription, date: Date) {
 }
 
 export async function GET() {
-  if (!(await isAdminRequest())) return NextResponse.json({ error: 'Acces refuse.' }, { status: 403 })
-  const admin = createAdminClient()
+  try {
+    if (!(await isAdminRequest())) return NextResponse.json({ error: 'Acces refuse.' }, { status: 403 })
+    const admin = createAdminClient()
 
-  const [{ data: paymentRows, error: paymentError }, { data: subscriptionRows, error: subscriptionError }] = await Promise.all([
+    const [{ data: paymentRows, error: paymentError }, { data: subscriptionRows, error: subscriptionError }] = await Promise.all([
     admin.from('payment_requests').select('id,user_id,amount,paid_amount,paid_at,validated_at,created_at,status,paydunya_token,wave_transaction_reference').limit(100000),
     admin.from('subscriptions').select('user_id,is_active,started_at,expires_at').limit(100000),
   ])
-  if (paymentError || subscriptionError) {
-    console.error('[admin/financials] Supabase read error', paymentError?.message || subscriptionError?.message)
-    return NextResponse.json({ error: 'Erreur lecture financière.' }, { status: 500 })
-  }
+    if (paymentError || subscriptionError) {
+      const detail = paymentError?.message || subscriptionError?.message || 'Erreur Supabase inconnue.'
+      console.error('[admin/financials] Supabase read error', detail)
+      return NextResponse.json({ error: `Erreur Supabase : ${detail}` }, { status: 500 })
+    }
 
   const payments = dedupePayments((paymentRows || []) as Payment[]).filter((row) => MONTHS.includes(monthKey(paymentDate(row) || '')))
   const subscriptions = (subscriptionRows || []) as Subscription[]
@@ -115,7 +117,7 @@ export async function GET() {
   const historicalUsers = new Set(payments.map((payment) => payment.user_id).filter((userId): userId is string => Boolean(userId)))
   const september = rows.find((row) => row.month === '2026-09')
   const activeSubscribers = new Set(subscriptions.filter((sub) => activeAt(sub, new Date(Date.UTC(2026, 9, 0, 23, 59, 59, 999)))).map((sub) => sub.user_id)).size
-  return NextResponse.json({
+    return NextResponse.json({
     source: 'supabase.payment_requests + supabase.subscriptions',
     paymentDateColumns: ['paid_at', 'validated_at', 'created_at'],
     deduplicatedPayments: payments.length,
@@ -126,7 +128,12 @@ export async function GET() {
       activeSubscribers,
     },
     months: rows,
-  }, { headers: { 'Cache-Control': 'no-store' } })
+    }, { headers: { 'Cache-Control': 'no-store' } })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur serveur inconnue.'
+    console.error('[admin/financials] Unexpected error', message)
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
 }
 
 export { dedupePayments, activeAt }
