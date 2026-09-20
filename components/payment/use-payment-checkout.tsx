@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import {
   ChevronRight,
   ChevronDown,
@@ -82,6 +82,8 @@ export function usePaymentCheckout() {
   const [methodId, setMethodId] = useState<string>(DEFAULT_COUNTRY.methods[0].id)
   const [countryOpen, setCountryOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [ctaHighlighted, setCtaHighlighted] = useState(false)
+  const ctaRef = useRef<HTMLButtonElement>(null)
 
   const country = useMemo<UICountry>(
     () => PAYMENT_COUNTRIES.find((c) => c.code === countryCode) || DEFAULT_COUNTRY,
@@ -96,6 +98,15 @@ export function usePaymentCheckout() {
     if (!q) return PAYMENT_COUNTRIES
     return PAYMENT_COUNTRIES.filter((c) => c.name.toLowerCase().includes(q))
   }, [query])
+
+  const selectPaymentMethod = useCallback((id: string) => {
+    setMethodId(id)
+    setCtaHighlighted(true)
+    window.setTimeout(() => {
+      ctaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 0)
+    window.setTimeout(() => setCtaHighlighted(false), 1800)
+  }, [])
 
   // Formule d'abonnement (pour le recapitulatif de droite). null => autre produit
   // (packs de credits, etc.) : on masque le recap et le montant.
@@ -318,7 +329,7 @@ export function usePaymentCheckout() {
                       return (
                         <button
                           key={m.id}
-                          onClick={() => setMethodId(m.id)}
+                          onClick={() => selectPaymentMethod(m.id)}
                           disabled={busy}
                           className={`group flex items-center gap-4 rounded-2xl border p-4 text-left transition-all disabled:opacity-60 ${
                             selected
@@ -456,9 +467,10 @@ export function usePaymentCheckout() {
 
               {/* CTA principal */}
               <button
+                ref={ctaRef}
                 onClick={submit}
                 disabled={busy || !method}
-                className="group relative mt-8 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-[#7c5cff] to-[#5b3df5] px-6 py-4 text-base font-bold text-white shadow-lg shadow-[#7c5cff]/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#7c5cff]/40 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a78bfa] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-lg"
+                className={`group relative mt-8 flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-r from-[#7c5cff] to-[#5b3df5] px-6 py-4 text-base font-bold text-white shadow-lg shadow-[#7c5cff]/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#7c5cff]/40 hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a78bfa] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-lg ${ctaHighlighted ? 'animate-pulse ring-4 ring-[#a78bfa]/60 ring-offset-4 ring-offset-[#0a0b13]' : ''}`}
               >
                 {/* Reflet lumineux qui balaie le bouton (survol + boucle lente au repos) */}
                 <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
