@@ -86,6 +86,7 @@ export async function GET() {
     if (!previous || month < previous) firstPaidMonth.set(payment.user_id, month)
   }
 
+  let previousRevenue: number | null = null
   const rows: Array<{
     month: string
     revenue: number
@@ -95,14 +96,14 @@ export async function GET() {
     activeSubscribers: number
     arppu: number
     growthMoM: number | null
-  }> = MONTHS.map((month, index) => {
+  }> = MONTHS.map((month) => {
     const monthPayments = payments.filter((payment) => monthKey(paymentDate(payment) || '') === month)
     const users = new Set(monthPayments.map((payment) => payment.user_id).filter((userId): userId is string => Boolean(userId)))
     const revenue = monthPayments.reduce((total, payment) => total + Number(payment.paid_amount ?? payment.amount ?? 0), 0)
     const monthEnd = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0, 23, 59, 59, 999))
     const activeSubscribers = new Set(subscriptions.filter((sub) => activeAt(sub, monthEnd)).map((sub) => sub.user_id)).size
-    const previousRevenue = index ? rows[index - 1].revenue : null
-    return {
+    const growthMoM = previousRevenue && previousRevenue !== 0 ? ((revenue - previousRevenue) / previousRevenue) * 100 : null
+    const row = {
       month,
       revenue,
       transactionsPaid: monthPayments.length,
@@ -110,8 +111,10 @@ export async function GET() {
       newPayingUsers: [...users].filter((userId) => firstPaidMonth.get(userId) === month).length,
       activeSubscribers,
       arppu: users.size ? revenue / users.size : 0,
-      growthMoM: previousRevenue && previousRevenue !== 0 ? ((revenue - previousRevenue) / previousRevenue) * 100 : null,
+      growthMoM,
     }
+    previousRevenue = revenue
+    return row
   })
 
   const historicalUsers = new Set(payments.map((payment) => payment.user_id).filter((userId): userId is string => Boolean(userId)))
