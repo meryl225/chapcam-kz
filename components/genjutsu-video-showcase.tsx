@@ -33,7 +33,7 @@ export function GenjutsuVideoShowcase() {
           </Link>
         </div>
         <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl">
-          <video className="aspect-video w-full object-cover" controls muted playsInline preload="metadata">
+          <video className="aspect-video w-full object-cover" controls muted loop playsInline preload="metadata">
             <source src="/videos/genjutsu-demo.mov" type="video/mp4" />
             Votre navigateur ne prend pas en charge la vidéo Genjutsu.
           </video>
