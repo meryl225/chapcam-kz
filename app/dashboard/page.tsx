@@ -147,7 +147,7 @@ export default async function DashboardHubPage() {
                 <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
               </Link>
               <Link
-                href="/dashboard/plans"
+                href="/dashboard/jetons"
                 // Bleu professionnel (dégradé + halo) pour un CTA secondaire net
                 // et lisible, en écho au bouton vert principal.
                 style={{ backgroundImage: "linear-gradient(180deg, #2f7bff 0%, #1858d6 100%)" }}

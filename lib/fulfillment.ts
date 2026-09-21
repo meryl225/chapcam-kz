@@ -21,6 +21,8 @@ import { getPcOffer, getDesktopDownloadUrl, getDesktopDownloadUrlMac, type PcOff
 import { getVoiceOffer, type VoiceOffer } from '@/lib/voice-offers'
 import { getPhotoVideoOffer, type PhotoVideoOffer } from '@/lib/photo-video-offers'
 import { getMinutesOffer, type MinutesOffer } from '@/lib/minutes-offers'
+import { getJetonsOffer, type JetonsOffer } from '@/lib/jetons-offers'
+import { creditJetons } from '@/lib/jetons'
 import { createPcLicense } from '@/lib/pc-license'
 import { grantLiveWindow } from '@/lib/live-access'
 import {
@@ -294,7 +296,7 @@ export interface PurchaseInput {
 
 export interface PurchaseResult {
   ok: boolean
-  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' | 'translation' | 'minutes' | 'numbers_wallet' | null
+  kind: 'plan' | 'live' | 'installation' | 'pc' | 'voice' | 'photo' | 'motion' | 'translation' | 'minutes' | 'jetons' | 'numbers_wallet' | null
   userLinked: boolean
   message: string
   licenseKey?: string
@@ -352,8 +354,9 @@ export async function creditPurchase(
   const motionOffer: MotionOffer | undefined = getMotionOffer(input.productId)
   const translationOffer: TranslationOffer | undefined = getTranslationOffer(input.productId)
   const minutesOffer: MinutesOffer | undefined = getMinutesOffer(input.productId)
-
-  if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer && !minutesOffer) {
+  const jetonsOffer: JetonsOffer | undefined = getJetonsOffer(input.productId)
+  
+  if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer && !minutesOffer && !jetonsOffer) {
     return { ok: false, kind: null, userLinked: false, message: `Produit inconnu : ${input.productId}` }
   }
 
@@ -475,8 +478,18 @@ export async function creditPurchase(
     }
   }
 
+  if (jetonsOffer) {
+  const wallet = await creditJetons(userId, jetonsOffer.jetons, { productId: jetonsOffer.id, amountXof: jetonsOffer.price, payment: 'paydunya' })
+  return {
+  ok: true,
+  kind: 'jetons',
+  userLinked: true,
+  message: `${jetonsOffer.jetons} Jetons ajoutes (solde ${wallet.balance}).`,
+  }
+  }
+
   if (minutesOffer) {
-    // Minutes supplementaires : on credite des points SANS changer le forfait.
+  // Minutes supplementaires : on credite des points SANS changer le forfait.
     const { points } = await creditMinutes(admin, userId, input.email, minutesOffer)
     return {
       ok: true,
