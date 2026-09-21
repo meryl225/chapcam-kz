@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Sparkles, Monitor, Palette, Zap, ArrowRight } from 'lucide-react'
+import { X, Sparkles, Monitor, Smartphone, WandSparkles, Mic2, Zap, ArrowRight } from 'lucide-react'
 
 // Version de l'annonce : incremente pour re-afficher le popup a tous les clients.
-const ANNOUNCEMENT_KEY = 'chapcam-2.0-announcement-seen'
+const ANNOUNCEMENT_KEY = 'chapcam-3.0-announcement-seen'
 
 export function ChapCam2Announcement() {
   const router = useRouter()
@@ -59,26 +59,30 @@ export function ChapCam2Announcement() {
           </div>
           <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary">
             <Zap className="h-3.5 w-3.5" />
-            Nouveau · Sorti le 17 juillet
+            Nouveau · ChapCam 3.0 disponible
           </span>
           <h2 className="text-balance text-2xl font-bold text-foreground">
-            ChapCam 2.0 est disponible
+            ChapCam 3.0 est disponible
           </h2>
           <p className="mt-2 text-pretty text-sm leading-relaxed text-muted-foreground">
-            Notre nouveau logiciel est teste et pret. Recharge ton compte pour en profiter des
-            maintenant.
+            Une nouvelle génération d’outils créatifs est disponible. Recharge ton compte pour en profiter dès maintenant.
           </p>
         </div>
 
         {/* Nouveautes */}
-        <div className="space-y-3 px-6 py-6">
+        <div className="grid gap-3 px-6 py-6 sm:grid-cols-2">
           <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3">
-            <Monitor className="h-5 w-5 flex-shrink-0 text-primary" />
-            <span className="text-sm text-foreground">Compatible avec tout type de PC</span>
+            <WandSparkles className="h-5 w-5 flex-shrink-0 text-primary" />
+            <span className="text-sm text-foreground">Genjutsu & Motion Control</span>
           </div>
           <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3">
-            <Palette className="h-5 w-5 flex-shrink-0 text-primary" />
-            <span className="text-sm text-foreground">Change meme la couleur de peau</span>
+            <Mic2 className="h-5 w-5 flex-shrink-0 text-primary" />
+            <span className="text-sm text-foreground">Voix humaine naturelle</span>
+          </div>
+          <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3 sm:col-span-2">
+            <Monitor className="h-5 w-5 flex-shrink-0 text-primary" />
+            <Smartphone className="h-5 w-5 flex-shrink-0 text-primary" />
+            <span className="text-sm text-foreground">Compatible téléphone et ordinateur</span>
           </div>
         </div>
 
