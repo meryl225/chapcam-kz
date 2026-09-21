@@ -54,8 +54,19 @@ export function ChapCam2Announcement() {
 
         {/* En-tete */}
         <div className="flex flex-col items-center bg-gradient-to-br from-primary/20 to-primary/5 px-6 pb-6 pt-10 text-center">
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-            <Sparkles className="h-8 w-8" />
+          <div className="mb-4 w-full overflow-hidden rounded-2xl border border-primary/30 bg-black/30 shadow-inner">
+            <video
+              className="aspect-video w-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              aria-label="Démonstration vidéo de ChapCam 3.0"
+            >
+              <source src="/videos/chapcam-3-topup.mov" type="video/quicktime" />
+              Votre navigateur ne prend pas en charge la vidéo de démonstration.
+            </video>
           </div>
           <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary">
             <Zap className="h-3.5 w-3.5" />
