@@ -20,13 +20,6 @@ const tools: Tool[] = [
     media: { type: 'video', src: '/swap/live-swap-demo.mp4' },
   },
   {
-    href: '/dashboard/motion',
-    title: 'Motion',
-    badge: 'NEW',
-    accent: '#8b5cf6',
-    media: { type: 'image', src: '/swap/poster-motion.png' },
-  },
-  {
     href: '/dashboard/message-vocal',
     title: 'Message Vocal',
     badge: 'NEW',
