@@ -119,7 +119,7 @@ export default function MotionPage() {
         const [mRes, cRes, hRes] = await Promise.all([
           fetch("/api/motion?info=motions"),
           fetch("/api/motion/control?info=quota"),
-          fetch("/api/motion/control?info=history"),
+          fetch("/api/motion?info=history"),
         ])
         const mJson = await mRes.json()
         if (mRes.ok && Array.isArray(mJson.motions)) setMotions(mJson.motions)
@@ -287,14 +287,15 @@ export default function MotionPage() {
       try {
         const finalPrompt = composePrompt(prompt)
         const fd = new FormData()
-        fd.append("image", file)
-        fd.append("video", refVideo)
-        fd.append("prompt", finalPrompt)
-        fd.append("model", model === "pro" ? "pro" : "standard")
-        fd.append("orientation", "video")
-        fd.append("keep_sound", "false")
+        fd.append("file", file)
+        fd.append("referenceVideo", refVideo)
+        fd.append("prompt", finalPrompt || "natural full-body motion transfer")
+        fd.append("model", "genjutsu")
+        fd.append("quality", quality)
+        fd.append("enhance", String(enhance))
+        if (selectedMotions.length > 0) fd.append("motions", JSON.stringify(selectedMotions))
 
-        const res = await fetch("/api/motion/control", { method: "POST", body: fd })
+        const res = await fetch("/api/motion", { method: "POST", body: fd })
         const json = await res.json()
         if (!res.ok) {
           setStatus("idle")
@@ -311,9 +312,9 @@ export default function MotionPage() {
           return
         }
         if (typeof json.remaining === "number") setCredits(json.remaining)
-        addJobToHistory(json.request_id, "kling", model === "pro" ? "pro" : "standard", finalPrompt || prompt.trim())
+        addJobToHistory(json.request_id, "higgsfield", "genjutsu", finalPrompt || prompt.trim())
         setStatus("idle")
-        toast({ title: "Transfert de mouvement lancé", description: "Cela peut prendre 2 à 5 minutes. Tu peux quitter la page." })
+        toast({ title: "Motion Control lancé", description: "Genjutsu traite ta vidéo de référence. Tu peux quitter la page." })
       } catch {
         setStatus("idle")
         toast({ title: "Erreur réseau", description: "Réessaie dans un instant.", variant: "destructive" })
