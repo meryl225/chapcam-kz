@@ -13,6 +13,13 @@ interface Tool {
 
 const tools: Tool[] = [
   {
+    href: '/dashboard/genjutsu',
+    title: 'Genjutsu',
+    badge: 'NEW',
+    accent: '#c6f542',
+    media: { type: 'video', src: '/videos/genjutsu-demo.mov' },
+  },
+  {
     href: '/dashboard/motion',
     title: 'Motion',
     badge: 'NEW',
