@@ -55,8 +55,11 @@ export default function GenjutsuPage() {
     if (reference) body.append('referenceVideo', reference)
     try {
       const response = await fetch('/api/motion', { method: 'POST', body })
-      const result = await response.json()
-      if (!response.ok) throw new Error(result.error || 'La génération a échoué.')
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const detail = [result.error, result.detail].filter((value): value is string => typeof value === 'string' && Boolean(value.trim())).join(' — ')
+        throw new Error(detail || `La génération a échoué (HTTP ${response.status}).`)
+      }
       setMessage('Génération lancée. Retrouvez le résultat dans votre historique Motion.')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Une erreur est survenue.')

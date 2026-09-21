@@ -165,11 +165,18 @@ export async function POST(request: NextRequest) {
     }
 
     const form = await request.formData()
-    const file = form.get("file") as File | null
-    const prompt = (form.get("prompt") as string | null)?.trim() || ""
-    const modelKey = (form.get("model") as string | null)?.trim() || DEFAULT_MODEL
-    const quality = (form.get("quality") as string | null)?.trim() === "1080p" ? "1080p" : "720p"
-    const enhance = (form.get("enhance") as string | null) === "true"
+    const fileValue = form.get("file")
+    const referenceValue = form.get("referenceVideo")
+    const file = fileValue instanceof File && fileValue.size > 0 ? fileValue : null
+    const referenceVideo = referenceValue instanceof File && referenceValue.size > 0 ? referenceValue : null
+    const promptValue = form.get("prompt")
+    const modelValue = form.get("model")
+    const qualityFormValue = form.get("quality")
+    const prompt = typeof promptValue === "string" ? promptValue.trim() : ""
+    const modelKey = typeof modelValue === "string" ? modelValue.trim() : DEFAULT_MODEL
+    const qualityValue = typeof qualityFormValue === "string" ? qualityFormValue.trim() : ""
+    const quality = qualityValue === "1080p" ? "1080p" : qualityValue === "720p" ? "720p" : ""
+    const enhance = form.get("enhance") === "true"
     let motionIds: string[] = []
     try {
       const raw = form.get("motions") as string | null
@@ -179,10 +186,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (!file) {
-      return NextResponse.json({ error: "Photo manquante." }, { status: 400 })
+      return NextResponse.json({ error: "Image source manquante ou fichier vide." }, { status: 400 })
     }
     if (!prompt) {
       return NextResponse.json({ error: "Le prompt (mouvement souhaite) est requis." }, { status: 400 })
+    }
+    if (!quality) {
+      return NextResponse.json({ error: "Résolution invalide. Choisissez 720p ou 1080p." }, { status: 400 })
     }
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       return NextResponse.json({ error: "Format invalide (JPG, PNG ou WebP)." }, { status: 400 })
@@ -208,27 +218,77 @@ export async function POST(request: NextRequest) {
     }
     const { data: pub } = admin.storage.from(STORAGE_BUCKET).getPublicUrl(path)
     const imageUrl = pub.publicUrl
+    const isHttpsUrl = (value: string): boolean => {
+      if (!value || value.startsWith("blob:") || value.startsWith("data:") || value.startsWith("/")) return false
+      try {
+        return new URL(value).protocol === "https:"
+      } catch {
+        return false
+      }
+    }
+    if (!isHttpsUrl(imageUrl)) {
+      console.error("[Genjutsu] image_url invalide après upload", { image_url: imageUrl })
+      return NextResponse.json({ error: "Le stockage n'a pas fourni une URL HTTPS valide pour l'image." }, { status: 502 })
+    }
 
-    // 2) Lancer la generation image -> video chez Higgsfield.
+    let videoUrl: string | undefined
+    let referencePath: string | undefined
+    if (referenceVideo) {
+      if (!["video/mp4", "video/webm", "video/quicktime"].includes(referenceVideo.type)) {
+        return NextResponse.json({ error: "Format vidéo invalide (MP4, WebM ou MOV)." }, { status: 400 })
+      }
+      if (referenceVideo.size > 50 * 1024 * 1024) {
+        return NextResponse.json({ error: "Vidéo de référence trop volumineuse (max 50 Mo)." }, { status: 400 })
+      }
+      const videoExt = referenceVideo.type === "video/webm" ? "webm" : referenceVideo.type === "video/quicktime" ? "mov" : "mp4"
+      referencePath = `motion/${user.id}/${Date.now()}-reference.${videoExt}`
+      const { error: videoUploadError } = await admin.storage.from(STORAGE_BUCKET).upload(referencePath, Buffer.from(await referenceVideo.arrayBuffer()), {
+        contentType: referenceVideo.type,
+        cacheControl: "3600",
+        upsert: false,
+      })
+      if (videoUploadError) {
+        console.error("[Genjutsu] Upload vidéo de référence échoué", { error: videoUploadError.message })
+        return NextResponse.json({ error: "Échec de l'upload de la vidéo de référence.", detail: videoUploadError.message }, { status: 502 })
+      }
+      const { data: videoPublic } = admin.storage.from(STORAGE_BUCKET).getPublicUrl(referencePath)
+      videoUrl = videoPublic.publicUrl
+      if (!isHttpsUrl(videoUrl)) {
+        console.error("[Genjutsu] video_url invalide après upload", { video_url: videoUrl })
+        return NextResponse.json({ error: "Le stockage n'a pas fourni une URL HTTPS valide pour la vidéo." }, { status: 502 })
+      }
+    }
+
+    // 2) Lancer la génération Genjutsu avec uniquement des URLs HTTPS et des scalaires JSON.
     const payload: Record<string, unknown> = {
       image_url: imageUrl,
+      ...(videoUrl ? { video_url: videoUrl } : {}),
       prompt,
       enhance_prompt: enhance,
       resolution: quality,
     }
     if (motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
+    console.log("[Genjutsu] Requête API", { image_url: imageUrl, video_url: videoUrl ?? null, prompt, resolution: quality, payload })
 
     const res = await higgsfieldFetch(`${HIGGSFIELD_API}/${model}`, {
       method: "POST",
       headers: { Authorization: auth, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(payload),
     })
-    const json = await res.json().catch(() => null)
+    const rawResponse = await res.text()
+    let json: Record<string, unknown> | null = null
+    try {
+      json = rawResponse ? JSON.parse(rawResponse) : null
+    } catch {
+      json = null
+    }
+    console.log("[Genjutsu] Réponse brute API", { status: res.status, response: rawResponse })
 
-    if (!res.ok || !json?.request_id) {
+    const requestId = typeof json?.request_id === "string" ? json.request_id : ""
+    if (!res.ok || !requestId) {
       // Nettoyer l'image hebergee si la generation n'a pas demarre.
       await admin.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {})
-      const detail = String(json?.detail || json?.message || json?.error || "").toLowerCase()
+      const detail = String(json?.detail ?? json?.message ?? json?.error ?? rawResponse ?? "").toLowerCase()
       // Classification large des erreurs de facturation : credit / balance / quota
       // / insufficient / payment -> 402 (probleme cote compte, PAS un bug serveur,
       // donc ne doit pas polluer les alertes 5xx).
@@ -239,7 +299,7 @@ export async function POST(request: NextRequest) {
         {
           error: isBilling
             ? "Le service de generation video n'a plus de credits. Contactez l'administrateur."
-            : "Echec du lancement de la generation. Reessayez dans un instant.",
+            : detail || "Echec du lancement de la generation. Reessayez dans un instant.",
           code: isBilling ? "no_credit" : "failed",
           detail,
         },
@@ -251,7 +311,7 @@ export async function POST(request: NextRequest) {
     // page en dependent.
     await createMotionJob({
       userId: user.id,
-      requestId: json.request_id,
+      requestId,
       provider: "higgsfield",
       model: modelKey,
       prompt,
@@ -259,8 +319,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      request_id: json.request_id,
-      status: json.status || "queued",
+      request_id: requestId,
+      status: typeof json?.status === "string" ? json.status : "queued",
       // On renvoie le chemin pour un nettoyage differe eventuel cote client.
       image_path: path,
     })
