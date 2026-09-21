@@ -1,7 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { ArrowLeft, Check, CreditCard, ShieldCheck, Sparkles } from 'lucide-react'
+import { ArrowLeft, Check, LockKeyhole, ShieldCheck, Smartphone, WalletCards, X } from 'lucide-react'
+import useSWR from 'swr'
+
+const fetcher = (url: string) => fetch(url).then((response) => response.json())
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
@@ -9,48 +12,52 @@ import { JETONS_OFFERS } from '@/lib/jetons-offers'
 
 export default function JetonsPage() {
   const { startCheckout, pendingKey, error, modal } = usePaymentCheckout()
+  const { data: jetons } = useSWR<{ balance: number }>('/api/jetons', fetcher, { refreshInterval: 15000 })
   const [selected, setSelected] = useState('jetons_500')
 
   return (
-    <main className="min-h-screen bg-background px-4 py-8 text-foreground sm:px-8 lg:px-12">
+    <main className="relative min-h-screen overflow-hidden bg-[#070d1b] px-4 py-8 text-white sm:px-8 lg:px-12">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(28,68,109,.28),transparent_38%),radial-gradient(circle_at_20%_80%,rgba(9,124,107,.16),transparent_30%)]" />
       {modal}
-      <div className="mx-auto max-w-5xl">
-        <Link href="/dashboard" className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Retour au dashboard
-        </Link>
+      <div className="relative mx-auto max-w-6xl">
+        <Link href="/dashboard" className="mb-8 inline-flex items-center gap-2 text-sm text-slate-400 transition hover:text-white"><ArrowLeft className="h-4 w-4" /> Retour au dashboard</Link>
 
-        <section className="relative overflow-hidden rounded-[28px] border border-emerald-400/25 bg-gradient-to-br from-[#071b1b] via-background to-[#11192d] p-6 shadow-2xl shadow-emerald-950/30 sm:p-10">
-          <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-emerald-400/10 blur-3xl" />
-          <div className="relative flex flex-col items-center text-center">
-            <div className="mb-5 flex h-20 w-20 items-center justify-center overflow-hidden rounded-3xl ring-2 ring-emerald-300/50 shadow-xl shadow-emerald-950/50">
-              <Image src="/images/jetons-logo.jpg" alt="Logo des Jetons ChapCam" width={80} height={80} className="h-full w-full object-cover" priority />
+        <section className="mx-auto max-w-3xl rounded-[24px] border border-white/15 bg-[#151e31]/95 p-5 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-7">
+          <header className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 overflow-hidden rounded-2xl ring-1 ring-cyan-300/60"><Image src="/images/jetons-logo.jpg" alt="Logo des Jetons ChapCam" width={48} height={48} className="h-full w-full object-cover" priority /></div>
+              <div><h1 className="text-xl font-bold sm:text-2xl">Ajouter des Jetons</h1><p className="text-sm text-slate-400">Rechargez votre solde pour utiliser les outils ChapCam.</p></div>
             </div>
-            <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-300"><Sparkles className="h-3.5 w-3.5" /> Recharge ChapCam</p>
-            <h1 className="max-w-2xl text-balance text-3xl font-black tracking-tight sm:text-5xl">Rechargez vos Jetons</h1>
-            <p className="mt-4 max-w-xl text-pretty leading-6 text-muted-foreground">Un seul solde pour tous vos outils ChapCam, sauf Live Swap. Paiement sécurisé et crédit automatique après confirmation.</p>
+            <Link href="/dashboard" aria-label="Fermer" className="rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white"><X className="h-5 w-5" /></Link>
+          </header>
+
+          <div className="mt-5 flex items-center gap-4 rounded-2xl border border-white/10 bg-[#0d1525] p-4">
+            <Image src="/images/jetons-logo.jpg" alt="Jetons" width={44} height={44} className="h-11 w-11 rounded-xl object-cover" />
+            <div><p className="text-xs text-slate-400">Votre solde actuel</p><p className="text-lg font-bold text-emerald-300">Jetons disponibles</p></div>
+            <div className="ml-auto text-2xl font-black text-emerald-300">{jetons?.balance ?? 0}</div>
+            <p className="hidden max-w-[170px] border-l border-white/10 pl-4 text-xs leading-5 text-slate-400 sm:block">Un seul solde pour tous les outils sauf Live Swap.</p>
           </div>
-        </section>
 
-        {error && <div className="mx-auto mt-6 max-w-xl rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-center text-sm text-red-300">{error}</div>}
-
-        <section className="mt-10">
-          <div className="mb-5 flex items-end justify-between gap-4"><div><p className="text-sm font-semibold text-emerald-300">1 000 FCFA = 100 Jetons</p><h2 className="mt-1 text-2xl font-bold">Choisissez votre recharge</h2></div><span className="hidden text-sm text-muted-foreground sm:block">Prix en FCFA</span></div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 space-y-3">
             {JETONS_OFFERS.map((offer) => {
               const active = selected === offer.id
               const loading = pendingKey === offer.id
-              return <button key={offer.id} type="button" onClick={() => setSelected(offer.id)} className={`relative flex min-h-48 flex-col rounded-2xl border p-5 text-left transition ${active ? 'border-emerald-300 bg-emerald-400/10 shadow-lg shadow-emerald-950/30' : 'border-white/10 bg-white/[0.03] hover:border-emerald-400/40'}`}>
-                {offer.featured && <span className="absolute -top-3 left-4 rounded-full bg-emerald-300 px-3 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-950">Le plus choisi</span>}
-                <div className="flex items-center justify-between"><span className="text-3xl font-black">{offer.jetons.toLocaleString('fr-FR')}</span>{active && <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-300 text-emerald-950"><Check className="h-4 w-4" /></span>}</div>
-                <span className="mt-1 text-sm font-semibold text-emerald-300">Jetons</span><span className="mt-auto pt-6 text-xl font-bold">{offer.price.toLocaleString('fr-FR')} <span className="text-sm font-medium text-muted-foreground">FCFA</span></span>
-                <span className="mt-3 text-xs text-muted-foreground">Recharge immédiate après paiement</span>
-              </button>
+              return <div key={offer.id} className={`relative flex items-center gap-3 rounded-2xl border p-3 transition sm:gap-4 sm:p-4 ${active ? 'border-emerald-300 bg-emerald-400/10 shadow-[0_0_24px_rgba(52,211,153,.18)]' : 'border-white/10 bg-white/[.03] hover:border-cyan-300/40'}`}>
+                {offer.featured && <span className="absolute -top-3 left-6 rounded-full bg-emerald-300 px-3 py-1 text-[10px] font-black text-emerald-950">Le plus choisi</span>}
+                <button type="button" onClick={() => setSelected(offer.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left sm:gap-4">
+                  <Image src="/images/jetons-logo.jpg" alt="" width={48} height={48} className="h-11 w-11 shrink-0 rounded-xl object-cover sm:h-12 sm:w-12" />
+                  <span className="min-w-0"><strong className="block text-base sm:text-lg">{offer.jetons.toLocaleString('fr-FR')} Jetons</strong><small className="text-xs text-slate-400">Solde ajouté immédiatement après paiement</small></span>
+                </button>
+                <span className="hidden border-l border-white/10 pl-4 text-sm font-bold sm:block">{offer.price.toLocaleString('fr-FR')} FCFA</span>
+                <button type="button" disabled={!!pendingKey} onClick={() => startCheckout(offer.id, { loaderKey: offer.id })} className={`rounded-xl px-4 py-2.5 text-sm font-bold transition sm:min-w-24 ${active ? 'bg-emerald-300 text-emerald-950 hover:bg-emerald-200' : 'bg-white/10 text-white hover:bg-white/20'} disabled:opacity-50`}>{loading ? '...' : 'Acheter'}</button>
+                {active && <Check className="hidden h-5 w-5 text-emerald-300 sm:block" />}
+              </div>
             })}
           </div>
-          <button type="button" disabled={!!pendingKey} onClick={() => startCheckout(selected, { loaderKey: selected })} className="mx-auto mt-8 flex w-full max-w-md items-center justify-center gap-3 rounded-2xl bg-emerald-400 px-6 py-4 font-bold text-emerald-950 shadow-xl shadow-emerald-950/30 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"><CreditCard className="h-5 w-5" /> {pendingKey ? 'Préparation du paiement…' : 'Continuer vers le paiement'}</button>
-        </section>
 
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs text-muted-foreground"><span className="inline-flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-emerald-400" /> Paiement sécurisé</span><span>Mobile Money, carte et crypto disponibles</span></div>
+          {error && <div className="mt-4 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">{error}</div>}
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-3 border-t border-white/10 pt-5 text-xs text-slate-400"><span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-4 w-4 text-emerald-300" /> Paiement sécurisé</span><span className="inline-flex items-center gap-1.5"><Smartphone className="h-4 w-4" /> Mobile Money</span><span className="inline-flex items-center gap-1.5"><WalletCards className="h-4 w-4" /> Carte</span><span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-emerald-300" /> 100% sécurisé</span></div>
+        </section>
       </div>
     </main>
   )
