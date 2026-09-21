@@ -454,10 +454,16 @@ export default function MotionPage() {
               <BookOpen className="h-3.5 w-3.5" />
               Bibliothèque de mouvements
             </button>
-            <h2 className="mt-8 text-xl font-extrabold uppercase tracking-tight text-[#c6f542]">Motion Control</h2>
-            <p className="text-sm text-white/60">
-              Anime une image avec un mouvement contrôlé
-            </p>
+  <div className="mb-4 overflow-hidden rounded-xl border border-[#6366f1]/30 bg-black/40">
+  <video className="max-h-48 w-full object-contain" autoPlay loop muted playsInline preload="metadata" aria-label="Démonstration Motion Control">
+  <source src="/videos/motion-control-demo.mp4" type="video/mp4" />
+  Votre navigateur ne prend pas en charge la vidéo Motion Control.
+  </video>
+  </div>
+  <h2 className="mt-8 text-xl font-extrabold uppercase tracking-tight text-[#c6f542]">Motion Control</h2>
+  <p className="text-sm text-white/60">
+  Anime une image avec un mouvement contrôlé
+  </p>
           </div>
 
           {/* Deux vignettes : image sujet + video de reference */}
