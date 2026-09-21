@@ -36,6 +36,9 @@ export const TOOL_PROVIDER_COST = {
   motion: {
     flatUsd: 0.35, // estimation par clip de motion-transfer
   },
+  chapverify: {
+    flatUsd: 0.02,
+  },
   voice_message: {
     flatUsd: 0.06, // ~15 s ElevenLabs (TTS ~240 car. ou voix->voix ~15 s)
   },
@@ -63,6 +66,8 @@ export function estimateToolCostUsd(
     usd = seconds * rate
   } else if (tool === 'motion') {
     usd = TOOL_PROVIDER_COST.motion.flatUsd
+  } else if (tool === 'chapverify') {
+    usd = TOOL_PROVIDER_COST.chapverify.flatUsd
   } else if (tool === 'voice_message') {
     usd = TOOL_PROVIDER_COST.voice_message.flatUsd
   }

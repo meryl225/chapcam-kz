@@ -15,6 +15,9 @@ import { ThemeToggleCompact } from '@/components/theme-toggle'
 import { LanguageToggle } from '@/components/language-toggle'
 import { useT } from '@/lib/i18n/language-provider'
 import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+
+const fetcher = (url: string) => fetch(url).then((response) => response.json())
 
 const PLAN_LABELS: Record<string, string> = {
   free: 'Gratuit',
@@ -188,6 +191,7 @@ function SidebarContent({
   onLogout,
 }: SidebarContentProps) {
   const t = useT()
+  const { data: jetons } = useSWR<{ balance: number }>('/api/jetons', fetcher, { refreshInterval: 15000 })
   const pathname = usePathname()
   const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false
   const showUpgradeBanner = plan === 'free' || isExpired || !isActive || pointsRemaining <= 0
@@ -356,6 +360,14 @@ function SidebarContent({
           {isExpired && <span className="text-xs text-red-400">{t('Expire')}</span>}
         </div>
 
+        <div className="mb-3 rounded-lg bg-emerald-500/10 p-3 ring-1 ring-emerald-400/30">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-emerald-400" /><span className="text-xs font-medium text-foreground">Jetons</span></div>
+            <span className="text-sm font-bold text-emerald-300">{jetons?.balance ?? 0}</span>
+          </div>
+          <p className="text-xs text-text-faint">Solde commun pour tous les outils sauf Live Swap</p>
+        </div>
+
         <div className={`mb-3 rounded-lg p-3 ${VIP_PLANS.has(plan) ? 'bg-gradient-to-br from-yellow-500/10 to-amber-500/5 ring-1 ring-yellow-500/30' : 'bg-muted'}`}>
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -431,6 +443,7 @@ export function DashboardSidebar({
 }: DashboardSidebarProps) {
   const t = useT()
   const router = useRouter()
+  const { data: jetons } = useSWR<{ balance: number }>('/api/jetons', fetcher, { refreshInterval: 15000 })
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const handleLogout = async () => {
