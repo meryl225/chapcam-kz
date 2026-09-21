@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, ShieldCheck, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, AudioLines, Globe, ChevronRight, Crown, Mic, MessageSquare, Sparkles } from 'lucide-react'
+import { Zap, Users, BarChart2, Settings, LogOut, Menu, Battery, Shield, ShieldCheck, CreditCard, Home, Languages, ImageIcon, Film, HelpCircle, AudioLines, Globe, ChevronRight, Crown, Mic, MessageSquare, Sparkles, Gem, Plus } from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import {
   Sheet,
@@ -360,13 +360,16 @@ function SidebarContent({
           {isExpired && <span className="text-xs text-red-400">{t('Expire')}</span>}
         </div>
 
-        <div className="mb-3 rounded-lg bg-emerald-500/10 p-3 ring-1 ring-emerald-400/30">
-          <div className="mb-2 flex items-center justify-between">
-            <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-emerald-400" /><span className="text-xs font-medium text-foreground">Jetons</span></div>
-            <span className="text-sm font-bold text-emerald-300">{jetons?.balance ?? 0}</span>
-          </div>
-          <p className="text-xs text-text-faint">Solde commun pour tous les outils sauf Live Swap</p>
-        </div>
+  <div className="mb-3 overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-cyan-400/10 p-3 ring-1 ring-emerald-400/35 shadow-lg shadow-emerald-950/20">
+  <div className="flex items-center justify-between gap-2">
+  <div className="flex min-w-0 items-center gap-2">
+  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-400/15 ring-1 ring-emerald-300/35"><Gem className="h-4 w-4 text-emerald-300" strokeWidth={2.5} /></span>
+  <div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-foreground">Jetons</p><p className="truncate text-[10px] text-emerald-200/60">Solde commun ChapCam</p></div>
+  </div>
+  <div className="flex items-center gap-1.5"><span className="text-lg font-bold tabular-nums text-emerald-200">{jetons?.balance ?? 0}</span><Link href="/dashboard/plans" aria-label="Ajouter des jetons" title="Ajouter des jetons" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 shadow-md shadow-emerald-950/30 transition hover:scale-105 hover:bg-emerald-200"><Plus className="h-4 w-4" strokeWidth={3} /></Link></div>
+  </div>
+  <p className="mt-2 text-[11px] leading-4 text-text-faint">Utilisables sur tous les outils sauf Live Swap.</p>
+  </div>
 
         <div className={`mb-3 rounded-lg p-3 ${VIP_PLANS.has(plan) ? 'bg-gradient-to-br from-yellow-500/10 to-amber-500/5 ring-1 ring-yellow-500/30' : 'bg-muted'}`}>
           <div className="mb-2 flex items-center justify-between">
