@@ -17,8 +17,26 @@ export default function GenjutsuPage() {
   const [reference, setReference] = useState<File | null>(null)
   const [referencePreview, setReferencePreview] = useState<string | null>(null)
   const [quality, setQuality] = useState<'720p' | '1080p'>('720p')
+  const [enhance, setEnhance] = useState(true)
+  const [motions, setMotions] = useState<Array<{ id: string; name: string; description?: string }>>([])
+  const [selectedMotions, setSelectedMotions] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/motion?info=motions')
+      .then((response) => response.ok ? response.json() : { motions: [] })
+      .then((result) => {
+        if (!cancelled && Array.isArray(result.motions)) setMotions(result.motions.filter((motion: unknown): motion is { id: string; name: string; description?: string } => {
+          if (!motion || typeof motion !== 'object') return false
+          const item = motion as { id?: unknown; name?: unknown }
+          return typeof item.id === 'string' && typeof item.name === 'string'
+        }))
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => () => {
     if (preview) URL.revokeObjectURL(preview)
@@ -51,7 +69,8 @@ export default function GenjutsuPage() {
     body.append('prompt', prompt.trim())
     body.append('model', 'genjutsu')
     body.append('quality', quality)
-    body.append('enhance', 'true')
+    body.append('enhance', String(enhance))
+    if (selectedMotions.length > 0) body.append('motions', JSON.stringify(selectedMotions))
     if (reference) body.append('referenceVideo', reference)
     try {
       const response = await fetch('/api/motion', { method: 'POST', body })
@@ -102,6 +121,10 @@ export default function GenjutsuPage() {
             <input ref={inputRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(event) => chooseFile(event.target.files?.[0] ?? null)} />
             <input id="reference-video" type="file" accept="video/mp4,video/webm" className="hidden" onChange={(event) => chooseFile(event.target.files?.[0] ?? null, true)} />
             <label className="mt-5 block text-sm font-semibold text-white/80">Décris le mouvement <span className="text-[#c6f542]">*</span><textarea value={prompt} onChange={(event) => setPrompt(event.target.value)} maxLength={500} rows={4} className="mt-2 w-full resize-none rounded-2xl border border-white/10 bg-black/25 p-4 text-sm leading-6 text-white outline-none transition placeholder:text-white/25 focus:border-[#c6f542]/60" placeholder="Ex. La caméra avance lentement…" /><span className="mt-1 block text-right text-xs text-white/35">{prompt.length}/500</span></label>
+            <div className="mt-5 space-y-4 border-t border-white/10 pt-5">
+              <div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold">Amélioration intelligente</p><p className="mt-1 text-xs text-white/40">Optimise automatiquement la description du mouvement.</p></div><button type="button" role="switch" aria-checked={enhance} onClick={() => setEnhance((value) => !value)} className={`relative h-6 w-11 rounded-full transition ${enhance ? 'bg-[#c6f542]' : 'bg-white/15'}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-black transition ${enhance ? 'left-6' : 'left-1'}`} /></button></div>
+              {motions.length > 0 && <div><p className="text-sm font-semibold">Presets de mouvement</p><p className="mt-1 text-xs text-white/40">Sélectionne jusqu’à 3 mouvements caméra.</p><div className="mt-3 flex flex-wrap gap-2">{motions.map((motion) => { const selected = selectedMotions.includes(motion.id); return <button key={motion.id} type="button" title={motion.description} onClick={() => setSelectedMotions((current) => selected ? current.filter((id) => id !== motion.id) : current.length < 3 ? [...current, motion.id] : current)} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${selected ? 'border-[#c6f542] bg-[#c6f542]/15 text-[#c6f542]' : 'border-white/10 bg-white/5 text-white/55 hover:border-[#c6f542]/40'}`}>{motion.name}</button> })}</div></div>}
+            </div>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5"><div><span className="text-sm font-semibold">Qualité de sortie</span><div className="mt-2 flex gap-2">{(['720p', '1080p'] as const).map((value) => <button key={value} type="button" onClick={() => setQuality(value)} className={`rounded-lg border px-4 py-2 text-xs font-bold transition ${quality === value ? 'border-[#c6f542] bg-[#c6f542]/15 text-[#c6f542]' : 'border-white/10 bg-white/5 text-white/50'}`}>{value}</button>)}</div></div><button type="button" onClick={generate} disabled={loading} className="inline-flex items-center gap-2 rounded-xl bg-[#c6f542] px-6 py-3.5 font-bold text-black transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}{loading ? 'Génération…' : 'Générer avec Genjutsu'}<ArrowUpRight className="h-4 w-4" /></button></div>
             {message && <p role="status" className="mt-4 rounded-xl border border-[#c6f542]/20 bg-[#c6f542]/10 p-3 text-sm text-[#e4f9a1]">{message}</p>}
           </section>
