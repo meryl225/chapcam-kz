@@ -17,24 +17,24 @@ export function GenjutsuVideoShowcase() {
           </p>
           <Link
             href="/dashboard/genjutsu"
-            className="group mt-7 inline-flex items-center gap-3 rounded-2xl bg-[#20d9ff] px-5 py-3.5 text-sm font-extrabold text-[#06111c] shadow-[0_12px_30px_-10px_rgba(32,217,255,0.8)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#5ee7ff] hover:shadow-[0_18px_38px_-12px_rgba(32,217,255,0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#20d9ff] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1020] active:translate-y-0"
+            className="group mt-7 inline-flex items-center gap-3 rounded-2xl bg-[#c6f542] px-5 py-3.5 text-sm font-extrabold text-[#071006] shadow-[0_12px_30px_-10px_rgba(198,245,66,0.9)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#d5ff62] hover:shadow-[0_18px_38px_-12px_rgba(198,245,66,0.95)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c6f542] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0b1020] active:translate-y-0"
             aria-label="Ouvrir le studio Genjutsu"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#06111c]/10 ring-1 ring-[#06111c]/15 transition-transform duration-200 group-hover:scale-105">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#071006]/10 ring-1 ring-[#071006]/15 transition-transform duration-200 group-hover:scale-105">
               <Sparkles className="h-4 w-4" aria-hidden="true" />
             </span>
             <span className="flex flex-col items-start leading-none">
               <span>Ouvrir le studio</span>
-              <span className="mt-1 text-[11px] font-semibold text-[#06111c]/65">Créer avec Genjutsu</span>
+              <span className="mt-1 text-[11px] font-semibold text-[#071006]/65">Créer avec Genjutsu</span>
             </span>
-            <span className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#06111c] text-[#20d9ff] transition-transform duration-200 group-hover:translate-x-0.5">
+            <span className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-[#071006] text-[#c6f542] transition-transform duration-200 group-hover:translate-x-0.5">
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </span>
           </Link>
         </div>
         <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black shadow-2xl">
           <video className="aspect-video w-full object-cover" controls muted playsInline preload="metadata">
-            <source src="/videos/genjutsu-demo.mov" type="video/quicktime" />
+            <source src="/videos/genjutsu-demo.mov" type="video/mp4" />
             Votre navigateur ne prend pas en charge la vidéo Genjutsu.
           </video>
           <div className="pointer-events-none absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">

@@ -80,7 +80,7 @@ export default function GenjutsuPage() {
         <section className="mb-5 overflow-hidden rounded-3xl border border-[#c6f542]/20 bg-[#c6f542]/[0.05] p-4 md:p-5" aria-labelledby="genjutsu-demo-title">
           <div className="mb-3 flex items-center gap-2 text-sm font-bold text-[#c6f542]"><Film className="h-4 w-4" /><h2 id="genjutsu-demo-title">Découvrez Genjutsu</h2></div>
           <video className="max-h-[420px] w-full rounded-2xl bg-black object-contain" controls muted playsInline preload="metadata">
-            <source src="/videos/genjutsu-demo.mov" type="video/quicktime" />
+            <source src="/videos/genjutsu-demo.mov" type="video/mp4" />
             Votre navigateur ne prend pas en charge la vidéo Genjutsu.
           </video>
         </section>
