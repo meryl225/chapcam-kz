@@ -16,6 +16,7 @@ import { LanguageToggle } from '@/components/language-toggle'
 import { useT } from '@/lib/i18n/language-provider'
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
+import JetonsPage from '@/app/dashboard/jetons/page'
 
 const fetcher = (url: string) => fetch(url).then((response) => response.json())
 
@@ -192,6 +193,7 @@ function SidebarContent({
 }: SidebarContentProps) {
   const t = useT()
   const { data: jetons } = useSWR<{ balance: number }>('/api/jetons', fetcher, { refreshInterval: 15000 })
+  const [jetonsOpen, setJetonsOpen] = useState(false)
   const pathname = usePathname()
   const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false
   const showUpgradeBanner = plan === 'free' || isExpired || !isActive || pointsRemaining <= 0
@@ -366,10 +368,11 @@ function SidebarContent({
   <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-emerald-400/15 ring-1 ring-emerald-300/35"><img src="/images/jetons-logo.jpg" alt="Logo Jetons" className="h-full w-full object-cover" /></span>
   <div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-foreground">Jetons</p><p className="truncate text-[10px] text-emerald-200/60">Solde commun ChapCam</p></div>
   </div>
-  <div className="flex items-center gap-1.5"><span className="text-lg font-bold tabular-nums text-emerald-200">{jetons?.balance ?? 0}</span><Link href="/dashboard/jetons" aria-label="Ajouter des jetons" title="Ajouter des jetons" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 shadow-md shadow-emerald-950/30 transition hover:scale-105 hover:bg-emerald-200"><Plus className="h-4 w-4" strokeWidth={3} /></Link></div>
+  <div className="flex items-center gap-1.5"><span className="text-lg font-bold tabular-nums text-emerald-200">{jetons?.balance ?? 0}</span><button type="button" onClick={() => setJetonsOpen(true)} aria-label="Ajouter des jetons" title="Ajouter des jetons" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 shadow-md shadow-emerald-950/30 transition hover:scale-105 hover:bg-emerald-200"><Plus className="h-4 w-4" strokeWidth={3} /></button></div>
   </div>
-  <p className="mt-2 text-[11px] leading-4 text-text-faint">Utilisables sur tous les outils sauf Live Swap.</p>
-  </div>
+      <p className="mt-2 text-[11px] leading-4 text-text-faint">Utilisables sur tous les outils sauf Live Swap.</p>
+      </div>
+      {jetonsOpen && <JetonsPage modal onClose={() => setJetonsOpen(false)} />}
 
         <div className={`mb-3 rounded-lg p-3 ${VIP_PLANS.has(plan) ? 'bg-gradient-to-br from-yellow-500/10 to-amber-500/5 ring-1 ring-yellow-500/30' : 'bg-muted'}`}>
           <div className="mb-2 flex items-center justify-between">

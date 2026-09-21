@@ -10,17 +10,17 @@ import Image from 'next/image'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 import { JETONS_OFFERS } from '@/lib/jetons-offers'
 
-export default function JetonsPage() {
-  const { startCheckout, pendingKey, error, modal } = usePaymentCheckout()
+export default function JetonsPage({ modal = false, onClose }: { modal?: boolean; onClose?: () => void }) {
+  const { startCheckout, pendingKey, error, modal: checkoutModal } = usePaymentCheckout()
   const { data: jetons } = useSWR<{ balance: number }>('/api/jetons', fetcher, { refreshInterval: 15000 })
   const [selected, setSelected] = useState('jetons_500')
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#070d1b] px-4 py-6 text-white sm:px-8 sm:py-8 lg:px-12">
+    <main className={modal ? 'fixed inset-0 z-[100] overflow-y-auto bg-black/70 px-4 py-6 text-white backdrop-blur-md sm:px-8 sm:py-10' : 'relative min-h-screen overflow-hidden bg-[#070d1b] px-4 py-6 text-white sm:px-8 sm:py-8 lg:px-12'}>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(28,68,109,.28),transparent_38%),radial-gradient(circle_at_20%_80%,rgba(9,124,107,.16),transparent_30%)]" />
-      {modal}
+      {checkoutModal}
       <div className="relative mx-auto max-w-6xl">
-        <Link href="/dashboard" className="mb-6 inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-400 transition hover:bg-white/5 hover:text-white sm:mb-8"><ArrowLeft className="h-4 w-4" /> Retour au dashboard</Link>
+        {!modal && <Link href="/dashboard" className="mb-6 inline-flex items-center gap-2 rounded-lg px-2 py-1 text-sm text-slate-400 transition hover:bg-white/5 hover:text-white sm:mb-8"><ArrowLeft className="h-4 w-4" /> Retour au dashboard</Link>}
 
         <section className="mx-auto max-w-3xl rounded-[24px] border border-white/15 bg-[#151e31]/95 p-4 shadow-2xl shadow-black/40 backdrop-blur-xl sm:p-7">
           <header className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
@@ -28,7 +28,7 @@ export default function JetonsPage() {
               <div className="h-11 w-11 shrink-0 overflow-hidden rounded-2xl ring-1 ring-cyan-300/60 sm:h-12 sm:w-12"><Image src="/images/jetons-logo.jpg" alt="Logo des Jetons ChapCam" width={48} height={48} className="h-full w-full object-cover" priority /></div>
               <div className="min-w-0"><h1 className="text-2xl font-black tracking-tight sm:text-4xl">Ajouter des Jetons</h1><p className="mt-1 text-xs text-slate-400 sm:text-sm">Rechargez votre solde pour utiliser les outils ChapCam.</p></div>
             </div>
-            <Link href="/dashboard" aria-label="Fermer" className="rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white"><X className="h-5 w-5" /></Link>
+            {modal ? <button type="button" onClick={onClose} aria-label="Fermer" className="rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white"><X className="h-5 w-5" /></button> : <Link href="/dashboard" aria-label="Fermer" className="rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white"><X className="h-5 w-5" /></Link>}
           </header>
 
           <div className="mt-5 flex items-center gap-4 rounded-2xl border border-white/10 bg-[#0d1525] p-4">
