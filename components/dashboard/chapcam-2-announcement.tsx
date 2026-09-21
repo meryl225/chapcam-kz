@@ -54,9 +54,9 @@ export function ChapCam2Announcement() {
 
         {/* En-tete */}
         <div className="flex flex-col items-center bg-gradient-to-br from-primary/20 to-primary/5 px-6 pb-6 pt-10 text-center">
-          <div className="mb-4 w-full overflow-hidden rounded-2xl border border-primary/30 bg-black/30 shadow-inner">
+          <div className="mb-4 flex w-full items-center justify-center overflow-hidden rounded-2xl border border-primary/30 bg-black/50 shadow-inner">
             <video
-              className="aspect-video w-full object-cover"
+              className="max-h-[42vh] w-full object-contain sm:max-h-[320px]"
               autoPlay
               loop
               muted

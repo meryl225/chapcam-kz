@@ -24,7 +24,7 @@ const tools: Tool[] = [
     title: 'Motion',
     badge: 'NEW',
     accent: '#8b5cf6',
-    media: { type: 'image', src: '/swap/poster-motion.png' },
+    media: { type: 'video', src: '/videos/motion-control-demo.mp4', poster: '/swap/poster-motion.png' },
   },
   {
     href: '/dashboard/live-swap',
@@ -90,6 +90,7 @@ export function ToolsGrid() {
           {tool.media.type === 'video' ? (
             <video
               src={tool.media.src}
+              poster={tool.media.poster}
               autoPlay
               muted
               loop
