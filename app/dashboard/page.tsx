@@ -139,17 +139,21 @@ export default async function DashboardHubPage() {
                 href="/dashboard/jetons"
                 aria-label="Ajouter des jetons"
                 title="Ajouter des jetons"
-                className="group inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-300/70 bg-emerald-400/10 p-1.5 shadow-lg shadow-emerald-950/40 transition-all duration-300 hover:scale-105 hover:border-emerald-200 hover:bg-emerald-300/20 hover:shadow-emerald-400/30"
+                className="group relative inline-flex min-h-16 items-center gap-3 rounded-2xl border border-emerald-300/45 bg-emerald-400/[0.08] px-3 py-2 pr-4 shadow-[0_10px_30px_rgba(16,185,129,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200/80 hover:bg-emerald-300/[0.14] hover:shadow-[0_14px_36px_rgba(16,185,129,0.2)]"
               >
-                <img src="/images/jetons-logo.jpg" alt="Logo des Jetons" className="h-full w-full rounded-full object-cover" />
-                <span className="sr-only"><T>Ajouter des jetons</T></span>
+                <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-200/70 bg-[#091526] p-1 shadow-inner shadow-emerald-300/20">
+                  <img src="/images/jetons-logo.jpg" alt="Logo des Jetons" className="h-full w-full rounded-full object-cover" />
+                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#0c1728] bg-emerald-300 text-xs font-black text-emerald-950">+</span>
+                </span>
+                <span className="flex flex-col items-start leading-tight">
+                  <span className="text-sm font-bold text-white"><T>Jetons</T></span>
+                  <span className="text-[11px] font-medium text-emerald-200/80"><T>Ajouter du crédit</T></span>
+                </span>
               </Link>
               <Link
                 href="/dashboard/jetons"
-                // Bleu professionnel (dégradé + halo) pour un CTA secondaire net
-                // et lisible, en écho au bouton vert principal.
                 style={{ backgroundImage: "linear-gradient(180deg, #2f7bff 0%, #1858d6 100%)" }}
-                className="group inline-flex items-center gap-2.5 rounded-2xl px-7 py-3.5 text-base font-bold text-white shadow-lg shadow-[#1858d6]/30 transition-all duration-300 hover:shadow-xl hover:shadow-[#2f7bff]/40 hover:brightness-110"
+                className="group inline-flex min-h-16 items-center gap-2.5 rounded-2xl px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-[#1858d6]/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#2f7bff]/40 hover:brightness-110"
               >
                 <Sparkles className="h-5 w-5" />
                 <T>Recharger</T>
