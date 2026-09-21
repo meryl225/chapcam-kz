@@ -136,15 +136,13 @@ export default async function DashboardHubPage() {
 
             <div className="mt-7 flex flex-wrap items-center gap-3">
               <Link
-                href="/dashboard/live-swap"
-                // Vert profond (et non le neon #00ff88 qui rend le texte
-                // illisible) + texte blanc net -> lecture claire et rendu pro.
-                style={{ backgroundImage: "linear-gradient(180deg, #00c46a 0%, #009a52 100%)" }}
-                className="btn-glow group inline-flex items-center gap-2.5 rounded-2xl px-7 py-3.5 text-base font-bold text-white"
+                href="/dashboard/jetons"
+                aria-label="Ajouter des jetons"
+                title="Ajouter des jetons"
+                className="group inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-emerald-300/70 bg-emerald-400/10 p-1.5 shadow-lg shadow-emerald-950/40 transition-all duration-300 hover:scale-105 hover:border-emerald-200 hover:bg-emerald-300/20 hover:shadow-emerald-400/30"
               >
-                <Zap className="h-5 w-5" fill="currentColor" />
-                <T>Lancer le Live Swap</T>
-                <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
+                <img src="/images/jetons-logo.jpg" alt="Logo des Jetons" className="h-full w-full rounded-full object-cover" />
+                <span className="sr-only"><T>Ajouter des jetons</T></span>
               </Link>
               <Link
                 href="/dashboard/jetons"
