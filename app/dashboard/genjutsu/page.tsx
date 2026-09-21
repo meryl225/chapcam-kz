@@ -77,6 +77,14 @@ export default function GenjutsuPage() {
           <div className="flex items-center gap-3 text-sm text-white/55"><span className="rounded-full border border-[#c6f542]/30 bg-[#c6f542]/10 px-3 py-1.5 text-[#c6f542]">Genjutsu v1.0</span><span>2 crédits / rendu</span></div>
         </header>
 
+        <section className="mb-5 overflow-hidden rounded-3xl border border-[#c6f542]/20 bg-[#c6f542]/[0.05] p-4 md:p-5" aria-labelledby="genjutsu-demo-title">
+          <div className="mb-3 flex items-center gap-2 text-sm font-bold text-[#c6f542]"><Film className="h-4 w-4" /><h2 id="genjutsu-demo-title">Découvrez Genjutsu</h2></div>
+          <video className="max-h-[420px] w-full rounded-2xl bg-black object-contain" controls muted playsInline preload="metadata">
+            <source src="/videos/genjutsu-demo.mov" type="video/quicktime" />
+            Votre navigateur ne prend pas en charge la vidéo Genjutsu.
+          </video>
+        </section>
+
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section className="rounded-3xl border border-white/10 bg-white/[0.035] p-4 shadow-2xl shadow-black/20 md:p-6">
             <div className="mb-5 flex items-center justify-between"><div><h2 className="text-xl font-bold">Créer une animation</h2><p className="mt-1 text-sm text-white/45">Donnez vie à votre image en quelques secondes.</p></div><WandSparkles className="h-6 w-6 text-[#c6f542]" /></div>
