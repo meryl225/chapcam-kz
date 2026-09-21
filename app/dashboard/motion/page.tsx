@@ -42,6 +42,7 @@ type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 // Modeles (mappes sur les tiers DoP cote API). Presente facon Higgsfield.
 const MODELS: { value: string; label: string; credits: number; desc: string; pro?: boolean }[] = [
   { value: "standard", label: "Standard", credits: 1, desc: "Rendu rapide et fiable" },
+  { value: "genjutsu", label: "Genjutsu", credits: 2, desc: "Motion transfer Higgsfield", pro: true },
   { value: "pro", label: "Pro", credits: 2, desc: "Détails & fluidité maximum", pro: true },
 ]
 const QUALITIES: { value: "720p" | "1080p"; label: string; desc: string }[] = [
