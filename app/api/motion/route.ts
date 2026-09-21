@@ -63,6 +63,8 @@ const MODELS: Record<string, string> = {
   turbo: "higgsfield-ai/dop/turbo",
   standard: "higgsfield-ai/dop/standard",
   lite: "higgsfield-ai/dop/lite",
+  // Genjutsu motion transfer: slug fourni pour l'intégration Higgsfield.
+  genjutsu: "higgsfiled/genjutsu/motion-transfer/v1.0",
 }
 const DEFAULT_MODEL = "turbo"
 

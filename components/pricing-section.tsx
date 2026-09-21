@@ -217,7 +217,7 @@ export function PricingSection() {
           )}
         </motion.div>
 
-        {/* Annonce ChapCam 2.0 : les offres de recharge concernent le nouveau logiciel */}
+        {/* Annonce ChapCam 3.0 : les offres de recharge concernent le nouveau logiciel */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -230,28 +230,28 @@ export function PricingSection() {
             </div>
             <div className="flex-1">
               <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
-                {t("Nouveau · Sorti le 17 juillet")}
+                {t("Nouveau · ChapCam 3.0 disponible")}
               </div>
               <h3 className="text-xl font-bold text-white md:text-2xl">
-                {t("Ces recharges alimentent ChapCam 2.0")}
+                {t("Ces recharges alimentent ChapCam 3.0")}
               </h3>
               <p className="mt-2 text-pretty text-gray-300 leading-relaxed">
                 {t("Toutes les offres ci-dessous sont destinees a notre nouveau logiciel")}{" "}
-                <span className="font-semibold text-emerald-400">ChapCam 2.0</span>
-                {t(", qui fonctionne desormais avec")}{" "}
-                <span className="font-semibold text-white">{t("tout type de PC")}</span>{" "}
-                {t("et permet meme de")}{" "}
-                <span className="font-semibold text-white">{t("changer la couleur de peau")}</span>.
+                <span className="font-semibold text-emerald-400">ChapCam 3.0</span>
+                {t(", avec Genjutsu, Motion Control et une voix humaine naturelle, sur")}{" "}
+                <span className="font-semibold text-white">{t("téléphone et ordinateur")}</span>{" "}
+                {t("et profite d'une expérience complète sur tous tes écrans")}{" "}
+                
               </p>
             </div>
             <div className="flex flex-col gap-2 text-sm text-gray-300 md:min-w-[220px]">
               <span className="inline-flex items-center gap-2">
                 <Monitor className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                {t("Compatible avec tout type de PC")}
+                {t("Compatible téléphone et ordinateur")}
               </span>
               <span className="inline-flex items-center gap-2">
                 <Palette className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                {t("Changement de la couleur de peau")}
+                {t("Genjutsu · Motion Control · Voix humaine")}
               </span>
             </div>
           </div>

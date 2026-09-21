@@ -13,11 +13,11 @@ interface Tool {
 
 const tools: Tool[] = [
   {
-    href: '/dashboard/live-swap',
-    title: 'Live Swap',
-    badge: 'ACTIF',
-    accent: '#00ff88',
-    media: { type: 'video', src: '/swap/live-swap-demo.mp4' },
+    href: '/dashboard/genjutsu',
+    title: 'Genjutsu',
+    badge: 'NEW',
+    accent: '#c6f542',
+    media: { type: 'video', src: '/videos/genjutsu-demo.mov' },
   },
   {
     href: '/dashboard/motion',
@@ -25,6 +25,13 @@ const tools: Tool[] = [
     badge: 'NEW',
     accent: '#8b5cf6',
     media: { type: 'image', src: '/swap/poster-motion.png' },
+  },
+  {
+    href: '/dashboard/live-swap',
+    title: 'Live Swap',
+    badge: 'ACTIF',
+    accent: '#00ff88',
+    media: { type: 'video', src: '/swap/live-swap-demo.mp4' },
   },
   {
     href: '/dashboard/message-vocal',
