@@ -42,7 +42,7 @@ type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 // Modeles (mappes sur les tiers DoP cote API). Presente facon Higgsfield.
 const MODELS: { value: string; label: string; credits: number; desc: string; pro?: boolean }[] = [
   { value: "standard", label: "Standard", credits: 1, desc: "Rendu rapide et fiable" },
-  { value: "genjutsu", label: "Genjutsu", credits: 2, desc: "Motion transfer Higgsfield", pro: true },
+  { value: "genjutsu", label: "Kling 3.0", credits: 2, desc: "Motion Control Higgsfield", pro: true },
   { value: "pro", label: "Pro", credits: 2, desc: "Détails & fluidité maximum", pro: true },
 ]
 const QUALITIES: { value: "720p" | "1080p"; label: string; desc: string }[] = [
@@ -290,7 +290,7 @@ export default function MotionPage() {
         fd.append("file", file)
         fd.append("referenceVideo", refVideo)
         fd.append("prompt", finalPrompt || "natural full-body motion transfer")
-        fd.append("model", "genjutsu")
+        fd.append("model", "kling3")
         fd.append("quality", quality)
         fd.append("enhance", String(enhance))
         if (selectedMotions.length > 0) fd.append("motions", JSON.stringify(selectedMotions))
@@ -312,9 +312,9 @@ export default function MotionPage() {
           return
         }
         if (typeof json.remaining === "number") setCredits(json.remaining)
-        addJobToHistory(json.request_id, "higgsfield", "genjutsu", finalPrompt || prompt.trim())
+        addJobToHistory(json.request_id, "higgsfield", "kling3", finalPrompt || prompt.trim())
         setStatus("idle")
-        toast({ title: "Motion Control lancé", description: "Genjutsu traite ta vidéo de référence. Tu peux quitter la page." })
+        toast({ title: "Motion Control lancé", description: "Kling 3.0 traite ta vidéo de référence via Higgsfield. Tu peux quitter la page." })
       } catch {
         setStatus("idle")
         toast({ title: "Erreur réseau", description: "Réessaie dans un instant.", variant: "destructive" })

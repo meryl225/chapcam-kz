@@ -65,6 +65,7 @@ const MODELS: Record<string, string> = {
   lite: "higgsfield-ai/dop/lite",
   // Genjutsu motion transfer: slug fourni pour l'intégration Higgsfield.
   genjutsu: "higgsfield/genjutsu/motion-transfer/v1.0",
+  kling3: "kling-video/v3.0",
 }
 const DEFAULT_MODEL = "turbo"
 
