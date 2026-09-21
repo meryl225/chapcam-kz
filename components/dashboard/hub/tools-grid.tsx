@@ -13,6 +13,13 @@ interface Tool {
 
 const tools: Tool[] = [
   {
+    href: '/dashboard/motion',
+    title: 'Motion',
+    badge: 'NEW',
+    accent: '#8b5cf6',
+    media: { type: 'image', src: '/swap/poster-motion.png' },
+  },
+  {
     href: '/dashboard/live-swap',
     title: 'Live Swap',
     badge: 'ACTIF',
