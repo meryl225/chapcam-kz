@@ -96,9 +96,9 @@ export default function GenjutsuPage() {
       <div className="mx-auto max-w-7xl">
         <header className="mb-6 flex flex-col gap-5 border-b border-white/10 pb-6 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#c6f542]"><Sparkles className="h-4 w-4" /> Higgsfield Studio</div>
+            <div className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#c6f542]"><Sparkles className="h-4 w-4" /> ChapCam Studio</div>
             <h1 className="text-balance text-4xl font-black tracking-tight md:text-6xl">Genjutsu <span className="text-[#c6f542]">Motion Transfer</span></h1>
-            <p className="mt-3 max-w-2xl text-base leading-6 text-white/55">Anime une image avec un mouvement naturel et cinématique grâce au moteur Genjutsu de Higgsfield.</p>
+            <p className="mt-3 max-w-2xl text-base leading-6 text-white/55">Anime une image avec un mouvement naturel et cinématique grâce au moteur vidéo ChapCam.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3 text-sm text-white/55"><span className="rounded-full border border-[#c6f542]/30 bg-[#c6f542]/10 px-3 py-1.5 text-[#c6f542]">Genjutsu v1.0</span><span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">{Math.ceil(GENJUTSU_PROVIDER_COST_PER_SECOND_USD * 2 * 60 * durationSeconds)} Jetons · {durationSeconds}s</span></div>
         </header>
