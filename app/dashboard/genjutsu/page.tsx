@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUpRight, Check, Clapperboard, Film, ImagePlus, Loader2, Sparkles, Upload, Video, WandSparkles } from 'lucide-react'
+import { GENJUTSU_MAX_DURATION_SECONDS, GENJUTSU_PROVIDER_COST_PER_SECOND_USD } from '@/lib/tool-costs'
 
 const EXAMPLES = [
   'Un mouvement de caméra lent vers le visage, sourire naturel et cheveux animés par une légère brise.',
@@ -17,6 +18,7 @@ export default function GenjutsuPage() {
   const [reference, setReference] = useState<File | null>(null)
   const [referencePreview, setReferencePreview] = useState<string | null>(null)
   const [quality, setQuality] = useState<'720p' | '1080p'>('720p')
+  const [durationSeconds, setDurationSeconds] = useState(10)
   const [enhance, setEnhance] = useState(true)
   const [motions, setMotions] = useState<Array<{ id: string; name: string; description?: string }>>([])
   const [selectedMotions, setSelectedMotions] = useState<string[]>([])
@@ -69,6 +71,7 @@ export default function GenjutsuPage() {
     body.append('prompt', prompt.trim())
     body.append('model', 'genjutsu')
     body.append('quality', quality)
+    body.append('durationSeconds', String(durationSeconds))
     body.append('enhance', String(enhance))
     if (selectedMotions.length > 0) body.append('motions', JSON.stringify(selectedMotions))
     if (reference) body.append('referenceVideo', reference)
@@ -96,7 +99,7 @@ export default function GenjutsuPage() {
             <h1 className="text-balance text-4xl font-black tracking-tight md:text-6xl">Genjutsu <span className="text-[#c6f542]">Motion Transfer</span></h1>
             <p className="mt-3 max-w-2xl text-base leading-6 text-white/55">Anime une image avec un mouvement naturel et cinématique grâce au moteur Genjutsu de Higgsfield.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-sm text-white/55"><span className="rounded-full border border-[#c6f542]/30 bg-[#c6f542]/10 px-3 py-1.5 text-[#c6f542]">Genjutsu v1.0</span><span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">{quality === '720p' ? '42' : '66'} Jetons / rendu</span></div>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-white/55"><span className="rounded-full border border-[#c6f542]/30 bg-[#c6f542]/10 px-3 py-1.5 text-[#c6f542]">Genjutsu v1.0</span><span className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5">{Math.ceil(GENJUTSU_PROVIDER_COST_PER_SECOND_USD * 2 * 60 * durationSeconds)} Jetons · {durationSeconds}s</span></div>
         </header>
 
         <section className="mb-5 overflow-hidden rounded-3xl border border-[#c6f542]/20 bg-[#c6f542]/[0.05] p-4 md:p-5" aria-labelledby="genjutsu-demo-title">
@@ -125,7 +128,7 @@ export default function GenjutsuPage() {
               <div className="flex items-center justify-between gap-4"><div><p className="text-sm font-semibold">Amélioration intelligente</p><p className="mt-1 text-xs text-white/40">Optimise automatiquement la description du mouvement.</p></div><button type="button" role="switch" aria-checked={enhance} onClick={() => setEnhance((value) => !value)} className={`relative h-6 w-11 rounded-full transition ${enhance ? 'bg-[#c6f542]' : 'bg-white/15'}`}><span className={`absolute top-1 h-4 w-4 rounded-full bg-black transition ${enhance ? 'left-6' : 'left-1'}`} /></button></div>
               {motions.length > 0 && <div><p className="text-sm font-semibold">Presets de mouvement</p><p className="mt-1 text-xs text-white/40">Sélectionne jusqu’à 3 mouvements caméra.</p><div className="mt-3 flex flex-wrap gap-2">{motions.map((motion) => { const selected = selectedMotions.includes(motion.id); return <button key={motion.id} type="button" title={motion.description} onClick={() => setSelectedMotions((current) => selected ? current.filter((id) => id !== motion.id) : current.length < 3 ? [...current, motion.id] : current)} className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${selected ? 'border-[#c6f542] bg-[#c6f542]/15 text-[#c6f542]' : 'border-white/10 bg-white/5 text-white/55 hover:border-[#c6f542]/40'}`}>{motion.name}</button> })}</div></div>}
             </div>
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5"><div><span className="text-sm font-semibold">Qualité de sortie</span><p className="mt-1 text-xs text-white/40">Tarif appliqué : {quality === '720p' ? '42' : '66'} Jetons ({quality === '720p' ? '4 200' : '6 600'} FCFA)</p><div className="mt-2 flex gap-2">{(['720p', '1080p'] as const).map((value) => <button key={value} type="button" onClick={() => setQuality(value)} className={`rounded-lg border px-4 py-2 text-xs font-bold transition ${quality === value ? 'border-[#c6f542] bg-[#c6f542]/15 text-[#c6f542]' : 'border-white/10 bg-white/5 text-white/50'}`}>{value}</button>)}</div></div><button type="button" onClick={generate} disabled={loading} className="inline-flex items-center gap-2 rounded-xl bg-[#c6f542] px-6 py-3.5 font-bold text-black transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}{loading ? 'Génération…' : 'Générer avec Genjutsu'}<ArrowUpRight className="h-4 w-4" /></button></div>
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5"><div><span className="text-sm font-semibold">Qualité de sortie</span><p className="mt-1 text-xs text-white/40">Tarif : {Math.ceil(GENJUTSU_PROVIDER_COST_PER_SECOND_USD * 2 * 60 * durationSeconds)} Jetons · {Math.ceil(GENJUTSU_PROVIDER_COST_PER_SECOND_USD * 2 * 60 * durationSeconds) * 10} FCFA pour {durationSeconds}s</p><div className="mt-2 flex flex-wrap gap-2">{(['720p', '1080p'] as const).map((value) => <button key={value} type="button" onClick={() => setQuality(value)} className={`rounded-lg border px-4 py-2 text-xs font-bold transition ${quality === value ? 'border-[#c6f542] bg-[#c6f542]/15 text-[#c6f542]' : 'border-white/10 bg-white/5 text-white/50'}`}>{value}</button>)}</div><label className="mt-3 block text-xs font-semibold text-white/65">Durée de la vidéo <select value={durationSeconds} onChange={(event) => setDurationSeconds(Math.min(GENJUTSU_MAX_DURATION_SECONDS, Math.max(1, Number(event.target.value))))} className="ml-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 text-xs text-white outline-none"><option value={5}>5 secondes</option><option value={10}>10 secondes (maximum)</option></select></label></div><button type="button" onClick={generate} disabled={loading} className="inline-flex items-center gap-2 rounded-xl bg-[#c6f542] px-6 py-3.5 font-bold text-black transition hover:brightness-110 disabled:cursor-wait disabled:opacity-60">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Clapperboard className="h-4 w-4" />}{loading ? 'Génération…' : 'Générer avec Genjutsu'}<ArrowUpRight className="h-4 w-4" /></button></div>
             {message && <p role="status" className="mt-4 rounded-xl border border-[#c6f542]/20 bg-[#c6f542]/10 p-3 text-sm text-[#e4f9a1]">{message}</p>}
           </section>
 

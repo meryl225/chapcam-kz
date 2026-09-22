@@ -15,21 +15,17 @@
 export type ToolName = 'photo_video' | 'motion' | 'translation' | 'chapverify' | 'voice_message'
 
 export const GENJUTSU_MARGIN_MULTIPLIER = 2
-export const GENJUTSU_PROVIDER_COST_USD = {
-  genjutsu: { '720p': 0.35, '1080p': 0.55 },
-  turbo: { '720p': 0.25, '1080p': 0.4 },
-  standard: { '720p': 0.35, '1080p': 0.55 },
-  lite: { '720p': 0.18, '1080p': 0.28 },
-  kling3: { '720p': 0.45, '1080p': 0.7 },
-} as const
+export const GENJUTSU_MAX_DURATION_SECONDS = 10
+export const GENJUTSU_PROVIDER_COST_PER_SECOND_USD = 0.2703
 
-export type GenjutsuModel = keyof typeof GENJUTSU_PROVIDER_COST_USD
+export type GenjutsuModel = 'genjutsu'
 export type GenjutsuQuality = '720p' | '1080p'
 
-export function estimateGenjutsuPriceUsd(model: string, quality: GenjutsuQuality) {
-  const modelCosts = GENJUTSU_PROVIDER_COST_USD[model as GenjutsuModel] ?? GENJUTSU_PROVIDER_COST_USD.genjutsu
-  const providerCostUsd = modelCosts[quality]
-  return { providerCostUsd, customerPriceUsd: Math.round(providerCostUsd * GENJUTSU_MARGIN_MULTIPLIER * 100) / 100 }
+export function estimateGenjutsuPriceUsd(model: string, quality: GenjutsuQuality, durationSeconds = GENJUTSU_MAX_DURATION_SECONDS) {
+  const duration = Math.min(GENJUTSU_MAX_DURATION_SECONDS, Math.max(1, Math.floor(durationSeconds)))
+  const providerCostUsd = Math.round(GENJUTSU_PROVIDER_COST_PER_SECOND_USD * duration * 10000) / 10000
+  const customerPriceUsd = Math.round(providerCostUsd * GENJUTSU_MARGIN_MULTIPLIER * 10000) / 10000
+  return { providerCostUsd, customerPriceUsd, durationSeconds: duration, quality, model }
 }
 
 export const TOOL_LABELS: Record<ToolName, string> = {

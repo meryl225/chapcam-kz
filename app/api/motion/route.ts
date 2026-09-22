@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createMotionJob, markMotionJobCompleted, markMotionJobFailed } from "@/lib/motion-jobs"
 import { creditJetons, reserveJetons } from "@/lib/jetons"
-import { estimateGenjutsuPriceUsd } from "@/lib/tool-costs"
+import { estimateGenjutsuPriceUsd, GENJUTSU_MAX_DURATION_SECONDS } from "@/lib/tool-costs"
 
 // --- Motion Control (Higgsfield image -> video) ---
 // L'API Higgsfield ne fait PAS de video-a-video. Elle anime une IMAGE fixe en
@@ -179,6 +179,9 @@ export async function POST(request: NextRequest) {
     const modelKey = typeof modelValue === "string" ? modelValue.trim() : DEFAULT_MODEL
     const qualityValue = typeof qualityFormValue === "string" ? qualityFormValue.trim() : ""
     const quality = qualityValue === "1080p" ? "1080p" : qualityValue === "720p" ? "720p" : ""
+    const durationValue = form.get("durationSeconds")
+    const parsedDuration = typeof durationValue === "string" && durationValue.trim() ? Number(durationValue) : GENJUTSU_MAX_DURATION_SECONDS
+    const durationSeconds = Number.isFinite(parsedDuration) ? Math.floor(parsedDuration) : 0
     const enhance = form.get("enhance") === "true"
     let motionIds: string[] = []
     try {
@@ -197,6 +200,9 @@ export async function POST(request: NextRequest) {
     if (!quality) {
       return NextResponse.json({ error: "Résolution invalide. Choisissez 720p ou 1080p." }, { status: 400 })
     }
+    if (durationSeconds < 1 || durationSeconds > GENJUTSU_MAX_DURATION_SECONDS) {
+      return NextResponse.json({ error: `La durée doit être comprise entre 1 et ${GENJUTSU_MAX_DURATION_SECONDS} secondes.` }, { status: 400 })
+    }
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       return NextResponse.json({ error: "Format invalide (JPG, PNG ou WebP)." }, { status: 400 })
     }
@@ -204,7 +210,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Photo trop volumineuse (max 10 Mo)." }, { status: 400 })
     }
     const model = MODELS[modelKey] || MODELS[DEFAULT_MODEL]
-    const pricing = estimateGenjutsuPriceUsd(modelKey, quality)
+    const pricing = estimateGenjutsuPriceUsd(modelKey, quality, durationSeconds)
 
     // 1) Heberger l'image dans le bucket public Supabase -> URL publique HTTPS.
     const admin = createAdminClient()
@@ -270,6 +276,7 @@ export async function POST(request: NextRequest) {
       prompt,
       enhance_prompt: enhance,
       resolution: quality,
+      duration: durationSeconds,
     }
     if (motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
     const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, "motion", { model: modelKey, quality, providerCostUsd: pricing.providerCostUsd, marginMultiplier: 2 })
