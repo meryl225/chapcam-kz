@@ -14,6 +14,24 @@
 
 export type ToolName = 'photo_video' | 'motion' | 'translation' | 'chapverify' | 'voice_message'
 
+export const GENJUTSU_MARGIN_MULTIPLIER = 2
+export const GENJUTSU_PROVIDER_COST_USD = {
+  genjutsu: { '720p': 0.35, '1080p': 0.55 },
+  turbo: { '720p': 0.25, '1080p': 0.4 },
+  standard: { '720p': 0.35, '1080p': 0.55 },
+  lite: { '720p': 0.18, '1080p': 0.28 },
+  kling3: { '720p': 0.45, '1080p': 0.7 },
+} as const
+
+export type GenjutsuModel = keyof typeof GENJUTSU_PROVIDER_COST_USD
+export type GenjutsuQuality = '720p' | '1080p'
+
+export function estimateGenjutsuPriceUsd(model: string, quality: GenjutsuQuality) {
+  const modelCosts = GENJUTSU_PROVIDER_COST_USD[model as GenjutsuModel] ?? GENJUTSU_PROVIDER_COST_USD.genjutsu
+  const providerCostUsd = modelCosts[quality]
+  return { providerCostUsd, customerPriceUsd: Math.round(providerCostUsd * GENJUTSU_MARGIN_MULTIPLIER * 100) / 100 }
+}
+
 export const TOOL_LABELS: Record<ToolName, string> = {
   photo_video: 'Studio Photo en Vidéo',
   motion: 'Motion',

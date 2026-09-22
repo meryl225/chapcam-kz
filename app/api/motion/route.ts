@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createMotionJob, markMotionJobCompleted, markMotionJobFailed } from "@/lib/motion-jobs"
+import { creditJetons, reserveJetons } from "@/lib/jetons"
+import { estimateGenjutsuPriceUsd } from "@/lib/tool-costs"
 
 // --- Motion Control (Higgsfield image -> video) ---
 // L'API Higgsfield ne fait PAS de video-a-video. Elle anime une IMAGE fixe en
@@ -202,6 +204,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Photo trop volumineuse (max 10 Mo)." }, { status: 400 })
     }
     const model = MODELS[modelKey] || MODELS[DEFAULT_MODEL]
+    const pricing = estimateGenjutsuPriceUsd(modelKey, quality)
 
     // 1) Heberger l'image dans le bucket public Supabase -> URL publique HTTPS.
     const admin = createAdminClient()
@@ -269,7 +272,12 @@ export async function POST(request: NextRequest) {
       resolution: quality,
     }
     if (motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
-    console.log("[Genjutsu] Requête API", { image_url: imageUrl, video_url: videoUrl ?? null, prompt, resolution: quality, payload })
+    const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, "motion", { model: modelKey, quality, providerCostUsd: pricing.providerCostUsd, marginMultiplier: 2 })
+    if (!wallet.ok) {
+      await admin.storage.from(STORAGE_BUCKET).remove([path, ...(referencePath ? [referencePath] : [])]).catch(() => {})
+      return NextResponse.json({ error: `Solde insuffisant. Cette génération coûte ${wallet.required} Jetons.`, required: wallet.required, balance: wallet.balance }, { status: 402 })
+    }
+    console.log("[Genjutsu] Requête API", { image_url: imageUrl, video_url: videoUrl ?? null, prompt, resolution: quality, providerCostUsd: pricing.providerCostUsd, customerPriceUsd: pricing.customerPriceUsd, chargedJetons: wallet.charged, payload })
 
     const res = await higgsfieldFetch(`${HIGGSFIELD_API}/${model}`, {
       method: "POST",
@@ -287,6 +295,7 @@ export async function POST(request: NextRequest) {
 
     const requestId = typeof json?.request_id === "string" ? json.request_id : ""
     if (!res.ok || !requestId) {
+      await creditJetons(user.id, wallet.charged, { reason: "genjutsu_generation_failed", model: modelKey, quality })
       // Nettoyer l'image hebergee si la generation n'a pas demarre.
       await admin.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {})
       const detail = String(json?.detail ?? json?.message ?? json?.error ?? rawResponse ?? "").toLowerCase()
