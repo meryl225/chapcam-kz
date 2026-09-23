@@ -7,6 +7,7 @@ import { useState } from "react"
 import { CreatorVideoStrip } from "@/components/creator-video-strip"
 import { HomeCommunityShowcase } from "@/components/home-community-showcase"
 import { HomepageFaq } from "@/components/homepage-faq"
+import { HomepageAbout } from "@/components/homepage-about"
 import { PlansTopupModal } from "@/components/plans-topup-modal"
 
 const tools = [
@@ -34,7 +35,7 @@ export function ReferenceHomepage() {
           <nav className="hidden items-center gap-7 text-[13px] font-semibold text-[#536783] lg:flex" aria-label="Navigation principale">
             <Link href="#outils" className="transition-colors hover:text-[#10234d]">Fonctionnalités</Link>
             <button type="button" onClick={() => setPlansOpen(true)} className="transition-colors hover:text-[#10234d]">Tarifs</button>
-            <Link href="#outils" className="transition-colors hover:text-[#10234d]">À propos</Link>
+            <Link href="#a-propos" className="transition-colors hover:text-[#10234d]">À propos</Link>
             <Link href="#faq" className="transition-colors hover:text-[#10234d]">FAQ</Link>
           </nav>
           <div className="flex shrink-0 items-center gap-2">
@@ -66,6 +67,8 @@ export function ReferenceHomepage() {
         </section>
 
         <HomeCommunityShowcase />
+
+        <HomepageAbout />
 
         <HomepageFaq />
 
