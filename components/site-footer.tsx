@@ -9,8 +9,8 @@ export function SiteFooter() {
   const year = new Date().getFullYear()
 
   return (
-    <footer className="relative z-10 border-t border-white/10 bg-background/60 px-6 py-10 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 text-center md:flex-row md:justify-between md:text-left">
+    <footer className="relative z-10 border-t border-white/10 bg-background/70 px-6 py-12 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 text-center md:flex-row md:justify-between md:text-left lg:grid lg:max-w-7xl lg:grid-cols-[1.4fr_0.8fr_0.8fr_0.8fr] lg:gap-10">
         <div>
           <p className="text-lg font-bold text-foreground">
             Chap<span className="text-primary">Cam</span>

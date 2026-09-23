@@ -1,253 +1,70 @@
 "use client"
 
 import Link from "next/link"
-import Image from "next/image"
-import { ArrowRight, Check, TrendingUp, Star, Zap, Gauge, Sparkles, Timer, ShieldCheck } from "lucide-react"
+import { ArrowRight, Check, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { StreamStudio } from "@/components/stream-studio"
-import { MonitorFrame } from "@/components/monitor-frame"
-import { PhoneMockup } from "@/components/phone-mockup"
 import { motion } from "framer-motion"
 import { useT } from "@/lib/i18n/language-provider"
 
-const FLAGS = [
-  { src: "/images/flag-cote-divoire.png", alt: "Cote d'Ivoire" },
-  { src: "/images/flag-benin.png", alt: "Benin" },
-  { src: "/images/flag-togo.png", alt: "Togo" },
-  { src: "/images/flag-cameroun.png", alt: "Cameroun" },
-]
-
-const BADGES = [
-  { label: "Temps réel", icon: Zap, color: "#00d4ff" },
-  { label: "30 FPS fluide", icon: Gauge, color: "#00ff88" },
-  { label: "Ultra HD 4K", icon: Sparkles, color: "#8b5cf6" },
-  { label: "Faible latence", icon: Timer, color: "#f59e0b" },
-  { label: "Sécurisé", icon: ShieldCheck, color: "#22c55e" },
-]
-
-const PLATFORMS = [
-  { name: "WhatsApp", color: "#25D366", logo: "/logos/whatsapp.svg" },
-  { name: "Discord", color: "#5865F2", logo: "/logos/discord.svg" },
-  { name: "Twitch", color: "#9146FF", logo: "/logos/twitch.svg" },
-  { name: "TikTok Live", color: "#ffffff", logo: "/logos/tiktok.svg" },
-  { name: "YouTube", color: "#ff4d4d", logo: "/logos/youtube.svg" },
-  { name: "OBS", color: "#a78bfa", logo: "/logos/obs.svg" },
-  { name: "Zoom", color: "#2D8CFF", logo: "/logos/zoom.svg" },
+const creatorVideos = [
+  { src: "/videos/motion-control-demo.mp4", label: "Motion Control", position: "-left-5 top-16 w-36" },
+  { src: "/swap/live-swap-demo.mp4", label: "Live Swap", position: "-right-4 top-5 w-40" },
+  { src: "/videos/genjutsu-demo.mov", label: "Genjutsu", position: "-left-8 bottom-8 w-40" },
+  { src: "/showcase/chapcam-en-action.mp4", label: "Créateurs ChapCam", position: "-right-8 bottom-16 w-36" },
 ]
 
 export function HeroSection() {
   const t = useT()
 
   return (
-    <section className="relative min-h-screen overflow-hidden px-6 pt-28 pb-20">
-      {/* Grille de fond subtile */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.35]"
-        style={{
-          backgroundImage:
-            "linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-          maskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black, transparent)",
-          WebkitMaskImage: "radial-gradient(ellipse 80% 60% at 50% 35%, black, transparent)",
-        }}
-      />
+    <section className="relative overflow-hidden px-6 pb-8 pt-28">
+      <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_30%,rgba(37,99,235,0.22),transparent_42%),radial-gradient(ellipse_at_80%_65%,rgba(124,58,237,0.2),transparent_35%)]" />
+      <div aria-hidden className="pointer-events-none absolute left-1/2 top-24 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-cyan-400/[0.06] blur-[110px]" />
 
-      <div className="relative mx-auto grid min-h-[calc(100vh-12rem)] max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.12fr)] lg:gap-8">
-        {/* ===== Colonne copy ===== */}
-        <motion.div
-          initial={false}
-          className="order-2 flex flex-col gap-6 lg:order-1"
-        >
-          {/* Eyebrow */}
-          <span className="group inline-flex w-fit items-center gap-2 rounded-full border border-[#00d4ff]/50 bg-gradient-to-r from-[#00d4ff]/20 via-[#8b5cf6]/20 to-[#00d4ff]/20 px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-white shadow-[0_0_24px_-4px_rgba(0,212,255,0.6)] backdrop-blur-md transition-all duration-300 hover:border-[#00d4ff] hover:shadow-[0_0_32px_-2px_rgba(0,212,255,0.85)] sm:text-sm">
-            <TrendingUp className="h-4 w-4 text-[#00d4ff] transition-transform duration-300 group-hover:scale-110" />
-            {t("1ère plateforme IA africaine et mondiale")}
+      <div className="relative mx-auto grid max-w-7xl items-center gap-12 text-left lg:grid-cols-[0.82fr_1.18fr] lg:gap-6">
+        <motion.div initial={false} className="relative z-20 max-w-xl">
+          <span className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/[0.08] px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-200 shadow-[0_0_28px_-8px_rgba(34,211,238,0.8)]">
+            <Sparkles className="h-3.5 w-3.5" />
+            {t("La création IA, sans limites")}
           </span>
-
-          {/* Titre */}
-          <h1 className="text-balance text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl xl:text-7xl">
-            {t("La caméra IA")}
-            <br />
-            {t("des")}{" "}
-            <span className="bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] bg-clip-text text-transparent">
-              {t("créateurs")}
-            </span>
-            <br />
-            &amp;{" "}
-            <span className="bg-gradient-to-r from-[#8b5cf6] to-[#e91e8c] bg-clip-text text-transparent">
-              {t("gamers.")}
-            </span>
+          <h1 className="mt-6 max-w-xl text-balance text-5xl font-black leading-[0.94] tracking-[-0.05em] text-white sm:text-6xl lg:text-7xl">
+            {t("Crée sans")}
+            <br />{" "}
+            <span className="bg-gradient-to-r from-cyan-300 via-blue-400 to-violet-400 bg-clip-text text-transparent">{t("limites.")}</span>
           </h1>
-
-          {/* Sous-titre */}
-          <p className="max-w-xl text-pretty text-lg leading-relaxed text-gray-400">
-            {t(
-              "Change de visage et de corps en temps réel pour tes streams, vidéos, appels et réseaux sociaux. Garde tes mouvements. Reste toi, deviens quelqu'un d'autre.",
-            )}
+          <p className="mx-auto mt-5 max-w-xl text-pretty text-base leading-7 text-slate-300 sm:text-lg">
+            {t("Transforme ton apparence, tes photos et ta voix avec les outils IA créatifs de ChapCam.")}
           </p>
+          <Link href="/auth/sign-up" className="mt-7 inline-flex">
+            <Button className="group h-12 rounded-xl bg-gradient-to-r from-cyan-400 via-blue-500 to-violet-600 px-7 text-sm font-bold text-white shadow-[0_18px_42px_-14px_rgba(59,130,246,0.9)] transition hover:-translate-y-0.5 hover:brightness-110">
+              {t("Commencer gratuitement")}
+              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </Button>
+          </Link>
+        </motion.div>
 
-        {/* Badges */}
-        <div className="flex flex-wrap gap-2.5">
-          {BADGES.map((b) => {
-            const Icon = b.icon
-            return (
-              <span
-                key={b.label}
-                style={{ ["--accent" as string]: b.color }}
-                className="group/badge inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1.5 pl-1.5 pr-3.5 text-xs font-semibold text-gray-200 backdrop-blur-md transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--accent)]/50 hover:bg-white/[0.07] hover:text-white hover:shadow-[0_8px_24px_-8px_var(--accent)]"
-              >
-                <span
-                  className="flex h-6 w-6 items-center justify-center rounded-full transition-transform duration-300 group-hover/badge:scale-110"
-                  style={{ backgroundColor: `${b.color}1f`, color: b.color }}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                </span>
-                {t(b.label)}
-                <Check className="h-3.5 w-3.5 text-[#00ff88] opacity-80" />
-              </span>
-            )
-          })}
+        <div className="relative mx-auto mt-12 h-[500px] w-full max-w-3xl lg:mt-0">
+          <div aria-hidden className="absolute left-1/2 top-1/2 h-80 w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600/25 blur-[100px]" />
+          {creatorVideos.map((video) => (
+            <div key={video.label} className={`absolute z-20 hidden overflow-hidden rounded-2xl border border-cyan-200/20 bg-[#0b1224]/90 p-1.5 shadow-[0_20px_50px_-18px_rgba(34,211,238,0.75)] backdrop-blur-md lg:block ${video.position}`}>
+              <video src={video.src} autoPlay muted loop playsInline preload="metadata" className="h-28 w-full rounded-xl object-cover" aria-label={video.label} />
+              <div className="flex items-center justify-between gap-3 px-2 py-1.5 text-[10px] font-semibold text-white/80"><span className="truncate">{video.label}</span><span className="flex items-center gap-1 text-cyan-200"><span className="h-1.5 w-1.5 rounded-full bg-cyan-300" />Live</span></div>
+            </div>
+          ))}
+          <div className="absolute left-1/2 top-1/2 z-10 w-[82%] -translate-x-1/2 -translate-y-1/2 rounded-[2rem] border border-white/15 bg-[#0a1224]/80 p-2 shadow-[0_35px_90px_-28px_rgba(37,99,235,0.85),0_0_80px_-35px_rgba(168,85,247,0.95)] backdrop-blur-xl">
+            <div className="relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#050b16]">
+              <video src="/videos/chapcam-demo.mp4" autoPlay muted loop playsInline preload="metadata" className="aspect-video w-full object-cover" aria-label="Démonstration ChapCam" />
+              <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-3 py-1.5 text-[10px] font-semibold text-white/85 backdrop-blur-md"><span className="h-1.5 w-1.5 rounded-full bg-cyan-300 shadow-[0_0_10px_rgba(103,232,249,0.9)]" />Créateurs ChapCam</div>
+            </div>
+          </div>
         </div>
 
-          {/* CTA */}
-          <div className="flex flex-wrap items-center gap-3 pt-1">
-            <Link href="/auth/sign-up">
-              <Button className="group h-14 rounded-2xl bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] px-8 text-base font-bold text-white transition-all hover:brightness-110 hover:shadow-[0_0_40px_rgba(0,212,255,0.4)]">
-                {t("Commencer gratuitement")}
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-              </Button>
-            </Link>
-          </div>
-
-          {/* Preuve sociale */}
-          <div className="flex items-center gap-3 pt-1">
-            <div className="flex -space-x-3">
-              {["a3", "a2", "a6", "a1", "a5"].map((a) => (
-                <Image
-                  key={a}
-                  src={`/images/hero/avatars/${a}.png`}
-                  alt="Créateur inscrit"
-                  width={36}
-                  height={36}
-                  quality={70}
-                  className="h-9 w-9 rounded-full border-2 border-[#0a0e1a] object-cover"
-                />
-              ))}
-            </div>
-            <div>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star key={i} className="h-3.5 w-3.5 fill-[#facc15] text-[#facc15]" />
-                ))}
-              </div>
-              <p className="text-sm text-gray-400">
-                <span className="font-bold text-white">{t("+25 000 créateurs")}</span> {t("déjà inscrits")}
-              </p>
-            </div>
-          </div>
-
-          {/* Fonctionne avec */}
-          <div className="pt-2">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
-              {t("Fonctionne avec")}
-            </p>
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2.5">
-              {PLATFORMS.map((p) => (
-                <span
-                  key={p.name}
-                  className="group inline-flex cursor-default items-center gap-2 text-sm font-bold tracking-tight opacity-80 transition-all duration-300 hover:-translate-y-0.5 hover:opacity-100"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={p.logo || "/placeholder.svg"}
-                    alt={`Logo ${p.name}`}
-                    width={20}
-                    height={20}
-                    loading="lazy"
-                    className="h-5 w-5 object-contain transition-transform duration-300 group-hover:scale-110"
-                  />
-                  <span
-                    className="transition-[text-shadow] duration-300 group-hover:[text-shadow:0_0_16px_currentColor]"
-                    style={{ color: p.color }}
-                  >
-                    {p.name}
-                  </span>
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* Disponibilite (drapeaux) */}
-          <div className="flex items-center gap-2 pt-1 text-xs text-gray-500">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2 py-1 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.5)] backdrop-blur-sm transition-all duration-300 hover:border-white/20 hover:bg-white/[0.08]">
-              {FLAGS.map((f) => (
-                <Image
-                  key={f.alt}
-                  src={f.src || "/placeholder.svg"}
-                  alt={`Drapeau ${f.alt}`}
-                  width={20}
-                  height={14}
-                  className="h-3.5 w-5 rounded-[3px] object-cover ring-1 ring-white/15 transition-transform duration-300 hover:z-10 hover:scale-125"
-                />
-              ))}
-            </span>
-            {t("Disponible en Afrique de l'Ouest & Centrale")}
-          </div>
-        </motion.div>
-
-        {/* ===== Colonne studio ===== */}
-        <motion.div
-          initial={false}
-          className="order-1 flex flex-col items-center gap-6 lg:order-2 lg:items-end"
-        >
-          {/* Ordinateur + smartphone : le telephone se superpose en bas a
-              droite du moniteur sur desktop, et passe sous le moniteur (centre)
-              sur mobile pour eviter tout debordement horizontal. */}
-          <div className="relative w-full">
-            <MonitorFrame>
-              <StreamStudio />
-            </MonitorFrame>
-
-            <div className="mx-auto mt-8 w-[165px] sm:w-[175px] lg:absolute lg:-bottom-5 lg:right-0 lg:z-20 lg:mt-0 lg:w-[178px] xl:-right-2 xl:w-[190px]">
-              <PhoneMockup />
-            </div>
-          </div>
-
-          {/* Bannière partenaire ChapSim */}
-          <motion.a
-            href="https://chapsim.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-            initial={false}
-            className="group relative block w-full max-w-xs overflow-hidden rounded-2xl border border-white/10 bg-[#0b1020] shadow-[0_20px_60px_-20px_rgba(99,102,241,0.5)] transition-all duration-300 hover:-translate-y-1 hover:border-[#6366f1]/50 hover:shadow-[0_28px_70px_-20px_rgba(99,102,241,0.7)]"
-          >
-            <span className="absolute left-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-black/40 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white/80 backdrop-blur-sm">
-              <Sparkles className="h-3 w-3 text-[#8b5cf6]" />
-              {t("Partenaire")}
-            </span>
-            <Image
-              src="/chapsim/banner.png"
-              alt="ChapSim - Numéros virtuels, SMS OTP et proxies premium"
-              width={1024}
-              height={500}
-              sizes="(max-width: 640px) 90vw, 320px"
-              className="h-auto w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-            />
-            <div className="flex items-center justify-between gap-3 border-t border-white/10 bg-[#0b1020]/90 px-4 py-3 backdrop-blur-sm">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-bold text-white">ChapSim</p>
-                <p className="truncate text-xs text-gray-400">{t("Numéros virtuels, SMS OTP & proxies premium")}</p>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_-4px_rgba(139,92,246,0.7)] transition-all duration-300 group-hover:brightness-110">
-                {t("Obtenir")}
-                <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
-              </span>
-            </div>
-          </motion.a>
-        </motion.div>
+        <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-300/75 lg:col-span-2">
+          <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-cyan-300" />Sans carte bancaire</span>
+          <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-cyan-300" />Accès immédiat</span>
+          <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-cyan-300" />Outils IA créatifs</span>
+        </div>
       </div>
-
     </section>
   )
 }
