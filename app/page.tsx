@@ -1,8 +1,6 @@
 import dynamic from "next/dynamic"
 import { Header } from "@/components/header"
 import { HeroSection } from "@/components/hero-section"
-import { GenjutsuVideoShowcase } from "@/components/genjutsu-video-showcase"
-import { MotionControlVideoShowcase } from "@/components/motion-control-video-showcase"
 
 // Sections sous la ligne de flottaison : chargees a la demande (au defilement)
 // pour alleger le JavaScript initial et accelerer l'affichage du haut de page.
@@ -77,8 +75,6 @@ export default function Home() {
       <div className="relative z-10">
         <Header />
         <HeroSection />
-        <GenjutsuVideoShowcase />
-        <MotionControlVideoShowcase />
         {/* Sections animees au scroll : gardees VISIBLES par defaut si framer
             echoue (voir .mo-belowfold dans globals.css). */}
         <div className="mo-belowfold">
