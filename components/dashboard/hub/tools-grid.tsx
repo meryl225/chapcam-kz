@@ -5,6 +5,7 @@ import { T } from '@/components/i18n/t'
 interface Tool {
   href: string
   title: string
+  description: string
   badge?: 'NEW' | 'ACTIF'
   accent: string
   /* Média plein cadre : soit une vidéo (autoplay/loop/muted), soit un poster image. */
@@ -15,6 +16,7 @@ const tools: Tool[] = [
   {
     href: '/dashboard/genjutsu',
     title: 'Genjutsu',
+    description: 'Anime tes images avec un mouvement naturel',
     badge: 'NEW',
     accent: '#c6f542',
     media: { type: 'video', src: '/videos/genjutsu-demo.mov' },
@@ -22,6 +24,7 @@ const tools: Tool[] = [
   {
     href: '/dashboard/motion',
     title: 'Motion',
+    description: 'Anime ta photo en 3D',
     badge: 'NEW',
     accent: '#8b5cf6',
     media: { type: 'video', src: '/videos/motion-control-demo.mp4', poster: '/swap/poster-motion.png' },
@@ -29,6 +32,7 @@ const tools: Tool[] = [
   {
     href: '/dashboard/live-swap',
     title: 'Live Swap',
+    description: 'Change de visage en temps réel',
     badge: 'ACTIF',
     accent: '#00ff88',
     media: { type: 'video', src: '/swap/live-swap-demo.mp4' },
@@ -36,6 +40,7 @@ const tools: Tool[] = [
   {
     href: '/dashboard/message-vocal',
     title: 'Message Vocal',
+    description: 'Crée des voix réalistes depuis un texte',
     badge: 'NEW',
     accent: '#00d4ff',
     media: { type: 'image', src: '/swap/poster-message-vocal.png' },
@@ -43,6 +48,7 @@ const tools: Tool[] = [
   {
     href: '/dashboard/photo-video',
     title: 'Photos en Vidéo',
+    description: 'Anime ta photo en vidéo',
     badge: 'NEW',
     accent: '#f97316',
     media: { type: 'image', src: '/swap/poster-photo-video.png' },
@@ -50,6 +56,7 @@ const tools: Tool[] = [
   {
     href: '/dashboard/video-translation',
     title: 'Traduction de Vidéo',
+    description: 'Traduis ta vidéo en 190+ langues',
     badge: 'NEW',
     accent: '#22d3ee',
     media: { type: 'image', src: '/swap/poster-video-translation.png' },
@@ -57,6 +64,7 @@ const tools: Tool[] = [
   {
     href: '/dashboard/chapverify',
     title: 'ChapVerify',
+    description: 'Détecte les deepfakes',
     badge: 'NEW',
     accent: '#ef4444',
     media: { type: 'image', src: '/swap/poster-chapverify.png' },
@@ -132,24 +140,23 @@ export function ToolsGrid() {
             style={{ boxShadow: '0 0 10px #22c55e' }}
           />
 
-          {/* Titre + badge en haut à gauche */}
-          <div className="absolute left-5 right-5 top-4 z-10 flex flex-col gap-2">
-            {tool.badge && (
-              <div className="w-fit">
-                <Badge kind={tool.badge} accent={tool.accent} />
-              </div>
-            )}
-            <h3 className="max-w-[85%] text-xl font-bold leading-tight tracking-tight text-white text-balance drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] md:text-[1.35rem]">
-              <T>{tool.title}</T>
-            </h3>
+          <div className="absolute left-4 right-4 top-4 z-10 flex items-start justify-between gap-3">
+            {tool.badge ? <Badge kind={tool.badge} accent={tool.accent} /> : <span />}
+            <span
+              aria-hidden
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/20 bg-black/25 text-white/80 backdrop-blur-md transition-all duration-300 group-hover:border-white/50 group-hover:bg-white/15 group-hover:text-white"
+            >
+              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+            </span>
           </div>
 
-          {/* CTA « Ouvrir » en bas à gauche */}
-          <div className="absolute bottom-4 left-5 z-10">
-            <span className="inline-flex items-center gap-2 text-[15px] font-semibold text-white transition-all duration-300 group-hover:gap-3">
-              <T>Ouvrir</T>
-              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" style={{ color: tool.accent }} />
-            </span>
+          <div className="absolute inset-x-4 bottom-4 z-10">
+            <h3 className="max-w-[90%] text-xl font-bold leading-tight tracking-tight text-white text-balance drop-shadow-[0_2px_8px_rgba(0,0,0,0.7)] md:text-[1.35rem]">
+              <T>{tool.title}</T>
+            </h3>
+            <p className="mt-1 max-w-[92%] text-xs leading-relaxed text-white/70 text-pretty drop-shadow-[0_1px_5px_rgba(0,0,0,0.8)]">
+              <T>{tool.description}</T>
+            </p>
           </div>
         </Link>
       ))}
