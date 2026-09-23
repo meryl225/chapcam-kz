@@ -123,8 +123,7 @@ function ToolCard({
   return (
     <Link
       href={href}
-      style={{ ['--tool' as string]: color }}
-className={`group relative mb-1 flex items-center gap-3 overflow-hidden rounded-lg border p-2.5 transition-colors duration-200 ${
+      className={`group relative mb-1 flex items-center gap-3 overflow-hidden rounded-lg border p-2.5 transition-colors duration-200 ${
           active
             ? 'border-blue-400/25 bg-blue-400/[0.09] text-foreground'
             : 'border-transparent bg-transparent text-muted-foreground hover:border-white/[0.08] hover:bg-white/[0.045] hover:text-foreground'
@@ -135,10 +134,7 @@ className={`group relative mb-1 flex items-center gap-3 overflow-hidden rounded-
         className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r-full bg-blue-400 opacity-0 transition-all duration-200 group-hover:opacity-60 group-hover:h-7"
         style={{ backgroundColor: 'rgba(96, 165, 250, 0.7)' }}
       />
-      {/* Balayage lumineux au survol */}
-      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-
-      {/* Tuile d'icone coloree */}
+      {/* Icône neutre et homogène */}
       <span
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-300 transition-colors duration-200 group-hover:bg-white/[0.1] group-hover:text-white"
         style={{ color: 'rgb(148 163 184)' }}
@@ -456,10 +452,8 @@ export function DashboardSidebar({
 
   return (
     <>
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] p-2 md:block">
-        {/* Panneau a bordure lumineuse multicolore animee (look plateforme IA premium) */}
-        <div className="cc-glow-border h-full w-full overflow-hidden">
-          <div className="relative z-[1] h-full w-full overflow-hidden rounded-[1.15rem] bg-sidebar">
+<aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] border-r border-white/[0.07] bg-[#08111f] md:block">
+  <div className="relative h-full w-full overflow-hidden bg-[#08111f]">
             <SidebarContent
               email={email}
               plan={plan}
@@ -471,10 +465,9 @@ export function DashboardSidebar({
               onLogout={handleLogout}
             />
           </div>
-        </div>
       </aside>
 
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-hairline bg-sidebar px-4 md:hidden">
+      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-white/[0.07] bg-[#08111f] px-4 md:hidden">
         <h1 className="text-xl font-bold">
           <span className="text-foreground">Chap</span>
           <span className="text-primary">Cam</span>
@@ -490,7 +483,7 @@ export function DashboardSidebar({
                 <Menu className="h-6 w-6" />
               </button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[280px] border-hairline bg-sidebar p-0">
+            <SheetContent side="left" className="w-[280px] border-white/[0.07] bg-[#08111f] p-0">
               <SheetTitle className="sr-only">{t('Menu de navigation')}</SheetTitle>
               <SidebarContent
                 email={email}
