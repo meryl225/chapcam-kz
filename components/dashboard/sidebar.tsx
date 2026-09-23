@@ -225,7 +225,7 @@ function SidebarContent({
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
               </span>
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-text-faint">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-600 dark:text-text-faint">
                 {t('Swap en temps réel')}
               </span>
             </span>
@@ -244,12 +244,12 @@ function SidebarContent({
           style={{ ['--nav-accent' as string]: '#34d399' }}
           className={`group/nav relative mb-2 flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-[12px] font-semibold uppercase tracking-wide transition-colors duration-200 ${
             pathname === '/dashboard'
-              ? 'bg-blue-400/[0.1] text-foreground'
-              : 'text-muted-foreground hover:bg-muted dark:hover:bg-white/[0.045] hover:text-foreground'
+              ? 'bg-blue-400/[0.1] text-slate-900 dark:text-foreground'
+              : 'text-slate-900 hover:bg-muted dark:text-slate-200 dark:hover:bg-white/[0.045] hover:text-foreground'
           }`}
         >
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted dark:bg-white/[0.06] text-muted-foreground dark:text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted dark:bg-white/[0.06] text-muted-foreground dark:text-slate-300 transition-colors duration-200 group-hover/nav:bg-slate-200 group-hover/nav:text-slate-900 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-white"
             style={{ color: 'var(--nav-accent)' }}
           >
             <Home className="h-[17px] w-[17px]" strokeWidth={2.5} />
@@ -258,7 +258,7 @@ function SidebarContent({
         </Link>
 
         {/* Outils IA premium (cartes glassmorphism) */}
-        <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-text-faint">
+        <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-600 dark:text-text-faint">
           {t('Outils premium')}
         </p>
         {tools.map((tool) => (
@@ -287,14 +287,14 @@ function SidebarContent({
               style={{ ['--nav-accent' as string]: item.color }}
               className={`group/nav relative mb-1 flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-[12px] font-semibold uppercase tracking-wide transition-colors duration-200 ${
                 isActivePath
-                  ? 'bg-blue-400/[0.1] text-foreground'
+                  ? 'bg-blue-400/[0.1] text-slate-900 dark:text-foreground'
                   : item.highlight
-                    ? 'bg-muted dark:bg-white/[0.035] text-foreground hover:bg-white/[0.07]'
-                    : 'text-muted-foreground hover:bg-muted dark:hover:bg-white/[0.045] hover:text-foreground'
+                    ? 'bg-muted dark:bg-white/[0.035] text-slate-900 dark:text-foreground hover:bg-white/[0.07]'
+                    : 'text-slate-900 hover:bg-muted dark:text-slate-200 dark:hover:bg-white/[0.045] hover:text-foreground'
               }`}
             >
               <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted dark:bg-white/[0.06] text-muted-foreground dark:text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted dark:bg-white/[0.06] text-muted-foreground dark:text-slate-300 transition-colors duration-200 group-hover/nav:bg-slate-200 group-hover/nav:text-slate-900 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-white"
                 style={{ color: 'var(--nav-accent)' }}
               >
                 <item.icon className="h-[17px] w-[17px]" strokeWidth={2.5} />
@@ -310,10 +310,10 @@ function SidebarContent({
           target="_blank"
           rel="noopener noreferrer"
           style={{ ['--nav-accent' as string]: '#38bdf8' }}
-          className="group/nav mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground"
+          className="group/nav mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight text-slate-900 transition-all duration-200 hover:bg-muted hover:text-foreground dark:text-slate-200"
         >
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted dark:bg-white/[0.06] text-muted-foreground dark:text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted dark:bg-white/[0.06] text-muted-foreground dark:text-slate-300 transition-colors duration-200 group-hover/nav:bg-slate-200 group-hover/nav:text-slate-900 dark:group-hover/nav:bg-white/[0.1] dark:group-hover/nav:text-white"
             style={{ color: 'var(--nav-accent)' }}
           >
             <HelpCircle className="h-[17px] w-[17px]" strokeWidth={2.5} />
@@ -362,7 +362,7 @@ function SidebarContent({
   </div>
   <div className="flex items-center gap-1.5"><span className="text-xl font-black tabular-nums text-emerald-950 drop-shadow-[0_0_12px_rgba(110,231,183,0.45)] dark:text-emerald-100">{jetons?.balance ?? 0}</span><button type="button" onClick={() => setJetonsOpen(true)} aria-label="Ajouter des jetons" title="Ajouter des jetons" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 shadow-md shadow-emerald-950/30 transition hover:scale-105 hover:bg-emerald-200"><Plus className="h-4 w-4" strokeWidth={3} /></button></div>
   </div>
-      <p className="mt-2 text-[11px] leading-4 text-text-faint">Utilisables sur tous les outils sauf Live Swap.</p>
+      <p className="mt-2 text-[11px] leading-4 text-slate-600 dark:text-text-faint">Utilisables sur tous les outils sauf Live Swap.</p>
       </div>
       {jetonsOpen && <JetonsPage modal onClose={() => setJetonsOpen(false)} />}
 
@@ -377,7 +377,7 @@ function SidebarContent({
             </span>
           </div>
           <Progress value={pointsPercentage} className="h-2 bg-slate-950/70 shadow-[inset_0_1px_3px_rgba(0,0,0,0.45)] [&>div]:bg-gradient-to-r [&>div]:from-emerald-300 [&>div]:to-cyan-300 [&>div]:shadow-[0_0_12px_rgba(45,212,191,0.75)]" />
-          <p className="mt-2 text-xs text-text-faint">
+          <p className="mt-2 text-xs text-slate-600 dark:text-text-faint">
             = {Math.floor(pointsRemaining / 2 / 60)} {t('min de swap')}
           </p>
         </div>
