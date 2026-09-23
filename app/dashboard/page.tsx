@@ -1,12 +1,10 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
-import { HeaderActions } from '@/components/dashboard/hub/header-actions'
-import { EsimPromo } from '@/components/dashboard/esim-promo'
+import { PremiumHeader } from '@/components/dashboard/premium-header'
 import { ConsentCard } from '@/components/dashboard/consent-card'
 import { SupportBanner } from '@/components/dashboard/support-banner'
 import { Sparkles, Crown, Check, Zap, Timer, Users, Hourglass, ArrowRight, Clock } from 'lucide-react'
-import { getUserAvatar } from '@/lib/user-avatar'
 import { T } from '@/components/i18n/t'
 
 const POINTS_PER_SECOND = 2
@@ -72,102 +70,17 @@ export default async function DashboardHubPage() {
     user?.email?.split('@')[0] ||
     'Bienvenue'
   const consentAccepted = (user?.user_metadata?.consent_accepted as boolean | undefined) ?? false
-  const avatarUrl = getUserAvatar(user?.id ?? user?.email)
 
   return (
     <div className="mx-auto max-w-[1480px] px-4 py-5 md:px-8 md:py-8">
-      {/* ===== HERO ===== */}
-      <header className="relative mb-7 overflow-hidden rounded-[22px] border border-white/[0.08] bg-card/90 p-5 shadow-[0_18px_60px_-35px_rgba(0,0,0,0.8)] md:p-7">
-        {/* dégradé premium purple-teal-cyan */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-90"
-          style={{
-            background:
-              'radial-gradient(120% 120% at 100% 0%, rgba(139,92,246,0.16), transparent 45%), radial-gradient(120% 120% at 0% 100%, rgba(0,255,136,0.14), transparent 45%), radial-gradient(90% 90% at 60% 50%, rgba(34,211,238,0.10), transparent 60%)',
-          }}
-        />
-        {/* fine grille lumineuse */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full opacity-50 blur-3xl"
-          style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.25), transparent 70%)' }}
-        />
-
-        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="flex items-center gap-4 md:gap-5">
-              {/* Avatar de profil ChapCam */}
-              <div className="relative shrink-0">
-                <div
-                  aria-hidden
-                  className="absolute -inset-2 rounded-full opacity-70 blur-xl"
-                  style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.45), transparent 70%)' }}
-                />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={avatarUrl || "/placeholder.svg"}
-                  alt="Ton avatar ChapCam"
-                  width={80}
-                  height={80}
-                  className="relative h-16 w-16 rounded-full border-2 border-primary/40 object-cover shadow-[0_8px_30px_-8px_rgba(99,102,241,0.6)] md:h-20 md:w-20"
-                />
-                <span className="absolute bottom-0.5 right-0.5 h-3.5 w-3.5 rounded-full border-2 border-background bg-primary md:h-4 md:w-4" />
-              </div>
-
-              <div className="min-w-0">
-                <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-background/50 px-3 py-1 text-xs font-semibold text-muted-foreground backdrop-blur">
-                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                  {isPro ? <T>{PLAN_LABELS[plan] || plan}</T> : <T>Compte gratuit</T>}
-                  <span className="mx-1 h-3 w-px bg-hairline" />
-                  <Clock className="h-3 w-3" />
-                  {fmtMinutes(points)} <T>restantes</T>
-                </span>
-
-                <h1 className="mt-3 text-3xl font-bold tracking-tight text-foreground md:text-5xl text-balance">
-                  <T>Bonjour</T> {displayName}
-                </h1>
-              </div>
-            </div>
-
-            <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg text-pretty">
-              <T>Transforme ton apparence et ta voix en temps réel avec l’IA.</T>
-            </p>
-
-            <div className="mt-7 flex flex-wrap items-center gap-3">
-              <Link
-                href="/dashboard/jetons"
-                aria-label="Ajouter des jetons"
-                title="Ajouter des jetons"
-                className="group relative inline-flex min-h-16 items-center gap-3 rounded-2xl border border-emerald-300/45 bg-emerald-400/[0.08] px-3 py-2 pr-4 shadow-[0_10px_30px_rgba(16,185,129,0.12)] transition-all duration-300 hover:-translate-y-0.5 hover:border-emerald-200/80 hover:bg-emerald-300/[0.14] hover:shadow-[0_14px_36px_rgba(16,185,129,0.2)]"
-              >
-                <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-emerald-200/70 bg-[#091526] p-1 shadow-inner shadow-emerald-300/20">
-                  <img src="/images/jetons-logo.jpg" alt="Logo des Jetons" className="h-full w-full rounded-full object-cover" />
-                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-[#0c1728] bg-emerald-300 text-xs font-black text-emerald-950">+</span>
-                </span>
-                <span className="flex flex-col items-start leading-tight">
-                  <span className="text-sm font-bold text-white"><T>Jetons</T></span>
-                  <span className="text-[11px] font-medium text-emerald-200/80"><T>Ajouter du crédit</T></span>
-                </span>
-              </Link>
-              <Link
-                href="/dashboard/jetons"
-                style={{ backgroundImage: "linear-gradient(180deg, #2f7bff 0%, #1858d6 100%)" }}
-                className="group inline-flex min-h-16 items-center gap-2.5 rounded-2xl px-6 py-3.5 text-base font-bold text-white shadow-lg shadow-[#1858d6]/30 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-[#2f7bff]/40 hover:brightness-110"
-              >
-                <Sparkles className="h-5 w-5" />
-                <T>Recharger</T>
-                <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-1" />
-              </Link>
-            </div>
-          </div>
-
-          <div className="flex shrink-0 flex-col items-stretch gap-4 lg:items-end">
-            <EsimPromo />
-            <HeaderActions />
-          </div>
-        </div>
-      </header>
+      <PremiumHeader
+        displayName={displayName}
+        planLabel={PLAN_LABELS[plan] || plan}
+        points={points}
+        maxPoints={subscription?.max_points ?? 0}
+        minutesLabel={fmtMinutes(points)}
+        isPro={isPro}
+      />
 
       {/* ===== Bannière assistance / support ===== */}
       <SupportBanner />
