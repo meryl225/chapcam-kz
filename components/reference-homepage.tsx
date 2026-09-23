@@ -36,7 +36,18 @@ export function ReferenceHomepage() {
 
   return (
     <div className="min-h-screen overflow-hidden bg-[#f4f9ff] text-[#071a42]">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(125,211,252,0.38),transparent_38%),linear-gradient(180deg,#f8fbff_0%,#e8f4ff_65%,#f8fbff_100%)]" />
+      <div aria-hidden="true" className="pointer-events-none fixed inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(125,211,252,0.38),transparent_38%),linear-gradient(180deg,#f8fbff_0%,#e8f4ff_65%,#f8fbff_100%)]">
+          <div className="absolute inset-0 opacity-75 [background-image:radial-gradient(circle,rgba(14,165,233,.22)_1px,transparent_1.5px)] [background-size:42px_42px] [mask-image:linear-gradient(to_bottom,transparent,black_8%,black_92%,transparent)]" />
+          <span className="absolute left-[5%] top-[12%] text-4xl font-light text-[#0ea5e9]/20">∞</span>
+          <span className="absolute right-[8%] top-[22%] text-3xl font-light text-[#7c3aed]/20">∞</span>
+          <span className="absolute left-[10%] top-[48%] text-5xl font-light text-[#2563eb]/15">∞</span>
+          <span className="absolute right-[14%] top-[58%] text-4xl font-light text-[#0ea5e9]/20">∞</span>
+          <span className="absolute left-[42%] top-[76%] text-3xl font-light text-[#7c3aed]/15">∞</span>
+          <div className="absolute left-[7%] top-[30%] size-3 rounded-full bg-[#38bdf8]/35 shadow-[0_0_18px_5px_rgba(56,189,248,.22)]" />
+          <div className="absolute right-[18%] top-[42%] size-4 rounded-full border border-[#7c3aed]/25 bg-white/30" />
+          <div className="absolute left-[18%] top-[70%] size-2 rounded-full bg-[#7c3aed]/35 shadow-[0_0_14px_4px_rgba(124,58,237,.2)]" />
+          <div className="absolute right-[6%] top-[78%] size-3 rounded-full bg-[#38bdf8]/30" />
+        </div>
       <main className="relative mx-auto max-w-[760px] px-4 pb-28 sm:px-6 lg:max-w-7xl lg:max-w-[1440px] lg:pb-12">
         <header className="flex h-[76px] items-center justify-between gap-4 border-b border-[#d8e8f6]/80">
           <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="ChapCam accueil">
