@@ -92,7 +92,7 @@ export function ToolsGrid() {
           key={tool.href}
           href={tool.href}
           style={{ ['--accent' as string]: tool.accent }}
-          className="group relative block aspect-[1.28/1] overflow-hidden rounded-[18px] border border-white/[0.09] bg-card transition-all duration-300 hover:-translate-y-1 hover:border-[var(--accent)]/50 hover:shadow-[0_22px_55px_-28px_var(--accent)]"
+          className="group relative block aspect-[1.42/1] overflow-hidden rounded-[12px] border border-white/[0.1] bg-card transition-all duration-300 hover:-translate-y-1 hover:border-blue-300/45 hover:shadow-[0_20px_45px_-25px_rgba(37,99,235,0.55)]"
         >
           {/* Média plein cadre */}
           {tool.media.type === 'video' ? (

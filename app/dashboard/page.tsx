@@ -82,26 +82,25 @@ export default async function DashboardHubPage() {
         isPro={isPro}
       />
 
-      {/* ===== Bannière assistance / support ===== */}
-      <SupportBanner />
-
-      {/* ===== Bannière utilisation responsable (compacte) ===== */}
-      <ConsentCard initiallyAccepted={consentAccepted} />
-
       {/* ===== OUTILS (highlight) ===== */}
-      <section aria-label="Outils ChapCam" className="mt-2">
-        <div className="mb-6 flex items-end justify-between gap-4">
+      <section aria-label="Outils ChapCam" className="mt-1">
+        <div className="mb-3 flex items-end justify-between gap-4 border-b border-white/[0.08] pb-3">
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl text-balance">
               <T>Tous les outils ChapCam</T>
             </h2>
-            <p className="mt-1.5 text-sm text-muted-foreground md:text-base">
-              <T>Choisis l’outil que tu souhaites utiliser.</T>
+            <p className="mt-1 text-xs text-muted-foreground md:text-sm">
+              <T>Des outils IA puissants pour donner vie à toutes tes idées.</T>
             </p>
           </div>
         </div>
         <ToolsGrid />
       </section>
+
+      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+        <SupportBanner />
+        <ConsentCard initiallyAccepted={consentAccepted} />
+      </div>
 
       {/* ===== Utilisation rapide ===== */}
       <section aria-label="Utilisation rapide" className="mt-10">
