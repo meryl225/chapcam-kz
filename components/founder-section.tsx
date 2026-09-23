@@ -11,8 +11,10 @@ export function FounderSection() {
     <section id="founder" className="relative py-24 px-6 overflow-hidden">
       {/* Background effects */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-1/2 left-1/4 w-[500px] h-[500px] bg-[#00ff88]/5 rounded-full blur-[100px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-[80px]" />
+        <div className="absolute top-1/2 left-1/4 size-[500px] rounded-full bg-[#00aeea]/18 blur-[100px]" />
+        <div className="absolute left-[8%] top-[22%] size-3 rounded-full bg-[#0ea5e9]/70 shadow-[0_0_18px_6px_rgba(14,165,233,.35)]" />
+        <div className="absolute right-[10%] top-[38%] size-4 rounded-full border-2 border-[#7c3aed]/55 bg-[#c4b5fd]/30 shadow-[0_0_16px_4px_rgba(124,58,237,.25)]" />
+        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-[#6d28d9]/14 rounded-full blur-[80px]" />
       </div>
 
       <div className="max-w-6xl mx-auto relative z-10">
@@ -28,13 +30,13 @@ export function FounderSection() {
             initial={{ opacity: 0, scale: 0.9 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true }}
-            className="inline-flex items-center gap-2 bg-[#00ff88]/10 border border-[#00ff88]/30 px-4 py-2 rounded-full mb-6"
+            className="inline-flex items-center gap-2 bg-[#00d084]/15 border border-[#00a86b]/45 px-4 py-2 rounded-full mb-6 shadow-[0_6px_18px_-12px_rgba(0,168,107,.8)]"
           >
-            <span className="text-[#00ff88] font-semibold text-sm tracking-wide">{t("FONDATEUR")}</span>
+            <span className="text-[#087443] font-semibold text-sm tracking-wide">{t("FONDATEUR")}</span>
           </motion.div>
 
-          <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-            {t("La vision derriere")} <span className="text-[#00ff88]">ChapCam</span>
+          <h2 className="text-4xl md:text-5xl font-bold text-[#071a42] mb-4">
+            {t("La vision derriere")} <span className="text-[#087443]">ChapCam</span>
           </h2>
         </motion.div>
 
