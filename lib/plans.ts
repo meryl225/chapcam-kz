@@ -18,6 +18,7 @@ export interface PlanConfig {
   oldPrice: number
   discount: number
   points: number
+  jetons: number
   minutes: string
   // Quota "Studio Photo en Video" inclus dans le forfait Live Swap : nombre de
   // videos photo->parlante que l'utilisateur peut generer par periode d'abonnement.
@@ -40,7 +41,8 @@ export const PLANS: PlanConfig[] = [
     price: 10000,
     oldPrice: 12000,
     discount: 17,
-    points: 720, // 6 min a 720p (120 pts/min)
+    points: 720, // Compatibilite historique des abonnements existants.
+    jetons: 50,
     minutes: '6 min',
     photoVideoQuota: 2,
     features: ['Transformation du visage et corps entier', 'Qualite HD'],
@@ -57,7 +59,8 @@ export const PLANS: PlanConfig[] = [
     price: 50000,
     oldPrice: 65000,
     discount: 23,
-    points: 3600, // 30 min a 720p (120 pts/min)
+    points: 3600, // Compatibilite historique des abonnements existants.
+    jetons: 200,
     minutes: '30 min',
     photoVideoQuota: 5,
     features: [
@@ -80,7 +83,8 @@ export const PLANS: PlanConfig[] = [
     price: 85000,
     oldPrice: 110000,
     discount: 23,
-    points: 5400, // 45 min a 720p (120 pts/min)
+    points: 5400, // Compatibilite historique des abonnements existants.
+    jetons: 450,
     minutes: '45 min',
     photoVideoQuota: 8,
     features: [
@@ -105,7 +109,8 @@ export const PLANS: PlanConfig[] = [
     price: 150000,
     oldPrice: 180000,
     discount: 25,
-    points: 8400, // 1 h 10 min (70 min) a 720p (120 pts/min)
+    points: 8400, // Compatibilite historique des abonnements existants.
+    jetons: 1000,
     minutes: '1 h 10 min',
     photoVideoQuota: 10,
     features: [

@@ -1,7 +1,6 @@
 import 'server-only'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 import { reserveJetons, creditJetons } from '@/lib/jetons'
-import { TOOL_PROVIDER_COST } from '@/lib/tool-costs'
 
 // ============================================================
 // Solde de credits "Message Vocal" (ElevenLabs TTS + changement de voix),
@@ -71,7 +70,7 @@ export async function addVoiceMessageCredits(userId: string, amount: number): Pr
 
 /** Deduit N credits. Retourne le solde restant, ou -1 si insuffisant. */
 export async function deductVoiceMessageCredits(userId: string, cost = 1): Promise<number> {
-  const wallet = await reserveJetons(userId, TOOL_PROVIDER_COST.voice_message.flatUsd, 'voice_message', { legacyCost: cost })
+  const wallet = await reserveJetons(userId, 10, 'voice_message', { legacyCost: cost, messageCostJetons: 10 })
   return wallet.ok ? wallet.balance : -1
 }
 

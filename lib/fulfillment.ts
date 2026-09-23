@@ -105,7 +105,7 @@ export async function activateSubscription(
   admin: Admin,
   userId: string,
   email: string,
-  plan: { id: string; price: number; points: number; durationDays: number },
+  plan: { id: string; price: number; points: number; jetons: number; durationDays: number },
 ): Promise<{ now: Date; end: Date }> {
   const now = new Date()
   const durationMs = plan.durationDays * 24 * 60 * 60 * 1000
@@ -148,15 +148,11 @@ export async function activateSubscription(
     if (error) console.error('[fulfillment] Erreur insert subscription:', error.message)
   }
 
-  // Crediter les credits "Studio Photo en Video" (1 credit = 1 video de 30s).
-  // S'accumule au solde existant, comme les points Live Swap.
-  const videoCredits = photoVideoQuotaForPlan(plan.id)
-  if (videoCredits > 0) {
-    try {
-      await addPhotoVideoCredits(userId, videoCredits)
-    } catch (e) {
-      console.error('[fulfillment] Erreur credit photo-video:', (e as Error).message)
-    }
+  // Les nouveaux forfaits creditent le portefeuille de jetons.
+  try {
+    await creditJetons(userId, plan.jetons, { source: 'subscription', plan: plan.id, amount: plan.price })
+  } catch (e) {
+    console.error('[fulfillment] Erreur credit jetons abonnement:', (e as Error).message)
   }
 
   // Crediter les credits "Motion Control" (1 credit = 1 clip de 10s max).

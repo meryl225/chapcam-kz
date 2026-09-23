@@ -12,18 +12,11 @@ type CommunityVideo = {
 }
 
 export const communityVideos: CommunityVideo[] = [
-  { id: "community-01", src: "/showcase/chapcam-en-action.mp4", category: "Vidéos IA" },
-  { id: "community-02", src: "/videos/motion-control-demo.mp4", category: "Motion" },
-  { id: "community-03", src: "/swap/live-swap-demo.mp4", category: "Live Swap" },
-  { id: "community-04", src: "/videos/genjutsu-demo.mov", category: "Vidéos IA" },
-  { id: "community-05", src: "/videos/chapcam-demo.mp4", category: "Avant / Après" },
-  { id: "community-06", src: "/videos/chapcam-3-topup.mov", category: "Tendances" },
-  { id: "community-07" },
-  { id: "community-08" },
-  { id: "community-09" },
-  { id: "community-10" },
-  { id: "community-11" },
-  { id: "community-12" },
+  { id: "community-01", src: "/community/IMG_5979.mp4", category: "Vidéos IA" },
+  { id: "community-02", src: "/community/IMG_5981.mov", category: "Motion" },
+  { id: "community-03", src: "/community/IMG_5982.mov", category: "Live Swap" },
+  { id: "community-04", src: "/community/IMG_5983.mov", category: "Vidéos IA" },
+  { id: "community-05", src: "/community/IMG_5980.mov", category: "Avant / Après" },
 ]
 
 const filters = ["Pour toi", "Tendances", "Avant / Après", "Live Swap", "Motion", "Vidéos IA"]

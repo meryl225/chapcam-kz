@@ -127,7 +127,8 @@ export async function POST(request: Request) {
 
     // Deduire 1 credit UNIQUEMENT apres une generation reussie (aucun debit si
     // ElevenLabs echoue). Le solde restant est renvoye via un en-tete lisible.
-    const remaining = await deductVoiceMessageCredits(user.id, 1)
+    const remainingJetons = await deductVoiceMessageCredits(user.id, 1)
+  const remaining = Math.max(0, Math.floor(remainingJetons / 10))
     await logToolUsage({
       userId: user.id,
       tool: 'voice_message',

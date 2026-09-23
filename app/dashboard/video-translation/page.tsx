@@ -17,7 +17,6 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { TranslationCreditPacksSection } from "@/components/translation/credit-packs-section"
 import { VideoHistorySection } from "@/components/video-history-section"
 import { downloadVideo } from "@/lib/download-video"
 
@@ -454,8 +453,7 @@ export default function VideoTranslationPage() {
       {/* Historique permanent : toutes les vidéos traduites de cet utilisateur */}
       <VideoHistorySection tool="translation" refreshKey={historyRefresh} />
 
-      {/* Packs de credits Traduction */}
-      <TranslationCreditPacksSection />
+
     </div>
   )
 }
