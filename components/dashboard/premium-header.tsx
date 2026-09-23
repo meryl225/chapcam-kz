@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import useSWR from 'swr'
-import { ArrowRight, Clock, Plus, Sparkles, FolderPlus } from 'lucide-react'
+import { ArrowRight, Clock, Plus, FolderPlus } from 'lucide-react'
 import { T } from '@/components/i18n/t'
 
 const fetcher = (url: string) => fetch(url).then((response) => response.json())
@@ -33,7 +33,6 @@ export function PremiumHeader({ displayName, planLabel, points, maxPoints, minut
         <div className="flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-1.5 shadow-[0_12px_30px_-22px_rgba(0,0,0,0.9)]">
           <span className="hidden rounded-xl border border-white/[0.08] bg-black/10 px-3 py-2 text-[11px] font-semibold text-muted-foreground sm:inline-flex">{isPro ? planLabel : 'Compte gratuit'}</span>
           <Link href="/dashboard" className="hidden min-h-10 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-white/[0.08] hover:text-foreground sm:inline-flex"><FolderPlus className="h-4 w-4" /><T>Nouveau projet</T></Link>
-          <Link href="/dashboard/live-swap" className="group inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-[0_8px_22px_-10px_hsl(var(--primary))] transition hover:-translate-y-0.5 hover:brightness-110"><Sparkles className="h-4 w-4" /><T>Recharger</T><ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></Link>
         </div>
       </header>
 
@@ -48,7 +47,7 @@ export function PremiumHeader({ displayName, planLabel, points, maxPoints, minut
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-950/70 shadow-[inset_0_1px_3px_rgba(0,0,0,0.45)]"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-blue-400 shadow-[0_0_14px_rgba(34,211,238,0.8)] transition-all" style={{ width: `${progress}%` }} /></div>
         </div>
 
-        <Link href="/dashboard/live-swap" className="group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-xl border border-blue-200/25 bg-[radial-gradient(circle_at_15%_0%,rgba(125,211,252,0.35),transparent_38%),linear-gradient(135deg,#1687f5_0%,#4234c9_55%,#7928ca_100%)] p-4 text-white shadow-[0_20px_48px_-20px_rgba(59,130,246,0.85),inset_0_1px_0_rgba(255,255,255,0.3)] transition hover:-translate-y-0.5 hover:brightness-110"><div className="flex items-center justify-between"><span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/65"><T>Abonnement Live Swap</T></span><ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" /></div><span className="text-lg font-bold"><T>Gérer mon abonnement</T></span></Link>
+        <Link href="/dashboard/plans" className="group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-xl border border-blue-200/25 bg-[radial-gradient(circle_at_15%_0%,rgba(125,211,252,0.35),transparent_38%),linear-gradient(135deg,#1687f5_0%,#4234c9_55%,#7928ca_100%)] p-4 text-white shadow-[0_20px_48px_-20px_rgba(59,130,246,0.85),inset_0_1px_0_rgba(255,255,255,0.3)] transition hover:-translate-y-0.5 hover:brightness-110"><div className="flex items-center justify-between"><span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-white/65"><T>Abonnement Live Swap</T></span><ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" /></div><span className="text-lg font-bold"><T>Gérer mon abonnement</T></span></Link>
       </section>
     </div>
   )
