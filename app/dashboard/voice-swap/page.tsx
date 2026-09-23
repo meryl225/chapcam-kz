@@ -613,7 +613,7 @@ export default function VoiceSwapPage() {
         className="btn-glow mb-2 flex w-full flex-col items-center justify-center rounded-2xl bg-gradient-to-r from-[#7c3aed] via-[#8b5cf6] to-[#a855f7] py-5 text-center disabled:cursor-not-allowed disabled:opacity-60"
         style={{ ['--glow' as string]: '#8b5cf6' }}
       >
-        <span className="flex items-center gap-2 text-lg font-bold text-white">
+        <span className="flex items-center gap-2 text-lg font-bold text-foreground dark:text-white">
           {busy || isTransitioning ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : isRunning ? (
@@ -623,7 +623,7 @@ export default function VoiceSwapPage() {
           )}
           {isRunning ? 'Arreter Voice Swap' : 'Demarrer Voice Swap'}
         </span>
-        <span className="mt-0.5 text-sm text-white/70">
+        <span className="mt-0.5 text-sm text-muted-foreground dark:text-white/70">
           {isRunning
             ? 'Conversion temps reel en cours'
             : 'Streaming temps reel vers le micro virtuel'}

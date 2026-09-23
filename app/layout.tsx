@@ -91,7 +91,7 @@ export default function RootLayout({
               //    independant des classes Tailwind pas encore chargees).
               //    Se connecter = contour transparent.
               "a[href='/auth/login'] button{padding:.5rem 1.25rem;font-weight:500;" +
-              "border:1px solid rgba(255,255,255,.1);background:transparent}" +
+              "border:1px solid var(--border);background:transparent}" +
               //    S'inscrire / Commencer = degrade bleu -> violet (identite ChapCam).
               "a[href='/auth/sign-up'] button{padding:.5rem 1.25rem;font-weight:600;" +
               "background:linear-gradient(to right,#00d4ff,#8b5cf6)}",

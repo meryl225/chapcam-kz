@@ -384,14 +384,14 @@ export default function MotionPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center bg-[#0a0a0a]">
+      <div className="flex min-h-[60vh] items-center justify-center bg-background dark:bg-[#0a0a0a]">
         <Loader2 className="h-8 w-8 animate-spin text-[#c6f542]" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-screen bg-background text-foreground dark:bg-[#0a0a0a] dark:text-white">
       {/* Onglets facon Higgsfield */}
       <div className="flex items-center gap-6 border-b border-white/10 px-4 lg:px-8">
         {TABS.map((tab) => {
