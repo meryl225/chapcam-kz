@@ -12,6 +12,7 @@ import { HomepageFooter } from "@/components/homepage-footer"
 import { PlansTopupModal } from "@/components/plans-topup-modal"
 
 const streamingPlatforms = [
+  ["WhatsApp", "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/whatsapp/default.svg"],
   ["TikTok", "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/tiktok/default.svg"],
   ["YouTube", "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/youtube/default.svg"],
   ["Signal", "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/signal/default.svg"],
