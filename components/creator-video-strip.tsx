@@ -10,8 +10,20 @@ type CreatorVideo = {
   views?: string
 }
 
+const creatorVideoSources = [
+  "/videos/creator-1466.mp4",
+  "/videos/creator-1469.mp4",
+  "/videos/creator-1471.mp4",
+  "/videos/creator-1472.mp4",
+  "/videos/creator-1473.mp4",
+  "/videos/creator-1475.mp4",
+  "/videos/img-1467.mp4",
+]
+
 export const creatorVideos: CreatorVideo[] = Array.from({ length: 12 }, (_, index) => ({
   id: `creator-video-${index + 1}`,
+  src: creatorVideoSources[index % creatorVideoSources.length],
+  label: `Vidéo créateur ChapCam ${index + 1}`,
 }))
 
 function CreatorVideoCard({ video }: { video: CreatorVideo }) {
