@@ -12,7 +12,7 @@ import { HomepageFooter } from "@/components/homepage-footer"
 import { PlansTopupModal } from "@/components/plans-topup-modal"
 
 const tools = [
-  { title: "Live Swap", description: "Change de visage en temps réel.", media: { type: "video", src: "/swap/live-swap-demo.mp4" }, icon: Sparkles, color: "#2563eb", href: "/dashboard/live-swap" },
+  { title: "Live Swap", description: "Change de visage en temps réel.", media: { type: "video", src: "/videos/live-swap-1476.mp4" }, icon: Sparkles, color: "#2563eb", href: "/dashboard/live-swap" },
   { title: "Genjutsu", description: "Anime tes images avec un mouvement naturel.", media: { type: "video", src: "/videos/genjutsu-demo.mov" }, icon: Sparkles, color: "#22c55e", href: "/dashboard/genjutsu" },
   { title: "Motion Control", description: "Anime ta photo en 3D.", media: { type: "video", src: "/videos/motion-control-demo.mp4", poster: "/swap/poster-motion.png" }, icon: Sparkles, color: "#6366f1", href: "/dashboard/motion" },
   { title: "Message Vocal", description: "Crée des voix réalistes depuis un texte.", media: { type: "image", src: "/swap/poster-message-vocal.png" }, icon: Menu, color: "#ec4899", href: "/dashboard/message-vocal" },
