@@ -2,8 +2,9 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Bell, Camera, ChevronRight, Home, Image as ImageIcon, Menu, Music2, Play, Plus, Search, Sparkles, UserRound } from "lucide-react"
+import { Bell, Camera, ChevronRight, Home, Image as ImageIcon, Menu, Music2, Plus, Search, Sparkles, UserRound } from "lucide-react"
 import { CreatorVideoStrip } from "@/components/creator-video-strip"
+import { HomeCommunityShowcase } from "@/components/home-community-showcase"
 
 const tools = [
   { title: "Live Swap", description: "Change de visage en temps réel.", image: "/images/hero/creator-swapped.png", icon: Sparkles, color: "#2563eb", href: "/dashboard/live-swap" },
@@ -14,13 +15,6 @@ const tools = [
   { title: "Genjutsu", description: "Transforme tes idées en scènes.", image: "/images/hero/studio-after.png", icon: Sparkles, color: "#22c55e", href: "/dashboard/genjutsu" },
   { title: "ChapVerify", description: "Vérifie les contenus générés par IA.", image: "/swap/poster-chapverify.png", icon: Bell, color: "#ef4444", href: "/chapverify" },
   { title: "ChapSim", description: "Explore des simulations créatives.", image: "/images/hero/game-scene.png", icon: ImageIcon, color: "#f59e0b", href: "/chapsim" },
-]
-
-const community = [
-  ["/images/hero/creator-real.png", "3.4M"],
-  ["/images/hero/game-scene.png", "2.8M"],
-  ["/images/hero/creator-swapped.png", "1.1M"],
-  ["/images/hero/studio-after.png", "920K"],
 ]
 
 export function ReferenceHomepage() {
@@ -67,7 +61,7 @@ export function ReferenceHomepage() {
           <Link href="/dashboard" className="mt-5 flex items-center justify-center gap-1 text-sm font-semibold text-[#148ee0] sm:hidden">Voir tous les outils <ChevronRight className="h-4 w-4" /></Link>
         </section>
 
-        <section className="pt-8"><div className="mb-4 flex items-end justify-between"><h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Créations de la communauté</h2><Link href="/dashboard" className="flex items-center gap-1 text-sm font-semibold text-[#148ee0]">Voir plus <ChevronRight className="h-4 w-4" /></Link></div><div className="mb-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">{["Pour toi", "Tendances", "Avant / Après", "Vidéos IA", "Looks", "Voyages"].map((tab, index) => <button key={tab} className={`whitespace-nowrap rounded-full border px-4 py-2 text-xs font-semibold ${index === 0 ? "border-[#079ded] bg-white text-[#079ded]" : "border-white/80 bg-white/45 text-[#667a98]"}`}>{tab}</button>)}</div><div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{community.map(([image, views]) => <div key={image} className="relative aspect-[1.65] overflow-hidden rounded-2xl border border-white/80 bg-white"><Image src={image} alt="Création de la communauté ChapCam" fill className="object-cover" /><span className="absolute bottom-2 left-2 flex items-center gap-1 text-xs font-semibold text-white drop-shadow"><Play className="h-3 w-3 fill-current" />{views}</span></div>)}</div></section>
+        <HomeCommunityShowcase />
 
         <section id="tarifs" className="mt-10 hidden rounded-3xl bg-[#102b63] px-8 py-10 text-white shadow-[0_18px_45px_-24px_rgba(16,43,99,.7)] lg:block"><div className="flex items-center justify-between gap-8"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-300">ChapCam Pro</p><h2 className="mt-2 text-3xl font-bold">Crée sans limites.</h2><p className="mt-2 text-sm text-blue-100/75">Des outils IA conçus pour donner vie à toutes tes idées.</p></div><Link href="/dashboard/plans" className="rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#102b63]">Voir les tarifs</Link></div></section>
       </main>
