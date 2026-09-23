@@ -4,7 +4,6 @@ import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { MessageCircle } from "lucide-react"
 import { LanguageToggle } from "@/components/language-toggle"
 import { useT } from "@/lib/i18n/language-provider"
 
@@ -15,7 +14,7 @@ export function Header() {
       initial={false}
       className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.06] bg-[#050b16]/75 px-6 py-3 backdrop-blur-xl"
     >
-      <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-3 group">
           <motion.div 
@@ -46,12 +45,10 @@ export function Header() {
         {/* Navigation */}
         <nav className="hidden lg:flex items-center gap-5 xl:gap-6">
           {[
-            { name: "Comment ça marche", href: "#comment-ca-marche" },
-            { name: "Roadmap", href: "#roadmap" },
+            { name: "Fonctionnalités", href: "#outils" },
             { name: "Tarifs", href: "#tarifs" },
-            { name: "Télécharger", href: "/download" },
-            { name: "Founder", href: "#founder" },
-            { name: "ChapVerify", href: "/chapverify" },
+            { name: "À propos", href: "#a-propos" },
+            { name: "Blog", href: "/blog" },
           ].map((item) => (
             <Link
               key={item.name}
@@ -63,24 +60,6 @@ export function Header() {
             </Link>
           ))}
 
-          {/* Lien externe ChapSim avec logo */}
-          <a
-            href="https://chapsim.app/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="whitespace-nowrap text-white/70 hover:text-white transition-colors text-sm font-medium relative group inline-flex items-center gap-2"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/chapsim/logo.jpg"
-              alt="Logo ChapSim"
-              width={22}
-              height={22}
-              className="h-[22px] w-[22px] rounded-md object-cover ring-1 ring-white/10 transition-transform duration-300 group-hover:scale-110"
-            />
-            ChapSim
-            <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] group-hover:w-full transition-all duration-300" />
-          </a>
         </nav>
 
         {/* CTA Buttons */}
@@ -88,59 +67,6 @@ export function Header() {
           {/* Bascule de langue FR / EN */}
           <LanguageToggle />
 
-          {/* Communaute - Facebook, TikTok & Instagram */}
-          <div className="hidden items-center gap-1.5 lg:flex">
-            <a
-              href="https://www.facebook.com/share/1BLApD4N6j/?mibextid=wwXIfr"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Communauté Facebook ChapCam"
-              title="Communauté Facebook"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.1] hover:shadow-[0_6px_18px_-6px_rgba(8,102,255,0.5)]"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logos/facebook.svg" alt="Facebook" width={18} height={18} className="h-[18px] w-[18px] object-contain" />
-            </a>
-            <a
-              href="https://www.tiktok.com/@multivoix.ci"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Communauté TikTok ChapCam"
-              title="Communauté TikTok"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.1] hover:shadow-[0_6px_18px_-6px_rgba(0,212,255,0.5)]"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logos/tiktok.svg" alt="TikTok" width={18} height={18} className="h-[18px] w-[18px] object-contain" />
-            </a>
-            <a
-              href="https://www.instagram.com/chapcam_officiel"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Communauté Instagram ChapCam"
-              title="Communauté Instagram"
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-all duration-300 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.1] hover:shadow-[0_6px_18px_-6px_rgba(233,30,140,0.5)]"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logos/instagram.svg" alt="Instagram" width={18} height={18} className="h-[18px] w-[18px] object-contain" />
-            </a>
-          </div>
-
-          {/* Bouton WhatsApp */}
-          <a
-            href="https://wa.me/2250555560189"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="Contacter ChapCam sur WhatsApp"
-          >
-            <motion.span
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className="hidden items-center gap-2 rounded-full bg-[#25D366] px-4 py-2 text-sm font-semibold text-white shadow-[0_0_20px_-4px_rgba(37,211,102,0.6)] transition-all hover:bg-[#1ebe5a] hover:shadow-[0_0_28px_-4px_rgba(37,211,102,0.8)] sm:flex"
-            >
-              <MessageCircle className="h-4 w-4" />
-              WhatsApp
-            </motion.span>
-          </a>
 
           {/* Se connecter - contour */}
           <Link href="/auth/login">

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowRight, Check, TrendingUp, Star, Zap, Gauge, Sparkles, Timer, ShieldCheck } from "lucide-react"
+import { ArrowRight, Check, TrendingUp, Star, Zap, Gauge, Sparkles, Timer, ShieldCheck, Globe2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StreamStudio } from "@/components/stream-studio"
 import { MonitorFrame } from "@/components/monitor-frame"
@@ -39,7 +39,7 @@ export function HeroSection() {
   const t = useT()
 
   return (
-    <section className="relative min-h-[calc(100vh-4rem)] overflow-hidden px-6 pb-16 pt-28">
+    <section className="relative overflow-hidden px-6 pb-10 pt-28">
       {/* Grille de fond subtile */}
       <div
         aria-hidden
@@ -53,7 +53,7 @@ export function HeroSection() {
         }}
       />
 
-      <div className="relative mx-auto grid min-h-[calc(100vh-10rem)] max-w-7xl items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
+      <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
         {/* ===== Colonne copy ===== */}
         <motion.div
           initial={false}
@@ -86,7 +86,7 @@ export function HeroSection() {
 
         {/* Preuves de confiance */}
         <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-300/80">
-          {["Sans carte bancaire", "Accès immédiat", "Utilisé par +2,5M de créateurs"].map((label) => (
+          {["Sans carte bancaire", "Accès immédiat", "Utilisé par +25 000 créateurs"].map((label) => (
             <span key={label} className="inline-flex items-center gap-2">
               <Check className="h-4 w-4 text-cyan-300" />{t(label)}
             </span>
@@ -255,6 +255,41 @@ export function HeroSection() {
         </motion.div>
       </div>
 
+      <div className="relative mx-auto mt-8 max-w-7xl border-y border-white/[0.08] bg-white/[0.02] px-4 py-4 sm:px-6">
+        <div className="grid gap-4 sm:grid-cols-3 sm:items-center sm:divide-x sm:divide-white/[0.08]">
+          <div className="flex items-center gap-3 sm:px-5 sm:first:pl-0">
+            <div className="flex -space-x-2">
+              {["a3", "a2", "a6"].map((avatar) => (
+                <Image key={avatar} src={`/images/hero/avatars/${avatar}.png`} alt="Créateur ChapCam" width={28} height={28} className="h-7 w-7 rounded-full border-2 border-[#0a0e1a] object-cover" />
+              ))}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">+25 000 créateurs</p>
+              <p className="text-xs text-slate-400">déjà inscrits</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 sm:px-5">
+            <div className="flex -space-x-1.5">
+              {PLATFORMS.slice(0, 4).map((platform) => (
+                <span key={platform.name} className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.06]" title={platform.name}>
+                  <img src={platform.logo} alt={platform.name} width={15} height={15} className="h-4 w-4 object-contain" />
+                </span>
+              ))}
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-white">Plateformes compatibles</p>
+              <p className="text-xs text-slate-400">WhatsApp, Discord, Twitch et plus</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 sm:px-5 sm:last:pr-0">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-cyan-200"><Globe2 className="h-4 w-4" /></span>
+            <div>
+              <p className="text-sm font-semibold text-white">Disponibilité internationale</p>
+              <p className="text-xs text-slate-400">Afrique de l’Ouest &amp; Centrale</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
   )
 }
