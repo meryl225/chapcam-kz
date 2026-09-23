@@ -28,7 +28,7 @@ export function ReferenceHomepage() {
           </Link>
           <nav className="hidden items-center gap-7 text-[13px] font-semibold text-[#536783] lg:flex" aria-label="Navigation principale">
             <Link href="#outils" className="transition-colors hover:text-[#10234d]">Fonctionnalités</Link>
-            <Link href="#tarifs" className="transition-colors hover:text-[#10234d]">Tarifs</Link>
+            <Link href="/dashboard/plans" className="transition-colors hover:text-[#10234d]">Tarifs</Link>
             <Link href="#outils" className="transition-colors hover:text-[#10234d]">À propos</Link>
             <Link href="/blog" className="transition-colors hover:text-[#10234d]">Blog</Link>
           </nav>
