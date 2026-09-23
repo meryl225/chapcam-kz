@@ -131,7 +131,7 @@ export function VideoHistorySection({
 
   return (
     <section aria-labelledby="mes-videos-title" className={compact ? "mt-0" : "mt-8"}>
-      <div className={compact ? "mb-2 flex items-center justify-end gap-3" : "mb-4 flex items-center justify-between gap-3"}>
+      <div className={compact ? "mb-0 flex items-center justify-end gap-3" : "mb-4 flex items-center justify-between gap-3"}>
         {!compact && (
           <h2
             id="mes-videos-title"
@@ -191,8 +191,8 @@ export function VideoHistorySection({
           </p>
         </div>
       ) : (
-        <div className={compact ? "grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5" : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"}>
-          {videos.map((v) => (
+        <div className={compact ? "grid grid-cols-2 gap-2 sm:grid-cols-4" : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"}>
+          {(compact ? videos.slice(0, 4) : videos).map((v) => (
             <div
               key={v.id}
               className="group overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.025] transition-colors hover:border-white/20"
