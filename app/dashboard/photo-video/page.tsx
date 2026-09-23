@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { CreditPacksSection } from "@/components/photo-video/credit-packs-section"
 import { VideoHistorySection } from "@/components/video-history-section"
 import { downloadVideo } from "@/lib/download-video"
 
@@ -122,9 +121,6 @@ export default function PhotoVideoPage() {
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const [loading, setLoading] = useState(true)
-  // Solde de credits Studio Photo en Video (1 credit = 1 video de 30s).
-  const [remaining, setRemaining] = useState<number | null>(null)
-  const [planName, setPlanName] = useState<string | null>(null)
 
   const [file, setFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -162,12 +158,12 @@ export default function PhotoVideoPage() {
 
   const busy = status === "uploading" || status === "processing"
 
-  // Les videos font 30 SECONDES (1 credit = 1 video de 30s). La longueur du
-  // prompt est bornee en consequence (~14 caracteres/seconde).
+  // Les videos HeyGen sont plafonnees a 30 secondes. La longueur du prompt
+  // est bornee en consequence (~14 caracteres/seconde).
   const CHARS_PER_SECOND = 14
   const VIDEO_SECONDS = 30
   const MAX_SCRIPT_CHARS = VIDEO_SECONDS * CHARS_PER_SECOND
-  const noQuota = remaining !== null && remaining <= 0
+  const VIDEO_COST_JETONS = 90
 
   // Auth + points + voices
   useEffect(() => {
@@ -176,20 +172,6 @@ export default function PhotoVideoPage() {
       if (!user) {
         router.push("/auth/login")
         return
-      }
-      // Solde de credits Studio Photo en Video (depuis le forfait actif).
-      try {
-        const qRes = await fetch("/api/heygen/photo-video?info=quota")
-        const qJson = await qRes.json()
-        if (qRes.ok) {
-          setRemaining(qJson.remaining ?? 0)
-          setPlanName(qJson.plan ?? null)
-        } else {
-          // Ne jamais laisser le spinner tourner indefiniment en cas d'erreur.
-          setRemaining(0)
-        }
-      } catch {
-        setRemaining(0)
       }
 
       try {
@@ -425,13 +407,10 @@ export default function PhotoVideoPage() {
 
       if (!res.ok) {
         setStatus("idle")
-        if (res.status === 402 && json.code === "heygen_no_credit") {
+        if (res.status === 402 && json.code === "insufficient_tokens") {
+          toast({ title: "Solde insuffisant", description: json.error, variant: "destructive" })
+        } else if (res.status === 402 && json.code === "heygen_no_credit") {
           toast({ title: "Service indisponible", description: json.error, variant: "destructive" })
-        } else if (res.status === 402 && json.code === "no_plan") {
-          toast({ title: "Aucun forfait actif", description: json.error, variant: "destructive" })
-        } else if (res.status === 402 && json.code === "quota_exhausted") {
-          setRemaining(0)
-          toast({ title: "Credits epuises", description: json.error, variant: "destructive" })
         } else if (res.status === 504 && json.code === "clone_timeout") {
           toast({ title: "Clonage trop long", description: json.error, variant: "destructive" })
         } else {
@@ -441,8 +420,7 @@ export default function PhotoVideoPage() {
         return
       }
 
-      if (typeof json.remaining === "number") setRemaining(json.remaining)
-      setStatus("processing")
+          setStatus("processing")
       startPolling(json.video_id, json.clone_voice_id ?? null)
       toast({ title: "Generation lancee", description: "Cela peut prendre 1 a 3 minutes..." })
     } catch {
@@ -485,7 +463,7 @@ export default function PhotoVideoPage() {
   const photoDone = !!file
   const promptDone = !!prompt.trim()
   const voiceDone = voiceMode === "preset" ? !!voiceId : !!voiceSample
-  const canGenerate = photoDone && promptDone && voiceDone && !busy && !noQuota && !preparingSample
+  const canGenerate = photoDone && promptDone && voiceDone && !busy && !preparingSample
 
   if (loading) {
     return (
@@ -526,17 +504,13 @@ export default function PhotoVideoPage() {
             <Clapperboard className="h-5 w-5 text-primary" />
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="text-xs font-medium text-muted-foreground">Crédits vidéo (30s)</span>
-            {remaining === null ? (
-              <Loader2 className="mt-1 h-4 w-4 animate-spin text-primary" aria-label="Chargement du solde" />
-            ) : (
-              <span className="text-xl font-bold text-foreground">{remaining}</span>
-            )}
+<span className="text-xs font-medium text-muted-foreground">Coût par vidéo HeyGen (30s max)</span>
+  <span className="text-xl font-bold text-foreground">90 Jetons</span>
           </div>
           <button
             type="button"
             onClick={() => {
-              document.getElementById("recharger-credits")?.scrollIntoView({ behavior: "smooth", block: "start" })
+              window.location.href = "/dashboard/jetons"
             }}
             className="ml-1 flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
           >
@@ -978,18 +952,7 @@ export default function PhotoVideoPage() {
               </Button>
             ) : (
               <>
-                {noQuota && (
-                  <div className="mt-4 rounded-2xl border border-hairline-strong bg-muted p-4 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      {planName
-                        ? "Tu as utilisé toutes tes vidéos incluses. Recharge un forfait pour en obtenir plus."
-                        : "Aucun forfait actif. Achète un forfait pour recevoir tes vidéos de 30s."}
-                    </p>
-                    <a href="/dashboard/plans" className="mt-2 inline-block text-sm font-semibold text-primary hover:underline">
-                      Voir les forfaits
-                    </a>
-                  </div>
-                )}
+
               <Button
                 onClick={handleGenerate}
                 disabled={!canGenerate}
@@ -1000,7 +963,7 @@ export default function PhotoVideoPage() {
                 ) : status === "processing" ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Génération...</>
                 ) : (
-                  <><Wand2 className="mr-2 h-5 w-5" /> {noQuota ? "Crédits épuisés" : "Générer la vidéo"}</>
+                  <><Wand2 className="mr-2 h-5 w-5" /> Générer la vidéo · {VIDEO_COST_JETONS} Jetons</>
                 )}
               </Button>
               </>
@@ -1039,10 +1002,7 @@ export default function PhotoVideoPage() {
       {/* Historique permanent : toutes les vidéos générées par cet utilisateur */}
       <VideoHistorySection tool="photo_video" refreshKey={historyRefresh} />
 
-      {/* Achat de credits video (sans forfait Live Swap requis) */}
-      <div id="recharger-credits" className="scroll-mt-8">
-        <CreditPacksSection />
-      </div>
+
     </div>
   )
 }
