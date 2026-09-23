@@ -130,7 +130,7 @@ const tools: Tool[] = [
 export function ToolsShowcaseSection() {
   const t = useT()
   return (
-    <section id="outils" className="relative py-24 px-6 overflow-hidden">
+    <section id="outils" className="relative overflow-hidden px-6 py-20">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0d1117]/60 to-transparent" />
 
       <div className="max-w-6xl mx-auto relative z-10">
@@ -139,7 +139,7 @@ export function ToolsShowcaseSection() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="text-center mb-14"
+          className="mb-10 text-left"
         >
           <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#00d4ff]/20 to-[#8b5cf6]/20 border border-[#00d4ff]/30 px-6 py-2 rounded-full mb-6">
             <span className="text-[#00d4ff] text-sm font-semibold tracking-wider uppercase">
@@ -158,7 +158,7 @@ export function ToolsShowcaseSection() {
         </motion.div>
 
         {/* Grille de cartes 2x2 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {tools.map((tool, index) => (
             <motion.div
               key={tool.title}
@@ -170,7 +170,7 @@ export function ToolsShowcaseSection() {
               <Link
                 href={tool.href}
                 style={{ ["--tool" as string]: tool.color }}
-                className="group relative block aspect-[4/3] overflow-hidden rounded-3xl border border-white/10 bg-[#0d1525] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--tool)] hover:shadow-[0_20px_60px_-15px_var(--tool)]"
+                className="group relative block aspect-[4/4.8] overflow-hidden rounded-2xl border border-white/10 bg-[#0d1525] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--tool)] hover:shadow-[0_20px_60px_-15px_var(--tool)]"
               >
                 {/* Media plein cadre */}
                 {tool.mediaType === "video" ? (

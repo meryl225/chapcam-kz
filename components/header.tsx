@@ -13,7 +13,7 @@ export function Header() {
   return (
     <motion.header 
       initial={false}
-      className="fixed top-0 left-0 right-0 z-50 px-6 py-4 backdrop-blur-xl bg-[#0a0e1a]/70 border-b border-white/5"
+      className="fixed left-0 right-0 top-0 z-50 border-b border-white/[0.06] bg-[#050b16]/75 px-6 py-3 backdrop-blur-xl"
     >
       <div className="max-w-[1600px] mx-auto flex items-center justify-between gap-4">
         {/* Logo */}

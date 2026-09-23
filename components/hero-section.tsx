@@ -39,7 +39,7 @@ export function HeroSection() {
   const t = useT()
 
   return (
-    <section className="relative min-h-screen overflow-hidden px-6 pt-28 pb-20">
+    <section className="relative min-h-[calc(100vh-4rem)] overflow-hidden px-6 pb-16 pt-28">
       {/* Grille de fond subtile */}
       <div
         aria-hidden
@@ -53,7 +53,7 @@ export function HeroSection() {
         }}
       />
 
-      <div className="relative mx-auto grid min-h-[calc(100vh-12rem)] max-w-7xl items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.12fr)] lg:gap-8">
+      <div className="relative mx-auto grid min-h-[calc(100vh-10rem)] max-w-7xl items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-10">
         {/* ===== Colonne copy ===== */}
         <motion.div
           initial={false}
@@ -62,33 +62,37 @@ export function HeroSection() {
           {/* Eyebrow */}
           <span className="group inline-flex w-fit items-center gap-2 rounded-full border border-[#00d4ff]/50 bg-gradient-to-r from-[#00d4ff]/20 via-[#8b5cf6]/20 to-[#00d4ff]/20 px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-white shadow-[0_0_24px_-4px_rgba(0,212,255,0.6)] backdrop-blur-md transition-all duration-300 hover:border-[#00d4ff] hover:shadow-[0_0_32px_-2px_rgba(0,212,255,0.85)] sm:text-sm">
             <TrendingUp className="h-4 w-4 text-[#00d4ff] transition-transform duration-300 group-hover:scale-110" />
-            {t("1ère plateforme IA africaine et mondiale")}
+            {t("PLUS QU'UNE APP. UNE NOUVELLE RÉALITÉ.")}
           </span>
 
           {/* Titre */}
           <h1 className="text-balance text-5xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl xl:text-7xl">
-            {t("La caméra IA")}
+{t("Transforme")}
             <br />
-            {t("des")}{" "}
-            <span className="bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] bg-clip-text text-transparent">
-              {t("créateurs")}
-            </span>
+            {t("ton apparence")}
             <br />
-            &amp;{" "}
-            <span className="bg-gradient-to-r from-[#8b5cf6] to-[#e91e8c] bg-clip-text text-transparent">
-              {t("gamers.")}
+            <span className="bg-gradient-to-r from-[#22d3ee] via-[#3b82f6] to-[#a855f7] bg-clip-text text-transparent">
+              {t("avec l’IA.")}
             </span>
+
           </h1>
 
           {/* Sous-titre */}
           <p className="max-w-xl text-pretty text-lg leading-relaxed text-gray-400">
             {t(
-              "Change de visage et de corps en temps réel pour tes streams, vidéos, appels et réseaux sociaux. Garde tes mouvements. Reste toi, deviens quelqu'un d'autre.",
+              "Change de visage, anime tes photos et crée des vidéos incroyables en quelques secondes. Donne vie à toutes tes idées, simplement.",
             )}
           </p>
 
-        {/* Badges */}
-        <div className="flex flex-wrap gap-2.5">
+        {/* Preuves de confiance */}
+        <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-slate-300/80">
+          {["Sans carte bancaire", "Accès immédiat", "Utilisé par +2,5M de créateurs"].map((label) => (
+            <span key={label} className="inline-flex items-center gap-2">
+              <Check className="h-4 w-4 text-cyan-300" />{t(label)}
+            </span>
+          ))}
+        </div>
+        {false && <div className="flex flex-wrap gap-2.5">
           {BADGES.map((b) => {
             const Icon = b.icon
             return (
@@ -108,15 +112,18 @@ export function HeroSection() {
               </span>
             )
           })}
-        </div>
+        </div>}
 
           {/* CTA */}
           <div className="flex flex-wrap items-center gap-3 pt-1">
             <Link href="/auth/sign-up">
-              <Button className="group h-14 rounded-2xl bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] px-8 text-base font-bold text-white transition-all hover:brightness-110 hover:shadow-[0_0_40px_rgba(0,212,255,0.4)]">
+              <Button className="group h-12 rounded-xl bg-gradient-to-r from-[#14b8f4] to-[#7c3aed] px-7 text-sm font-bold text-white shadow-[0_14px_34px_-14px_rgba(59,130,246,0.8)] transition-all hover:brightness-110 hover:shadow-[0_0_34px_rgba(0,212,255,0.35)]">
                 {t("Commencer gratuitement")}
-                <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
               </Button>
+            </Link>
+            <Link href="#outils" className="inline-flex h-12 items-center gap-2 rounded-xl border border-white/15 bg-white/[0.03] px-5 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:bg-white/[0.08]">
+              {t("Voir la démo")}
             </Link>
           </div>
 
