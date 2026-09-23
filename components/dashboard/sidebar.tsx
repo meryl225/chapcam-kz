@@ -123,25 +123,21 @@ function ToolCard({
   return (
     <Link
       href={href}
-      style={{ ['--tool' as string]: color }}
-      className={`group relative mb-1.5 flex items-center gap-2.5 overflow-hidden rounded-xl border bg-white/[0.04] p-2 backdrop-blur-md transition-all duration-200 hover:-translate-y-px hover:bg-white/[0.07] hover:shadow-[0_6px_24px_-10px_var(--tool)] ${
-        active
-          ? 'border-[var(--tool)] bg-white/[0.07] shadow-[0_6px_24px_-10px_var(--tool)]'
-          : 'border-white/[0.06] hover:border-[var(--tool)]'
-      }`}
+      className={`group relative mb-1 flex items-center gap-3 overflow-hidden rounded-lg border p-2.5 transition-colors duration-200 ${
+          active
+            ? 'border-blue-400/25 bg-blue-400/[0.09] text-foreground'
+            : 'border-transparent bg-transparent text-muted-foreground hover:border-white/[0.08] hover:bg-white/[0.045] hover:text-foreground'
+        }`}
     >
       {/* Barre d'accent verticale a gauche (identite couleur de l'outil) */}
       <span
-        className="absolute left-0 top-1/2 h-7 w-[3px] -translate-y-1/2 rounded-r-full opacity-70 transition-all duration-200 group-hover:h-9 group-hover:opacity-100"
-        style={{ backgroundColor: 'var(--tool)', boxShadow: '0 0 10px 0 var(--tool)' }}
+        className="absolute left-0 top-1/2 h-6 w-0.5 -translate-y-1/2 rounded-r-full bg-blue-400 opacity-0 transition-all duration-200 group-hover:opacity-60 group-hover:h-7"
+        style={{ backgroundColor: 'rgba(96, 165, 250, 0.7)' }}
       />
-      {/* Balayage lumineux au survol */}
-      <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
-
-      {/* Tuile d'icone coloree */}
+      {/* Icône neutre et homogène */}
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-transform duration-200 group-hover:scale-105"
-        style={{ backgroundColor: 'var(--tool)', boxShadow: '0 3px 12px -4px var(--tool)' }}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-300 transition-colors duration-200 group-hover:bg-white/[0.1] group-hover:text-white"
+        style={{ color: 'rgb(148 163 184)' }}
       >
         <Icon className="h-[18px] w-[18px]" strokeWidth={2.4} />
       </span>
@@ -154,7 +150,7 @@ function ToolCard({
           {badge && (
             <span
               className="shrink-0 rounded-full px-1.5 py-[1px] text-[8.5px] font-extrabold uppercase tracking-wide"
-              style={{ color, backgroundColor: `${color}26` }}
+              style={{ color: 'rgb(148 163 184)', backgroundColor: 'rgba(148, 163, 184, 0.12)' }}
             >
               {badge}
             </span>
@@ -238,7 +234,7 @@ function SidebarContent({
       </div>
 
       {/* Separateur */}
-      <div className="mx-5 mb-2 h-px bg-gradient-to-r from-transparent via-hairline to-transparent" />
+      <div className="mx-5 mb-2 h-px bg-white/[0.08]" />
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-1">
@@ -246,15 +242,15 @@ function SidebarContent({
         <Link
           href="/dashboard"
           style={{ ['--nav-accent' as string]: '#34d399' }}
-          className={`group/nav mb-2 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 ${
+          className={`group/nav relative mb-2 flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-[12px] font-semibold uppercase tracking-wide transition-colors duration-200 ${
             pathname === '/dashboard'
-              ? 'bg-[var(--nav-accent)]/10 text-foreground shadow-sm ring-1 ring-[var(--nav-accent)]/30'
-              : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+              ? 'bg-blue-400/[0.1] text-foreground'
+              : 'text-muted-foreground hover:bg-white/[0.045] hover:text-foreground'
           }`}
         >
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-all duration-200 group-hover/nav:brightness-110 group-hover/nav:shadow-[0_4px_14px_-4px_var(--nav-accent)]"
-            style={{ backgroundColor: 'var(--nav-accent)' }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
+            style={{ color: 'var(--nav-accent)' }}
           >
             <Home className="h-[17px] w-[17px]" strokeWidth={2.5} />
           </span>
@@ -279,7 +275,7 @@ function SidebarContent({
         ))}
 
         {/* Separateur avant les utilitaires */}
-        <div className="my-2 h-px bg-gradient-to-r from-transparent via-hairline to-transparent" />
+        <div className="my-3 h-px bg-white/[0.08]" />
 
         {/* Utilitaires (lignes compactes) */}
         {navItems.map((item) => {
@@ -289,21 +285,17 @@ function SidebarContent({
               key={item.href}
               href={item.href}
               style={{ ['--nav-accent' as string]: item.color }}
-              className={`group/nav mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 hover:-translate-y-px ${
+              className={`group/nav relative mb-1 flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-[12px] font-semibold uppercase tracking-wide transition-colors duration-200 ${
                 isActivePath
-                  ? 'bg-[var(--nav-accent)]/10 text-foreground shadow-sm ring-1 ring-[var(--nav-accent)]/30'
+                  ? 'bg-blue-400/[0.1] text-foreground'
                   : item.highlight
-                    ? // Mis en avant en permanence : fond teinte, bordure et halo
-                      // colore -> attire l'oeil et invite au clic comme un vrai CTA.
-                      'bg-[var(--nav-accent)]/12 text-foreground ring-1 ring-[var(--nav-accent)]/40 shadow-[0_0_20px_-6px_var(--nav-accent)] hover:bg-[var(--nav-accent)]/20 hover:shadow-[0_0_26px_-4px_var(--nav-accent)]'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-white/[0.035] text-foreground hover:bg-white/[0.07]'
+                    : 'text-muted-foreground hover:bg-white/[0.045] hover:text-foreground'
               }`}
             >
               <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-all duration-200 group-hover/nav:brightness-110 group-hover/nav:shadow-[0_4px_14px_-4px_var(--nav-accent)] ${
-                  item.highlight ? 'shadow-[0_0_16px_-4px_var(--nav-accent)]' : ''
-                }`}
-                style={{ backgroundColor: 'var(--nav-accent)' }}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
+                style={{ color: 'var(--nav-accent)' }}
               >
                 <item.icon className="h-[17px] w-[17px]" strokeWidth={2.5} />
               </span>
@@ -321,8 +313,8 @@ function SidebarContent({
           className="group/nav mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground"
         >
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-all duration-200 group-hover/nav:brightness-110 group-hover/nav:shadow-[0_4px_14px_-4px_var(--nav-accent)]"
-            style={{ backgroundColor: 'var(--nav-accent)' }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
+            style={{ color: 'var(--nav-accent)' }}
           >
             <HelpCircle className="h-[17px] w-[17px]" strokeWidth={2.5} />
           </span>
@@ -349,7 +341,7 @@ function SidebarContent({
 
         <div className="mb-3 flex items-center gap-2">
           {VIP_PLANS.has(plan) ? (
-            <span className="relative inline-flex items-center gap-1.5 overflow-hidden rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 px-3 py-1 text-xs font-extrabold uppercase tracking-wide text-black shadow-[0_0_16px_rgba(250,204,21,0.55)] ring-1 ring-yellow-200/60">
+            <span className="relative inline-flex items-center gap-1.5 overflow-hidden rounded-md border border-amber-300/30 bg-amber-300/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-200">
               <span className="pointer-events-none absolute inset-0 -translate-x-full animate-[shimmer_2.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
               <Crown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
               {t(PLAN_LABELS[plan] || plan)}
@@ -362,35 +354,35 @@ function SidebarContent({
           {isExpired && <span className="text-xs text-red-400">{t('Expire')}</span>}
         </div>
 
-  <div className="mb-3 overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/15 via-emerald-500/5 to-cyan-400/10 p-3 ring-1 ring-emerald-400/35 shadow-lg shadow-emerald-950/20">
+  <div className="relative mb-3 overflow-hidden rounded-lg border border-emerald-300/25 bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.2),transparent_52%),linear-gradient(135deg,rgba(8,35,45,0.96),rgba(10,20,35,0.98))] p-3 shadow-[0_14px_34px_-20px_rgba(16,185,129,0.65),inset_0_1px_0_rgba(255,255,255,0.1)]">
   <div className="flex items-center justify-between gap-2">
   <div className="flex min-w-0 items-center gap-2">
   <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-emerald-400/15 ring-1 ring-emerald-300/35"><img src="/images/jetons-logo.jpg" alt="Logo Jetons" className="h-full w-full object-cover" /></span>
   <div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-foreground">Jetons</p><p className="truncate text-[10px] text-emerald-200/60">Solde commun de tous les outils</p></div>
   </div>
-  <div className="flex items-center gap-1.5"><span className="text-lg font-bold tabular-nums text-emerald-200">{jetons?.balance ?? 0}</span><button type="button" onClick={() => setJetonsOpen(true)} aria-label="Ajouter des jetons" title="Ajouter des jetons" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 shadow-md shadow-emerald-950/30 transition hover:scale-105 hover:bg-emerald-200"><Plus className="h-4 w-4" strokeWidth={3} /></button></div>
+  <div className="flex items-center gap-1.5"><span className="text-xl font-black tabular-nums text-emerald-100 drop-shadow-[0_0_12px_rgba(110,231,183,0.45)]">{jetons?.balance ?? 0}</span><button type="button" onClick={() => setJetonsOpen(true)} aria-label="Ajouter des jetons" title="Ajouter des jetons" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 shadow-md shadow-emerald-950/30 transition hover:scale-105 hover:bg-emerald-200"><Plus className="h-4 w-4" strokeWidth={3} /></button></div>
   </div>
       <p className="mt-2 text-[11px] leading-4 text-text-faint">Utilisables sur tous les outils sauf Live Swap.</p>
       </div>
       {jetonsOpen && <JetonsPage modal onClose={() => setJetonsOpen(false)} />}
 
-        <div className={`mb-3 rounded-lg p-3 ${VIP_PLANS.has(plan) ? 'bg-gradient-to-br from-yellow-500/10 to-amber-500/5 ring-1 ring-yellow-500/30' : 'bg-muted'}`}>
+        <div className="mb-3 rounded-lg border border-white/[0.08] bg-white/[0.035] p-3">
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Battery className={`h-4 w-4 ${VIP_PLANS.has(plan) ? 'text-yellow-500' : 'text-primary'}`} />
               <span className="text-xs font-medium text-foreground">{t('Points restants')}</span>
             </div>
-            <span className="text-sm font-bold text-foreground">
+            <span className="text-sm font-black text-cyan-100 drop-shadow-[0_0_10px_rgba(103,232,249,0.35)]">
               {formatPoints(pointsRemaining)}/{formatPoints(pointsTotal)}
             </span>
           </div>
-          <Progress value={pointsPercentage} className="h-2 bg-secondary" />
+          <Progress value={pointsPercentage} className="h-2 bg-slate-950/70 shadow-[inset_0_1px_3px_rgba(0,0,0,0.45)] [&>div]:bg-gradient-to-r [&>div]:from-emerald-300 [&>div]:to-cyan-300 [&>div]:shadow-[0_0_12px_rgba(45,212,191,0.75)]" />
           <p className="mt-2 text-xs text-text-faint">
             = {Math.floor(pointsRemaining / 2 / 60)} {t('min de swap')}
           </p>
         </div>
 
-        <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
+        <div className="mb-3 flex items-center justify-between text-[11px] text-muted-foreground">
           <span>{t('Avatars utilises')}</span>
           <span>{avatarCount}/∞</span>
         </div>
@@ -402,13 +394,13 @@ function SidebarContent({
         </div>
 
         {showUpgradeBanner && (
-          <div className="mb-3 rounded-lg bg-orange-500/20 p-3">
+<div className="relative mb-3 overflow-hidden rounded-lg border border-cyan-300/20 bg-[radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.18),transparent_55%),linear-gradient(135deg,rgba(9,25,52,0.96),rgba(19,19,52,0.96))] p-3 shadow-[0_14px_34px_-20px_rgba(59,130,246,0.6),inset_0_1px_0_rgba(255,255,255,0.1)]">
             <p className="mb-2 text-xs text-orange-300">
               {t('Recharge tes points pour continuer')}
             </p>
             <Link
               href="/dashboard/plans"
-              className="block rounded-lg bg-orange-500 py-2 text-center text-xs font-bold uppercase text-white transition-colors hover:bg-orange-600"
+              className="block rounded-md bg-blue-500/80 py-2 text-center text-xs font-semibold uppercase text-white transition-colors hover:bg-orange-600"
             >
               {t('VOIR LES OFFRES')}
             </Link>
@@ -460,10 +452,8 @@ export function DashboardSidebar({
 
   return (
     <>
-      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] p-2 md:block">
-        {/* Panneau a bordure lumineuse multicolore animee (look plateforme IA premium) */}
-        <div className="cc-glow-border h-full w-full overflow-hidden">
-          <div className="relative z-[1] h-full w-full overflow-hidden rounded-[1.15rem] bg-sidebar">
+<aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] border-r border-white/[0.07] bg-[#08111f] md:block">
+  <div className="relative h-full w-full overflow-hidden bg-[#08111f]">
             <SidebarContent
               email={email}
               plan={plan}
@@ -475,10 +465,9 @@ export function DashboardSidebar({
               onLogout={handleLogout}
             />
           </div>
-        </div>
       </aside>
 
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-hairline bg-sidebar px-4 md:hidden">
+      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-white/[0.07] bg-[#08111f] px-4 md:hidden">
         <h1 className="text-xl font-bold">
           <span className="text-foreground">Chap</span>
           <span className="text-primary">Cam</span>
@@ -494,7 +483,7 @@ export function DashboardSidebar({
                 <Menu className="h-6 w-6" />
               </button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[280px] border-hairline bg-sidebar p-0">
+            <SheetContent side="left" className="w-[280px] border-white/[0.07] bg-[#08111f] p-0">
               <SheetTitle className="sr-only">{t('Menu de navigation')}</SheetTitle>
               <SidebarContent
                 email={email}

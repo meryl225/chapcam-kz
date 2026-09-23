@@ -17,7 +17,7 @@ export function SupportBanner() {
   return (
     <section
       aria-label="Assistance ChapCam"
-      className="mb-8 flex flex-col gap-4 rounded-2xl border border-hairline bg-card/40 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+      className="flex h-fit flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3.5"
     >
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
