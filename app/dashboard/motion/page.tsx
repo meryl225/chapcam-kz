@@ -575,8 +575,8 @@ export default function MotionPage() {
                     onClick={() => !busy && setScene(s.value)}
                     disabled={busy}
                     aria-pressed={active}
-                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors disabled:opacity-50 ${
-                      active ? "bg-[#c6f542] text-black" : "bg-white/5 text-white/70 hover:bg-white/10"
+                    className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition-all duration-200 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c6f542] ${
+                      active ? "border-[#dfff78] bg-[#c6f542] text-[#10140a] shadow-[0_6px_18px_rgba(198,245,66,0.2)]" : "border-white/15 bg-white/[0.06] text-white/85 hover:-translate-y-0.5 hover:border-[#c6f542]/60 hover:bg-[#c6f542]/10"
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -643,11 +643,11 @@ export default function MotionPage() {
                     onClick={() => !busy && setModel(m.value)}
                     disabled={busy}
                     aria-pressed={active}
-                    className={`group relative overflow-hidden rounded-xl border p-3 text-left transition-all disabled:opacity-50 ${
-                      active
-                        ? "border-[#c6f542] bg-[#c6f542]/[0.08] shadow-[0_0_0_1px_rgba(198,245,66,0.4)]"
-                        : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]"
-                    }`}
+className={`group relative min-h-28 overflow-hidden rounded-2xl border p-4 text-left transition-all duration-200 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c6f542] ${
+  active
+  ? "border-[#c6f542] bg-[#c6f542]/[0.1] shadow-[0_0_0_1px_rgba(198,245,66,0.45),0_8px_24px_rgba(198,245,66,0.12)]"
+  : "border-white/15 bg-white/[0.04] hover:-translate-y-0.5 hover:border-white/35 hover:bg-white/[0.08]"
+  }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-sm font-bold ${active ? "text-white" : "text-white/80"}`}>{m.label}</span>
@@ -697,9 +697,9 @@ export default function MotionPage() {
                     onClick={() => !busy && setQuality(q.value)}
                     disabled={busy}
                     aria-pressed={active}
-                    className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-center transition-all disabled:opacity-50 ${
-                      active ? "bg-white text-black shadow-sm" : "text-white/55 hover:bg-white/5 hover:text-white/80"
-                    }`}
+className={`flex min-h-12 items-center justify-center gap-2 rounded-xl py-3 text-center transition-all duration-200 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c6f542] ${
+  active ? "bg-[#c6f542] text-[#10140a] shadow-[0_6px_18px_rgba(198,245,66,0.22)]" : "text-white/70 hover:bg-white/10 hover:text-white"
+  }`}
                   >
                     <span className="text-sm font-bold">{q.label}</span>
                     <span className={`text-[10px] font-medium uppercase tracking-wide ${active ? "text-black/50" : "text-white/30"}`}>{q.desc}</span>
@@ -714,7 +714,7 @@ export default function MotionPage() {
             onClick={handleGenerate}
             disabled={!canGenerate}
             style={{ ['--glow' as string]: '#c6f542' }}
-            className="btn-glow flex w-full items-center justify-center gap-2 rounded-xl bg-[#c6f542] py-3.5 text-sm font-bold text-black hover:bg-[#d4ff5a] disabled:cursor-not-allowed disabled:opacity-40"
+            className="btn-glow flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border border-[#e6ff93] bg-[#c6f542] py-4 text-base font-black text-[#10140a] shadow-[0_10px_30px_rgba(198,245,66,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#dcff72] hover:shadow-[0_14px_36px_rgba(198,245,66,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c6f542] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0a] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
             {busy ? (
               <><Loader2 className="h-5 w-5 animate-spin" /> Génération...</>
