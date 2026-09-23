@@ -33,7 +33,7 @@ export function PremiumHeader({ displayName, planLabel, points, maxPoints, minut
         <div className="flex items-center gap-3">
           <span className="hidden rounded-full border border-white/10 bg-background/40 px-3 py-2 text-xs font-semibold text-muted-foreground sm:inline-flex">{isPro ? planLabel : 'Compte gratuit'}</span>
           <Link href="/dashboard" className="hidden min-h-11 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-muted-foreground transition hover:border-white/20 hover:bg-white/[0.08] hover:text-foreground sm:inline-flex"><FolderPlus className="h-4 w-4" /><T>Nouveau projet</T></Link>
-          <Link href="/dashboard/jetons" className="group inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-[0_10px_28px_-10px_hsl(var(--primary))] transition hover:-translate-y-0.5 hover:brightness-110"><Sparkles className="h-4 w-4" /><T>Recharger</T><ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></Link>
+          <Link href="/dashboard/live-swap" className="group inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-[0_10px_28px_-10px_hsl(var(--primary))] transition hover:-translate-y-0.5 hover:brightness-110"><Sparkles className="h-4 w-4" /><T>Recharger</T><ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></Link>
         </div>
       </header>
 
@@ -48,7 +48,7 @@ export function PremiumHeader({ displayName, planLabel, points, maxPoints, minut
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-950/70 shadow-[inset_0_1px_3px_rgba(0,0,0,0.45)]"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-blue-400 shadow-[0_0_14px_rgba(34,211,238,0.8)] transition-all" style={{ width: `${progress}%` }} /></div>
         </div>
 
-        <Link href="/dashboard/jetons" className="group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-xl border border-blue-200/25 bg-[radial-gradient(circle_at_15%_0%,rgba(125,211,252,0.35),transparent_38%),linear-gradient(135deg,#1687f5_0%,#4234c9_55%,#7928ca_100%)] p-4 text-white shadow-[0_20px_48px_-20px_rgba(59,130,246,0.85),inset_0_1px_0_rgba(255,255,255,0.3)] transition hover:-translate-y-0.5 hover:brightness-110"><div className="flex items-center justify-between"><Sparkles className="h-6 w-6" /><ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" /></div><span className="text-lg font-bold"><T>Recharger</T><span className="mt-1 block text-xs font-medium text-white/70"><T>Ajouter des Jetons à ton solde</T></span></span></Link>
+        <Link href="/dashboard/live-swap" className="group relative flex min-h-[132px] flex-col justify-between overflow-hidden rounded-xl border border-blue-200/25 bg-[radial-gradient(circle_at_15%_0%,rgba(125,211,252,0.35),transparent_38%),linear-gradient(135deg,#1687f5_0%,#4234c9_55%,#7928ca_100%)] p-4 text-white shadow-[0_20px_48px_-20px_rgba(59,130,246,0.85),inset_0_1px_0_rgba(255,255,255,0.3)] transition hover:-translate-y-0.5 hover:brightness-110"><div className="flex items-center justify-end"><ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" /></div><span className="text-lg font-bold"><T>Recharger</T></span></Link>
       </section>
     </div>
   )
