@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { uploadObject, signedObjectUrl, deleteObject } from "@/lib/r2"
 import { createClient } from "@/lib/supabase/server"
-import { motionQuotaForPlan } from "@/lib/plans"
-import { getMotionBalance, addMotionCredits, deductMotionCredit, motionCost } from "@/lib/motion-quota"
+import { creditJetons, reserveJetons } from "@/lib/jetons"
+import { TOOL_PROVIDER_COST } from "@/lib/tool-costs"
 import {
   createMotionJob,
   markMotionJobCompleted,
@@ -54,36 +54,6 @@ const DEFAULT_TIER = "standard"
 const MAX_IMAGE = 10 * 1024 * 1024 // 10 Mo
 const MAX_VIDEO = 30 * 1024 * 1024 // 30 Mo (une video de reference <=10s est legere)
 
-// Seed unique : un abonne actif recoit le quota Motion de son forfait la
-// premiere fois qu'il utilise la fonctionnalite (comme la photo-video).
-async function ensureCreditsForActiveSub(userId: string, planId: string): Promise<number> {
-  const { balance, exists } = await getMotionBalance(userId)
-  if (exists) return balance
-  const quota = motionQuotaForPlan(planId)
-  if (quota <= 0) return 0
-  return addMotionCredits(userId, quota)
-}
-
-// Recupere l'abonnement actif + le solde Motion effectif (avec seed si besoin).
-async function resolveBalance(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-): Promise<{ balance: number; subActive: boolean; plan: string | null }> {
-  const { data: sub } = await supabase
-    .from("subscriptions")
-    .select("plan, end_date, expires_at, is_active")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle()
-  const subEnd = sub?.end_date ?? sub?.expires_at ?? null
-  const subActive = !!sub && !!subEnd && new Date(subEnd).getTime() > Date.now()
-  const balance = subActive
-    ? await ensureCreditsForActiveSub(userId, sub!.plan)
-    : (await getMotionBalance(userId)).balance
-  return { balance, subActive, plan: subActive ? sub!.plan : null }
-}
-
 // Supprime les fichiers Blob PUBLICS temporaires (image + video) d'un job, puis
 // vide la colonne. Non bloquant : les erreurs sont seulement journalisees.
 async function cleanupInputs(userId: string, requestId: string): Promise<void> {
@@ -108,8 +78,7 @@ function resolveCallbackUrl(request: NextRequest): string | undefined {
   return host ? `${proto}://${host}/api/webhook/kling` : undefined
 }
 
-// GET : statut d'une generation Kling (?request_id=...)
-// ou solde de credits Motion (?info=quota) ou historique (?info=history).
+  // GET : statut d'une generation Kling (?request_id=...) ou historique (?info=history).
 export async function GET(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -118,12 +87,6 @@ export async function GET(request: NextRequest) {
   }
 
   const params = new URL(request.url).searchParams
-
-  // Mode "quota" : solde de credits Motion.
-  if (params.get("info") === "quota") {
-    const { balance, plan } = await resolveBalance(supabase, user.id)
-    return NextResponse.json({ success: true, plan, remaining: Math.max(0, balance) })
-  }
 
   // Mode "history" : liste des generations Motion de l'utilisateur (persistees).
   if (params.get("info") === "history") {
@@ -250,10 +213,10 @@ export async function GET(request: NextRequest) {
   const finishAsFailed = async (rawMsg: string) => {
     const moderated = isModerationError(rawMsg)
     const justFailed = await markMotionJobFailed(user.id, requestId).catch(() => false)
-    let remaining: number | undefined
-    if (justFailed) {
-      remaining = await addMotionCredits(user.id, 1).catch(() => undefined)
-    }
+  let remaining: number | undefined
+  if (justFailed) {
+    remaining = (await creditJetons(user.id, Math.ceil(TOOL_PROVIDER_COST.motion.perSecondUsd * TOOL_PROVIDER_COST.motion.maxDurationSeconds), { tool: "motion", reason: "generation_failed" }).catch(() => undefined))?.balance
+  }
     // Les fichiers d'entree ne servent plus : on les supprime.
     await cleanupInputs(user.id, requestId)
     return NextResponse.json({
@@ -365,28 +328,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Video de reference trop volumineuse (max 30 Mo / ~10s)." }, { status: 400 })
     }
 
-    // Cout en credits selon le modele choisi (Standard = 1, Pro = 2).
-    const cost = motionCost(tierKey)
-
-    // Verifier le SOLDE de credits Motion AVANT tout upload/appel Kling.
-    // Le solde doit couvrir ENTIEREMENT le cout du modele (un clip Pro exige 2).
-    const { balance, subActive } = await resolveBalance(supabase, user.id)
-    if (balance < cost) {
-      const exhausted = balance > 0 // il a des credits, mais pas assez pour le Pro
-      return NextResponse.json(
-        {
-          error: !subActive
-            ? "Aucun forfait actif incluant le Motion Control. Choisis Premium, VIP PRO ou VIP DEBOUT."
-            : exhausted
-              ? `Le modele Pro coute ${cost} credits Motion et il t'en reste ${balance}. Choisis Standard ou recharge tes credits.`
-              : "Credits Motion Control epuises. Passe a un forfait superieur pour en obtenir plus.",
-          code: !subActive ? "no_plan" : "quota_exhausted",
-          remaining: Math.max(0, balance),
-          required: cost,
-        },
-        { status: 402 },
-      )
-    }
+    // Nouvelle facturation unique : coût fournisseur Kling à 0,0714 $/s,
+    // plafonné à 10 secondes. Le modèle ne change plus le prix.
+    const providerCostUsd = TOOL_PROVIDER_COST.motion.perSecondUsd * TOOL_PROVIDER_COST.motion.maxDurationSeconds
 
     // Kling exige des URLs telechargeables pour l'image et la video. Le store
     // Blob etant PRIVE, on uploade les entrees dans Cloudflare R2 sous un prefixe
@@ -432,15 +376,22 @@ export async function POST(request: NextRequest) {
       inputPaths: uploadedPaths,
     }).catch(() => {})
 
-    // Deduire le cout du modele UNIQUEMENT apres une soumission Kling reussie.
-    const remaining = await deductMotionCredit(user.id, cost)
+    // Réserver les Jetons uniquement après une soumission Kling réussie.
+    const wallet = await reserveJetons(user.id, providerCostUsd, "motion", {
+      model: tierKey,
+      provider: "kling",
+      durationSeconds: TOOL_PROVIDER_COST.motion.maxDurationSeconds,
+    })
+    if (!wallet.ok) {
+      await cleanupInputs(user.id, taskId)
+      return NextResponse.json({ error: `Solde insuffisant. Cette génération coûte ${wallet.required} Jetons.`, code: "insufficient_tokens", required: wallet.required, balance: wallet.balance }, { status: 402 })
+    }
 
-    // Journaliser la consommation par utilisateur (suivi admin + cout estime).
     await logToolUsage({
       userId: user.id,
       tool: "motion",
-      credits: cost,
-      meta: { model: tierKey, provider: "kling" },
+      credits: wallet.charged,
+      meta: { model: tierKey, provider: "kling", billing: "jetons" },
     })
 
     return NextResponse.json({
@@ -448,7 +399,7 @@ export async function POST(request: NextRequest) {
       request_id: taskId,
       model: tierKey,
       status: "queued",
-      remaining: Math.max(0, remaining),
+      remaining: wallet.balance,
     })
   } catch (error) {
     const msg = error instanceof Error ? error.message : "Erreur serveur"
