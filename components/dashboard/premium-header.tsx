@@ -30,10 +30,10 @@ export function PremiumHeader({ displayName, planLabel, points, maxPoints, minut
           <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl"><T>Bonjour</T> {displayName}</h1>
           <p className="mt-1.5 max-w-xl text-sm leading-6 text-muted-foreground"><T>Transforme ton apparence et ta voix en temps réel avec l’IA.</T></p>
         </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden rounded-full border border-white/10 bg-background/40 px-3 py-2 text-xs font-semibold text-muted-foreground sm:inline-flex">{isPro ? planLabel : 'Compte gratuit'}</span>
-          <Link href="/dashboard" className="hidden min-h-11 items-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-4 py-2.5 text-sm font-semibold text-muted-foreground transition hover:border-white/20 hover:bg-white/[0.08] hover:text-foreground sm:inline-flex"><FolderPlus className="h-4 w-4" /><T>Nouveau projet</T></Link>
-          <Link href="/dashboard/live-swap" className="group inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-[0_10px_28px_-10px_hsl(var(--primary))] transition hover:-translate-y-0.5 hover:brightness-110"><Sparkles className="h-4 w-4" /><T>Recharger</T><ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></Link>
+        <div className="flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-1.5 shadow-[0_12px_30px_-22px_rgba(0,0,0,0.9)]">
+          <span className="hidden rounded-xl border border-white/[0.08] bg-black/10 px-3 py-2 text-[11px] font-semibold text-muted-foreground sm:inline-flex">{isPro ? planLabel : 'Compte gratuit'}</span>
+          <Link href="/dashboard" className="hidden min-h-10 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-white/[0.08] hover:text-foreground sm:inline-flex"><FolderPlus className="h-4 w-4" /><T>Nouveau projet</T></Link>
+          <Link href="/dashboard/live-swap" className="group inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-bold text-primary-foreground shadow-[0_8px_22px_-10px_hsl(var(--primary))] transition hover:-translate-y-0.5 hover:brightness-110"><Sparkles className="h-4 w-4" /><T>Recharger</T><ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></Link>
         </div>
       </header>
 
