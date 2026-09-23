@@ -92,7 +92,7 @@ export default function GenjutsuPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#08090d] px-4 py-6 text-white md:px-8 lg:px-10">
+    <main className="min-h-screen bg-background px-4 py-6 text-foreground md:px-8 lg:px-10 dark:bg-[#08090d] dark:text-white">
       <div className="mx-auto max-w-7xl">
         <header className="mb-6 flex flex-col gap-5 border-b border-white/10 pb-6 md:flex-row md:items-end md:justify-between">
           <div>

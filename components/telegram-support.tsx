@@ -7,7 +7,7 @@ const TELEGRAM_LINK = "https://t.me/chapcam1"
 
 export function TelegramSupport() {
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+    <div className="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] right-4 z-50 flex items-center gap-3 sm:bottom-6 sm:right-6">
       {/* Text label */}
       <motion.div
         initial={{ opacity: 0, x: 20 }}
@@ -71,7 +71,7 @@ export function TelegramSupport() {
         <motion.div
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-[#0088cc] to-[#0066aa] flex items-center justify-center shadow-lg shadow-[#0088cc]/50 backdrop-blur-sm border border-[#0088cc]/30 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#0088cc]/60"
+          className="relative h-12 w-12 rounded-full sm:h-16 sm:w-16 bg-gradient-to-br from-[#0088cc] to-[#0066aa] flex items-center justify-center shadow-lg shadow-[#0088cc]/50 backdrop-blur-sm border border-[#0088cc]/30 transition-all duration-300 group-hover:shadow-xl group-hover:shadow-[#0088cc]/60"
         >
           {/* Inner glow */}
           <div className="absolute inset-1 rounded-full bg-gradient-to-br from-white/20 to-transparent" />

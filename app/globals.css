@@ -62,24 +62,24 @@ html:not(.mo-anim) .mo-belowfold [style*='scale(0)'] {
 
 /* ===== THEME CLAIR (par defaut au niveau :root, mais l'app demarre en .dark) ===== */
 :root {
-  --background: #f4f6f8;
-  --foreground: #0a0e1a;
-  --card: #ffffff;
-  --card-foreground: #0a0e1a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0e1a;
+  --background: #F8FAFC;
+  --foreground: #0F172A;
+  --card: #FFFFFF;
+  --card-foreground: #0F172A;
+  --popover: #FFFFFF;
+  --popover-foreground: #0F172A;
   --primary: #00b25f;
   --primary-foreground: #ffffff;
-  --secondary: #eceff3;
-  --secondary-foreground: #0a0e1a;
-  --muted: #eceff3;
-  --muted-foreground: #5b6472;
+  --secondary: #F1F5F9;
+  --secondary-foreground: #0F172A;
+  --muted: #F1F5F9;
+  --muted-foreground: #475569;
   --accent: #00b25f;
   --accent-foreground: #ffffff;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: #e2e5ea;
-  --input: #e2e5ea;
+  --border: #E2E8F0;
+  --input: #E2E8F0;
   --ring: #00b25f;
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
@@ -87,24 +87,24 @@ html:not(.mo-anim) .mo-belowfold [style*='scale(0)'] {
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0a0e1a;
-  --sidebar-primary: #00b25f;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #eceff3;
-  --sidebar-accent-foreground: #0a0e1a;
-  --sidebar-border: #e2e5ea;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #0F172A;
+  --sidebar-primary: #00B25F;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F1F5F9;
+  --sidebar-accent-foreground: #0F172A;
+  --sidebar-border: #E2E8F0;
   --sidebar-ring: #00b25f;
 
   /* tokens de surface ChapCam (utilises a la place des couleurs en dur) */
-  --surface: #f4f6f8;        /* fond app */
-  --surface-2: #ffffff;      /* cartes */
-  --surface-3: #f0f2f5;      /* cartes secondaires / hover */
-  --hairline: #e2e5ea;       /* bordures fines */
-  --hairline-strong: #d4d8df;
-  --text-strong: #0a0e1a;
-  --text-muted: #5b6472;
-  --text-faint: #8a909c;
+  --surface: #F8FAFC;        /* fond app */
+  --surface-2: #FFFFFF;      /* cartes */
+  --surface-3: #F1F5F9;      /* cartes secondaires / hover */
+  --hairline: #E2E8F0;       /* bordures fines */
+  --hairline-strong: #CBD5E1;
+  --text-strong: #0F172A;
+  --text-muted: #475569;
+  --text-faint: #64748B;
   --cc-green: #00b25f;        /* accent vert lisible sur clair */
   --cc-green-soft: rgba(0, 178, 95, 0.12);
 

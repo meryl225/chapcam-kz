@@ -198,7 +198,7 @@ export default function ChapVerifyPage() {
   const busy = status === "uploading" || status === "processing"
 
   return (
-    <div className="min-h-screen bg-[#0a0505] text-white">
+    <div className="min-h-screen bg-background text-foreground dark:bg-[#0a0505] dark:text-white">
       {/* Halo rouge d'ambiance */}
       <div
         className="pointer-events-none fixed inset-0 z-0"

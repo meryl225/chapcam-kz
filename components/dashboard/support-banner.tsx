@@ -17,7 +17,7 @@ export function SupportBanner() {
   return (
     <section
       aria-label="Assistance ChapCam"
-      className="flex h-fit flex-col gap-3 rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-3.5"
+      className="flex h-fit flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3.5 dark:border-white/[0.08] dark:bg-white/[0.02]"
     >
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -34,14 +34,14 @@ export function SupportBanner() {
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-emerald-600 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 opacity-100 shadow-sm transition-colors hover:border-emerald-700 hover:bg-emerald-100 dark:border-primary/30 dark:bg-primary/10 dark:text-primary dark:hover:bg-primary/20"
         >
           <MessageCircle className="h-4 w-4" />
           WhatsApp
         </a>
         <a
           href={`tel:${SUPPORT_PHONE_TEL}`}
-          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-hairline px-3 py-2 text-xs font-semibold text-muted-foreground transition-colors hover:border-primary/30 hover:text-foreground"
+          className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-slate-400 bg-white px-3 py-2 text-xs font-semibold text-slate-800 opacity-100 shadow-sm transition-colors hover:border-primary/50 hover:bg-slate-50 hover:text-slate-950 dark:border-hairline dark:bg-transparent dark:text-muted-foreground dark:hover:border-primary/30 dark:hover:text-foreground"
         >
           <Phone className="h-4 w-4" />
           <span className="hidden sm:inline">{SUPPORT_PHONE_DISPLAY}</span>
