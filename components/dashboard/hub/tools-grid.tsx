@@ -78,13 +78,13 @@ function Badge({ kind, accent }: { kind: NonNullable<Tool['badge']>; accent: str
 
 export function ToolsGrid() {
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {tools.map((tool) => (
         <Link
           key={tool.href}
           href={tool.href}
           style={{ ['--accent' as string]: tool.accent }}
-          className="group relative block aspect-[4/3] overflow-hidden rounded-[22px] border border-white/[0.08] transition-all duration-500 hover:-translate-y-1.5 hover:border-[var(--accent)]/50 hover:shadow-[0_30px_80px_-30px_var(--accent)]"
+          className="group relative block aspect-[1.28/1] overflow-hidden rounded-[18px] border border-white/[0.09] bg-card transition-all duration-300 hover:-translate-y-1 hover:border-[var(--accent)]/50 hover:shadow-[0_22px_55px_-28px_var(--accent)]"
         >
           {/* Média plein cadre */}
           {tool.media.type === 'video' ? (
@@ -139,7 +139,7 @@ export function ToolsGrid() {
                 <Badge kind={tool.badge} accent={tool.accent} />
               </div>
             )}
-            <h3 className="max-w-[85%] text-2xl font-bold leading-tight tracking-tight text-white text-balance drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+            <h3 className="max-w-[85%] text-xl font-bold leading-tight tracking-tight text-white text-balance drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)] md:text-[1.35rem]">
               <T>{tool.title}</T>
             </h3>
           </div>

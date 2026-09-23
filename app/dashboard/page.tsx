@@ -75,9 +75,9 @@ export default async function DashboardHubPage() {
   const avatarUrl = getUserAvatar(user?.id ?? user?.email)
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-10">
+    <div className="mx-auto max-w-[1480px] px-4 py-5 md:px-8 md:py-8">
       {/* ===== HERO ===== */}
-      <header className="relative mb-8 overflow-hidden rounded-[28px] border border-hairline bg-card p-6 md:p-10">
+      <header className="relative mb-7 overflow-hidden rounded-[22px] border border-white/[0.08] bg-card/90 p-5 shadow-[0_18px_60px_-35px_rgba(0,0,0,0.8)] md:p-7">
         {/* dégradé premium purple-teal-cyan */}
         <div
           aria-hidden
@@ -94,7 +94,7 @@ export default async function DashboardHubPage() {
           style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.25), transparent 70%)' }}
         />
 
-        <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
             <div className="flex items-center gap-4 md:gap-5">
               {/* Avatar de profil ChapCam */}
@@ -191,7 +191,7 @@ export default async function DashboardHubPage() {
       </section>
 
       {/* ===== Utilisation rapide ===== */}
-      <section aria-label="Utilisation rapide" className="mt-12">
+      <section aria-label="Utilisation rapide" className="mt-10">
         <h2 className="mb-5 text-xl font-bold text-foreground md:text-2xl"><T>Utilisation rapide</T></h2>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {[
@@ -224,7 +224,7 @@ export default async function DashboardHubPage() {
 
       {/* ===== Bannière Pro ===== */}
       {!isPro && (
-        <section className="relative mt-12 overflow-hidden rounded-[28px] border border-hairline bg-card p-6 md:p-10">
+        <section className="relative mt-10 overflow-hidden rounded-[22px] border border-white/[0.08] bg-card p-6 shadow-[0_18px_60px_-40px_rgba(0,0,0,0.8)] md:p-8">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0"
