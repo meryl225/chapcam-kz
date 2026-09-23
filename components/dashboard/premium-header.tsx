@@ -21,7 +21,7 @@ export function PremiumHeader({ displayName, planLabel, points, maxPoints, minut
   const progress = maxPoints > 0 ? Math.min(100, Math.max(0, (points / maxPoints) * 100)) : 0
   return (
     <div className="mb-7 space-y-4">
-      <header className="flex flex-col gap-4 border-b border-white/[0.08] px-1 pb-5 md:flex-row md:items-center md:justify-between">
+      <header className="flex flex-col gap-4 border-b border-border px-1 pb-5 md:flex-row md:items-center md:justify-between">
         <div>
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary">
             <span className="h-2 w-2 rounded-full bg-primary shadow-[0_0_12px_currentColor]" />
@@ -30,19 +30,19 @@ export function PremiumHeader({ displayName, planLabel, points, maxPoints, minut
           <h1 className="text-3xl font-bold tracking-tight text-foreground md:text-4xl"><T>Bonjour</T> {displayName}</h1>
           <p className="mt-1.5 max-w-xl text-sm leading-6 text-muted-foreground"><T>Transforme ton apparence et ta voix en temps réel avec l’IA.</T></p>
         </div>
-        <div className="flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.025] p-1.5 shadow-[0_12px_30px_-22px_rgba(0,0,0,0.9)]">
+        <div className="flex items-center gap-2 rounded-2xl border border-border bg-card p-1.5 shadow-[0_12px_30px_-22px_rgba(0,0,0,0.18)]">
           <span className="hidden rounded-xl border border-white/[0.08] bg-black/10 px-3 py-2 text-[11px] font-semibold text-muted-foreground sm:inline-flex">{isPro ? planLabel : 'Compte gratuit'}</span>
           <Link href="/dashboard" className="hidden min-h-10 items-center gap-2 rounded-xl px-3.5 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-white/[0.08] hover:text-foreground sm:inline-flex"><FolderPlus className="h-4 w-4" /><T>Nouveau projet</T></Link>
         </div>
       </header>
 
       <section aria-label="Solde ChapCam" className="grid gap-3 lg:grid-cols-[1fr_1.15fr_0.82fr]">
-        <div className="relative overflow-hidden rounded-xl border border-emerald-300/25 bg-[radial-gradient(circle_at_15%_0%,rgba(16,185,129,0.18),transparent_45%),linear-gradient(135deg,rgba(8,35,45,0.95),rgba(10,20,35,0.96))] p-4 shadow-[0_18px_45px_-24px_rgba(16,185,129,0.65),inset_0_1px_0_rgba(255,255,255,0.12)] before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:ring-1 before:ring-inset before:ring-emerald-200/10">
+        <div className="relative overflow-hidden rounded-xl border border-emerald-300/25 bg-[radial-gradient(circle_at_15%_0%,rgba(16,185,129,0.18),transparent_45%),linear-gradient(135deg,rgba(236,253,245,0.98),rgba(240,249,255,0.98))] dark:bg-[radial-gradient(circle_at_15%_0%,rgba(16,185,129,0.18),transparent_45%),linear-gradient(135deg,rgba(8,35,45,0.95),rgba(10,20,35,0.96))] p-4 shadow-[0_18px_45px_-24px_rgba(16,185,129,0.65),inset_0_1px_0_rgba(255,255,255,0.12)] before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:ring-1 before:ring-inset before:ring-emerald-200/10">
           <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full ring-1 ring-emerald-200/50"><img src="/images/jetons-logo.jpg" alt="Logo des Jetons" className="h-full w-full object-cover" /></span><div><p className="text-sm font-semibold text-foreground"><T>Mes jetons</T></p><p className="mt-1 text-4xl font-black tabular-nums text-emerald-100 drop-shadow-[0_0_16px_rgba(110,231,183,0.45)]">{jetons?.balance ?? 0}</p></div></div><Link href="/dashboard/jetons" aria-label="Ajouter des jetons" className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 transition hover:scale-105"><Plus className="h-5 w-5" /></Link></div>
           <p className="mt-4 text-xs leading-5 text-emerald-100/65"><T>Utilisables sur les outils ChapCam hors Live Swap</T></p>
         </div>
 
-        <div className="relative overflow-hidden rounded-xl border border-cyan-300/25 bg-[radial-gradient(circle_at_82%_0%,rgba(59,130,246,0.2),transparent_48%),linear-gradient(135deg,rgba(9,25,52,0.98),rgba(19,19,52,0.95))] p-4 shadow-[0_18px_45px_-24px_rgba(59,130,246,0.7),inset_0_1px_0_rgba(255,255,255,0.12)] before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:ring-1 before:ring-inset before:ring-cyan-200/10">
+        <div className="relative overflow-hidden rounded-xl border border-cyan-300/25 bg-[radial-gradient(circle_at_82%_0%,rgba(59,130,246,0.16),transparent_48%),linear-gradient(135deg,rgba(239,246,255,0.98),rgba(238,242,255,0.98))] dark:bg-[radial-gradient(circle_at_82%_0%,rgba(59,130,246,0.2),transparent_48%),linear-gradient(135deg,rgba(9,25,52,0.98),rgba(19,19,52,0.95))] p-4 shadow-[0_18px_45px_-24px_rgba(59,130,246,0.7),inset_0_1px_0_rgba(255,255,255,0.12)] before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:ring-1 before:ring-inset before:ring-cyan-200/10">
           <div className="flex items-start justify-between gap-3"><div className="flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-full bg-cyan-300/15 text-cyan-300"><Clock className="h-6 w-6" /></span><div><p className="text-sm font-semibold text-foreground"><T>Live Swap</T></p><p className="mt-1 text-4xl font-black tabular-nums text-cyan-100 drop-shadow-[0_0_16px_rgba(103,232,249,0.45)]">{minutesLabel} <span className="text-xs font-medium text-cyan-100/60">min restantes</span></p></div></div><span className="text-right text-xs font-semibold text-muted-foreground">{points} / {maxPoints}<br /><span className="font-normal">points</span></span></div>
           <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-950/70 shadow-[inset_0_1px_3px_rgba(0,0,0,0.45)]"><div className="h-full rounded-full bg-gradient-to-r from-cyan-300 to-blue-400 shadow-[0_0_14px_rgba(34,211,238,0.8)] transition-all" style={{ width: `${progress}%` }} /></div>
         </div>

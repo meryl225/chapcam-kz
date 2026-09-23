@@ -85,7 +85,7 @@ export default async function DashboardHubPage() {
 
       {/* ===== OUTILS (highlight) ===== */}
       <section aria-label="Outils ChapCam" className="mt-1">
-        <div className="mb-3 flex items-end justify-between gap-4 border-b border-white/[0.08] pb-3">
+        <div className="mb-3 flex items-end justify-between gap-4 border-b border-border pb-3">
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-foreground md:text-3xl text-balance">
               <T>Tous les outils ChapCam</T>
@@ -99,7 +99,7 @@ export default async function DashboardHubPage() {
       </section>
 
       <section className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
-        <div className="min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 md:p-5">
+        <div className="min-w-0 rounded-xl border border-border bg-card p-4 md:p-5">
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-foreground"><T>Mes créations récentes</T></h2>
