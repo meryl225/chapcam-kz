@@ -10,6 +10,7 @@ import { getPhotoVideoOffer } from '@/lib/photo-video-offers'
 import { getMotionOffer } from '@/lib/motion-offers'
 import { getTranslationOffer } from '@/lib/translation-offers'
 import { getMinutesOffer } from '@/lib/minutes-offers'
+import { getJetonsOffer } from '@/lib/jetons-offers'
 import { paydunyaHeaders, paydunyaBaseUrl } from '@/lib/fulfillment'
 
 export const runtime = 'nodejs'
@@ -51,7 +52,8 @@ export async function POST(request: NextRequest) {
     const motionOffer = getMotionOffer(productId)
     const translationOffer = getTranslationOffer(productId)
     const minutesOffer = getMinutesOffer(productId)
-    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer && !minutesOffer) {
+    const jetonsOffer = getJetonsOffer(productId)
+    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer && !minutesOffer && !jetonsOffer) {
       return NextResponse.json({ success: false, error: 'Produit inconnu.' }, { status: 400 })
     }
 
@@ -73,7 +75,9 @@ export async function POST(request: NextRequest) {
                   ? { amount: motionOffer.price, kind: 'motion' as const, label: `${motionOffer.name} (${motionOffer.credits} clips Motion de 10s)` }
                   : translationOffer
                     ? { amount: translationOffer.price, kind: 'translation' as const, label: `${translationOffer.name} (${translationOffer.credits} traductions vidéo)` }
-                    : { amount: minutesOffer!.price, kind: 'minutes' as const, label: `${minutesOffer!.name} (${minutesOffer!.points} points)` }
+                    : minutesOffer
+                      ? { amount: minutesOffer.price, kind: 'minutes' as const, label: `${minutesOffer.name} (${minutesOffer.points} points)` }
+                      : { amount: jetonsOffer!.price, kind: 'jetons' as const, label: `${jetonsOffer!.jetons} Jetons` }
     const { amount, kind, label } = resolved
 
     const headers = paydunyaHeaders()

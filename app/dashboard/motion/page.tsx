@@ -7,7 +7,6 @@ import type { LucideIcon } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { MotionCreditPacksSection } from "@/components/motion/credit-packs-section"
 import { ImageStudio } from "@/components/motion/image-studio"
 import { downloadVideo } from "@/lib/download-video"
 
@@ -40,11 +39,11 @@ interface MotionJob {
 type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 
 // Modeles (mappes sur les tiers DoP cote API). Presente facon Higgsfield.
-const MODELS: { value: string; label: string; credits: number; desc: string; pro?: boolean }[] = [
-  { value: "standard", label: "Standard", credits: 1, desc: "Rendu rapide et fiable" },
-  { value: "genjutsu", label: "Genjutsu", credits: 2, desc: "Motion transfer Higgsfield", pro: true },
-  { value: "pro", label: "Pro", credits: 2, desc: "Détails & fluidité maximum", pro: true },
-]
+const MODELS: { value: string; label: string; desc: string; pro?: boolean }[] = [
+    { value: "standard", label: "Standard", desc: "Rendu rapide et fiable" },
+    { value: "genjutsu", label: "Kling 3.0", desc: "Motion Control ChapCam", pro: true },
+    { value: "pro", label: "Pro", desc: "Détails & fluidité maximum", pro: true },
+  ]
 const QUALITIES: { value: "720p" | "1080p"; label: string; desc: string }[] = [
   { value: "720p", label: "720p", desc: "HD" },
   { value: "1080p", label: "1080p", desc: "Full HD" },
@@ -98,9 +97,6 @@ export default function MotionPage() {
   // id du clip en cours de téléchargement (pour l'état du bouton).
   const [downloadingJobId, setDownloadingJobId] = useState<string | null>(null)
   const historyRef = useRef<MotionJob[]>([])
-  // Solde de credits Motion (null = pas encore charge).
-  const [credits, setCredits] = useState<number | null>(null)
-
   const busy = status === "uploading"
   const hasProcessing = history.some((j) => j.status === "processing")
   const MAX_PROMPT = 500
@@ -116,15 +112,12 @@ export default function MotionPage() {
         return
       }
       try {
-        const [mRes, cRes, hRes] = await Promise.all([
+        const [mRes, hRes] = await Promise.all([
           fetch("/api/motion?info=motions"),
-          fetch("/api/motion/control?info=quota"),
-          fetch("/api/motion/control?info=history"),
+          fetch("/api/motion?info=history"),
         ])
         const mJson = await mRes.json()
         if (mRes.ok && Array.isArray(mJson.motions)) setMotions(mJson.motions)
-        const cJson = await cRes.json()
-        if (cRes.ok) setCredits(Math.max(0, Number(cJson.remaining) || 0))
         // Charger l'historique persiste : les generations lancees precedemment
         // (y compris celles encore en cours) reapparaissent ici.
         const hJson = await hRes.json()
@@ -215,9 +208,7 @@ export default function MotionPage() {
       } else if (json.status === "failed" || json.status === "nsfw") {
         const reason = json.error || "La vidéo n'a pas pu être générée."
         setHistory((prev) => prev.map((j) => (j.request_id === job.request_id ? { ...j, status: "failed", error: reason } : j)))
-        // Le serveur rembourse le crédit Motion sur un échec (dont refus de
-        // modération) : on rafraîchit le solde affiché s'il est renvoyé.
-        if (typeof json.remaining === "number") setCredits(Math.max(0, json.remaining))
+        // Le serveur rembourse automatiquement les Jetons si le rendu échoue.
         const moderated = json.code === "moderation" || json.status === "nsfw"
         toast({
           title: moderated ? "Génération refusée" : "Échec de la génération",
@@ -270,38 +261,26 @@ export default function MotionPage() {
     // MODE 1 : Motion Control REEL — une video de reference est fournie.
     // On transfere son mouvement sur l'image via l'API Kling native.
     if (refVideo) {
-      // Garde-fou UX : bloquer si le solde ne couvre pas le cout du modele
-      // (Standard = 1 credit, Pro = 2). Aligne sur la verification serveur.
-      if (credits !== null && credits < activeModel.credits) {
-        toast({
-          title: "Crédits Motion insuffisants",
-          description:
-            credits > 0
-              ? `Le modèle ${activeModel.label} coûte ${activeModel.credits} crédits Motion et il t'en reste ${credits}. Choisis Standard ou recharge tes crédits.`
-              : "Passe à un forfait Premium, VIP PRO ou VIP DEBOUT pour obtenir des crédits Motion Control.",
-          variant: "destructive",
-        })
-        return
-      }
+
       setStatus("uploading")
       try {
         const finalPrompt = composePrompt(prompt)
         const fd = new FormData()
-        fd.append("image", file)
-        fd.append("video", refVideo)
-        fd.append("prompt", finalPrompt)
-        fd.append("model", model === "pro" ? "pro" : "standard")
-        fd.append("orientation", "video")
-        fd.append("keep_sound", "false")
+        fd.append("file", file)
+        fd.append("referenceVideo", refVideo)
+        fd.append("prompt", finalPrompt || "natural full-body motion transfer")
+        fd.append("model", "kling3")
+        fd.append("quality", quality)
+        fd.append("enhance", String(enhance))
+        if (selectedMotions.length > 0) fd.append("motions", JSON.stringify(selectedMotions))
 
-        const res = await fetch("/api/motion/control", { method: "POST", body: fd })
+        const res = await fetch("/api/motion", { method: "POST", body: fd })
         const json = await res.json()
         if (!res.ok) {
           setStatus("idle")
           if (res.status === 402) {
             // Solde epuise / pas de forfait : synchroniser l'affichage a 0.
-            if (json.code === "quota_exhausted" || json.code === "no_plan") setCredits(0)
-            toast({ title: "Crédits Motion épuisés", description: json.error, variant: "destructive" })
+  toast({ title: "Solde insuffisant", description: json.error, variant: "destructive" })
           } else if (res.status === 422 || json.code === "moderation") {
             // Refus de moderation au lancement : aucun credit deduit.
             toast({ title: "Génération refusée", description: json.error || "Image ou vidéo refusée par la modération.", variant: "destructive" })
@@ -310,10 +289,9 @@ export default function MotionPage() {
           }
           return
         }
-        if (typeof json.remaining === "number") setCredits(json.remaining)
-        addJobToHistory(json.request_id, "kling", model === "pro" ? "pro" : "standard", finalPrompt || prompt.trim())
+              addJobToHistory(json.request_id, "higgsfield", "kling3", finalPrompt || prompt.trim())
         setStatus("idle")
-        toast({ title: "Transfert de mouvement lancé", description: "Cela peut prendre 2 à 5 minutes. Tu peux quitter la page." })
+        toast({ title: "Motion Control lancé", description: "Kling 3.0 traite ta vidéo de référence via Higgsfield. Tu peux quitter la page." })
       } catch {
         setStatus("idle")
         toast({ title: "Erreur réseau", description: "Réessaie dans un instant.", variant: "destructive" })
@@ -546,15 +524,6 @@ export default function MotionPage() {
             )}
           </div>
 
-          {/* Solde de credits Motion */}
-          <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
-            <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-white/40">
-              <Film className="h-3.5 w-3.5" /> Crédits Motion
-            </span>
-            <span className={`text-sm font-bold ${credits !== null && credits <= 0 ? "text-red-400" : "text-[#c6f542]"}`}>
-              {credits === null ? "…" : credits}
-            </span>
-          </div>
 
           {/* Reglages du Motion Control */}
           {/* Scene / decor en un clic */}
@@ -573,8 +542,8 @@ export default function MotionPage() {
                     onClick={() => !busy && setScene(s.value)}
                     disabled={busy}
                     aria-pressed={active}
-                    className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-left text-xs font-medium transition-colors disabled:opacity-50 ${
-                      active ? "bg-[#c6f542] text-black" : "bg-white/5 text-white/70 hover:bg-white/10"
+                    className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-2.5 text-left text-xs font-bold transition-all duration-200 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c6f542] ${
+                      active ? "border-[#dfff78] bg-[#c6f542] text-[#10140a] shadow-[0_6px_18px_rgba(198,245,66,0.2)]" : "border-white/15 bg-white/[0.06] text-white/85 hover:-translate-y-0.5 hover:border-[#c6f542]/60 hover:bg-[#c6f542]/10"
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5 shrink-0" />
@@ -641,11 +610,11 @@ export default function MotionPage() {
                     onClick={() => !busy && setModel(m.value)}
                     disabled={busy}
                     aria-pressed={active}
-                    className={`group relative overflow-hidden rounded-xl border p-3 text-left transition-all disabled:opacity-50 ${
-                      active
-                        ? "border-[#c6f542] bg-[#c6f542]/[0.08] shadow-[0_0_0_1px_rgba(198,245,66,0.4)]"
-                        : "border-white/10 bg-white/[0.03] hover:border-white/25 hover:bg-white/[0.06]"
-                    }`}
+className={`group relative min-h-28 overflow-hidden rounded-2xl border p-4 text-left transition-all duration-200 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c6f542] ${
+  active
+  ? "border-[#c6f542] bg-[#c6f542]/[0.1] shadow-[0_0_0_1px_rgba(198,245,66,0.45),0_8px_24px_rgba(198,245,66,0.12)]"
+  : "border-white/15 bg-white/[0.04] hover:-translate-y-0.5 hover:border-white/35 hover:bg-white/[0.08]"
+  }`}
                   >
                     <div className="flex items-center justify-between">
                       <span className={`text-sm font-bold ${active ? "text-white" : "text-white/80"}`}>{m.label}</span>
@@ -662,9 +631,9 @@ export default function MotionPage() {
                       )}
                     </div>
                     <p className="mt-1 text-[11px] leading-snug text-white/45">{m.desc}</p>
-                    <div className="mt-2.5 flex items-center gap-1">
-                      <span className={`text-base font-bold tabular-nums ${active ? "text-[#c6f542]" : "text-white/70"}`}>{m.credits}</span>
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-white/35">crédits</span>
+                    <div className="mt-2.5 flex items-end justify-between gap-2">
+                      <span className="text-xs font-semibold text-white/55">Tarif unique</span>
+                      <span className="text-right text-[10px] font-bold leading-tight text-[#c6f542]/80">86 Jetons<br /><span className="font-medium text-white/35">pour 10s max</span></span>
                     </div>
                     {m.pro && active && (
                       <span className="absolute bottom-2.5 right-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#c6f542] text-black">
@@ -692,9 +661,9 @@ export default function MotionPage() {
                     onClick={() => !busy && setQuality(q.value)}
                     disabled={busy}
                     aria-pressed={active}
-                    className={`flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-center transition-all disabled:opacity-50 ${
-                      active ? "bg-white text-black shadow-sm" : "text-white/55 hover:bg-white/5 hover:text-white/80"
-                    }`}
+className={`flex min-h-12 items-center justify-center gap-2 rounded-xl py-3 text-center transition-all duration-200 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c6f542] ${
+  active ? "bg-[#c6f542] text-[#10140a] shadow-[0_6px_18px_rgba(198,245,66,0.22)]" : "text-white/70 hover:bg-white/10 hover:text-white"
+  }`}
                   >
                     <span className="text-sm font-bold">{q.label}</span>
                     <span className={`text-[10px] font-medium uppercase tracking-wide ${active ? "text-black/50" : "text-white/30"}`}>{q.desc}</span>
@@ -709,12 +678,12 @@ export default function MotionPage() {
             onClick={handleGenerate}
             disabled={!canGenerate}
             style={{ ['--glow' as string]: '#c6f542' }}
-            className="btn-glow flex w-full items-center justify-center gap-2 rounded-xl bg-[#c6f542] py-3.5 text-sm font-bold text-black hover:bg-[#d4ff5a] disabled:cursor-not-allowed disabled:opacity-40"
+            className="btn-glow flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl border border-[#e6ff93] bg-[#c6f542] py-4 text-base font-black text-[#10140a] shadow-[0_10px_30px_rgba(198,245,66,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#dcff72] hover:shadow-[0_14px_36px_rgba(198,245,66,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#c6f542] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0a0a] disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
           >
             {busy ? (
               <><Loader2 className="h-5 w-5 animate-spin" /> Génération...</>
             ) : (
-              <>Generate <Sparkles className="h-4 w-4" /> {activeModel.credits}</>
+              <>Générer <Sparkles className="h-4 w-4" /> 86 Jetons</>
             )}
           </button>
         </div>
@@ -869,10 +838,7 @@ export default function MotionPage() {
         </div>
       </div>
 
-      {/* Packs de credits Motion (achat sans forfait) */}
-      <div className="px-4 pb-10 lg:px-6">
-        <MotionCreditPacksSection />
-      </div>
+
       </>
       )}
     </div>

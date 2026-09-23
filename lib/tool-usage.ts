@@ -1,6 +1,7 @@
 import 'server-only'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 import { estimateToolCostUsd, type ToolName } from './tool-costs'
+import { reserveJetons } from './jetons'
 
 export type { ToolName } from './tool-costs'
 
@@ -69,6 +70,15 @@ export async function logToolUsage(params: {
     })
     const duration = params.durationSeconds ?? null
     const meta = params.meta ? JSON.stringify(params.meta) : null
+    // Les routes qui réservent avant l'appel fournisseur marquent leur événement
+    // pour éviter un double débit. Les outils historiques sont débités ici.
+    const walletAlreadyCharged = params.meta?.walletAlreadyCharged === true
+    if (!walletAlreadyCharged) {
+      const wallet = await reserveJetons(params.userId, costUsd, params.tool, params.meta)
+      if (!wallet.ok) {
+        console.warn('[tool-usage] Solde jetons insuffisant après génération', { userId: params.userId, tool: params.tool, required: wallet.required, balance: wallet.balance })
+      }
+    }
     await sql`
       INSERT INTO tool_usage_events
         (user_id, tool, credits, duration_seconds, estimated_cost_usd, meta)

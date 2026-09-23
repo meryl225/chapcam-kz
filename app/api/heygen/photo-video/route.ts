@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { photoVideoQuotaForPlan } from "@/lib/plans"
-import { getPhotoVideoBalance, addPhotoVideoCredits, deductPhotoVideoCredit } from "@/lib/photo-video-quota"
+import { reserveJetons, creditJetons } from "@/lib/jetons"
+import { TOOL_PROVIDER_COST } from "@/lib/tool-costs"
 import { logToolUsage } from "@/lib/tool-usage"
 import { saveVideoHistory, finalizeCompletedVideo } from "@/lib/video-history"
 
@@ -11,8 +11,8 @@ import { saveVideoHistory, finalizeCompletedVideo } from "@/lib/video-history"
 export const maxDuration = 300
 
 // --- Studio Photo en Video (HeyGen Avatar IV) ---
-// La photo-video est DECOUPLEE des points/minutes du Live Swap : elle est
-// incluse dans les forfaits sous forme de CREDITS (1 credit = 1 video de 30s).
+// La photo-video utilise maintenant le portefeuille Jetons ChapCam.
+// Un rendu HeyGen est facture selon sa duree estimee, sans quota separe.
 // Les videos font 30 SECONDES : on borne la longueur du texte en consequence.
 // La parole FR fait ~14 caracteres/seconde.
 const CHARS_PER_SECOND = 14
@@ -23,19 +23,6 @@ const MAX_SCRIPT_CHARS = MAX_SECONDS * CHARS_PER_SECOND // ~420 caracteres
 // Estime la duree (en secondes) d'un script (pour l'affichage/plafonnement).
 function estimateSeconds(script: string): number {
   return Math.min(MAX_SECONDS, Math.max(2, Math.ceil(script.length / CHARS_PER_SECOND)))
-}
-
-// Seed unique : les abonnes existants (achat avant les credits) recoivent le
-// quota de leur forfait actif la premiere fois qu'ils utilisent le Studio.
-async function ensureCreditsForActiveSub(
-  userId: string,
-  planId: string,
-): Promise<number> {
-  const { balance, exists } = await getPhotoVideoBalance(userId)
-  if (exists) return balance
-  const quota = photoVideoQuotaForPlan(planId)
-  if (quota <= 0) return 0
-  return addPhotoVideoCredits(userId, quota)
 }
 
 const HEYGEN_API = "https://api.heygen.com"
@@ -132,36 +119,7 @@ export async function POST(request: NextRequest) {
 
     const estimatedSeconds = estimateSeconds(script)
 
-    // Verifier le SOLDE DE CREDITS photo-video AVANT tout appel HeyGen.
-    // 1 credit = 1 video de 30s. Les credits sont attribues a l'achat d'un
-    // forfait. On seed une seule fois les abonnes existants (achat anterieur).
-    const { data: sub } = await supabase
-      .from("subscriptions")
-      .select("plan, end_date, expires_at, is_active")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .limit(1)
-      .maybeSingle()
-
-    // Certains abonnements portent end_date, d'autres expires_at : on tolere les deux.
-    const subEnd = sub?.end_date ?? sub?.expires_at ?? null
-    const subActive = !!sub && !!subEnd && new Date(subEnd).getTime() > Date.now()
-    const balance = subActive
-      ? await ensureCreditsForActiveSub(user.id, sub!.plan)
-      : (await getPhotoVideoBalance(user.id)).balance
-
-    if (balance <= 0) {
-      return NextResponse.json(
-        {
-          error: subActive
-            ? "Credits Studio Photo en Video epuises. Renouvelle ou passe a un forfait superieur."
-            : "Aucun forfait actif. Achete un forfait pour recevoir tes videos Studio Photo en Video.",
-          code: subActive ? "quota_exhausted" : "no_plan",
-          balance: 0,
-        },
-        { status: 402 },
-      )
-    }
+    const estimatedCostUsd = estimatedSeconds * TOOL_PROVIDER_COST.photo_video.perSecondUsd
 
     // 1) Upload de la photo vers HeyGen -> asset_id
     const contentType = file.type === "image/png" ? "image/png" : "image/jpeg"
@@ -342,8 +300,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 3) Deduire 1 credit (1 video de 30s) seulement apres succes de la creation.
-    const remaining = await deductPhotoVideoCredit(user.id)
+  // Réserver les Jetons uniquement après la création HeyGen réussie.
+  const wallet = await reserveJetons(user.id, estimatedCostUsd, "photo_video", {
+    provider: "heygen",
+    durationSeconds: estimatedSeconds,
+    videoId,
+  })
+  if (!wallet.ok) {
+    return NextResponse.json({ error: `Solde insuffisant. Cette vidéo coûte ${wallet.required} Jetons.`, code: "insufficient_tokens", required: wallet.required, balance: wallet.balance }, { status: 402 })
+  }
+  const remaining = wallet.balance
 
     // 3bis) Enregistrer le job "processing" AVEC le user_id. Deux buts :
     //   - le WEBHOOK HeyGen (avatar_video.success) pourra retrouver le
@@ -368,13 +334,15 @@ export async function POST(request: NextRequest) {
     await logToolUsage({
       userId: user.id,
       tool: 'photo_video',
-      credits: 1,
+      credits: wallet.charged,
       durationSeconds: estimatedSeconds,
+      meta: { provider: "heygen", walletAlreadyCharged: true },
     })
 
-    return NextResponse.json({
-      success: true,
-      video_id: videoId,
+  return NextResponse.json({
+    success: true,
+    video_id: videoId,
+    charged_jetons: wallet.charged,
       // Le client renverra cet id a la route GET pour supprimer le clone une
       // fois la video terminee (le supprimer avant ferait echouer la video).
       clone_voice_id: cloneVoiceId,
@@ -400,29 +368,6 @@ export async function GET(request: NextRequest) {
     }
 
     const params = new URL(request.url).searchParams
-
-    // Mode "quota" : renvoie le solde de credits Studio Photo en Video.
-    // Independant de HeyGen : ne doit JAMAIS dependre de la cle API HeyGen.
-    if (params.get("info") === "quota") {
-      const { data: sub } = await supabase
-        .from("subscriptions")
-        .select("plan, end_date, expires_at, is_active")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .limit(1)
-        .maybeSingle()
-
-      const subEnd = sub?.end_date ?? sub?.expires_at ?? null
-      const subActive = !!sub && !!subEnd && new Date(subEnd).getTime() > Date.now()
-      const balance = subActive
-        ? await ensureCreditsForActiveSub(user.id, sub!.plan)
-        : (await getPhotoVideoBalance(user.id)).balance
-      return NextResponse.json({
-        success: true,
-        plan: subActive ? sub!.plan : null,
-        remaining: Math.max(0, balance),
-      })
-    }
 
     // Le statut video necessite HeyGen : on verifie la cle ici seulement.
     const apiKey = getApiKey()

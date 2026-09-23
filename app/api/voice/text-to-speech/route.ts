@@ -133,7 +133,7 @@ export async function POST(request: Request) {
       tool: 'voice_message',
       credits: 1,
       durationSeconds: 15,
-      meta: { mode: 'tts', chars: text.length },
+      meta: { mode: 'tts', chars: text.length, walletAlreadyCharged: true },
     })
 
     return new NextResponse(res.body, {
