@@ -69,6 +69,14 @@ const tools: Tool[] = [
     accent: '#ef4444',
     media: { type: 'image', src: '/swap/poster-chapverify.png' },
   },
+  {
+    href: '/chapsim',
+    title: 'ChapSim',
+    description: 'Numéros virtuels, SMS OTP et proxies premium',
+    badge: 'NEW',
+    accent: '#8b5cf6',
+    media: { type: 'image', src: '/chapsim/presentation.jpg' },
+  },
 ]
 
 function Badge({ kind, accent }: { kind: NonNullable<Tool['badge']>; accent: string }) {
