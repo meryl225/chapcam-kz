@@ -131,14 +131,16 @@ export function VideoHistorySection({
 
   return (
     <section aria-labelledby="mes-videos-title" className={compact ? "mt-0" : "mt-8"}>
-      <div className={compact ? "mb-3 flex items-center justify-end gap-3" : "mb-4 flex items-center justify-between gap-3"}>
-        <h2
-          id="mes-videos-title"
-          className="inline-flex items-center gap-2 text-lg font-bold text-white"
-        >
-          <History className="h-5 w-5 text-[#c6f542]" />
-          Mes vidéos
-        </h2>
+      <div className={compact ? "mb-2 flex items-center justify-end gap-3" : "mb-4 flex items-center justify-between gap-3"}>
+        {!compact && (
+          <h2
+            id="mes-videos-title"
+            className="inline-flex items-center gap-2 text-lg font-bold text-white"
+          >
+            <History className="h-5 w-5 text-[#c6f542]" />
+            Mes vidéos
+          </h2>
+        )}
         <button
           type="button"
           onClick={() => load(true)}
@@ -189,13 +191,13 @@ export function VideoHistorySection({
           </p>
         </div>
       ) : (
-        <div className={compact ? "grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-5" : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"}>
+        <div className={compact ? "grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5" : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"}>
           {videos.map((v) => (
             <div
               key={v.id}
-              className="overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]"
+              className="group overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.025] transition-colors hover:border-white/20"
             >
-              <div className="relative aspect-[9/16] w-full bg-black/40">
+              <div className={compact ? "relative aspect-[16/9] w-full overflow-hidden bg-slate-950" : "relative aspect-[9/16] w-full bg-black/40"}>
                 {v.status === "completed" && (v.hls_url || v.video_url) ? (
                   playingId === v.id ? (
                     v.hls_url ? (
@@ -204,7 +206,7 @@ export function VideoHistorySection({
                       <HlsVideoPlayer
                         src={v.hls_url}
                         poster={v.thumbnail_url}
-                        className="h-full w-full bg-black object-contain"
+                        className="h-full w-full bg-black object-cover"
                       />
                     ) : (
                       // Repli : master Blob (lecture native) si pas encore dans Stream.
@@ -230,21 +232,21 @@ export function VideoHistorySection({
                           charger, on masque l'<img> (onError) et ce fond reste
                           visible sous le bouton lecture -> jamais d'icone "fichier
                           casse". */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-white/[0.06] to-black/40" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-black/20" />
                       {v.thumbnail_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={v.thumbnail_url || "/placeholder.svg"}
                           alt=""
                           loading="lazy"
-                          className="relative h-full w-full object-cover"
+                          className="relative h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
                           onError={(e) => {
                             e.currentTarget.style.display = "none"
                           }}
                         />
                       ) : null}
                       <span className="absolute inset-0 flex items-center justify-center">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/50 backdrop-blur-sm transition-transform group-hover:scale-110">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full border border-white/25 bg-black/45 backdrop-blur-sm transition-colors group-hover:bg-black/65">
                           <Play className="h-6 w-6 translate-x-0.5 fill-white text-white" />
                         </span>
                       </span>
@@ -267,7 +269,7 @@ export function VideoHistorySection({
                   </div>
                 )}
               </div>
-              <div className="flex items-center justify-between gap-2 p-2">
+              <div className="flex items-center justify-between gap-2 px-2.5 py-2">
                 <div className="min-w-0">
                   <p className="truncate text-[11px] font-medium text-white/80" title={v.title}>
                     {v.title || "Vidéo"}
@@ -280,7 +282,7 @@ export function VideoHistorySection({
                       type="button"
                       onClick={() => handleDownload(v)}
                       disabled={downloadingId === v.id}
-                      className="inline-flex items-center gap-1 rounded-lg bg-[#c6f542] px-2 py-1 text-[11px] font-semibold text-black transition-colors hover:bg-[#b3e02e] disabled:opacity-60"
+                      className="inline-flex items-center gap-1 rounded-md bg-white/[0.08] px-2 py-1 text-[10px] font-medium text-white/75 transition-colors hover:bg-white/[0.16] hover:text-white disabled:opacity-60"
                       aria-label={`Enregistrer ${v.title}`}
                       title="Enregistrer sur mon appareil"
                     >
@@ -295,7 +297,7 @@ export function VideoHistorySection({
                     type="button"
                     onClick={() => handleDelete(v)}
                     disabled={deletingId === v.id}
-                    className="inline-flex items-center rounded-lg bg-white/10 px-2 py-1 text-white/70 transition-colors hover:bg-red-500/20 hover:text-red-400 disabled:opacity-60"
+                    className="inline-flex items-center rounded-md bg-white/[0.06] px-2 py-1 text-white/50 transition-colors hover:bg-red-500/15 hover:text-red-300 disabled:opacity-60"
                     aria-label={`Supprimer ${v.title}`}
                     title="Supprimer cette vidéo"
                   >
