@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Bell, ChevronRight, Home, Image as ImageIcon, Menu, Music2, Plus, Search, Sparkles, UserRound } from "lucide-react"
+import { Bell, ChevronRight, Home, Image as ImageIcon, Menu, Plus, Search, Sparkles, UserRound } from "lucide-react"
 import { useState } from "react"
 import { CreatorVideoStrip } from "@/components/creator-video-strip"
 import { HomeCommunityShowcase } from "@/components/home-community-showcase"
@@ -26,7 +26,7 @@ const tools = [
   { title: "Genjutsu", description: "Anime tes images avec un mouvement naturel.", media: { type: "video", src: "/videos/genjutsu-demo.mov" }, icon: Sparkles, color: "#22c55e", href: "/dashboard/genjutsu" },
   { title: "Motion Control", description: "Anime ta photo en 3D.", media: { type: "video", src: "/videos/motion-control-demo.mp4", poster: "/swap/poster-motion.png" }, icon: Sparkles, color: "#6366f1", href: "/dashboard/motion" },
   { title: "Message Vocal", description: "Crée des voix réalistes depuis un texte.", media: { type: "image", src: "/swap/poster-message-vocal.png" }, icon: Menu, color: "#ec4899", href: "/dashboard/message-vocal" },
-  { title: "Traduction vidéo", description: "Traduis ta vidéo en 190+ langues.", media: { type: "image", src: "/swap/poster-video-translation.png" }, icon: Music2, color: "#14b8a6", href: "/dashboard/video-translation" },
+  { title: "Traduction vidéo", description: "Traduis ta vidéo en 190+ langues.", media: { type: "image", src: "/swap/poster-video-translation.png" }, icon: Sparkles, color: "#14b8a6", href: "/dashboard/video-translation" },
   { title: "ChapVerify", description: "Détecte les deepfakes.", media: { type: "image", src: "/swap/poster-chapverify.png" }, icon: Bell, color: "#ef4444", href: "/chapverify" },
   { title: "ChapSim", description: "Numéros virtuels, SMS OTP et proxies premium.", media: { type: "image", src: "/chapsim/presentation.jpg" }, icon: ImageIcon, color: "#f59e0b", href: "/chapsim" },
 ]
@@ -51,7 +51,7 @@ export function ReferenceHomepage() {
           </nav>
           <div className="flex shrink-0 items-center gap-2">
             <Link href="https://www.tiktok.com/@multivoix.ci" target="_blank" rel="noreferrer" aria-label="TikTok ChapCam" className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#d5e4f1] bg-white/65 text-[#10234d] transition hover:-translate-y-0.5 hover:border-[#9bbce0] hover:shadow-sm">
-              <Music2 className="h-[17px] w-[17px]" />
+              <Image src="/images/tiktok-logo.png" alt="TikTok" width={19} height={19} className="h-[19px] w-[19px] object-contain" />
             </Link>
             <button type="button" onClick={() => setPlansOpen(true)} className="rounded-xl border border-[#bcd9ef] bg-white/65 px-2.5 py-2 text-[11px] font-bold text-[#31547d] transition hover:-translate-y-0.5 hover:bg-white sm:px-3 sm:text-[13px]">Tarifs</button>
             <Link href="/auth/login" className="hidden whitespace-nowrap rounded-xl px-3 py-2 text-[13px] font-semibold text-[#53637c] transition hover:bg-white/70 hover:text-[#10234d] sm:block">Se connecter</Link>
