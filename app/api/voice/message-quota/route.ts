@@ -19,6 +19,8 @@ export async function GET() {
     success: true,
     plan,
     subActive,
-    remaining: Math.max(0, balance),
+    remaining: Math.max(0, Math.floor(balance / 10)),
+    jetons: Math.max(0, balance),
+    costPerMessage: 10,
   })
 }

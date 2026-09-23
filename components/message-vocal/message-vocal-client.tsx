@@ -70,7 +70,7 @@ export function MessageVocalClient({ catalog }: { catalog: VoiceCatalog }) {
           <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2">
             <Coins className="h-4 w-4 text-[#00d4ff]" />
             <span className="text-sm font-semibold text-white">
-              {isLoading ? 'Chargement…' : `${quota.remaining} message${quota.remaining > 1 ? 's' : ''} vocal${quota.remaining > 1 ? 'aux' : ''} restant${quota.remaining > 1 ? 's' : ''}`}
+              {isLoading ? 'Chargement…' : `${quota.remaining} message${quota.remaining > 1 ? 's' : ''} vocal${quota.remaining > 1 ? 'aux' : ''} restant${quota.remaining > 1 ? 's' : ''} · 1 message vocal = 10 jetons`}
             </span>
           </div>
         </div>
