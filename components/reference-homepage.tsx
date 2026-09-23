@@ -3,9 +3,11 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Bell, ChevronRight, Home, Image as ImageIcon, Menu, Music2, Plus, Search, Sparkles, UserRound } from "lucide-react"
+import { useState } from "react"
 import { CreatorVideoStrip } from "@/components/creator-video-strip"
 import { HomeCommunityShowcase } from "@/components/home-community-showcase"
 import { HomepageFaq } from "@/components/homepage-faq"
+import { PlansTopupModal } from "@/components/plans-topup-modal"
 
 const tools = [
   { title: "Live Swap", description: "Change de visage en temps réel.", media: { type: "video", src: "/swap/live-swap-demo.mp4" }, icon: Sparkles, color: "#2563eb", href: "/dashboard/live-swap" },
@@ -18,6 +20,8 @@ const tools = [
 ]
 
 export function ReferenceHomepage() {
+  const [plansOpen, setPlansOpen] = useState(false)
+
   return (
     <div className="min-h-screen overflow-hidden bg-[#f4f9ff] text-[#071a42]">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(125,211,252,0.38),transparent_38%),linear-gradient(180deg,#f8fbff_0%,#e8f4ff_65%,#f8fbff_100%)]" />
@@ -29,7 +33,7 @@ export function ReferenceHomepage() {
           </Link>
           <nav className="hidden items-center gap-7 text-[13px] font-semibold text-[#536783] lg:flex" aria-label="Navigation principale">
             <Link href="#outils" className="transition-colors hover:text-[#10234d]">Fonctionnalités</Link>
-            <Link href="/dashboard/plans" className="transition-colors hover:text-[#10234d]">Tarifs</Link>
+            <button type="button" onClick={() => setPlansOpen(true)} className="transition-colors hover:text-[#10234d]">Tarifs</button>
             <Link href="#outils" className="transition-colors hover:text-[#10234d]">À propos</Link>
             <Link href="#faq" className="transition-colors hover:text-[#10234d]">FAQ</Link>
           </nav>
@@ -68,6 +72,7 @@ export function ReferenceHomepage() {
         <section id="tarifs" className="mt-10 hidden rounded-3xl bg-[#102b63] px-8 py-10 text-white shadow-[0_18px_45px_-24px_rgba(16,43,99,.7)] lg:block"><div className="flex items-center justify-between gap-8"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-300">ChapCam Pro</p><h2 className="mt-2 text-3xl font-bold">Crée sans limites.</h2><p className="mt-2 text-sm text-blue-100/75">Des outils IA conçus pour donner vie à toutes tes idées.</p></div><Link href="/dashboard/plans" className="rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#102b63]">Voir les tarifs</Link></div></section>
       </main>
       <nav className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-w-[760px] items-center justify-around rounded-t-[1.7rem] border border-white/80 bg-white/85 px-3 py-3 shadow-[0_-12px_35px_-18px_rgba(28,77,130,.55)] backdrop-blur-xl lg:hidden"><Link href="/" className="flex flex-col items-center gap-1 text-xs font-semibold text-[#148ee0]"><Home className="h-5 w-5" />Accueil</Link><Link href="/dashboard" className="flex flex-col items-center gap-1 text-xs text-[#71839e]"><Search className="h-5 w-5" />Explorer</Link><Link href="/auth/sign-up" className="-mt-7 flex h-14 w-14 flex-col items-center justify-center rounded-full bg-gradient-to-br from-[#0ea5e9] to-[#7c3aed] text-white shadow-[0_10px_24px_-6px_rgba(37,99,235,.75)]"><Plus className="h-7 w-7" /><span className="sr-only">Créer</span></Link><Link href="/dashboard" className="flex flex-col items-center gap-1 text-xs text-[#71839e]"><ImageIcon className="h-5 w-5" />Mes créations</Link><Link href="/dashboard/settings" className="flex flex-col items-center gap-1 text-xs text-[#71839e]"><UserRound className="h-5 w-5" />Profil</Link></nav>
+      <PlansTopupModal open={plansOpen} onClose={() => setPlansOpen(false)} />
     </div>
   )
 }
