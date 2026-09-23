@@ -1,6 +1,7 @@
 import dynamic from "next/dynamic"
 import { Header } from "@/components/header"
 import { HeroSection } from "@/components/hero-section"
+import { HomepageFinish } from "@/components/homepage-finish"
 
 // Sections sous la ligne de flottaison : chargees a la demande (au defilement)
 // pour alleger le JavaScript initial et accelerer l'affichage du haut de page.
@@ -53,6 +54,7 @@ export default function Home() {
         <div className="mo-belowfold">
           <ToolsShowcaseSection />
           <PricingSection />
+          <HomepageFinish />
           <SiteFooter />
         </div>
       </div>
