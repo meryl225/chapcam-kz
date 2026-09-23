@@ -19,9 +19,6 @@ const RoadmapSection = dynamic(() =>
 const HowItWorksSection = dynamic(() =>
   import("@/components/how-it-works-section").then((m) => m.HowItWorksSection),
 )
-const AvailableCountriesSection = dynamic(() =>
-  import("@/components/available-countries-section").then((m) => m.AvailableCountriesSection),
-)
 const PricingSection = dynamic(() =>
   import("@/components/pricing-section").then((m) => m.PricingSection),
 )
@@ -83,7 +80,6 @@ export default function Home() {
           <InActionSection />
           <RoadmapSection />
           <HowItWorksSection />
-          <AvailableCountriesSection />
           <PricingSection />
           <FAQSection />
           <TutorialSection />
