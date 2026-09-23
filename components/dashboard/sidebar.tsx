@@ -126,7 +126,7 @@ function ToolCard({
       className={`group relative mb-1 flex items-center gap-3 overflow-hidden rounded-lg border p-2.5 transition-colors duration-200 ${
           active
             ? 'border-blue-400/25 bg-blue-400/[0.09] text-foreground'
-            : 'border-transparent bg-transparent text-muted-foreground hover:border-white/[0.08] hover:bg-white/[0.045] hover:text-foreground'
+            : 'border-transparent bg-transparent text-muted-foreground hover:border-white/[0.08] hover:bg-muted dark:hover:bg-white/[0.045] hover:text-foreground'
         }`}
     >
       {/* Barre d'accent verticale a gauche (identite couleur de l'outil) */}
@@ -136,7 +136,7 @@ function ToolCard({
       />
       {/* Icône neutre et homogène */}
       <span
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-300 transition-colors duration-200 group-hover:bg-white/[0.1] group-hover:text-white"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted dark:bg-white/[0.06] text-muted-foreground dark:text-slate-300 transition-colors duration-200 group-hover:bg-muted group-hover:text-foreground dark:group-hover:bg-white/[0.1] dark:group-hover:text-white"
         style={{ color: 'rgb(148 163 184)' }}
       >
         <Icon className="h-[18px] w-[18px]" strokeWidth={2.4} />
@@ -234,7 +234,7 @@ function SidebarContent({
       </div>
 
       {/* Separateur */}
-      <div className="mx-5 mb-2 h-px bg-white/[0.08]" />
+      <div className="mx-5 mb-2 h-px bg-sidebar-border" />
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-3 py-1">
@@ -245,11 +245,11 @@ function SidebarContent({
           className={`group/nav relative mb-2 flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-[12px] font-semibold uppercase tracking-wide transition-colors duration-200 ${
             pathname === '/dashboard'
               ? 'bg-blue-400/[0.1] text-foreground'
-              : 'text-muted-foreground hover:bg-white/[0.045] hover:text-foreground'
+              : 'text-muted-foreground hover:bg-muted dark:hover:bg-white/[0.045] hover:text-foreground'
           }`}
         >
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted dark:bg-white/[0.06] text-muted-foreground dark:text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
             style={{ color: 'var(--nav-accent)' }}
           >
             <Home className="h-[17px] w-[17px]" strokeWidth={2.5} />
@@ -275,7 +275,7 @@ function SidebarContent({
         ))}
 
         {/* Separateur avant les utilitaires */}
-        <div className="my-3 h-px bg-white/[0.08]" />
+        <div className="my-3 h-px bg-sidebar-border" />
 
         {/* Utilitaires (lignes compactes) */}
         {navItems.map((item) => {
@@ -289,12 +289,12 @@ function SidebarContent({
                 isActivePath
                   ? 'bg-blue-400/[0.1] text-foreground'
                   : item.highlight
-                    ? 'bg-white/[0.035] text-foreground hover:bg-white/[0.07]'
-                    : 'text-muted-foreground hover:bg-white/[0.045] hover:text-foreground'
+                    ? 'bg-muted dark:bg-white/[0.035] text-foreground hover:bg-white/[0.07]'
+                    : 'text-muted-foreground hover:bg-muted dark:hover:bg-white/[0.045] hover:text-foreground'
               }`}
             >
               <span
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted dark:bg-white/[0.06] text-muted-foreground dark:text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
                 style={{ color: 'var(--nav-accent)' }}
               >
                 <item.icon className="h-[17px] w-[17px]" strokeWidth={2.5} />
@@ -313,7 +313,7 @@ function SidebarContent({
           className="group/nav mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight text-muted-foreground transition-all duration-200 hover:bg-muted hover:text-foreground"
         >
           <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted dark:bg-white/[0.06] text-muted-foreground dark:text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
             style={{ color: 'var(--nav-accent)' }}
           >
             <HelpCircle className="h-[17px] w-[17px]" strokeWidth={2.5} />
@@ -354,25 +354,25 @@ function SidebarContent({
           {isExpired && <span className="text-xs text-red-400">{t('Expire')}</span>}
         </div>
 
-  <div className="relative mb-3 overflow-hidden rounded-lg border border-emerald-300/25 bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.2),transparent_52%),linear-gradient(135deg,rgba(8,35,45,0.96),rgba(10,20,35,0.98))] p-3 shadow-[0_14px_34px_-20px_rgba(16,185,129,0.65),inset_0_1px_0_rgba(255,255,255,0.1)]">
+  <div className="relative mb-3 overflow-hidden rounded-lg border border-emerald-300/25 bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.16),transparent_52%),linear-gradient(135deg,rgba(236,253,245,0.98),rgba(240,249,255,0.98))] dark:bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.2),transparent_52%),linear-gradient(135deg,rgba(8,35,45,0.96),rgba(10,20,35,0.98))] p-3 shadow-[0_14px_34px_-20px_rgba(16,185,129,0.65),inset_0_1px_0_rgba(255,255,255,0.1)]">
   <div className="flex items-center justify-between gap-2">
   <div className="flex min-w-0 items-center gap-2">
   <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-emerald-400/15 ring-1 ring-emerald-300/35"><img src="/images/jetons-logo.jpg" alt="Logo Jetons" className="h-full w-full object-cover" /></span>
-  <div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-foreground">Jetons</p><p className="truncate text-[10px] text-emerald-200/60">Solde commun de tous les outils</p></div>
+  <div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-foreground">Jetons</p><p className="truncate text-[10px] text-emerald-900/75 dark:text-emerald-200/60">Solde commun de tous les outils</p></div>
   </div>
-  <div className="flex items-center gap-1.5"><span className="text-xl font-black tabular-nums text-emerald-100 drop-shadow-[0_0_12px_rgba(110,231,183,0.45)]">{jetons?.balance ?? 0}</span><button type="button" onClick={() => setJetonsOpen(true)} aria-label="Ajouter des jetons" title="Ajouter des jetons" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 shadow-md shadow-emerald-950/30 transition hover:scale-105 hover:bg-emerald-200"><Plus className="h-4 w-4" strokeWidth={3} /></button></div>
+  <div className="flex items-center gap-1.5"><span className="text-xl font-black tabular-nums text-emerald-950 drop-shadow-[0_0_12px_rgba(110,231,183,0.45)] dark:text-emerald-100">{jetons?.balance ?? 0}</span><button type="button" onClick={() => setJetonsOpen(true)} aria-label="Ajouter des jetons" title="Ajouter des jetons" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 shadow-md shadow-emerald-950/30 transition hover:scale-105 hover:bg-emerald-200"><Plus className="h-4 w-4" strokeWidth={3} /></button></div>
   </div>
       <p className="mt-2 text-[11px] leading-4 text-text-faint">Utilisables sur tous les outils sauf Live Swap.</p>
       </div>
       {jetonsOpen && <JetonsPage modal onClose={() => setJetonsOpen(false)} />}
 
-        <div className="mb-3 rounded-lg border border-white/[0.08] bg-white/[0.035] p-3">
+        <div className="mb-3 rounded-lg border border-border bg-card p-3 dark:border-white/[0.08] dark:bg-white/[0.035]">
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Battery className={`h-4 w-4 ${VIP_PLANS.has(plan) ? 'text-yellow-500' : 'text-primary'}`} />
               <span className="text-xs font-medium text-foreground">{t('Points restants')}</span>
             </div>
-            <span className="text-sm font-black text-cyan-100 drop-shadow-[0_0_10px_rgba(103,232,249,0.35)]">
+            <span className="text-sm font-black text-cyan-950 drop-shadow-[0_0_10px_rgba(103,232,249,0.35)] dark:text-cyan-100">
               {formatPoints(pointsRemaining)}/{formatPoints(pointsTotal)}
             </span>
           </div>
@@ -452,8 +452,8 @@ export function DashboardSidebar({
 
   return (
     <>
-<aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] border-r border-white/[0.07] bg-[#08111f] md:block">
-  <div className="relative h-full w-full overflow-hidden bg-[#08111f]">
+<aside className="fixed left-0 top-0 z-40 hidden h-screen w-[240px] border-r border-sidebar-border bg-sidebar md:block">
+  <div className="relative h-full w-full overflow-hidden bg-sidebar">
             <SidebarContent
               email={email}
               plan={plan}
@@ -467,7 +467,7 @@ export function DashboardSidebar({
           </div>
       </aside>
 
-      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-white/[0.07] bg-[#08111f] px-4 md:hidden">
+      <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center justify-between border-b border-sidebar-border bg-sidebar px-4 pb-[env(safe-area-inset-top)] md:hidden">
         <h1 className="text-xl font-bold">
           <span className="text-foreground">Chap</span>
           <span className="text-primary">Cam</span>
@@ -483,7 +483,7 @@ export function DashboardSidebar({
                 <Menu className="h-6 w-6" />
               </button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-[280px] border-white/[0.07] bg-[#08111f] p-0">
+            <SheetContent side="left" className="w-[280px] border-sidebar-border bg-sidebar p-0 pb-[env(safe-area-inset-bottom)] text-sidebar-foreground">
               <SheetTitle className="sr-only">{t('Menu de navigation')}</SheetTitle>
               <SidebarContent
                 email={email}
