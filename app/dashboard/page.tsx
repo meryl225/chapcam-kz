@@ -105,7 +105,7 @@ export default async function DashboardHubPage() {
               <h2 className="text-base font-semibold text-foreground"><T>Mes créations récentes</T></h2>
               <p className="mt-1 text-xs text-muted-foreground"><T>Retrouve rapidement tes dernières vidéos.</T></p>
             </div>
-            <Link href="/dashboard/mes-demandes" className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-blue-300 transition hover:text-blue-200">
+            <Link href="/dashboard/mes-demandes" className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-blue-700 transition hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200">
               <T>Voir toutes mes créations</T><ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
@@ -114,9 +114,9 @@ export default async function DashboardHubPage() {
         <SupportBanner />
       </section>
 
-      <section aria-label="Utilisation rapide" className="mt-5 border-t border-white/[0.07] pt-4">
+      <section aria-label="Utilisation rapide" className="mt-5 border-t border-border pt-4">
         <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
-          <span className="font-semibold uppercase tracking-[0.14em] text-white/45"><T>Utilisation rapide</T></span>
+          <span className="font-semibold uppercase tracking-[0.14em] text-muted-foreground"><T>Utilisation rapide</T></span>
           <span><b className="text-foreground">{swapsToday}</b> <T>swaps aujourd’hui</T></span>
           <span><b className="text-foreground">{fmtMinutes(points)}</b> <T>minutes restantes</T></span>
           <span><b className="text-foreground">{avatarCount ?? 0}</b> <T>avatars créés</T></span>
@@ -126,7 +126,7 @@ export default async function DashboardHubPage() {
 
       {/* ===== Bannière Pro ===== */}
       {!isPro && (
-        <section className="relative mt-7 overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 md:p-5">
+        <section className="relative mt-7 overflow-hidden rounded-xl border border-border bg-card p-4 md:p-5 dark:border-white/[0.08] dark:bg-white/[0.025]">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0"
