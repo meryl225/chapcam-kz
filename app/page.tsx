@@ -4,35 +4,11 @@ import { HeroSection } from "@/components/hero-section"
 
 // Sections sous la ligne de flottaison : chargees a la demande (au defilement)
 // pour alleger le JavaScript initial et accelerer l'affichage du haut de page.
-const CreatorsSection = dynamic(() =>
-  import("@/components/creators-section").then((m) => m.CreatorsSection),
-)
 const ToolsShowcaseSection = dynamic(() =>
   import("@/components/tools-showcase-section").then((m) => m.ToolsShowcaseSection),
 )
-const InActionSection = dynamic(() =>
-  import("@/components/in-action-section").then((m) => m.InActionSection),
-)
-const RoadmapSection = dynamic(() =>
-  import("@/components/roadmap-section").then((m) => m.RoadmapSection),
-)
-const HowItWorksSection = dynamic(() =>
-  import("@/components/how-it-works-section").then((m) => m.HowItWorksSection),
-)
 const PricingSection = dynamic(() =>
   import("@/components/pricing-section").then((m) => m.PricingSection),
-)
-const FAQSection = dynamic(() =>
-  import("@/components/faq-section").then((m) => m.FAQSection),
-)
-const TutorialSection = dynamic(() =>
-  import("@/components/tutorial-section").then((m) => m.TutorialSection),
-)
-const FounderSection = dynamic(() =>
-  import("@/components/founder-section").then((m) => m.FounderSection),
-)
-const PartnershipSection = dynamic(() =>
-  import("@/components/partnership-section").then((m) => m.PartnershipSection),
 )
 const SiteFooter = dynamic(() =>
   import("@/components/site-footer").then((m) => m.SiteFooter),
@@ -76,15 +52,7 @@ export default function Home() {
             echoue (voir .mo-belowfold dans globals.css). */}
         <div className="mo-belowfold">
           <ToolsShowcaseSection />
-          <CreatorsSection />
-          <InActionSection />
-          <RoadmapSection />
-          <HowItWorksSection />
           <PricingSection />
-          <FAQSection />
-          <TutorialSection />
-          <FounderSection />
-          <PartnershipSection />
           <SiteFooter />
         </div>
       </div>

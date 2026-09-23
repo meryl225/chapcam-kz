@@ -133,7 +133,7 @@ export function ToolsShowcaseSection() {
     <section id="outils" className="relative overflow-hidden px-6 py-20">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#0d1117]/60 to-transparent" />
 
-      <div className="max-w-6xl mx-auto relative z-10">
+      <div className="relative z-10 mx-auto max-w-7xl">
         {/* En-tete de section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
