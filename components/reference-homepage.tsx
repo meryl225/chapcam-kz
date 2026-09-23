@@ -9,6 +9,7 @@ import { HomeCommunityShowcase } from "@/components/home-community-showcase"
 import { HomepageFaq } from "@/components/homepage-faq"
 import { HomepageAbout } from "@/components/homepage-about"
 import { HomepageFooter } from "@/components/homepage-footer"
+import { FounderSection } from "@/components/founder-section"
 import { PlansTopupModal } from "@/components/plans-topup-modal"
 
 const streamingPlatforms = [
@@ -56,7 +57,7 @@ export function ReferenceHomepage() {
           </Link>
           <nav className="hidden items-center gap-7 text-[13px] font-semibold text-[#536783] lg:flex" aria-label="Navigation principale">
             <Link href="#outils" className="transition-colors hover:text-[#10234d]">Fonctionnalités</Link>
-            <Link href="#a-propos" className="transition-colors hover:text-[#10234d]">Founder</Link>
+            <Link href="#founder" className="transition-colors hover:text-[#10234d]">Founder</Link>
             <Link href="#a-propos" className="transition-colors hover:text-[#10234d]">À propos</Link>
             <Link href="#faq" className="transition-colors hover:text-[#10234d]">FAQ</Link>
           </nav>
@@ -115,6 +116,8 @@ export function ReferenceHomepage() {
         </section>
 
         <HomeCommunityShowcase />
+
+        <FounderSection />
 
         <HomepageAbout />
 
