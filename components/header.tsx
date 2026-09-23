@@ -53,7 +53,7 @@ export function Header() {
             <Link
               key={item.name}
               href={item.href}
-              className="whitespace-nowrap text-white/70 hover:text-white transition-colors text-sm font-medium relative group inline-flex items-center gap-1"
+              className={`whitespace-nowrap transition-colors text-sm font-medium relative group inline-flex items-center gap-1 ${item.name === "Tarifs" ? "rounded-full border border-[#168bd1] bg-[#138bd1] px-4 py-2 text-white shadow-[0_4px_14px_-6px_rgba(19,139,209,.9)] hover:border-[#0874b8] hover:bg-[#0874b8]" : "text-white/70 hover:text-white"}`}
             >
               {t(item.name)}
               <span className="absolute -bottom-1 left-0 w-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] group-hover:w-full transition-all duration-300" />
