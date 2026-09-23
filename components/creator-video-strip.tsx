@@ -46,7 +46,7 @@ function CreatorVideoCard({ video }: { video: CreatorVideo }) {
   }, [isVisible, video.src])
 
   return (
-    <article className="group relative min-w-[156px] snap-start overflow-hidden rounded-[18px] border border-[#d9e8f5] bg-[#eaf4fb] shadow-[0_12px_28px_-20px_rgba(30,83,132,.55)] lg:min-w-0 lg:w-[calc((100%-80px)/6)] lg:flex-[0_0_calc((100%-80px)/6)]">
+    <article className="group relative min-w-[132px] snap-start overflow-hidden rounded-[18px] sm:min-w-[156px] border border-[#d9e8f5] bg-[#eaf4fb] shadow-[0_12px_28px_-20px_rgba(30,83,132,.55)] lg:min-w-0 lg:w-[calc((100%-80px)/6)] lg:flex-[0_0_calc((100%-80px)/6)]">
       <div className="relative aspect-[9/16] overflow-hidden bg-[linear-gradient(145deg,#e9f5fb,#dcecff)]">
         {video.src ? (
           <video ref={videoRef} src={video.src} autoPlay={isVisible} muted loop playsInline preload="none" controls={false} className="absolute inset-0 h-full w-full object-cover" aria-label={video.label ?? "Vidéo créateur ChapCam"} />
@@ -64,7 +64,7 @@ function CreatorVideoCard({ video }: { video: CreatorVideo }) {
 
 export function CreatorVideoStrip() {
   return (
-    <section aria-label="Vidéos de créateurs ChapCam" className="hidden border-b border-[#dcebf6] pb-7 pt-5 lg:block">
+    <section aria-label="Vidéos de créateurs ChapCam" className="block border-b border-[#dcebf6] pb-5 pt-4 lg:pb-7 lg:pt-5">
       <div className="-mx-1 flex snap-x gap-4 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {creatorVideos.map((video) => <CreatorVideoCard key={video.id} video={video} />)}
       </div>
