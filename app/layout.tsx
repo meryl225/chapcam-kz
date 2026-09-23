@@ -46,7 +46,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="fr" className="bg-background" suppressHydrationWarning>
+    <html lang="fr" className="bg-background" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         {/* ===== CSS CRITIQUE INLINE (anti-FOUC au PREMIER acces) =====
             Corrige le "flash de page en police serif / liens bleus soulignes"
