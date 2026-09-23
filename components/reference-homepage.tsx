@@ -5,6 +5,7 @@ import Link from "next/link"
 import { Bell, ChevronRight, Home, Image as ImageIcon, Menu, Music2, Plus, Search, Sparkles, UserRound } from "lucide-react"
 import { CreatorVideoStrip } from "@/components/creator-video-strip"
 import { HomeCommunityShowcase } from "@/components/home-community-showcase"
+import { HomepageFaq } from "@/components/homepage-faq"
 
 const tools = [
   { title: "Live Swap", description: "Change de visage en temps réel.", media: { type: "video", src: "/swap/live-swap-demo.mp4" }, icon: Sparkles, color: "#2563eb", href: "/dashboard/live-swap" },
@@ -30,7 +31,7 @@ export function ReferenceHomepage() {
             <Link href="#outils" className="transition-colors hover:text-[#10234d]">Fonctionnalités</Link>
             <Link href="/dashboard/plans" className="transition-colors hover:text-[#10234d]">Tarifs</Link>
             <Link href="#outils" className="transition-colors hover:text-[#10234d]">À propos</Link>
-            <Link href="/blog" className="transition-colors hover:text-[#10234d]">Blog</Link>
+            <Link href="#faq" className="transition-colors hover:text-[#10234d]">FAQ</Link>
           </nav>
           <div className="flex shrink-0 items-center gap-2">
             <Link href="https://www.tiktok.com/@multivoix.ci" target="_blank" rel="noreferrer" aria-label="TikTok ChapCam" className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#d5e4f1] bg-white/65 text-[#10234d] transition hover:-translate-y-0.5 hover:border-[#9bbce0] hover:shadow-sm">
@@ -61,6 +62,8 @@ export function ReferenceHomepage() {
         </section>
 
         <HomeCommunityShowcase />
+
+        <HomepageFaq />
 
         <section id="tarifs" className="mt-10 hidden rounded-3xl bg-[#102b63] px-8 py-10 text-white shadow-[0_18px_45px_-24px_rgba(16,43,99,.7)] lg:block"><div className="flex items-center justify-between gap-8"><div><p className="text-xs font-bold uppercase tracking-[.18em] text-cyan-300">ChapCam Pro</p><h2 className="mt-2 text-3xl font-bold">Crée sans limites.</h2><p className="mt-2 text-sm text-blue-100/75">Des outils IA conçus pour donner vie à toutes tes idées.</p></div><Link href="/dashboard/plans" className="rounded-xl bg-white px-5 py-3 text-sm font-bold text-[#102b63]">Voir les tarifs</Link></div></section>
       </main>
