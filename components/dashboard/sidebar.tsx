@@ -366,7 +366,7 @@ function SidebarContent({
   <div className="flex items-center justify-between gap-2">
   <div className="flex min-w-0 items-center gap-2">
   <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-emerald-400/15 ring-1 ring-emerald-300/35"><img src="/images/jetons-logo.jpg" alt="Logo Jetons" className="h-full w-full object-cover" /></span>
-  <div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-foreground">Jetons</p><p className="truncate text-[10px] text-emerald-200/60">Solde commun ChapCam</p></div>
+  <div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-foreground">Jetons</p><p className="truncate text-[10px] text-emerald-200/60">Solde commun de tous les outils</p></div>
   </div>
   <div className="flex items-center gap-1.5"><span className="text-lg font-bold tabular-nums text-emerald-200">{jetons?.balance ?? 0}</span><button type="button" onClick={() => setJetonsOpen(true)} aria-label="Ajouter des jetons" title="Ajouter des jetons" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 shadow-md shadow-emerald-950/30 transition hover:scale-105 hover:bg-emerald-200"><Plus className="h-4 w-4" strokeWidth={3} /></button></div>
   </div>

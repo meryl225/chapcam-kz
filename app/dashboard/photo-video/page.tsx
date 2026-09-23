@@ -504,8 +504,8 @@ export default function PhotoVideoPage() {
             <Clapperboard className="h-5 w-5 text-primary" />
           </div>
           <div className="flex flex-col leading-tight">
-<span className="text-xs font-medium text-muted-foreground">Coût par vidéo HeyGen (30s max)</span>
-  <span className="text-xl font-bold text-foreground">90 Jetons</span>
+<span className="text-xs font-medium text-muted-foreground">Tarif d&apos;une génération HeyGen · 30s max</span>
+  <span className="text-xl font-bold text-foreground">90 Jetons / vidéo</span>
           </div>
           <button
             type="button"
@@ -963,7 +963,7 @@ export default function PhotoVideoPage() {
                 ) : status === "processing" ? (
                   <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Génération...</>
                 ) : (
-                  <><Wand2 className="mr-2 h-5 w-5" /> Générer la vidéo · {VIDEO_COST_JETONS} Jetons</>
+                  <><Wand2 className="mr-2 h-5 w-5" /> Générer la vidéo · tarif {VIDEO_COST_JETONS} Jetons</>
                 )}
               </Button>
               </>
