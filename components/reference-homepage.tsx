@@ -45,7 +45,7 @@ export function ReferenceHomepage() {
           </Link>
           <nav className="hidden items-center gap-7 text-[13px] font-semibold text-[#536783] lg:flex" aria-label="Navigation principale">
             <Link href="#outils" className="transition-colors hover:text-[#10234d]">Fonctionnalités</Link>
-            <button type="button" onClick={() => setPlansOpen(true)} className="transition-colors hover:text-[#10234d]">Tarifs</button>
+            <Link href="#a-propos" className="transition-colors hover:text-[#10234d]">Founder</Link>
             <Link href="#a-propos" className="transition-colors hover:text-[#10234d]">À propos</Link>
             <Link href="#faq" className="transition-colors hover:text-[#10234d]">FAQ</Link>
           </nav>
