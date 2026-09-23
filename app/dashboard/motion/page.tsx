@@ -7,7 +7,6 @@ import type { LucideIcon } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
-import { MotionCreditPacksSection } from "@/components/motion/credit-packs-section"
 import { TOOL_PROVIDER_COST } from "@/lib/tool-costs"
 import { ImageStudio } from "@/components/motion/image-studio"
 import { downloadVideo } from "@/lib/download-video"
@@ -874,10 +873,7 @@ className={`flex min-h-12 items-center justify-center gap-2 rounded-xl py-3 text
         </div>
       </div>
 
-      {/* Packs de credits Motion (achat sans forfait) */}
-      <div className="px-4 pb-10 lg:px-6">
-        <MotionCreditPacksSection />
-      </div>
+
       </>
       )}
     </div>
