@@ -2,17 +2,16 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { Bell, Camera, ChevronRight, Home, Image as ImageIcon, Menu, Music2, Plus, Search, Sparkles, UserRound } from "lucide-react"
+import { Bell, ChevronRight, Home, Image as ImageIcon, Menu, Music2, Plus, Search, Sparkles, UserRound } from "lucide-react"
 import { CreatorVideoStrip } from "@/components/creator-video-strip"
 import { HomeCommunityShowcase } from "@/components/home-community-showcase"
 
 const tools = [
   { title: "Live Swap", description: "Change de visage en temps réel.", media: { type: "video", src: "/swap/live-swap-demo.mp4" }, icon: Sparkles, color: "#2563eb", href: "/dashboard/live-swap" },
-  { title: "Photos en vidéo", description: "Anime ta photo en vidéo.", media: { type: "image", src: "/swap/poster-photo-video.png" }, icon: Camera, color: "#10b981", href: "/dashboard/photo-video" },
+  { title: "Genjutsu", description: "Anime tes images avec un mouvement naturel.", media: { type: "video", src: "/videos/genjutsu-demo.mov" }, icon: Sparkles, color: "#22c55e", href: "/dashboard/genjutsu" },
   { title: "Motion Control", description: "Anime ta photo en 3D.", media: { type: "video", src: "/videos/motion-control-demo.mp4", poster: "/swap/poster-motion.png" }, icon: Sparkles, color: "#6366f1", href: "/dashboard/motion" },
   { title: "Message Vocal", description: "Crée des voix réalistes depuis un texte.", media: { type: "image", src: "/swap/poster-message-vocal.png" }, icon: Menu, color: "#ec4899", href: "/dashboard/message-vocal" },
   { title: "Traduction vidéo", description: "Traduis ta vidéo en 190+ langues.", media: { type: "image", src: "/swap/poster-video-translation.png" }, icon: Music2, color: "#14b8a6", href: "/dashboard/video-translation" },
-  { title: "Genjutsu", description: "Anime tes images avec un mouvement naturel.", media: { type: "video", src: "/videos/genjutsu-demo.mov" }, icon: Sparkles, color: "#22c55e", href: "/dashboard/genjutsu" },
   { title: "ChapVerify", description: "Détecte les deepfakes.", media: { type: "image", src: "/swap/poster-chapverify.png" }, icon: Bell, color: "#ef4444", href: "/chapverify" },
   { title: "ChapSim", description: "Numéros virtuels, SMS OTP et proxies premium.", media: { type: "image", src: "/chapsim/presentation.jpg" }, icon: ImageIcon, color: "#f59e0b", href: "/chapsim" },
 ]
