@@ -55,7 +55,7 @@ export function ReferenceHomepage() {
             </Link>
             <button type="button" onClick={() => setPlansOpen(true)} className="rounded-xl border border-[#bcd9ef] bg-white/65 px-2.5 py-2 text-[11px] font-bold text-[#31547d] transition hover:-translate-y-0.5 hover:bg-white sm:px-3 sm:text-[13px]">Tarifs</button>
             <Link href="/auth/login" className="hidden whitespace-nowrap rounded-xl px-3 py-2 text-[13px] font-semibold text-[#53637c] transition hover:bg-white/70 hover:text-[#10234d] sm:block">Se connecter</Link>
-            <Link href="/auth/sign-up" className="whitespace-nowrap rounded-xl bg-gradient-to-r from-[#10a8ec] to-[#7c3aed] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_8px_24px_-8px_rgba(59,130,246,.7)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(59,130,246,.75)]">S’inscrire gratuitement</Link>
+            <Link href="/auth/sign-up" className="whitespace-nowrap rounded-xl bg-gradient-to-r from-[#10a8ec] to-[#7c3aed] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_8px_24px_-8px_rgba(59,130,246,.7)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(59,130,246,.75)]">S’inscrire</Link>
           </div>
         </header>
 
