@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { MotionCreditPacksSection } from "@/components/motion/credit-packs-section"
+import { TOOL_PROVIDER_COST } from "@/lib/tool-costs"
 import { ImageStudio } from "@/components/motion/image-studio"
 import { downloadVideo } from "@/lib/download-video"
 
@@ -42,7 +43,7 @@ type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 // Modeles (mappes sur les tiers DoP cote API). Presente facon Higgsfield.
 const MODELS: { value: string; label: string; credits: number; desc: string; pro?: boolean }[] = [
   { value: "standard", label: "Standard", credits: 1, desc: "Rendu rapide et fiable" },
-  { value: "genjutsu", label: "Kling 3.0", credits: 2, desc: "Motion Control Higgsfield", pro: true },
+  { value: "genjutsu", label: "Kling 3.0", credits: 2, desc: "Motion Control ChapCam", pro: true },
   { value: "pro", label: "Pro", credits: 2, desc: "Détails & fluidité maximum", pro: true },
 ]
 const QUALITIES: { value: "720p" | "1080p"; label: string; desc: string }[] = [
@@ -663,9 +664,12 @@ export default function MotionPage() {
                       )}
                     </div>
                     <p className="mt-1 text-[11px] leading-snug text-white/45">{m.desc}</p>
-                    <div className="mt-2.5 flex items-center gap-1">
-                      <span className={`text-base font-bold tabular-nums ${active ? "text-[#c6f542]" : "text-white/70"}`}>{m.credits}</span>
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-white/35">crédits</span>
+                    <div className="mt-2.5 flex items-end justify-between gap-2">
+                      <div className="flex items-center gap-1">
+                        <span className={`text-base font-bold tabular-nums ${active ? "text-[#c6f542]" : "text-white/70"}`}>{m.credits}</span>
+                        <span className="text-[10px] font-medium uppercase tracking-wide text-white/35">crédits Motion</span>
+                      </div>
+                      <span className="text-right text-[10px] font-bold leading-tight text-[#c6f542]/80">{Math.ceil(TOOL_PROVIDER_COST.motion.perSecondUsd * 2 * 60 * TOOL_PROVIDER_COST.motion.maxDurationSeconds)} Jetons<br /><span className="font-medium text-white/35">pour 10s max</span></span>
                     </div>
                     {m.pro && active && (
                       <span className="absolute bottom-2.5 right-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#c6f542] text-black">

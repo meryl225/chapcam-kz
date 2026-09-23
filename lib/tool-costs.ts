@@ -9,7 +9,7 @@
 //   - HeyGen Avatar IV (photo -> video) : ~0,05 $/seconde de video produite.
 //   - HeyGen Video Translation v3 : ~0,033 $/s (Rapide), ~0,067 $/s (Precision),
 //     factures a la duree de la video SOURCE.
-//   - fal.ai Kling Motion Control : cout au clip (~10 s max).
+//   - Kling 3.0 Motion Control : 0,0714 $/seconde, plafonne a 10 s.
 // ============================================================
 
 export type ToolName = 'photo_video' | 'motion' | 'translation' | 'chapverify' | 'voice_message'
@@ -48,7 +48,8 @@ export const TOOL_PROVIDER_COST = {
     defaultDurationSeconds: 60, // source plafonnee a 60 s
   },
   motion: {
-    flatUsd: 0.35, // estimation par clip de motion-transfer
+    perSecondUsd: 0.0714, // Kling 3.0 : tarif fournisseur fourni, après remise
+    maxDurationSeconds: 10,
   },
   chapverify: {
     flatUsd: 0.02,
@@ -79,7 +80,8 @@ export function estimateToolCostUsd(
     const rate = opts?.precision ? c.precisionPerSecondUsd : c.perSecondUsd
     usd = seconds * rate
   } else if (tool === 'motion') {
-    usd = TOOL_PROVIDER_COST.motion.flatUsd
+    const seconds = Math.min(TOOL_PROVIDER_COST.motion.maxDurationSeconds, Math.max(1, opts?.durationSeconds ?? TOOL_PROVIDER_COST.motion.maxDurationSeconds))
+    usd = seconds * TOOL_PROVIDER_COST.motion.perSecondUsd
   } else if (tool === 'chapverify') {
     usd = TOOL_PROVIDER_COST.chapverify.flatUsd
   } else if (tool === 'voice_message') {
