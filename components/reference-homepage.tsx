@@ -3,15 +3,7 @@
 import Image from "next/image"
 import Link from "next/link"
 import { Bell, Camera, ChevronRight, Home, Image as ImageIcon, Menu, Music2, Play, Plus, Search, Sparkles, UserRound } from "lucide-react"
-
-const creators = [
-  ["a3", "1.2M"],
-  ["a2", "842K"],
-  ["a6", "2.1M"],
-  ["a4", "1.4M"],
-  ["a1", "980K"],
-  ["a5", "1.6M"],
-]
+import { CreatorVideoStrip } from "@/components/creator-video-strip"
 
 const tools = [
   { title: "Live Swap", image: "/images/hero/creator-swapped.png", icon: Sparkles, color: "#2563eb", href: "/dashboard/live-swap" },
@@ -32,7 +24,7 @@ export function ReferenceHomepage() {
   return (
     <div className="min-h-screen overflow-hidden bg-[#f4f9ff] text-[#071a42]">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(125,211,252,0.38),transparent_38%),linear-gradient(180deg,#f8fbff_0%,#e8f4ff_65%,#f8fbff_100%)]" />
-      <main className="relative mx-auto max-w-[760px] px-4 pb-28 sm:px-6 lg:max-w-7xl lg:pb-12">
+      <main className="relative mx-auto max-w-[760px] px-4 pb-28 sm:px-6 lg:max-w-7xl lg:max-w-[1440px] lg:pb-12">
         <header className="flex h-[76px] items-center justify-between gap-4 border-b border-[#d8e8f6]/80">
           <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="ChapCam accueil">
             <Image src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo%20chapcam-Zg2rUUnOrSECjteElTxoU1rcYfwF3i.jpg" alt="ChapCam" width={38} height={38} className="h-9 w-9 rounded-xl object-contain shadow-sm" />
@@ -48,15 +40,12 @@ export function ReferenceHomepage() {
             <Link href="https://www.tiktok.com/@multivoix.ci" target="_blank" rel="noreferrer" aria-label="TikTok ChapCam" className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#d5e4f1] bg-white/65 text-[#10234d] transition hover:-translate-y-0.5 hover:border-[#9bbce0] hover:shadow-sm">
               <Music2 className="h-[17px] w-[17px]" />
             </Link>
-            <button type="button" aria-label="Rechercher" className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#d5e4f1] bg-white/65 text-[#536783] transition hover:-translate-y-0.5 hover:border-[#9bbce0] hover:shadow-sm">
-              <Search className="h-[17px] w-[17px]" />
-            </button>
             <Link href="/auth/login" className="hidden whitespace-nowrap rounded-xl px-3 py-2 text-[13px] font-semibold text-[#53637c] transition hover:bg-white/70 hover:text-[#10234d] sm:block">Se connecter</Link>
             <Link href="/auth/sign-up" className="whitespace-nowrap rounded-xl bg-gradient-to-r from-[#10a8ec] to-[#7c3aed] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_8px_24px_-8px_rgba(59,130,246,.7)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(59,130,246,.75)]">S’inscrire gratuitement</Link>
           </div>
         </header>
 
-        <section className="mb-5 flex snap-x gap-3 overflow-x-auto pb-1 pt-2 [scrollbar-width:none] lg:mb-8"><div className="flex min-w-max gap-3">{creators.map(([avatar, views]) => <div key={avatar} className="relative h-36 w-28 shrink-0 overflow-hidden rounded-2xl border border-white/70 bg-white shadow-[0_8px_20px_-12px_rgba(28,77,130,.5)] sm:h-40 sm:w-32"><Image src={`/images/hero/avatars/${avatar}.png`} alt="Créateur ChapCam" fill className="object-cover" /><div className="absolute inset-x-2 bottom-2 flex items-center gap-1 text-xs font-semibold text-white drop-shadow"><Play className="h-3 w-3 fill-current" />{views}</div></div>)}</div></section>
+        <CreatorVideoStrip />
 
         <div className="mb-5 flex h-14 items-center gap-3 rounded-2xl border border-white/80 bg-white/65 px-4 shadow-[0_12px_30px_-20px_rgba(28,77,130,.55)] backdrop-blur"><Search className="h-5 w-5 text-[#6480a4]" /><span className="text-sm text-[#7487a1]">Rechercher un outil, un effet, une idée...</span></div>
 
