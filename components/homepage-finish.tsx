@@ -1,10 +1,6 @@
 import Link from "next/link"
 import { ArrowRight, Check, Globe2, Monitor, Smartphone } from "lucide-react"
-import { useT } from "@/lib/i18n/language-provider"
-
 export function HomepageFinish() {
-  const t = useT()
-
   return (
     <>
       <section className="hidden border-y border-white/[0.08] bg-white/[0.025] px-6 py-10 lg:block">
