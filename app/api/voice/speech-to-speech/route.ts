@@ -123,7 +123,7 @@ export async function POST(request: Request) {
       tool: 'voice_message',
       credits: 1,
       durationSeconds: 15,
-      meta: { mode: 'voice_changer' },
+      meta: { mode: 'voice_changer', walletAlreadyCharged: true },
     })
 
     return new NextResponse(res.body, {

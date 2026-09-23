@@ -336,6 +336,7 @@ export async function POST(request: NextRequest) {
       tool: 'photo_video',
       credits: wallet.charged,
       durationSeconds: estimatedSeconds,
+      meta: { provider: "heygen", walletAlreadyCharged: true },
     })
 
   return NextResponse.json({

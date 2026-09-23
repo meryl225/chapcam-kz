@@ -1,5 +1,7 @@
 import 'server-only'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
+import { reserveJetons, creditJetons } from '@/lib/jetons'
+import { TOOL_PROVIDER_COST } from '@/lib/tool-costs'
 
 // ============================================================
 // Solde de credits "Message Vocal" (ElevenLabs TTS + changement de voix),
@@ -69,18 +71,12 @@ export async function addVoiceMessageCredits(userId: string, amount: number): Pr
 
 /** Deduit N credits. Retourne le solde restant, ou -1 si insuffisant. */
 export async function deductVoiceMessageCredits(userId: string, cost = 1): Promise<number> {
-  await ensureTable()
-  const n = Math.max(1, Math.floor(cost))
-  const rows = (await sql`
-    UPDATE voice_message_credits
-    SET balance = balance - ${n}, updated_at = now()
-    WHERE user_id = ${userId} AND balance >= ${n}
-    RETURNING balance
-  `) as { balance: number }[]
-  return rows.length === 0 ? -1 : Number(rows[0].balance)
+  const wallet = await reserveJetons(userId, TOOL_PROVIDER_COST.voice_message.flatUsd, 'voice_message', { legacyCost: cost })
+  return wallet.ok ? wallet.balance : -1
 }
 
 /** Rembourse N credits (si la generation echoue apres deduction). */
 export async function refundVoiceMessageCredits(userId: string, cost = 1): Promise<number> {
-  return addVoiceMessageCredits(userId, Math.max(1, Math.floor(cost)))
+  const amount = Math.max(1, Math.floor(cost))
+  return (await creditJetons(userId, amount, { tool: 'voice_message', reason: 'generation_failed' })).balance
 }

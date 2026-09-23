@@ -391,7 +391,7 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       tool: "motion",
       credits: wallet.charged,
-      meta: { model: tierKey, provider: "kling", billing: "jetons" },
+      meta: { model: tierKey, provider: "kling", billing: "jetons", walletAlreadyCharged: true },
     })
 
     return NextResponse.json({

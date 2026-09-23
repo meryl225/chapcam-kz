@@ -70,9 +70,14 @@ export async function logToolUsage(params: {
     })
     const duration = params.durationSeconds ?? null
     const meta = params.meta ? JSON.stringify(params.meta) : null
-    const wallet = await reserveJetons(params.userId, costUsd, params.tool, params.meta)
-    if (!wallet.ok) {
-      console.warn('[tool-usage] Solde jetons insuffisant après génération', { userId: params.userId, tool: params.tool, required: wallet.required, balance: wallet.balance })
+    // Les routes qui réservent avant l'appel fournisseur marquent leur événement
+    // pour éviter un double débit. Les outils historiques sont débités ici.
+    const walletAlreadyCharged = params.meta?.walletAlreadyCharged === true
+    if (!walletAlreadyCharged) {
+      const wallet = await reserveJetons(params.userId, costUsd, params.tool, params.meta)
+      if (!wallet.ok) {
+        console.warn('[tool-usage] Solde jetons insuffisant après génération', { userId: params.userId, tool: params.tool, required: wallet.required, balance: wallet.balance })
+      }
     }
     await sql`
       INSERT INTO tool_usage_events
