@@ -354,13 +354,13 @@ function SidebarContent({
           {isExpired && <span className="text-xs text-red-400">{t('Expire')}</span>}
         </div>
 
-  <div className="mb-3 overflow-hidden rounded-lg border border-white/[0.08] bg-white/[0.035] p-3">
+  <div className="relative mb-3 overflow-hidden rounded-lg border border-emerald-300/25 bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.2),transparent_52%),linear-gradient(135deg,rgba(8,35,45,0.96),rgba(10,20,35,0.98))] p-3 shadow-[0_14px_34px_-20px_rgba(16,185,129,0.65),inset_0_1px_0_rgba(255,255,255,0.1)]">
   <div className="flex items-center justify-between gap-2">
   <div className="flex min-w-0 items-center gap-2">
   <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-emerald-400/15 ring-1 ring-emerald-300/35"><img src="/images/jetons-logo.jpg" alt="Logo Jetons" className="h-full w-full object-cover" /></span>
   <div className="min-w-0"><p className="text-xs font-semibold tracking-wide text-foreground">Jetons</p><p className="truncate text-[10px] text-emerald-200/60">Solde commun de tous les outils</p></div>
   </div>
-  <div className="flex items-center gap-1.5"><span className="text-lg font-bold tabular-nums text-emerald-200">{jetons?.balance ?? 0}</span><button type="button" onClick={() => setJetonsOpen(true)} aria-label="Ajouter des jetons" title="Ajouter des jetons" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 shadow-md shadow-emerald-950/30 transition hover:scale-105 hover:bg-emerald-200"><Plus className="h-4 w-4" strokeWidth={3} /></button></div>
+  <div className="flex items-center gap-1.5"><span className="text-xl font-black tabular-nums text-emerald-100 drop-shadow-[0_0_12px_rgba(110,231,183,0.45)]">{jetons?.balance ?? 0}</span><button type="button" onClick={() => setJetonsOpen(true)} aria-label="Ajouter des jetons" title="Ajouter des jetons" className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-300 text-emerald-950 shadow-md shadow-emerald-950/30 transition hover:scale-105 hover:bg-emerald-200"><Plus className="h-4 w-4" strokeWidth={3} /></button></div>
   </div>
       <p className="mt-2 text-[11px] leading-4 text-text-faint">Utilisables sur tous les outils sauf Live Swap.</p>
       </div>
@@ -372,11 +372,11 @@ function SidebarContent({
               <Battery className={`h-4 w-4 ${VIP_PLANS.has(plan) ? 'text-yellow-500' : 'text-primary'}`} />
               <span className="text-xs font-medium text-foreground">{t('Points restants')}</span>
             </div>
-            <span className="text-sm font-bold text-foreground">
+            <span className="text-sm font-black text-cyan-100 drop-shadow-[0_0_10px_rgba(103,232,249,0.35)]">
               {formatPoints(pointsRemaining)}/{formatPoints(pointsTotal)}
             </span>
           </div>
-          <Progress value={pointsPercentage} className="h-2 bg-secondary" />
+          <Progress value={pointsPercentage} className="h-2 bg-slate-950/70 shadow-[inset_0_1px_3px_rgba(0,0,0,0.45)] [&>div]:bg-gradient-to-r [&>div]:from-emerald-300 [&>div]:to-cyan-300 [&>div]:shadow-[0_0_12px_rgba(45,212,191,0.75)]" />
           <p className="mt-2 text-xs text-text-faint">
             = {Math.floor(pointsRemaining / 2 / 60)} {t('min de swap')}
           </p>
@@ -394,7 +394,7 @@ function SidebarContent({
         </div>
 
         {showUpgradeBanner && (
-          <div className="mb-3 rounded-lg border border-white/[0.08] bg-white/[0.035] p-3">
+<div className="relative mb-3 overflow-hidden rounded-lg border border-cyan-300/20 bg-[radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.18),transparent_55%),linear-gradient(135deg,rgba(9,25,52,0.96),rgba(19,19,52,0.96))] p-3 shadow-[0_14px_34px_-20px_rgba(59,130,246,0.6),inset_0_1px_0_rgba(255,255,255,0.1)]">
             <p className="mb-2 text-xs text-orange-300">
               {t('Recharge tes points pour continuer')}
             </p>
