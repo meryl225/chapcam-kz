@@ -139,27 +139,20 @@ export function ToolsShowcaseSection() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          className="mb-10 text-left"
+          className="mb-8 flex flex-col gap-3 text-left sm:flex-row sm:items-end sm:justify-between"
         >
-          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-[#00d4ff]/20 to-[#8b5cf6]/20 border border-[#00d4ff]/30 px-6 py-2 rounded-full mb-6">
-            <span className="text-[#00d4ff] text-sm font-semibold tracking-wider uppercase">
-              {t("Nos outils IA")}
-            </span>
+<div>
+            <h2 className="text-3xl font-bold text-white text-balance md:text-4xl">{t("Des outils puissants")}</h2>
+            <p className="mt-2 max-w-xl text-sm text-slate-400 text-pretty">{t("Tout ce dont tu as besoin pour créer sans limites.")}</p>
           </div>
-          <h2 className="text-3xl md:text-5xl font-bold text-white text-balance">
-            {t("Une suite complete pour")}{" "}
-            <span className="bg-gradient-to-r from-[#00d4ff] to-[#8b5cf6] bg-clip-text text-transparent">
-              {t("creer sans limites")}
-            </span>
-          </h2>
-          <p className="mt-4 text-gray-400 max-w-2xl mx-auto text-pretty">
-            {t("Change ton visage, anime tes photos et traduis tes videos : tout ce qu'il te faut en un seul endroit.")}
-          </p>
+          <Link href="/dashboard" className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-cyan-300 transition hover:text-white">
+            {t("Voir tous les outils")} <ArrowRight className="h-4 w-4" />
+          </Link>
         </motion.div>
 
-        {/* Grille de cartes 2x2 */}
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {tools.map((tool, index) => (
+        {/* Aperçu des quatre outils principaux */}
+        <div id="tous-les-outils" className="-mx-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-6 pb-3 md:mx-0 md:grid md:grid-cols-2 md:gap-4 md:overflow-visible md:px-0 xl:grid-cols-4">
+          {tools.slice(0, 4).map((tool, index) => (
             <motion.div
               key={tool.title}
               initial={{ opacity: 0, y: 30 }}
@@ -170,7 +163,7 @@ export function ToolsShowcaseSection() {
               <Link
                 href={tool.href}
                 style={{ ["--tool" as string]: tool.color }}
-                className="group relative block aspect-[4/4.8] overflow-hidden rounded-2xl border border-white/10 bg-[#0d1525] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--tool)] hover:shadow-[0_20px_60px_-15px_var(--tool)]"
+                className="group relative block aspect-[4/4.8] min-w-[78vw] snap-start overflow-hidden rounded-2xl border border-white/10 bg-[#0d1525] transition-all duration-300 hover:-translate-y-1 hover:border-white/25 hover:shadow-[0_18px_45px_-20px_var(--tool)] sm:min-w-[46vw] md:min-w-0"
               >
                 {/* Media plein cadre */}
                 {tool.mediaType === "video" ? (
@@ -184,7 +177,7 @@ export function ToolsShowcaseSection() {
                     src={tool.media || "/placeholder.svg"}
                     alt={`Apercu ${tool.title}`}
                     fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
+                    sizes="(max-width: 768px) 78vw, (max-width: 1280px) 50vw, 25vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 )}
@@ -193,32 +186,27 @@ export function ToolsShowcaseSection() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/40" />
 
                 {/* Badge + icone en haut */}
-                <div className="absolute inset-x-0 top-0 flex items-center justify-between p-5">
+                <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4">
                   <span
-                    className="flex h-11 w-11 items-center justify-center rounded-xl text-white shadow-lg"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-lg"
                     style={{ backgroundColor: "var(--tool)", boxShadow: "0 6px 20px -6px var(--tool)" }}
                   >
                     <tool.icon className="h-5 w-5" strokeWidth={2.4} />
                   </span>
-                  <span
-                    className="rounded-full px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide backdrop-blur-sm"
-                    style={{ color: tool.color, backgroundColor: `${tool.color}26` }}
-                  >
-                    {t(tool.badge)}
-                  </span>
+                  <span className="sr-only">{t(tool.badge)}</span>
                 </div>
 
                 {/* Titre + description + CTA en bas */}
-                <div className="absolute inset-x-0 bottom-0 p-6">
-                  <h3 className="text-2xl font-bold text-white text-balance">{t(tool.title)}</h3>
-                  <p className="mt-2 max-w-md text-sm leading-relaxed text-gray-300 text-pretty">
+                <div className="absolute inset-x-0 bottom-0 p-5">
+                  <h3 className="text-xl font-bold text-white text-balance">{t(tool.title)}</h3>
+                  <p className="mt-2 line-clamp-2 max-w-md text-xs leading-relaxed text-gray-300 text-pretty">
                     {t(tool.description)}
                   </p>
                   <span
                     className="mt-4 inline-flex items-center gap-2 text-sm font-semibold transition-colors"
                     style={{ color: tool.color }}
                   >
-                    {t("Essayer maintenant")}
+                    <span className="sr-only">{t("Ouvrir")}</span>
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </span>
                 </div>
