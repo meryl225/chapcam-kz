@@ -141,7 +141,7 @@ className={`group relative mb-1 flex items-center gap-3 overflow-hidden rounded-
       {/* Tuile d'icone coloree */}
       <span
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-300 transition-colors duration-200 group-hover:bg-white/[0.1] group-hover:text-white"
-        style={{ color: 'var(--tool)' }}
+        style={{ color: 'rgb(148 163 184)' }}
       >
         <Icon className="h-[18px] w-[18px]" strokeWidth={2.4} />
       </span>
@@ -154,7 +154,7 @@ className={`group relative mb-1 flex items-center gap-3 overflow-hidden rounded-
           {badge && (
             <span
               className="shrink-0 rounded-full px-1.5 py-[1px] text-[8.5px] font-extrabold uppercase tracking-wide"
-              style={{ color, backgroundColor: `${color}26` }}
+              style={{ color: 'rgb(148 163 184)', backgroundColor: 'rgba(148, 163, 184, 0.12)' }}
             >
               {badge}
             </span>
@@ -279,7 +279,7 @@ function SidebarContent({
         ))}
 
         {/* Separateur avant les utilitaires */}
-        <div className="my-2 h-px bg-gradient-to-r from-transparent via-hairline to-transparent" />
+        <div className="my-3 h-px bg-white/[0.08]" />
 
         {/* Utilitaires (lignes compactes) */}
         {navItems.map((item) => {

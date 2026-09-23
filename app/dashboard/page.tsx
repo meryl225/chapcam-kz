@@ -103,9 +103,9 @@ export default async function DashboardHubPage() {
       </div>
 
       {/* ===== Utilisation rapide ===== */}
-      <section aria-label="Utilisation rapide" className="mt-10">
-        <h2 className="mb-5 text-xl font-bold text-foreground md:text-2xl"><T>Utilisation rapide</T></h2>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <section aria-label="Utilisation rapide" className="mt-7">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"><T>Utilisation rapide</T></h2>
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           {[
             { icon: Zap, label: 'Swaps aujourd’hui', value: String(swapsToday), color: '#00ff88' },
             { icon: Timer, label: 'Minutes restantes', value: fmtMinutes(points), color: '#22d3ee' },
@@ -114,7 +114,7 @@ export default async function DashboardHubPage() {
           ].map((s) => (
             <div
               key={s.label}
-              className="group relative overflow-hidden rounded-2xl border border-hairline bg-card p-5 transition-all duration-300 hover:-translate-y-1 hover:border-white/20 hover:shadow-[0_16px_44px_-16px_rgba(0,0,0,0.6)]"
+              className="group relative overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 transition-colors duration-200 hover:border-white/20 hover:bg-white/[0.045]"
             >
               <div
                 aria-hidden
