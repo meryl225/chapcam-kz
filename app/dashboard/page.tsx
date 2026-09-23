@@ -4,6 +4,7 @@ import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
 import { PremiumHeader } from '@/components/dashboard/premium-header'
 import { ConsentCard } from '@/components/dashboard/consent-card'
 import { SupportBanner } from '@/components/dashboard/support-banner'
+import { VideoHistorySection } from '@/components/video-history-section'
 import { Sparkles, Crown, Check, Zap, Timer, Users, Hourglass, ArrowRight, Clock } from 'lucide-react'
 import { T } from '@/components/i18n/t'
 
@@ -97,40 +98,26 @@ export default async function DashboardHubPage() {
         <ToolsGrid />
       </section>
 
-      <div className="mt-7 grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
-        <SupportBanner />
-        <ConsentCard initiallyAccepted={consentAccepted} />
-      </div>
-
-      {/* ===== Utilisation rapide ===== */}
-      <section aria-label="Utilisation rapide" className="mt-7">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"><T>Utilisation rapide</T></h2>
-        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-          {[
-            { icon: Zap, label: 'Swaps aujourd’hui', value: String(swapsToday), color: '#00ff88' },
-            { icon: Timer, label: 'Minutes restantes', value: fmtMinutes(points), color: '#22d3ee' },
-            { icon: Users, label: 'Avatars créés', value: String(avatarCount ?? 0), color: '#8b5cf6' },
-            { icon: Hourglass, label: 'Temps aujourd’hui', value: `${minutesToday} min`, color: '#f97316' },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className="group relative overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025] p-3 transition-colors duration-200 hover:border-white/20 hover:bg-white/[0.045]"
-            >
-              <div
-                aria-hidden
-                className="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full opacity-0 blur-2xl transition-opacity duration-500 group-hover:opacity-70"
-                style={{ background: `radial-gradient(circle, ${s.color}55, transparent 70%)` }}
-              />
-              <div
-                className="relative mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
-                style={{ backgroundColor: 'rgba(148, 163, 184, 0.1)' }}
-              >
-                <s.icon className="h-5 w-5 text-slate-300" />
-              </div>
-              <p className="relative text-2xl font-bold text-foreground md:text-3xl">{s.value}</p>
-              <p className="relative mt-1 text-xs text-text-faint"><T>{s.label}</T></p>
+      <section className="mt-8 grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-start">
+        <div className="min-w-0 rounded-xl border border-white/[0.08] bg-white/[0.02] p-4 md:p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-foreground"><T>Mes créations récentes</T></h2>
+              <p className="mt-1 text-xs text-muted-foreground"><T>Retrouve rapidement tes dernières vidéos.</T></p>
             </div>
-          ))}
+          </div>
+          <VideoHistorySection tool="photo_video" compact />
+        </div>
+        <SupportBanner />
+      </section>
+
+      <section aria-label="Utilisation rapide" className="mt-5 border-t border-white/[0.07] pt-4">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
+          <span className="font-semibold uppercase tracking-[0.14em] text-white/45"><T>Utilisation rapide</T></span>
+          <span><b className="text-foreground">{swapsToday}</b> <T>swaps aujourd’hui</T></span>
+          <span><b className="text-foreground">{fmtMinutes(points)}</b> <T>minutes restantes</T></span>
+          <span><b className="text-foreground">{avatarCount ?? 0}</b> <T>avatars créés</T></span>
+          <span><b className="text-foreground">{minutesToday} min</b> <T>aujourd’hui</T></span>
         </div>
       </section>
 

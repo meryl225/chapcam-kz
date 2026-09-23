@@ -32,9 +32,11 @@ interface HistoryVideo {
 export function VideoHistorySection({
   tool,
   refreshKey = 0,
+  compact = false,
 }: {
   tool: VideoTool
   refreshKey?: number
+  compact?: boolean
 }) {
   const [videos, setVideos] = useState<HistoryVideo[]>([])
   const [loading, setLoading] = useState(true)
@@ -128,8 +130,8 @@ export function VideoHistorySection({
   }
 
   return (
-    <section aria-labelledby="mes-videos-title" className="mt-8">
-      <div className="mb-4 flex items-center justify-between gap-3">
+    <section aria-labelledby="mes-videos-title" className={compact ? "mt-0" : "mt-8"}>
+      <div className={compact ? "mb-3 flex items-center justify-end gap-3" : "mb-4 flex items-center justify-between gap-3"}>
         <h2
           id="mes-videos-title"
           className="inline-flex items-center gap-2 text-lg font-bold text-white"
@@ -187,7 +189,7 @@ export function VideoHistorySection({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        <div className={compact ? "grid grid-cols-3 gap-2 sm:grid-cols-4 xl:grid-cols-5" : "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"}>
           {videos.map((v) => (
             <div
               key={v.id}
