@@ -97,7 +97,7 @@ export default async function DashboardHubPage() {
         <ToolsGrid />
       </section>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
+      <div className="mt-7 grid gap-3 lg:grid-cols-[1.15fr_0.85fr]">
         <SupportBanner />
         <ConsentCard initiallyAccepted={consentAccepted} />
       </div>
@@ -123,9 +123,9 @@ export default async function DashboardHubPage() {
               />
               <div
                 className="relative mb-4 flex h-10 w-10 items-center justify-center rounded-xl transition-transform duration-300 group-hover:scale-110"
-                style={{ backgroundColor: `${s.color}22` }}
+                style={{ backgroundColor: 'rgba(148, 163, 184, 0.1)' }}
               >
-                <s.icon className="h-5 w-5" style={{ color: s.color }} />
+                <s.icon className="h-5 w-5 text-slate-300" />
               </div>
               <p className="relative text-2xl font-bold text-foreground md:text-3xl">{s.value}</p>
               <p className="relative mt-1 text-xs text-text-faint"><T>{s.label}</T></p>
@@ -136,7 +136,7 @@ export default async function DashboardHubPage() {
 
       {/* ===== Bannière Pro ===== */}
       {!isPro && (
-        <section className="relative mt-10 overflow-hidden rounded-[22px] border border-white/[0.08] bg-card p-6 shadow-[0_18px_60px_-40px_rgba(0,0,0,0.8)] md:p-8">
+        <section className="relative mt-7 overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.025] p-4 md:p-5">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0"

@@ -289,20 +289,16 @@ function SidebarContent({
               key={item.href}
               href={item.href}
               style={{ ['--nav-accent' as string]: item.color }}
-              className={`group/nav mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-[13px] font-bold uppercase tracking-tight transition-all duration-200 hover:-translate-y-px ${
+              className={`group/nav relative mb-1 flex items-center gap-3 rounded-lg px-2.5 py-2.5 text-[12px] font-semibold uppercase tracking-wide transition-colors duration-200 ${
                 isActivePath
-                  ? 'bg-[var(--nav-accent)]/10 text-foreground shadow-sm ring-1 ring-[var(--nav-accent)]/30'
+                  ? 'bg-blue-400/[0.1] text-foreground'
                   : item.highlight
-                    ? // Mis en avant en permanence : fond teinte, bordure et halo
-                      // colore -> attire l'oeil et invite au clic comme un vrai CTA.
-                      'bg-blue-400/[0.08] text-foreground ring-1 ring-blue-300/20 hover:bg-blue-400/[0.12]'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-white/[0.035] text-foreground hover:bg-white/[0.07]'
+                    : 'text-muted-foreground hover:bg-white/[0.045] hover:text-foreground'
               }`}
             >
               <span
-                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-white shadow-sm transition-all duration-200 group-hover/nav:brightness-110 group-hover/nav:shadow-[0_4px_14px_-4px_var(--nav-accent)] ${
-                  item.highlight ? 'shadow-[0_0_16px_-4px_var(--nav-accent)]' : ''
-                }`}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-slate-300 transition-colors duration-200 group-hover/nav:bg-white/[0.1] group-hover/nav:text-white"
                 style={{ color: 'var(--nav-accent)' }}
               >
                 <item.icon className="h-[17px] w-[17px]" strokeWidth={2.5} />
