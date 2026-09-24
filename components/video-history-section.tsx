@@ -9,7 +9,7 @@ import { HlsVideoPlayer } from "@/components/hls-video-player"
 // re-hébergées dans le Blob privé côté serveur (les liens fournisseurs expirent).
 // Réutilisable sur chaque page d'outil via la prop `tool`.
 
-type VideoTool = "photo_video" | "motion" | "translation"
+type VideoTool = "photo_video" | "motion" | "translation" | "genjutsu"
 
 interface HistoryVideo {
   id: string

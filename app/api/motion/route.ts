@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { createMotionJob, markMotionJobCompleted, markMotionJobFailed } from "@/lib/motion-jobs"
+import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, getMotionJobModel } from "@/lib/motion-jobs"
+import { saveVideoHistory, finalizeCompletedVideo, failGenerationAndGetRefund } from "@/lib/video-history"
 import { creditJetons, reserveJetons } from "@/lib/jetons"
 import { estimateGenjutsuPriceUsd, GENJUTSU_MAX_DURATION_SECONDS } from "@/lib/tool-costs"
 
@@ -150,8 +151,26 @@ export async function GET(request: NextRequest) {
     // meme si l'utilisateur avait quitte la page pendant le rendu.
     if (statusStr === "completed" && videoUrl) {
       await markMotionJobCompleted(user.id, requestId, videoUrl).catch(() => {})
+      // Historique DEDIE Genjutsu : on re-heberge la video dans le stockage
+      // permanent (Blob + R2) sous l'outil "genjutsu" pour qu'elle reste
+      // retrouvable indefiniment dans l'historique de la page Genjutsu, et pas
+      // seulement dans l'historique Motion.
+      const jobModel = await getMotionJobModel(user.id, requestId).catch(() => null)
+      if (jobModel === "genjutsu") {
+        await finalizeCompletedVideo({
+          userId: user.id,
+          tool: "genjutsu",
+          providerRef: requestId,
+          providerUrl: videoUrl,
+          title: "Genjutsu",
+        }).catch(() => {})
+      }
     } else if (statusStr === "failed" || statusStr === "nsfw") {
       await markMotionJobFailed(user.id, requestId).catch(() => {})
+      const jobModel = await getMotionJobModel(user.id, requestId).catch(() => null)
+      if (jobModel === "genjutsu") {
+        await failGenerationAndGetRefund(user.id, "genjutsu", requestId).catch(() => {})
+      }
     }
     return NextResponse.json({
       success: true,
@@ -374,6 +393,22 @@ export async function POST(request: NextRequest) {
       model: modelKey,
       prompt,
     }).catch(() => {})
+
+    // Historique DEDIE Genjutsu : on cree tout de suite une entree "processing"
+    // dans le stockage permanent sous l'outil "genjutsu". La video apparait alors
+    // immediatement dans l'historique de la page Genjutsu (etat "Generation..."),
+    // et l'auto-reparation pourra la finaliser meme si le client quitte la page.
+    if (modelKey === "genjutsu") {
+      await saveVideoHistory({
+        userId: user.id,
+        tool: "genjutsu",
+        providerRef: requestId,
+        blobPathname: null,
+        title: prompt.slice(0, 80) || "Genjutsu",
+        status: "processing",
+        creditsCost: wallet.charged,
+      }).catch(() => {})
+    }
 
     return NextResponse.json({
       success: true,

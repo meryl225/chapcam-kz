@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowUpRight, Check, Clapperboard, Film, ImagePlus, Loader2, Sparkles, Upload, Video, WandSparkles } from 'lucide-react'
 import { GENJUTSU_MAX_DURATION_SECONDS, GENJUTSU_PROVIDER_COST_PER_SECOND_USD } from '@/lib/tool-costs'
+import { VideoHistorySection } from '@/components/video-history-section'
 
 const EXAMPLES = [
   'Un mouvement de caméra lent vers le visage, sourire naturel et cheveux animés par une légère brise.',
@@ -26,6 +27,10 @@ export default function GenjutsuPage() {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   const [uploadingReference, setUploadingReference] = useState(false)
+  // Historique dedie Genjutsu : refreshKey force le rechargement quand une
+  // generation vient de se terminer ; pending suit la generation en cours.
+  const [historyRefresh, setHistoryRefresh] = useState(0)
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -46,6 +51,31 @@ export default function GenjutsuPage() {
     if (preview) URL.revokeObjectURL(preview)
     if (referencePreview) URL.revokeObjectURL(referencePreview)
   }, [preview, referencePreview])
+
+  // Suit la generation en cours : des qu'elle est terminee (ou echouee), on
+  // rafraichit l'historique Genjutsu ci-dessous. Le serveur re-heberge la video
+  // de maniere permanente au moment ou ce statut passe a "completed".
+  useEffect(() => {
+    if (!pendingRequestId) return
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/motion?request_id=${encodeURIComponent(pendingRequestId)}`)
+        const result = await res.json().catch(() => ({}))
+        if (result.status === 'completed' && result.video_url) {
+          setPendingRequestId(null)
+          setHistoryRefresh((value) => value + 1)
+          setMessage('Votre vidéo Genjutsu est prête. Retrouvez-la dans votre historique ci-dessous.')
+        } else if (result.status === 'failed' || result.status === 'nsfw') {
+          setPendingRequestId(null)
+          setHistoryRefresh((value) => value + 1)
+          setMessage(result.error || 'La génération a échoué. Vos jetons sont conservés en cas d’échec.')
+        }
+      } catch {
+        // On réessaiera au prochain tick.
+      }
+    }, 5000)
+    return () => clearInterval(interval)
+  }, [pendingRequestId])
 
   const chooseFile = (next: File | null, isReference = false) => {
     if (!next) return
@@ -92,7 +122,11 @@ export default function GenjutsuPage() {
         const detail = [result.error, result.detail].filter((value): value is string => typeof value === 'string' && Boolean(value.trim())).join(' — ')
         throw new Error(detail || `La génération a échoué (HTTP ${response.status}).`)
       }
-      setMessage('Génération lancée. Retrouvez le résultat dans votre historique Motion.')
+      if (typeof result.request_id === 'string' && result.request_id) {
+        setPendingRequestId(result.request_id)
+      }
+      setHistoryRefresh((value) => value + 1)
+      setMessage('Génération lancée (1 à 3 min). Retrouvez le résultat dans votre historique Genjutsu ci-dessous.')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Une erreur est survenue.')
     } finally {
@@ -145,6 +179,10 @@ export default function GenjutsuPage() {
 
           <aside className="space-y-5"><section className="rounded-3xl border border-[#c6f542]/20 bg-[#c6f542]/[0.06] p-5"><div className="mb-4 flex items-center gap-3"><div className="rounded-xl bg-[#c6f542] p-2 text-black"><Film className="h-5 w-5" /></div><div><h2 className="font-bold">Genjutsu</h2><p className="text-xs text-white/45">Motion transfer intelligent</p></div></div><ul className="space-y-3 text-sm text-white/65"><li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-[#c6f542]" /> Mouvement naturel et fluide</li><li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-[#c6f542]" /> Image sujet jusqu'à 720p</li><li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-[#c6f542]" /> Vidéo de référence optionnelle</li><li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-[#c6f542]" /> Historique sauvegardé automatiquement</li></ul></section><section className="rounded-3xl border border-white/10 bg-white/[0.035] p-5"><h2 className="font-bold">Conseils pour un bon résultat</h2><p className="mt-3 text-sm leading-6 text-white/50">Décris la caméra, le sujet et la vitesse du mouvement. Une vidéo de référence courte aide Genjutsu à reproduire précisément la gestuelle.</p><div className="mt-4 space-y-2">{EXAMPLES.map((example) => <button key={example} type="button" onClick={() => setPrompt(example)} className="w-full rounded-xl border border-white/10 bg-black/20 p-3 text-left text-xs leading-5 text-white/55 transition hover:border-[#c6f542]/40 hover:text-white/80">{example}</button>)}</div></section></aside>
         </div>
+
+        <section className="mt-8 rounded-3xl border border-white/10 bg-white/[0.035] p-4 md:p-6" aria-label="Historique des vidéos Genjutsu">
+          <VideoHistorySection tool="genjutsu" refreshKey={historyRefresh} />
+        </section>
       </div>
     </main>
   )
