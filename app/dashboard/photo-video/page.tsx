@@ -185,6 +185,26 @@ export default function PhotoVideoPage() {
         // silencieux : l'UI affichera l'absence de voix
       }
       setLoading(false)
+
+      // RECONCILIATION au chargement : rattrape les vidéos déjà générées (et
+      // FACTURÉES) chez HeyGen mais restées "en cours" côté app (onglet fermé
+      // pendant le rendu). Elles réapparaissent ainsi dans "Mes vidéos" sans que
+      // l'utilisateur ait besoin de relancer une génération payante.
+      try {
+        const rec = await fetch("/api/heygen/photo-video?reconcile=1")
+        const recJson = await rec.json().catch(() => null)
+        if (rec.ok && recJson && (recJson.completed > 0 || recJson.failed > 0)) {
+          setHistoryRefresh((n) => n + 1)
+          if (recJson.completed > 0) {
+            toast({
+              title: "Vidéos récupérées",
+              description: `${recJson.completed} vidéo(s) déjà générée(s) ont été retrouvées et ajoutées à « Mes vidéos ».`,
+            })
+          }
+        }
+      } catch {
+        // non bloquant : la réconciliation se retentera au prochain chargement
+      }
     }
     init()
     return () => {
@@ -407,7 +427,9 @@ export default function PhotoVideoPage() {
 
       if (!res.ok) {
         setStatus("idle")
-        if (res.status === 402 && json.code === "insufficient_tokens") {
+        if (res.status === 429 && json.code === "already_processing") {
+          toast({ title: "Génération déjà en cours", description: json.error, variant: "destructive" })
+        } else if (res.status === 402 && json.code === "insufficient_tokens") {
           toast({ title: "Solde insuffisant", description: json.error, variant: "destructive" })
         } else if (res.status === 402 && json.code === "heygen_no_credit") {
           toast({ title: "Service indisponible", description: json.error, variant: "destructive" })

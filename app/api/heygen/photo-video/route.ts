@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { reserveJetons, creditJetons } from "@/lib/jetons"
 import { TOOL_PROVIDER_COST } from "@/lib/tool-costs"
 import { logToolUsage } from "@/lib/tool-usage"
-import { saveVideoHistory, finalizeCompletedVideo } from "@/lib/video-history"
+import { saveVideoHistory, finalizeCompletedVideo, listProcessingGenerations } from "@/lib/video-history"
 
 // Le clonage de voix HeyGen est ASYNCHRONE (~30-90s de traitement). On attend
 // que le clone soit "complete" avant de creer la video, donc la requete peut
@@ -75,6 +75,34 @@ export async function POST(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: "Non autorise" }, { status: 401 })
+    }
+
+    // ANTI-DOUBLE-FACTURATION : chaque appel a HeyGen debite des credits AVANT
+    // meme que la video soit prete. Quand une generation semble "coincee"
+    // (onglet ferme, spinner qui traine), l'utilisateur reclique et paie une
+    // 2e fois pour la meme chose. On refuse donc une nouvelle generation tant
+    // qu'un job du meme utilisateur est encore "processing" depuis moins de
+    // DEDUP_MS : cela absorbe les double-clics et les renvois reseau, sans
+    // bloquer une vraie nouvelle generation lancee plus tard.
+    const DEDUP_MS = 60_000
+    try {
+      const inFlight = await listProcessingGenerations(user.id, "photo_video")
+      const hasVeryRecent = inFlight.some(
+        (j) => Date.now() - new Date(j.createdAt).getTime() < DEDUP_MS,
+      )
+      if (hasVeryRecent) {
+        return NextResponse.json(
+          {
+            error:
+              "Une vidéo est déjà en cours de génération. Patiente qu'elle se termine avant d'en relancer une (pour éviter d'être facturé deux fois).",
+            code: "already_processing",
+          },
+          { status: 429 },
+        )
+      }
+    } catch (e) {
+      // Non bloquant : en cas d'erreur de lecture, on laisse passer.
+      console.error("[PhotoVideo] Verif anti-double impossible:", e)
     }
 
     const form = await request.formData()
@@ -373,6 +401,73 @@ export async function GET(request: NextRequest) {
     const apiKey = getApiKey()
     if (!apiKey) {
       return NextResponse.json({ error: "Cle API HeyGen manquante cote serveur." }, { status: 500 })
+    }
+
+    // ===== RECONCILIATION (?reconcile=1) =====
+    // Rattrape les generations restees "processing" cote app alors qu'elles sont
+    // en realite TERMINEES (ou ECHOUEES) chez HeyGen. C'est le cas quand l'onglet
+    // a ete ferme pendant le rendu ET que le webhook n'a pas abouti : la video a
+    // ete facturee mais n'apparait jamais -> l'utilisateur croit a un echec et
+    // relance (double facturation). On interroge donc HeyGen pour chaque job en
+    // attente et on finalise (re-hebergement Blob) ou on marque l'echec.
+    if (params.get("reconcile") === "1") {
+      const pending = await listProcessingGenerations(user.id, "photo_video").catch(() => [])
+      // On borne le travail par requete (chaque job = 1 appel HeyGen).
+      const batch = pending.slice(0, 15)
+      // Au-dela de 30 min "coince" sans statut exploitable, on debloque en echec.
+      const STUCK_MS = 30 * 60 * 1000
+      let completed = 0
+      let failed = 0
+      let stillProcessing = 0
+      for (const job of batch) {
+        try {
+          const r = await fetch(
+            `${HEYGEN_API}/v1/video_status.get?video_id=${encodeURIComponent(job.providerRef)}`,
+            { headers: { "X-Api-Key": apiKey } },
+          )
+          const j = await r.json().catch(() => null)
+          const d = j?.data || {}
+          if (d.status === "completed" && d.video_url) {
+            await finalizeCompletedVideo({
+              userId: user.id,
+              tool: "photo_video",
+              providerRef: job.providerRef,
+              providerUrl: d.video_url,
+              title: "Studio Photo en Vidéo",
+              thumbnailUrl: d.thumbnail_url || null,
+            }).catch(() => {})
+            completed++
+          } else if (d.status === "failed") {
+            await saveVideoHistory({
+              userId: user.id,
+              tool: "photo_video",
+              providerRef: job.providerRef,
+              blobPathname: null,
+              title: "Studio Photo en Vidéo",
+              status: "failed",
+            }).catch(() => {})
+            failed++
+          } else {
+            const ageMs = Date.now() - new Date(job.createdAt).getTime()
+            if (ageMs > STUCK_MS && (!d.status || d.status === "unknown")) {
+              await saveVideoHistory({
+                userId: user.id,
+                tool: "photo_video",
+                providerRef: job.providerRef,
+                blobPathname: null,
+                title: "Studio Photo en Vidéo",
+                status: "failed",
+              }).catch(() => {})
+              failed++
+            } else {
+              stillProcessing++
+            }
+          }
+        } catch {
+          stillProcessing++
+        }
+      }
+      return NextResponse.json({ ok: true, checked: pending.length, completed, failed, stillProcessing })
     }
 
     const videoId = params.get("video_id")
