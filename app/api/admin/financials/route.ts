@@ -61,17 +61,58 @@ function activeAt(sub: Subscription, date: Date) {
   return (!start || new Date(start) <= date) && (!end || new Date(end) >= date)
 }
 
+/**
+ * Lit TOUTES les lignes d'une table en paginant.
+ *
+ * Pourquoi : Supabase (PostgREST) plafonne CHAQUE reponse a `max-rows` (1000 par
+ * defaut). Un simple `.limit(100000)` ne renvoie donc que les 1000 premieres
+ * lignes, ce qui sous-evaluait massivement le chiffre d'affaires (ex. 5,3 M au
+ * lieu de ~52 M, avec les mois recents a 0). On boucle sur `.range()` jusqu'a
+ * avoir tout recupere.
+ */
+async function fetchAllRows<T>(
+  admin: ReturnType<typeof createAdminClient>,
+  table: string,
+  columns: string,
+  orderColumn = 'id',
+): Promise<T[]> {
+  const PAGE = 1000
+  let from = 0
+  const out: T[] = []
+  // Garde-fou : au plus 200 pages (200 000 lignes).
+  for (let i = 0; i < 200; i++) {
+    const { data, error } = await admin
+      .from(table)
+      .select(columns)
+      .order(orderColumn, { ascending: true })
+      .range(from, from + PAGE - 1)
+    if (error) throw new Error(error.message)
+    if (!data || data.length === 0) break
+    out.push(...(data as T[]))
+    if (data.length < PAGE) break
+    from += PAGE
+  }
+  return out
+}
+
 export async function GET() {
   try {
     if (!(await isAdminRequest())) return NextResponse.json({ error: 'Acces refuse.' }, { status: 403 })
     const admin = createAdminClient()
 
-    const [{ data: paymentRows, error: paymentError }, { data: subscriptionRows, error: subscriptionError }] = await Promise.all([
-    admin.from('payment_requests').select('id,user_id,amount,paid_amount,paid_at,validated_at,created_at,status,paydunya_token,wave_transaction_reference').limit(100000),
-    admin.from('subscriptions').select('user_id,is_active,started_at,expires_at').limit(100000),
-  ])
-    if (paymentError || subscriptionError) {
-      const detail = paymentError?.message || subscriptionError?.message || 'Erreur Supabase inconnue.'
+    let paymentRows: Payment[] = []
+    let subscriptionRows: Subscription[] = []
+    try {
+      ;[paymentRows, subscriptionRows] = await Promise.all([
+        fetchAllRows<Payment>(
+          admin,
+          'payment_requests',
+          'id,user_id,amount,paid_amount,paid_at,validated_at,created_at,status,paydunya_token,wave_transaction_reference',
+        ),
+        fetchAllRows<Subscription>(admin, 'subscriptions', 'user_id,is_active,started_at,expires_at'),
+      ])
+    } catch (readError) {
+      const detail = readError instanceof Error ? readError.message : 'Erreur Supabase inconnue.'
       console.error('[admin/financials] Supabase read error', detail)
       return NextResponse.json({ error: `Erreur Supabase : ${detail}` }, { status: 500 })
     }
