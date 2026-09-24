@@ -477,6 +477,39 @@ export async function listProcessingGenerations(
 }
 
 /**
+ * Liste GLOBALE (tous utilisateurs) des generations encore "processing" pour un
+ * outil, bornee dans le temps. Sert au CRON de reconciliation : rattraper les
+ * videos deja terminees (et facturees) chez le fournisseur mais restees "en
+ * cours" cote app pour des utilisateurs qui ne reviennent jamais sur la page.
+ * On ignore les jobs trop anciens (au-dela de `maxAgeHours`) et trop recents
+ * (`minAgeSeconds`, pour laisser au rendu le temps de finir normalement).
+ */
+export async function listAllProcessingGenerations(
+  tool: VideoTool,
+  opts: { limit?: number; minAgeSeconds?: number; maxAgeHours?: number } = {},
+): Promise<Array<{ userId: string; providerRef: string; createdAt: string }>> {
+  await ensureTable()
+  const limit = opts.limit ?? 50
+  const minAgeSeconds = opts.minAgeSeconds ?? 90
+  const maxAgeHours = opts.maxAgeHours ?? 24
+  const rows = (await sql`
+    SELECT user_id, provider_ref, created_at FROM video_history
+    WHERE tool = ${tool}
+      AND status = 'processing'
+      AND provider_ref IS NOT NULL
+      AND created_at <= NOW() - (${minAgeSeconds} * INTERVAL '1 second')
+      AND created_at >= NOW() - (${maxAgeHours} * INTERVAL '1 hour')
+    ORDER BY created_at ASC
+    LIMIT ${limit}
+  `) as { user_id: string; provider_ref: string; created_at: string }[]
+  return rows.map((r) => ({
+    userId: String(r.user_id),
+    providerRef: String(r.provider_ref),
+    createdAt: String(r.created_at),
+  }))
+}
+
+/**
  * Retrouve l'utilisateur proprietaire d'une generation a partir de sa reference
  * fournisseur (video_id HeyGen / translation id). INDISPENSABLE pour les
  * webhooks HeyGen : la notification serveur-a-serveur n'a AUCUNE session, on ne

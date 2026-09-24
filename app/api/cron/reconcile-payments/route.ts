@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { reconcilePendingPaydunya } from '@/lib/fulfillment'
 import { reconcilePendingGeniusPay } from '@/lib/geniuspay'
 import { reconcileWaitingActivations } from '@/lib/numbers/reconcile'
+import { reconcileProcessingPhotoVideos } from '@/lib/heygen-reconcile'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,6 +35,13 @@ export async function GET(request: NextRequest) {
     console.log('[cron/reconcile-payments] activations error:', (e as Error)?.message)
     return null
   })
-  console.log('[cron/reconcile-payments]', JSON.stringify({ payments, geniuspay, activations }))
-  return NextResponse.json({ ok: true, payments, geniuspay, activations, at: new Date().toISOString() })
+  // Rattrape les videos HeyGen deja facturees mais restees "en cours" (onglet
+  // ferme + webhook manque) pour les utilisateurs qui ne reviennent pas : evite
+  // qu'ils relancent une generation payante pour rien.
+  const photoVideos = await reconcileProcessingPhotoVideos(40).catch((e) => {
+    console.log('[cron/reconcile-payments] photo-video error:', (e as Error)?.message)
+    return null
+  })
+  console.log('[cron/reconcile-payments]', JSON.stringify({ payments, geniuspay, activations, photoVideos }))
+  return NextResponse.json({ ok: true, payments, geniuspay, activations, photoVideos, at: new Date().toISOString() })
 }
