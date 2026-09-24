@@ -73,16 +73,25 @@ const MODELS: Record<string, string> = {
 }
 const DEFAULT_MODEL = "turbo"
 
-// Higgsfield authentifie via DEUX en-tetes : hf-api-key (UUID de la cle) et
-// hf-secret (le secret). La variable HIGGSFIELD_API_KEY stocke les deux au
-// format "uuid:secret" — on les separe ici. Un token sans ":" est renvoye tel
-// quel sur hf-api-key en secours.
+// Authentification Higgsfield. IMPORTANT : deux surfaces d'API coexistent et
+// n'attendent PAS le meme schema :
+//   - l'endpoint de generation legacy ("higgsfiled/genjutsu/...") accepte les
+//     en-tetes hf-api-key / hf-secret,
+//   - l'endpoint UNIFIE de statut ("/requests/{id}/status") exige, lui,
+//     l'en-tete Authorization: "Key {id}:{secret}" (schema officiel OpenAPI).
+// Envoyer les DEUX schemas a la fois garantit que chaque endpoint trouve celui
+// qu'il attend (les en-tetes en trop sont ignores). C'est le correctif du
+// "video generee mais bloquee en Generation..." : sans Authorization, le statut
+// renvoyait 401, donc l'app ne detectait jamais la fin de la generation.
+// La variable HIGGSFIELD_API_KEY stocke la cle au format "uuid:secret".
 function higgsfieldAuthHeaders(): Record<string, string> | null {
   const key = process.env.HIGGSFIELD_API_KEY
   if (!key) return null
   const idx = key.indexOf(":")
-  if (idx === -1) return { "hf-api-key": key }
-  return { "hf-api-key": key.slice(0, idx), "hf-secret": key.slice(idx + 1) }
+  if (idx === -1) return { "hf-api-key": key, Authorization: `Key ${key}` }
+  const id = key.slice(0, idx)
+  const secret = key.slice(idx + 1)
+  return { "hf-api-key": id, "hf-secret": secret, Authorization: `Key ${id}:${secret}` }
   }
 
 // La video finale peut arriver sous plusieurs formes selon le modele Higgsfield.
@@ -160,27 +169,33 @@ export async function GET(request: NextRequest) {
   //     rembourse (les jobs Higgsfield n'excedent jamais cette duree).
   // C'est ce qui garantit qu'un debit sans resultat finit TOUJOURS rembourse.
   if (params.get("reconcile") === "genjutsu") {
-    const STUCK_MS = 30 * 60 * 1000
+    // On ne rembourse un job "coince" en file d'attente que s'il l'est depuis tres
+    // longtemps ET que Higgsfield a repondu (statut non terminal). Un simple echec
+    // d'appel de statut ne doit JAMAIS declencher un remboursement : la video peut
+    // etre terminee cote provider (retention 7 jours), on la recuperera plus tard.
+    const STUCK_MS = 6 * 60 * 60 * 1000 // 6 h
     const pending = await listProcessingGenerations(user.id, "genjutsu").catch(() => [])
     let refunded = 0
     let recovered = 0
     for (const { providerRef, createdAt } of pending) {
       let statusStr = "unknown"
+      let responded = false
       let json: Record<string, any> | null = null
       try {
         const res = await higgsfieldFetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(providerRef)}/status`, {
           headers: auth,
         })
         if (res.ok) {
+          responded = true
           json = await res.json().catch(() => null)
           statusStr = (json?.status as string) || "unknown"
         }
       } catch {
-        // Injoignable : on retombe sur la detection "bloque" ci-dessous.
+        // Injoignable : on ne fait rien pour ce job, un prochain passage reessaiera.
       }
       const videoUrl = extractVideoUrl(json)
       const ageMs = Date.now() - new Date(createdAt).getTime()
-      const isStuck = Number.isFinite(ageMs) && ageMs > STUCK_MS
+      const isStuck = responded && Number.isFinite(ageMs) && ageMs > STUCK_MS
       if (statusStr === "completed" && videoUrl) {
         await markMotionJobCompleted(user.id, providerRef, videoUrl).catch(() => {})
         const result = await finalizeCompletedVideo({
@@ -191,7 +206,7 @@ export async function GET(request: NextRequest) {
           title: "Genjutsu",
         }).catch(() => null)
         if (result && result.state !== "pending") recovered += 1
-      } else if (statusStr === "failed" || statusStr === "nsfw" || isStuck) {
+      } else if (statusStr === "failed" || statusStr === "nsfw" || statusStr === "canceled" || isStuck) {
         await markMotionJobFailed(user.id, providerRef).catch(() => {})
         refunded += await refundGenjutsuFailure(user.id, providerRef)
       }
@@ -235,7 +250,7 @@ export async function GET(request: NextRequest) {
           title: "Genjutsu",
         }).catch(() => {})
       }
-    } else if (statusStr === "failed" || statusStr === "nsfw") {
+    } else if (statusStr === "failed" || statusStr === "nsfw" || statusStr === "canceled") {
       // Journaliser la charge utile complete du statut : c'est la SEULE source qui
       // explique pourquoi une generation acceptee echoue ensuite cote Higgsfield
       // (media inaccessible, duree video hors 4-30s, moderation, etc.).

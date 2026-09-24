@@ -110,7 +110,7 @@ export default function GenjutsuPage() {
           setPendingRequestId(null)
           setHistoryRefresh((value) => value + 1)
           setMessage('Votre vidéo Genjutsu est prête. Retrouvez-la dans votre historique ci-dessous.')
-        } else if (result.status === 'failed' || result.status === 'nsfw') {
+        } else if (result.status === 'failed' || result.status === 'nsfw' || result.status === 'canceled') {
           setPendingRequestId(null)
           setHistoryRefresh((value) => value + 1)
           mutate('/api/jetons') // le remboursement vient d'etre credite cote serveur
