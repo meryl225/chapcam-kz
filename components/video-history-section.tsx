@@ -34,7 +34,9 @@ export function VideoHistorySection({
   refreshKey = 0,
   compact = false,
 }: {
-  tool: VideoTool
+  // "all" : toutes les créations, tous outils confondus (utilisé par le dashboard
+  // "Mes créations récentes"). Sinon, filtre sur un outil précis.
+  tool: VideoTool | "all"
   refreshKey?: number
   compact?: boolean
 }) {
@@ -54,7 +56,11 @@ export function VideoHistorySection({
     async (silent = false) => {
       if (silent) setReloading(true)
       try {
-        const res = await fetch(`/api/videos/history?tool=${tool}`)
+        // "all" -> aucun filtre : l'API renvoie toutes les vidéos (tous outils),
+        // déjà triées de la plus récente à la plus ancienne.
+        const res = await fetch(
+          tool === "all" ? `/api/videos/history` : `/api/videos/history?tool=${tool}`,
+        )
         const json = await res.json()
         if (res.ok && Array.isArray(json.videos)) setVideos(json.videos)
       } catch {
