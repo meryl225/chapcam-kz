@@ -21,6 +21,7 @@ import {
   Megaphone,
   Banknote,
   Zap,
+  Coins,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -443,6 +444,13 @@ export default function AdminPaymentsPage() {
             >
               <Zap className="h-4 w-4" />
               Minutes Live
+            </Link>
+            <Link
+              href="/admin/jetons"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#ffb300]/40 bg-[#1a1405] px-4 py-2.5 text-sm font-medium text-[#ffb300] transition-colors hover:border-[#ffb300] hover:text-white"
+            >
+              <Coins className="h-4 w-4" />
+              Ajouter jetons
             </Link>
             <button
               onClick={() => load(true)}
