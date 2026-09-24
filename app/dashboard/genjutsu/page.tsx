@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { mutate } from 'swr'
 import { ArrowUpRight, Check, Clapperboard, Film, ImagePlus, Loader2, Sparkles, Upload, Video, WandSparkles } from 'lucide-react'
 import { GENJUTSU_MAX_DURATION_SECONDS, GENJUTSU_PROVIDER_COST_PER_SECOND_USD } from '@/lib/tool-costs'
 import { VideoHistorySection } from '@/components/video-history-section'
@@ -70,6 +71,32 @@ export default function GenjutsuPage() {
     if (referencePreview) URL.revokeObjectURL(referencePreview)
   }, [preview, referencePreview])
 
+  // Au montage : reconciliation des generations passees dont le resultat final a
+  // ete manque parce que la page etait fermee pendant le rendu. Le serveur soit
+  // recupere la video terminee dans l'historique, soit rembourse un echec / un
+  // job bloque. C'est le filet de securite contre les "debits sans resultat".
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/motion?reconcile=genjutsu')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((result) => {
+        if (cancelled || !result) return
+        if (result.recovered > 0 || result.refunded > 0) {
+          setHistoryRefresh((v) => v + 1)
+          mutate('/api/jetons') // rafraichit immediatement le solde affiche
+        }
+        if (result.refunded > 0) {
+          setMessage(`Une génération précédente n'a pas abouti : ${result.refunded} jetons ont été remboursés sur votre solde.`)
+        } else if (result.recovered > 0) {
+          setMessage('Une vidéo Genjutsu terminée a été récupérée dans votre historique ci-dessous.')
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   // Suit la generation en cours : des qu'elle est terminee (ou echouee), on
   // rafraichit l'historique Genjutsu ci-dessous. Le serveur re-heberge la video
   // de maniere permanente au moment ou ce statut passe a "completed".
@@ -86,7 +113,8 @@ export default function GenjutsuPage() {
         } else if (result.status === 'failed' || result.status === 'nsfw') {
           setPendingRequestId(null)
           setHistoryRefresh((value) => value + 1)
-          setMessage(result.error || 'La génération a échoué. Vos jetons sont conservés en cas d’échec.')
+          mutate('/api/jetons') // le remboursement vient d'etre credite cote serveur
+          setMessage(`${result.error || 'La génération a échoué.'} Vos jetons ont été remboursés sur votre solde.`)
         }
       } catch {
         // On réessaiera au prochain tick.

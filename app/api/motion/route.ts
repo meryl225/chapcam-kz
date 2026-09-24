@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, getMotionJobModel } from "@/lib/motion-jobs"
-import { saveVideoHistory, finalizeCompletedVideo, failGenerationAndGetRefund } from "@/lib/video-history"
+import { saveVideoHistory, finalizeCompletedVideo, failGenerationAndGetRefund, listProcessingGenerations } from "@/lib/video-history"
 import { creditJetons, reserveJetons } from "@/lib/jetons"
 import { estimateGenjutsuPriceUsd, GENJUTSU_MAX_DURATION_SECONDS } from "@/lib/tool-costs"
 
@@ -85,6 +85,37 @@ function higgsfieldAuthHeaders(): Record<string, string> | null {
   return { "hf-api-key": key.slice(0, idx), "hf-secret": key.slice(idx + 1) }
   }
 
+// La video finale peut arriver sous plusieurs formes selon le modele Higgsfield.
+function extractVideoUrl(json: Record<string, any> | null): string | null {
+  if (!json) return null
+  return (
+    json.video?.url ||
+    json.video_url ||
+    json.result?.url ||
+    json.result?.video?.url ||
+    (Array.isArray(json.results) ? json.results[0]?.url || json.results[0]?.video?.url : null) ||
+    json.output?.url ||
+    json.output?.video?.url ||
+    null
+  )
+}
+
+// Remboursement EXACT et IDEMPOTENT d'une generation Genjutsu echouee.
+// failGenerationAndGetRefund fait basculer 'processing' -> 'failed' de facon
+// atomique et renvoie le cout a rembourser (0 si deja traite) ; on RECREDITE
+// alors reellement les jetons. C'est le correctif du "debit sans resultat" :
+// avant, le montant etait calcule mais jamais rendu au portefeuille.
+async function refundGenjutsuFailure(userId: string, requestId: string): Promise<number> {
+  const amount = await failGenerationAndGetRefund(userId, "genjutsu", requestId).catch(() => 0)
+  if (amount > 0) {
+    await creditJetons(userId, amount, {
+      reason: "genjutsu_generation_failed_refund",
+      request_id: requestId,
+    }).catch(() => {})
+  }
+  return amount
+}
+
 // GET : soit la liste des presets de mouvement (?info=motions),
 // soit le statut d'une generation (?request_id=...).
 export async function GET(request: NextRequest) {
@@ -120,6 +151,54 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  // RECONCILIATION Genjutsu : rattrape les generations dont le statut final a ete
+  // manque parce que la page etait fermee pendant le rendu. Pour chaque job encore
+  // "processing", on interroge Higgsfield :
+  //   - completed -> on recupere la video dans l'historique permanent,
+  //   - failed / nsfw -> on rembourse (exact, idempotent),
+  //   - bloque depuis > 30 min sans etat terminal -> on considere l'echec et on
+  //     rembourse (les jobs Higgsfield n'excedent jamais cette duree).
+  // C'est ce qui garantit qu'un debit sans resultat finit TOUJOURS rembourse.
+  if (params.get("reconcile") === "genjutsu") {
+    const STUCK_MS = 30 * 60 * 1000
+    const pending = await listProcessingGenerations(user.id, "genjutsu").catch(() => [])
+    let refunded = 0
+    let recovered = 0
+    for (const { providerRef, createdAt } of pending) {
+      let statusStr = "unknown"
+      let json: Record<string, any> | null = null
+      try {
+        const res = await higgsfieldFetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(providerRef)}/status`, {
+          headers: auth,
+        })
+        if (res.ok) {
+          json = await res.json().catch(() => null)
+          statusStr = (json?.status as string) || "unknown"
+        }
+      } catch {
+        // Injoignable : on retombe sur la detection "bloque" ci-dessous.
+      }
+      const videoUrl = extractVideoUrl(json)
+      const ageMs = Date.now() - new Date(createdAt).getTime()
+      const isStuck = Number.isFinite(ageMs) && ageMs > STUCK_MS
+      if (statusStr === "completed" && videoUrl) {
+        await markMotionJobCompleted(user.id, providerRef, videoUrl).catch(() => {})
+        const result = await finalizeCompletedVideo({
+          userId: user.id,
+          tool: "genjutsu",
+          providerRef,
+          providerUrl: videoUrl,
+          title: "Genjutsu",
+        }).catch(() => null)
+        if (result && result.state !== "pending") recovered += 1
+      } else if (statusStr === "failed" || statusStr === "nsfw" || isStuck) {
+        await markMotionJobFailed(user.id, providerRef).catch(() => {})
+        refunded += await refundGenjutsuFailure(user.id, providerRef)
+      }
+    }
+    return NextResponse.json({ success: true, refunded, recovered })
+  }
+
   // Statut d'une generation.
   const requestId = params.get("request_id")
   if (!requestId) {
@@ -137,16 +216,7 @@ export async function GET(request: NextRequest) {
     }
     const json = await res.json().catch(() => ({}))
     const statusStr = json.status || "unknown" // queued | in_progress | completed | failed | nsfw
-    // La video finale peut arriver sous plusieurs formes selon le modele.
-    const videoUrl =
-      json.video?.url ||
-      json.video_url ||
-      json.result?.url ||
-      json.result?.video?.url ||
-      (Array.isArray(json.results) ? json.results[0]?.url || json.results[0]?.video?.url : null) ||
-      json.output?.url ||
-      json.output?.video?.url ||
-      null
+    const videoUrl = extractVideoUrl(json)
     // Persister le resultat pour que la video reste retrouvable dans l'historique
     // meme si l'utilisateur avait quitte la page pendant le rendu.
     if (statusStr === "completed" && videoUrl) {
@@ -177,7 +247,7 @@ export async function GET(request: NextRequest) {
       await markMotionJobFailed(user.id, requestId).catch(() => {})
       const jobModel = await getMotionJobModel(user.id, requestId).catch(() => null)
       if (jobModel === "genjutsu") {
-        await failGenerationAndGetRefund(user.id, "genjutsu", requestId).catch(() => {})
+        await refundGenjutsuFailure(user.id, requestId)
       }
     }
     return NextResponse.json({
