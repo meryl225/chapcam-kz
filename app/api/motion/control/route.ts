@@ -12,7 +12,7 @@ import {
   clearMotionJobInputPaths,
 } from "@/lib/motion-jobs"
 import { logToolUsage } from "@/lib/tool-usage"
-import { finalizeCompletedVideo, getBlobPathnamesByRef } from "@/lib/video-history"
+import { finalizeCompletedVideo, getBlobPathnamesByRef, saveVideoHistory } from "@/lib/video-history"
 import { repairVideoRow } from "@/lib/video-history-repair"
 import {
   submitMotionControl,
@@ -393,6 +393,19 @@ export async function POST(request: NextRequest) {
       credits: wallet.charged,
       meta: { model: tierKey, provider: "kling", billing: "jetons", walletAlreadyCharged: true },
     })
+
+    // Historique PERMANENT UNIFIE : entree "processing" creee des le lancement
+    // pour que le clip apparaisse tout de suite dans « Mes creations » et soit
+    // reconciliable (webhook, auto-reparation, cron) meme si l'onglet est ferme.
+    await saveVideoHistory({
+      userId: user.id,
+      tool: "motion",
+      providerRef: taskId,
+      blobPathname: null,
+      title: prompt.slice(0, 80) || "Motion Control",
+      status: "processing",
+      creditsCost: wallet.charged,
+    }).catch(() => {})
 
     return NextResponse.json({
       success: true,

@@ -3,7 +3,9 @@ import {
   listAllProcessingGenerations,
   finalizeCompletedVideo,
   saveVideoHistory,
+  type VideoTool,
 } from '@/lib/video-history'
+import { repairVideoRow } from '@/lib/video-history-repair'
 
 // ============================================================
 // Reconciliation SERVEUR des generations "Studio Photo en Video" (HeyGen).
@@ -99,4 +101,62 @@ export async function reconcileProcessingPhotoVideos(
   }
 
   return out
+}
+
+// ============================================================
+// Reconciliation SERVEUR des AUTRES outils video (Traduction, Genjutsu, Motion).
+//
+// Meme probleme que photo_video : une generation FACTUREE peut rester bloquee en
+// "processing" si l'onglet est ferme pendant le rendu et que le webhook n'aboutit
+// pas. Pour les utilisateurs qui ne reviennent jamais, personne ne declenche la
+// finalisation -> la video n'apparait JAMAIS dans « Mes creations ».
+//
+// On s'appuie sur repairVideoRow : il redemande une URL fraiche au bon
+// fournisseur (HeyGen pour translation, Higgsfield pour genjutsu, Kling ou
+// Higgsfield pour motion) et ne finalise QUE si la video est reellement terminee.
+// C'est volontairement NON destructif : on ne marque rien en echec et on ne
+// rembourse rien ici (ces cas restent geres par les handlers de statut / la
+// reconciliation par page), pour eviter tout risque de faux echec cote cron.
+// ============================================================
+
+export interface OtherVideosReconcileResult {
+  translation: { checked: number; completed: number }
+  genjutsu: { checked: number; completed: number }
+  motion: { checked: number; completed: number }
+}
+
+async function finalizeCompletedForTool(
+  tool: VideoTool,
+  limit: number,
+): Promise<{ checked: number; completed: number }> {
+  const pending = await listAllProcessingGenerations(tool, {
+    limit,
+    minAgeSeconds: 90,
+    maxAgeHours: 24,
+  }).catch(() => [])
+  let completed = 0
+  for (const job of pending) {
+    // repairVideoRow n'utilise pas `id` : on passe la reference fournisseur.
+    const pathname = await repairVideoRow({
+      userId: job.userId,
+      id: job.providerRef,
+      tool,
+      providerRef: job.providerRef,
+    }).catch(() => null)
+    if (pathname) completed++
+  }
+  return { checked: pending.length, completed }
+}
+
+// Finalise les generations Traduction / Genjutsu / Motion terminees mais restees
+// "processing" pour des utilisateurs absents. Appele par le cron.
+export async function reconcileProcessingOtherVideos(
+  limit = 30,
+): Promise<OtherVideosReconcileResult> {
+  const [translation, genjutsu, motion] = await Promise.all([
+    finalizeCompletedForTool('translation', limit).catch(() => ({ checked: 0, completed: 0 })),
+    finalizeCompletedForTool('genjutsu', limit).catch(() => ({ checked: 0, completed: 0 })),
+    finalizeCompletedForTool('motion', limit).catch(() => ({ checked: 0, completed: 0 })),
+  ])
+  return { translation, genjutsu, motion }
 }
