@@ -1,6 +1,8 @@
 "use client"
 
+import { useCallback, useEffect, useRef, useState } from "react"
 import useSWR from "swr"
+import { currencyForCountry } from "./currency-map"
 
 // -----------------------------------------------------------------------------
 // Conversion de prix INDICATIVE pour la page tarifs.
@@ -29,6 +31,8 @@ export const CURRENCIES: CurrencyMeta[] = [
   { code: "NGN", label: "Naira (NGN)", locale: "en-NG" },
   { code: "GHS", label: "Cedi (GHS)", locale: "en-GH" },
   { code: "MAD", label: "Dirham (MAD)", locale: "fr-MA" },
+  { code: "KES", label: "Shilling (KES)", locale: "en-KE" },
+  { code: "ZAR", label: "Rand (ZAR)", locale: "en-ZA" },
   { code: "XAF", label: "FCFA (XAF)", locale: "fr-FR" },
 ]
 
@@ -45,6 +49,8 @@ export const FALLBACK_UNITS_PER_XOF: Record<string, number> = {
   NGN: 1 / 0.38,
   GHS: 1 / 40,
   MAD: 1 / 61,
+  KES: 1 / 4.69,
+  ZAR: 1 / 32.8,
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -119,6 +125,64 @@ export function formatConverted(
   }
 }
 
+/**
+ * Hook centralise de selection de devise pour les pages tarifaires.
+ *
+ * - Detection AUTOMATIQUE selon le PAYS du visiteur via /api/geo (en-tetes de
+ *   geolocalisation Vercel). Repli sur la langue du navigateur si le pays est
+ *   inconnu (ex. en local), puis sur XOF.
+ * - Selection MANUELLE : des que l'utilisateur choisit une devise, l'auto-
+ *   detection ne l'ecrase plus (memorise le choix pour la session, persiste
+ *   dans localStorage pour les visites suivantes).
+ *
+ * Retourne aussi les taux de change (units per XOF) prets pour formatConverted.
+ */
+export function useCurrencySelection(): {
+  currency: CurrencyMeta
+  currencyCode: string
+  setCurrencyCode: (code: string) => void
+  rates: Record<string, number>
+} {
+  const { rates } = useXofRates()
+  const [currencyCode, setCurrencyCodeState] = useState("XOF")
+  const userChose = useRef(false)
+
+  const { data: geo, error: geoError } = useSWR<{ country?: string; currency?: string | null }>(
+    "/api/geo",
+    fetcher,
+    { revalidateOnFocus: false, dedupingInterval: 1000 * 60 * 60, shouldRetryOnError: false },
+  )
+
+  // Choix manuel memorise : appliquer immediatement au montage.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const saved = window.localStorage.getItem("chapcam_currency")
+    if (saved && CURRENCIES.some((c) => c.code === saved)) {
+      userChose.current = true
+      setCurrencyCodeState(saved)
+    }
+  }, [])
+
+  // Auto-detection (une seule fois) tant que l'utilisateur n'a pas choisi.
+  useEffect(() => {
+    if (userChose.current) return
+    // Attend la resolution de /api/geo (succes OU erreur) avant de decider.
+    if (geo === undefined && !geoError) return
+    const supported = (code?: string | null) => !!code && CURRENCIES.some((c) => c.code === code)
+    const detected = supported(geo?.currency) ? (geo!.currency as string) : guessCurrency()
+    setCurrencyCodeState(detected)
+  }, [geo, geoError])
+
+  const setCurrencyCode = useCallback((code: string) => {
+    userChose.current = true
+    setCurrencyCodeState(code)
+    if (typeof window !== "undefined") window.localStorage.setItem("chapcam_currency", code)
+  }, [])
+
+  const currency = CURRENCIES.find((c) => c.code === currencyCode) ?? CURRENCIES[0]
+  return { currency, currencyCode, setCurrencyCode, rates }
+}
+
 /** Devine la devise probable a partir de la locale du navigateur. */
 export function guessCurrency(): string {
   if (typeof navigator === "undefined") return "XOF"
@@ -130,6 +194,8 @@ export function guessCurrency(): string {
     ng: "NGN",
     gh: "GHS",
     ma: "MAD",
+    ke: "KES",
+    za: "ZAR",
   }
   const region = loc.split("-")[1]
   if (region && map[region]) return map[region]

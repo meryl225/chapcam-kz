@@ -11,7 +11,7 @@ import { ANNIVERSARY_MINUTES_OFFERS, getMinutesOffer } from '@/lib/minutes-offer
 import { OFFER_ACTIVE } from '@/components/dashboard/anniversary-offer-popup'
 import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 import { PaymentBadgePopup } from '@/components/payment-badge-popup'
-import { CURRENCIES, useXofRates, formatConverted, formatXof, guessCurrency } from '@/lib/currency-convert'
+import { CURRENCIES, useCurrencySelection, formatConverted, formatXof } from '@/lib/currency-convert'
 import { useT } from '@/lib/i18n/language-provider'
 
 function PlansContent() {
@@ -22,13 +22,9 @@ function PlansContent() {
   // evite de relancer le checkout auto plusieurs fois (ex: arrivee depuis l'accueil)
   const autoStarted = useRef(false)
 
-  // Convertisseur de devise indicatif (le debit reste en XOF/FCFA).
-  const { rates } = useXofRates()
-  const [currencyCode, setCurrencyCode] = useState('XOF')
-  useEffect(() => {
-    setCurrencyCode(guessCurrency())
-  }, [])
-  const currency = CURRENCIES.find((c) => c.code === currencyCode) ?? CURRENCIES[0]
+  // Convertisseur de devise indicatif (detection auto par pays + choix manuel).
+  // Le debit reste toujours en XOF/FCFA.
+  const { currency, currencyCode, setCurrencyCode, rates } = useCurrencySelection()
 
   // Si l'utilisateur arrive depuis la page d'accueil avec ?plan=ID, on ouvre
   // automatiquement le choix de paiement pour ce produit (formule ou Live Pro).
