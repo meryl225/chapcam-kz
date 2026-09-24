@@ -495,11 +495,22 @@ export async function POST(request: NextRequest) {
       : `${HIGGSFIELD_API}/${model}`
     console.log("[Genjutsu] Requête API", { image_url: imageUrl, video_url: videoUrl ?? null, prompt, resolution: quality, providerCostUsd: pricing.providerCostUsd, customerPriceUsd: pricing.customerPriceUsd, chargedJetons: wallet.charged, webhook: webhookUrl ?? null, payload })
 
-    const res = await higgsfieldFetch(generationUrl, {
-      method: "POST",
-      headers: { ...auth, "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify(payload),
-    })
+    // IMPORTANT : ce POST LANCE une generation FACTUREE par Higgsfield. Il n'est
+    // donc PAS idempotent et ne doit JAMAIS etre reessaye : un retry (timeout ou
+    // 5xx transitoire) creerait une 2e generation payante alors que la 1ere a deja
+    // demarre cote provider -> double debit Higgsfield pour une seule video (bug du
+    // "4 requetes / 2 videos"). On force retries: 0 et un timeout plus large (le
+    // lancement peut depasser 20 s, Higgsfield telechargeant image + video source)
+    // pour eviter l'abandon premature qui declenchait justement la re-soumission.
+    const res = await higgsfieldFetch(
+      generationUrl,
+      {
+        method: "POST",
+        headers: { ...auth, "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify(payload),
+      },
+      { timeoutMs: 45_000, retries: 0 },
+    )
     const rawResponse = await res.text()
     let json: Record<string, unknown> | null = null
     try {
