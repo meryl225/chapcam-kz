@@ -82,9 +82,13 @@ export async function GET(request: NextRequest) {
         const pathname = v.blob_pathname || healed.get(v.id) || null
         // Une ligne "processing" qui vient d'etre reparee est en realite terminee.
         const status = healed.has(v.id) ? 'completed' : v.status
+        // Source de lecture/telechargement : le master Blob prive en priorite.
+        // REPLI : si aucun blob permanent (re-hebergement encore en echec) mais
+        // qu'on a une URL fournisseur (CloudFront Higgsfield, valide ~7j), on la
+        // sert directement pour que la video s'affiche au lieu d'un spinner.
         const blobUrl = pathname
           ? `/api/videos/file?pathname=${encodeURIComponent(pathname)}`
-          : null
+          : v.provider_url || null
 
         // URLs de lecture Stream signees (jeton court, genere a chaque requete).
         // On expose le manifeste HLS signe (lecture dans un <video> natif +
