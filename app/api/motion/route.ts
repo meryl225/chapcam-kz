@@ -166,6 +166,14 @@ export async function GET(request: NextRequest) {
         }).catch(() => {})
       }
     } else if (statusStr === "failed" || statusStr === "nsfw") {
+      // Journaliser la charge utile complete du statut : c'est la SEULE source qui
+      // explique pourquoi une generation acceptee echoue ensuite cote Higgsfield
+      // (media inaccessible, duree video hors 4-30s, moderation, etc.).
+      console.error("[Genjutsu] Génération échouée (statut terminal)", {
+        request_id: requestId,
+        status: statusStr,
+        response: json,
+      })
       await markMotionJobFailed(user.id, requestId).catch(() => {})
       const jobModel = await getMotionJobModel(user.id, requestId).catch(() => null)
       if (jobModel === "genjutsu") {
@@ -315,14 +323,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Une vidéo de référence est requise pour le transfert de mouvement Genjutsu." }, { status: 400 })
     }
 
-    // 2) Lancer la génération Genjutsu avec uniquement des URLs HTTPS et des scalaires JSON.
+    // 2) Lancer la génération.
+    // Genjutsu = motion transfer : le modele n'accepte QUE {prompt, video_url,
+    // image_urls, resolution}. On n'envoie ni enhance_prompt ni motions (presets
+    // de camera propres au modele DoP) : des champs inconnus peuvent faire echouer
+    // la generation cote provider apres acceptation. La resolution du modele est
+    // 720p (seule valeur supportee par Genjutsu v1.0), on la force.
     const payload: Record<string, unknown> = modelKey === "genjutsu"
       ? {
           image_urls: [imageUrl],
-          ...(videoUrl ? { video_url: videoUrl } : {}),
+          video_url: videoUrl,
           prompt,
-          enhance_prompt: enhance,
-          resolution: quality,
+          resolution: "720p",
         }
       : {
           image_url: imageUrl,
@@ -332,7 +344,7 @@ export async function POST(request: NextRequest) {
           resolution: quality,
           duration: durationSeconds,
         }
-    if (motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
+    if (modelKey !== "genjutsu" && motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
     const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, "motion", { model: modelKey, quality, providerCostUsd: pricing.providerCostUsd, marginMultiplier: 2 })
     if (!wallet.ok) {
       await admin.storage.from(STORAGE_BUCKET).remove([path, ...(referencePath ? [referencePath] : [])]).catch(() => {})
