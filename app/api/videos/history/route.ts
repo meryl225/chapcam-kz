@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { listVideoHistory, deleteVideoHistory, type VideoTool } from '@/lib/video-history'
 import { repairVideoRow } from '@/lib/video-history-repair'
 import { getSignedStreamUrls } from '@/lib/cloudflare-stream'
+import { isVideoKey, signedPlaybackUrl } from '@/lib/r2'
 
 // L'auto-reparation peut re-heberger plusieurs videos (fetch HeyGen + upload
 // Blob) : on laisse de la marge pour eviter un timeout serverless.
@@ -82,13 +83,23 @@ export async function GET(request: NextRequest) {
         const pathname = v.blob_pathname || healed.get(v.id) || null
         // Une ligne "processing" qui vient d'etre reparee est en realite terminee.
         const status = healed.has(v.id) ? 'completed' : v.status
-        // Source de lecture/telechargement : le master Blob prive en priorite.
-        // REPLI : si aucun blob permanent (re-hebergement encore en echec) mais
-        // qu'on a une URL fournisseur (CloudFront Higgsfield, valide ~7j), on la
-        // sert directement pour que la video s'affiche au lieu d'un spinner.
-        const blobUrl = pathname
-          ? `/api/videos/file?pathname=${encodeURIComponent(pathname)}`
-          : v.provider_url || null
+        // SOURCE DE LECTURE.
+        // Priorite : URL R2 SIGNEE DIRECTE (inline, ~1h). On NE passe PLUS par la
+        // redirection 302 de /api/videos/file : le lecteur <video> d'iOS Safari
+        // echoue sur les redirections 3xx cross-origin (ecran noir / icone
+        // cassee sur mobile, alors que desktop suivait la redirection). Une URL
+        // R2 signee directe supprime la redirection -> lecture identique iOS/
+        // Android/desktop. Repli : route Blob privee (anciennes videos sans R2),
+        // puis URL fournisseur (re-hebergement encore en echec).
+        let blobUrl: string | null = null
+        if (isVideoKey(v.r2_key)) {
+          blobUrl = await signedPlaybackUrl(v.r2_key, 3600).catch(() => null)
+        }
+        if (!blobUrl) {
+          blobUrl = pathname
+            ? `/api/videos/file?pathname=${encodeURIComponent(pathname)}`
+            : v.provider_url || null
+        }
 
         // URLs de lecture Stream signees (jeton court, genere a chaque requete).
         // On expose le manifeste HLS signe (lecture dans un <video> natif +
