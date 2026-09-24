@@ -471,6 +471,21 @@ function PlansContent() {
                   </div>
                 )}
 
+                {/* Minutes de swap Live incluses : avantage cle du forfait, mis en
+                    avant avant la liste des autres caracteristiques. */}
+                <div
+                  className="mt-6 flex items-center gap-3 rounded-2xl px-4 py-3"
+                  style={{ backgroundColor: `${accent}1f`, border: `1px solid ${accent}66` }}
+                >
+                  <Clock className="h-5 w-5 flex-shrink-0" style={{ color: accent }} />
+                  <div>
+                    <p className="text-sm font-bold" style={{ color: accent }}>
+                      {plan.minutes} {t('de swap Live')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{t('Minutes de changement de visage en direct')}</p>
+                  </div>
+                </div>
+
                 <ul className="mt-6 flex-1 space-y-4 text-muted-foreground">
                   {plan.features.map((feature, i) => (
                     <li key={i} className="flex items-center gap-3">
