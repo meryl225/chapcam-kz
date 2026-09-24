@@ -43,6 +43,8 @@ export interface VideoHistoryItem {
   // source de telechargement.
   stream_uid: string | null
   stream_customer_code: string | null
+  // URL fournisseur (repli de lecture si le blob permanent manque encore).
+  provider_url: string | null
   title: string
   status: 'processing' | 'completed' | 'failed'
   created_at: string
@@ -92,6 +94,12 @@ async function ensureTable(): Promise<void> {
   // Cle R2 PERMANENTE du fichier (ex : videos/{userId}/{videoId}.mp4). Jamais
   // une URL signee : elles sont generees a la demande au moment du clic.
   await sql`ALTER TABLE video_history ADD COLUMN IF NOT EXISTS r2_key TEXT`
+  // URL FOURNISSEUR de la video terminee (ex : CloudFront Higgsfield, valide
+  // ~7j). C'est le FILET DE SECURITE ULTIME : si le re-hebergement permanent
+  // (Blob/R2) echoue de facon repetee (timeout serverless), on sert quand meme
+  // cette URL pour que la video s'affiche au lieu de rester bloquee sur un
+  // spinner. La reparation en arriere-plan la remplacera par un blob permanent.
+  await sql`ALTER TABLE video_history ADD COLUMN IF NOT EXISTS provider_url TEXT`
   await sql`CREATE INDEX IF NOT EXISTS video_history_user_idx ON video_history (user_id, created_at DESC)`
   // Un provider_ref donne n'est enregistre qu'une fois par utilisateur.
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS video_history_ref_idx ON video_history (user_id, tool, provider_ref)`
@@ -119,8 +127,14 @@ export async function rehostToBlob(
   let lastError: unknown = null
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    // Timeout de telechargement : un CDN lent ne doit pas consommer tout le
+    // budget de la fonction serverless (sinon elle est tuee avant d'enregistrer
+    // -> ligne bloquee en "processing"). On abandonne proprement pour reessayer.
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 40_000)
     try {
-      const res = await fetch(remoteUrl)
+      const res = await fetch(remoteUrl, { signal: controller.signal })
+      clearTimeout(timer)
       if (!res.ok) {
         // 404/410 = la source n'existe plus : inutile de reessayer.
         if (res.status === 404 || res.status === 410) {
@@ -169,6 +183,7 @@ export async function rehostToBlob(
       }
       return blob.pathname
     } catch (err) {
+      clearTimeout(timer)
       lastError = err
       console.error(
         `[video-history] Re-hebergement Blob echoue (tentative ${attempt}/${MAX_ATTEMPTS}):`,
@@ -313,6 +328,34 @@ async function clearRehostClaim(userId: string, tool: VideoTool, providerRef: st
  * Concurrence : protege par un verrou (claimRehostSlot) pour ne pas telecharger
  * la meme video en parallele a chaque poll (5s). Best-effort : ne jette jamais.
  */
+/**
+ * Marque une ligne "completed" en enregistrant l'URL FOURNISSEUR comme source de
+ * lecture (repli), sans copie Blob. Utilise quand le re-hebergement permanent a
+ * echoue trop de fois : mieux vaut servir l'URL fournisseur (encore valide un
+ * temps) que laisser l'utilisateur bloque sur un spinner "Generation...".
+ * Idempotent : ne degrade jamais une ligne qui a deja un blob permanent.
+ */
+async function markCompletedWithProviderUrl(
+  userId: string,
+  tool: VideoTool,
+  providerRef: string,
+  providerUrl: string,
+  title: string,
+  creditsCost?: number | null,
+): Promise<void> {
+  await ensureTable()
+  await sql`
+    INSERT INTO video_history (user_id, tool, provider_ref, provider_url, title, status, credits_cost)
+    VALUES (${userId}, ${tool}, ${providerRef}, ${providerUrl}, ${title}, 'completed', ${creditsCost ?? null})
+    ON CONFLICT (user_id, tool, provider_ref)
+    DO UPDATE SET
+      provider_url = EXCLUDED.provider_url,
+      title = COALESCE(NULLIF(EXCLUDED.title, ''), video_history.title),
+      -- On ne repasse en 'completed' que si la ligne n'a pas deja abouti a mieux.
+      status = CASE WHEN video_history.blob_pathname IS NULL THEN 'completed' ELSE video_history.status END
+  `
+}
+
 export async function finalizeCompletedVideo(input: {
   userId: string
   tool: VideoTool
@@ -338,7 +381,10 @@ export async function finalizeCompletedVideo(input: {
   const claim = await claimRehostSlot(userId, tool, providerRef, title)
   if (!claim.claimed) {
     // Un autre poll re-heberge deja, OU tentatives epuisees -> dernier recours.
-    if (claim.attempts >= MAX_REHOST_ATTEMPTS) return { state: 'fallback', url: providerUrl }
+    if (claim.attempts >= MAX_REHOST_ATTEMPTS) {
+      await markCompletedWithProviderUrl(userId, tool, providerRef, providerUrl, title, creditsCost)
+      return { state: 'fallback', url: providerUrl }
+    }
     return { state: 'pending' }
   }
 
@@ -346,7 +392,14 @@ export async function finalizeCompletedVideo(input: {
   const pathname = await rehostToBlob(providerUrl, userId, tool, providerRef)
   if (!pathname) {
     await clearRehostClaim(userId, tool, providerRef).catch(() => {})
-    if (claim.attempts >= MAX_REHOST_ATTEMPTS) return { state: 'fallback', url: providerUrl }
+    if (claim.attempts >= MAX_REHOST_ATTEMPTS) {
+      // Re-hebergement definitivement en echec : on NE laisse PAS l'utilisateur
+      // bloque sur un spinner. On marque la video "completed" avec l'URL
+      // fournisseur (valide ~7j) comme source de lecture. La reparation de fond
+      // tentera plus tard de la remplacer par une copie Blob permanente.
+      await markCompletedWithProviderUrl(userId, tool, providerRef, providerUrl, title, creditsCost)
+      return { state: 'fallback', url: providerUrl }
+    }
     return { state: 'pending' }
   }
 
@@ -600,14 +653,14 @@ export async function listVideoHistory(
   await ensureTable()
   const rows = tool
     ? ((await sql`
-        SELECT id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, stream_uid, stream_customer_code, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, stream_uid, stream_customer_code, provider_url, title, status, created_at
         FROM video_history
         WHERE user_id = ${userId} AND tool = ${tool}
         ORDER BY created_at DESC
         LIMIT ${limit}
       `) as VideoHistoryItem[])
     : ((await sql`
-        SELECT id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, stream_uid, stream_customer_code, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, stream_uid, stream_customer_code, provider_url, title, status, created_at
         FROM video_history
         WHERE user_id = ${userId}
         ORDER BY created_at DESC
