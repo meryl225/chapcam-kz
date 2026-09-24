@@ -95,7 +95,7 @@ export function FounderSection() {
                     {/* Social links */}
                     <div className="hidden md:flex items-center gap-3">
                       <a
-                        href="https://linkedin.com"
+                        href="https://linkedin.com/in/meryl-kacou-baa566283"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#00ff88]/20 border border-white/20 hover:border-[#00ff88]/50 flex items-center justify-center transition-all"
@@ -103,7 +103,7 @@ export function FounderSection() {
                         <Linkedin className="w-5 h-5 text-white" />
                       </a>
                       <a
-                        href="https://twitter.com"
+                        href="https://x.com/metaafrika"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="w-10 h-10 rounded-full bg-white/10 hover:bg-[#00ff88]/20 border border-white/20 hover:border-[#00ff88]/50 flex items-center justify-center transition-all"
