@@ -109,7 +109,7 @@ export default async function DashboardHubPage() {
               <T>Voir toutes mes créations</T><ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
-          <VideoHistorySection tool="photo_video" compact />
+          <VideoHistorySection tool="all" compact />
         </div>
         <SupportBanner />
       </section>
