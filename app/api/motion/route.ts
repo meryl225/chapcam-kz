@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, getMotionJobModel } from "@/lib/motion-jobs"
+import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, getMotionJobModel, listMotionJobs } from "@/lib/motion-jobs"
 import { saveVideoHistory, finalizeCompletedVideo, failGenerationAndGetRefund, listProcessingGenerations } from "@/lib/video-history"
 import { creditJetons, reserveJetons } from "@/lib/jetons"
 import { estimateGenjutsuPriceUsd, GENJUTSU_MAX_DURATION_SECONDS } from "@/lib/tool-costs"
@@ -223,6 +223,44 @@ export async function GET(request: NextRequest) {
         refunded += await refundGenjutsuFailure(user.id, providerRef)
       }
     }
+
+    // FILET DE SECURITE : certaines generations ont bien un request_id enregistre
+    // dans motion_jobs mais AUCUNE ligne d'historique (l'ecriture d'historique a
+    // echoue silencieusement au moment de la soumission). Elles seraient alors
+    // invisibles pour toujours. On rattrape ces cas en scannant motion_jobs :
+    // pour chaque job Genjutsu, si Higgsfield dit "completed", on cree/complete
+    // la ligne d'historique (finalizeCompletedVideo est idempotent).
+    const jobs = await listMotionJobs(user.id, 50).catch(() => [])
+    const seen = new Set(pending.map((p) => p.providerRef))
+    for (const job of jobs) {
+      if (job.model !== "genjutsu" || job.provider !== "higgsfield") continue
+      if (job.status === "failed") continue
+      if (seen.has(job.request_id)) continue // deja traite via l'historique
+      seen.add(job.request_id)
+      let json: Record<string, any> | null = null
+      try {
+        const res = await higgsfieldFetch(
+          `${HIGGSFIELD_API}/requests/${encodeURIComponent(job.request_id)}/status`,
+          { headers: auth },
+        )
+        if (res.ok) json = await res.json().catch(() => null)
+      } catch {
+        continue
+      }
+      const videoUrl = extractVideoUrl(json)
+      if ((json?.status as string) === "completed" && videoUrl) {
+        await markMotionJobCompleted(user.id, job.request_id, videoUrl).catch(() => {})
+        const result = await finalizeCompletedVideo({
+          userId: user.id,
+          tool: "genjutsu",
+          providerRef: job.request_id,
+          providerUrl: videoUrl,
+          title: job.prompt?.slice(0, 80) || "Genjutsu",
+        }).catch(() => null)
+        if (result && result.state !== "pending") recovered += 1
+      }
+    }
+
     return NextResponse.json({ success: true, refunded, recovered })
   }
 
