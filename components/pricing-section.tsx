@@ -5,13 +5,12 @@ import { Button } from "@/components/ui/button"
 import { Check, Zap, Crown, Star, Clock, CreditCard, Droplet, DropletOff, Sparkles, Monitor, Palette, Gift, Clapperboard, Mic, ChevronDown, ChevronUp } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useT } from "@/lib/i18n/language-provider"
 import {
   CURRENCIES,
-  useXofRates,
+  useCurrencySelection,
   formatConverted,
-  guessCurrency,
 } from "@/lib/currency-convert"
 
 // Statut du logo (watermark) par forfait :
@@ -158,21 +157,14 @@ const plans = [
 
 export function PricingSection() {
   const t = useT()
-  const { rates } = useXofRates()
-  const [currencyCode, setCurrencyCode] = useState("XOF")
+  // Devise indicative : detection auto par pays + choix manuel (debit en XOF).
+  const { currency, currencyCode, setCurrencyCode, rates } = useCurrencySelection()
   // Forfaits dont la liste d'options est repliee ("Voir plus" par carte).
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   // Au-dela de ce nombre d'options, on replie le surplus derriere "Voir plus"
   // pour garder toutes les cartes a la meme hauteur.
   const MAX_VISIBLE_FEATURES = 4
-
-  // Devine la devise du visiteur au montage (cote client uniquement).
-  useEffect(() => {
-    setCurrencyCode(guessCurrency())
-  }, [])
-
-  const currency = CURRENCIES.find((c) => c.code === currencyCode) ?? CURRENCIES[0]
 
   return (
     <section id="tarifs" className="relative py-24 px-6 bg-[#050505]">
