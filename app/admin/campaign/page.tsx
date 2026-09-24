@@ -71,7 +71,7 @@ export default function AdminCampaignPage() {
   }
 
   const sendCampaign = async (type: "D2" | "D1" | "DJ" | "PC" | "VIDEO" | "SUPPORT" | "V2") => {
-    if (type === "V2" && !confirm("Envoyer la campagne 'ChapCam 2.0 disponible' a TOUS les utilisateurs inscrits ?")) return
+    if (type === "V2" && !confirm("Envoyer la campagne 'ChapCam 3.0 disponible' a TOUS les utilisateurs inscrits ?")) return
     if (type === "PC" && !confirm("Envoyer la campagne 'ChapCam PC a vie - 50 000 FCFA' a TOUS les utilisateurs inscrits ?")) return
     if (type === "VIDEO" && !confirm("Envoyer la campagne 'Appels video' a TOUS les utilisateurs inscrits ?")) return
     if (type === "SUPPORT" && !confirm("Envoyer la campagne 'Assistance / Besoin d'aide ?' a TOUS les utilisateurs inscrits ?")) return
@@ -154,7 +154,7 @@ export default function AdminCampaignPage() {
           </p>
         </div>
 
-        {/* Campagne ChapCam 2.0 - nouvelle version */}
+        {/* Campagne ChapCam 3.0 - nouvelle version */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -166,9 +166,9 @@ export default function AdminCampaignPage() {
                 <Rocket className="w-6 h-6 text-[#a855f7]" />
               </div>
               <div className="flex-1">
-                <h3 className="text-xl font-bold text-white mb-1">Campagne ChapCam 2.0 - Nouvelle version</h3>
+                <h3 className="text-xl font-bold text-white mb-1">Campagne ChapCam 3.0 - Nouvelle version</h3>
                 <p className="text-gray-400 text-sm">
-                  Annonce a tous les inscrits la sortie de <strong className="text-white">ChapCam 2.0</strong> (17 juillet) :
+                  Annonce a tous les inscrits la sortie de <strong className="text-white">ChapCam 3.0</strong> (17 juillet) :
                   fonctionne desormais sur <strong className="text-[#00ff88]">tout type de PC</strong> (plus besoin de PC Gamer),
                   transformation du visage, du corps et de la <strong className="text-white">couleur de peau</strong>.
                   L&apos;email contient un bouton <strong className="text-white">Tester (recharges)</strong> et un bouton
@@ -184,7 +184,7 @@ export default function AdminCampaignPage() {
               </span>
               <span className="inline-flex items-center gap-1.5 text-gray-300">
                 <Clock className="w-4 h-4 text-[#a855f7]" />
-                Sujet : &quot;ChapCam 2.0 est disponible&quot;
+                Sujet : &quot;ChapCam 3.0 est disponible&quot;
               </span>
             </div>
 
@@ -201,7 +201,7 @@ export default function AdminCampaignPage() {
               ) : (
                 <>
                   <Send className="w-5 h-5" />
-                  Envoyer la campagne ChapCam 2.0
+                  Envoyer la campagne ChapCam 3.0
                 </>
               )}
             </button>

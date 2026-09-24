@@ -323,14 +323,14 @@ function getSupportEmail(userName: string) {
   return { subject, html }
 }
 
-// Template email pour la campagne "ChapCam 2.0" (nouveau moteur IA, base sur
+// Template email pour la campagne "ChapCam 3.0" (nouveau moteur IA, base sur
 // Decart AI 2.5). Message cle : plus besoin de PC gamer / GPU dedie, ca tourne
 // sur tout type de PC. Sorti le 17 juillet. CTA vers les recharges + WhatsApp.
 function getChapCam2Email(userName: string) {
-  const subject = 'ChapCam 2.0 est disponible - fonctionne desormais sur TOUT type de PC'
+  const subject = 'ChapCam 3.0 est disponible - fonctionne desormais sur TOUT type de PC'
   const WHATSAPP_URL =
     'https://wa.me/2250555560189?text=' +
-    encodeURIComponent('Bonjour ChapCam, je veux tester la nouvelle version ChapCam 2.0.')
+    encodeURIComponent('Bonjour ChapCam, je veux tester la nouvelle version ChapCam 3.0.')
 
   const html = `
 <!DOCTYPE html>
@@ -349,7 +349,7 @@ function getChapCam2Email(userName: string) {
           <tr>
             <td style="background: linear-gradient(90deg, #7c3aed, #2563eb, #00ff88); padding: 22px; text-align: center;">
               <p style="margin: 0 0 4px; color: rgba(255,255,255,0.85); font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">Nouvelle version - 17 juillet</p>
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 800;">ChapCam 2.0 est la</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 800;">ChapCam 3.0 est la</h1>
             </td>
           </tr>
 
@@ -359,7 +359,7 @@ function getChapCam2Email(userName: string) {
               <p style="color: #ffffff; font-size: 18px; margin: 0 0 18px;">Salut ${userName || 'toi'},</p>
 
               <p style="color: #a0a0a0; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">
-                On vient de sortir <strong style="color: #ffffff;">ChapCam 2.0</strong>, notre nouveau moteur IA
+                On vient de sortir <strong style="color: #ffffff;">ChapCam 3.0</strong>, notre nouveau moteur IA
                 bien plus rapide et realiste. Le plus gros changement :
                 <strong style="color: #00ff88;">plus besoin d'un PC Gamer ni d'une carte graphique dediee</strong>.
               </p>
@@ -379,7 +379,7 @@ function getChapCam2Email(userName: string) {
               </table>
 
               <p style="color: #a0a0a0; font-size: 15px; line-height: 1.6; margin: 0 0 8px;">
-                Recharge tes points et teste ChapCam 2.0 des maintenant.
+                Recharge tes points et teste ChapCam 3.0 des maintenant.
               </p>
 
               <!-- CTA principal -->
@@ -387,7 +387,7 @@ function getChapCam2Email(userName: string) {
                 <tr>
                   <td align="center" style="padding: 22px 0 10px;">
                     <a href="https://chapcam.com/dashboard/plans" style="display: inline-block; background: linear-gradient(90deg, #00ff88, #00d4ff); color: #000000; font-size: 16px; font-weight: bold; text-decoration: none; padding: 16px 44px; border-radius: 12px;">
-                      Tester ChapCam 2.0
+                      Tester ChapCam 3.0
                     </a>
                   </td>
                 </tr>
