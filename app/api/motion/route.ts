@@ -19,7 +19,7 @@ import { estimateGenjutsuPriceUsd, GENJUTSU_MAX_DURATION_SECONDS } from "@/lib/t
 
 export const maxDuration = 60
 
-const HIGGSFIELD_API = "https://platform.higgsfield.ai"
+const HIGGSFIELD_API = "https://api.higgsfield.ai"
 const STORAGE_BUCKET = "avatars"
 
 // Higgsfield connait des ralentissements transitoires : sans borne, un appel qui
