@@ -20,16 +20,19 @@ const HEYGEN_API = 'https://api.heygen.com'
 const HIGGSFIELD_API = 'https://api.higgsfield.ai'
 
 /**
- * En-tetes d'auth Higgsfield : hf-api-key + hf-secret, derives de
- * HIGGSFIELD_API_KEY au format "uuid:secret" (meme schema que la route de
- * generation /api/motion, qui est le seul secret reellement disponible).
+ * En-tetes d'auth Higgsfield. L'endpoint de statut "/requests/{id}/status" exige
+ * Authorization: "Key {id}:{secret}" (schema officiel OpenAPI). On envoie AUSSI
+ * hf-api-key / hf-secret pour rester compatible avec la surface d'API legacy.
+ * HIGGSFIELD_API_KEY est stockee au format "uuid:secret".
  */
 function higgsfieldStatusHeaders(): Record<string, string> | null {
   const key = process.env.HIGGSFIELD_API_KEY
   if (!key) return null
   const idx = key.indexOf(':')
-  if (idx === -1) return { 'hf-api-key': key }
-  return { 'hf-api-key': key.slice(0, idx), 'hf-secret': key.slice(idx + 1) }
+  if (idx === -1) return { 'hf-api-key': key, Authorization: `Key ${key}` }
+  const id = key.slice(0, idx)
+  const secret = key.slice(idx + 1)
+  return { 'hf-api-key': id, 'hf-secret': secret, Authorization: `Key ${id}:${secret}` }
 }
 
 /**
