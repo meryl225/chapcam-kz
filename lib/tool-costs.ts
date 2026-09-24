@@ -15,8 +15,9 @@
 export type ToolName = 'photo_video' | 'motion' | 'translation' | 'chapverify' | 'voice_message'
 
 export const GENJUTSU_MARGIN_MULTIPLIER = 2
-export const GENJUTSU_MAX_DURATION_SECONDS = 10
-export const GENJUTSU_PROVIDER_COST_PER_SECOND_USD = 0.2703
+export const GENJUTSU_MAX_DURATION_SECONDS = 30
+// 10 secondes = 3250 FCFA, soit 325 FCFA par seconde.
+export const GENJUTSU_PROVIDER_COST_PER_SECOND_USD = 0.2708333333
 
 export type GenjutsuModel = 'genjutsu'
 export type GenjutsuQuality = '720p' | '1080p'
