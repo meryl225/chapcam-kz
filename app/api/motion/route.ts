@@ -270,14 +270,22 @@ export async function POST(request: NextRequest) {
     }
 
     // 2) Lancer la génération Genjutsu avec uniquement des URLs HTTPS et des scalaires JSON.
-    const payload: Record<string, unknown> = {
-      image_url: imageUrl,
-      ...(videoUrl ? { video_url: videoUrl } : {}),
-      prompt,
-      enhance_prompt: enhance,
-      resolution: quality,
-      duration: durationSeconds,
-    }
+    const payload: Record<string, unknown> = modelKey === "genjutsu"
+      ? {
+          image_urls: [imageUrl],
+          ...(videoUrl ? { video_url: videoUrl } : {}),
+          prompt,
+          enhance_prompt: enhance,
+          resolution: quality,
+        }
+      : {
+          image_url: imageUrl,
+          ...(videoUrl ? { video_url: videoUrl } : {}),
+          prompt,
+          enhance_prompt: enhance,
+          resolution: quality,
+          duration: durationSeconds,
+        }
     if (motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
     const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, "motion", { model: modelKey, quality, providerCostUsd: pricing.providerCostUsd, marginMultiplier: 2 })
     if (!wallet.ok) {
@@ -305,7 +313,13 @@ export async function POST(request: NextRequest) {
       await creditJetons(user.id, wallet.charged, { reason: "genjutsu_generation_failed", model: modelKey, quality })
       // Nettoyer l'image hebergee si la generation n'a pas demarre.
       await admin.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {})
-      const detail = String(json?.detail ?? json?.message ?? json?.error ?? rawResponse ?? "").toLowerCase()
+      const rawDetail = String(json?.detail ?? json?.message ?? json?.error ?? rawResponse ?? "")
+      const detail = rawDetail.toLowerCase()
+      // 413 est généralement renvoyé quand le média d’entrée est trop volumineux
+      // ou quand le payload ne respecte pas le schéma du modèle.
+      const errorMessage = res.status === 413
+        ? "La vidéo de référence est refusée par Higgsfield : réduis sa taille ou sa durée (maximum 30 secondes), puis réessaie."
+        : rawDetail || "Echec du lancement de la generation. Reessayez dans un instant."
       // Classification large des erreurs de facturation : credit / balance / quota
       // / insufficient / payment -> 402 (probleme cote compte, PAS un bug serveur,
       // donc ne doit pas polluer les alertes 5xx).
@@ -316,7 +330,7 @@ export async function POST(request: NextRequest) {
         {
           error: isBilling
             ? "Le service de generation video n'a plus de credits. Contactez l'administrateur."
-            : detail || "Echec du lancement de la generation. Reessayez dans un instant.",
+            : errorMessage,
           code: isBilling ? "no_credit" : "failed",
           detail,
         },
