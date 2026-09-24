@@ -198,7 +198,7 @@ function PlansContent() {
         </motion.div>
         )}
 
-        {/* Annonce ChapCam 2.0 : les recharges concernent le nouveau logiciel */}
+        {/* Annonce ChapCam 3.0 : les recharges concernent le nouveau logiciel */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -213,11 +213,11 @@ function PlansContent() {
                 {t('Nouveau · Sorti le 17 juillet')}
               </div>
               <h3 className="text-xl font-bold text-foreground md:text-2xl">
-                {t('Ces recharges alimentent ChapCam 2.0')}
+                {t('Ces recharges alimentent ChapCam 3.0')}
               </h3>
               <p className="mt-2 text-pretty leading-relaxed text-muted-foreground">
                 {t('Toutes les offres ci-dessous sont destinees a notre nouveau logiciel')}{' '}
-                <span className="font-semibold text-emerald-400">ChapCam 2.0</span>{t(', qui fonctionne desormais avec')}{' '}
+                <span className="font-semibold text-emerald-400">ChapCam 3.0</span>{t(', qui fonctionne desormais avec')}{' '}
                 <span className="font-semibold text-foreground">{t('tout type de PC')}</span> {t('et permet meme de')}{' '}
                 <span className="font-semibold text-foreground">{t('changer la couleur de peau')}</span>.
               </p>

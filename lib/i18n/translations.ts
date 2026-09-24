@@ -153,7 +153,7 @@ export const translations: Record<string, string> = {
   "2 points = 1 seconde de transformation du visage et corps entier":
     "2 points = 1 second of full face and body transformation",
   "Nouveau · Sorti le 17 juillet": "New · Released July 17",
-  "Ces recharges alimentent ChapCam 2.0": "These top-ups power ChapCam 2.0",
+  "Ces recharges alimentent ChapCam 3.0": "These top-ups power ChapCam 3.0",
   "Toutes les offres ci-dessous sont destinees a notre nouveau logiciel":
     "All the offers below are for our new software",
   ", qui fonctionne desormais avec": ", which now works with",
@@ -456,7 +456,7 @@ export const translations: Record<string, string> = {
   "Paiement 100% securise et instantane. Apres avoir paye, patientez quelques secondes sur la page PayDunya : votre compte est credite automatiquement des la confirmation.":
     "100% secure and instant payment. After paying, wait a few seconds on the PayDunya page: your account is credited automatically once confirmed.",
   "Nouveau · Sorti le 17 juillet": "New · Released July 17",
-  "Ces recharges alimentent ChapCam 2.0": "These top-ups power ChapCam 2.0",
+  "Ces recharges alimentent ChapCam 3.0": "These top-ups power ChapCam 3.0",
   "Toutes les offres ci-dessous sont destinees a notre nouveau logiciel":
     "All the offers below are for our new software",
   ", qui fonctionne desormais avec": ", which now works with",

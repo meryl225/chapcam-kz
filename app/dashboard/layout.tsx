@@ -133,7 +133,7 @@ export default async function DashboardLayout({
       {/* Telegram Support Button */}
       <TelegramSupport />
 
-      {/* Popup d'annonce ChapCam 2.0 (affiche une fois apres connexion) */}
+      {/* Popup d'annonce ChapCam 3.0 (affiche une fois apres connexion) */}
       <ChapCam2Announcement />
 
       {/* Popup offre anniversaire 3 mois (affiche une fois a l'arrivee) */}
