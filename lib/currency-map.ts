@@ -28,6 +28,29 @@ const DIRECT: Record<string, string> = {
   CA: 'CAD', // Canada
 }
 
+// Pays ou le francais est langue officielle ou tres largement parle. Sert a la
+// detection AUTOMATIQUE de langue : un visiteur d'un de ces pays voit le site en
+// francais par defaut ; partout ailleurs c'est l'anglais (langue internationale).
+// On exclut volontairement GW (portugais) et GQ (espagnol) de la zone franc.
+const FRANCOPHONE_COUNTRIES = new Set([
+  // Zone franc Ouest (UEMOA) + Centre (CEMAC)
+  'BJ', 'BF', 'CI', 'ML', 'NE', 'SN', 'TG', 'CM', 'CF', 'TD', 'CG', 'GA',
+  // Maghreb (francais tres present)
+  'DZ', 'MA', 'TN',
+  // Autres pays africains francophones
+  'CD', 'GN', 'RW', 'BI', 'DJ', 'KM', 'MG', 'SC', 'MU',
+  // Europe francophone
+  'FR', 'BE', 'CH', 'LU', 'MC',
+  // Amerique du Nord francophone (Quebec ; la langue navigateur affine)
+  'CA', 'HT',
+])
+
+/** Indique si le pays (ISO-3166 alpha-2) est majoritairement francophone. */
+export function isFrancophoneCountry(country: string | null | undefined): boolean {
+  if (!country) return false
+  return FRANCOPHONE_COUNTRIES.has(country.trim().toUpperCase())
+}
+
 /**
  * Retourne le code devise d'affichage pour un code pays ISO-3166 alpha-2.
  * Renvoie null si le pays est vide/inconnu (l'appelant retombe alors sur une
