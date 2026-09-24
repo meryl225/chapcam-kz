@@ -87,9 +87,18 @@ async function fetchFreshUrl(
       if (provider === 'higgsfield') {
         return await fetchFreshHiggsfieldUrl(ref)
       }
-      // Kling (defaut) : la source vit ~30j. On interroge la tache par son id.
+      if (provider === 'kling') {
+        // Kling : la source vit ~30j. On interroge la tache par son id.
+        const task = await getMotionTask(ref).catch(() => null)
+        return task?.status === 'succeeded' ? task.videoUrl || null : null
+      }
+      // Fournisseur INCONNU : c'est le cas quand la reparation est declenchee
+      // depuis « Mes creations » (la ligne video_history ne stocke pas le
+      // fournisseur). On tente Kling (Motion Control) puis Higgsfield
+      // (image->video) : l'un des deux repond pour toute generation Motion.
       const task = await getMotionTask(ref).catch(() => null)
-      return task?.status === 'succeeded' ? task.videoUrl || null : null
+      if (task?.status === 'succeeded' && task.videoUrl) return task.videoUrl
+      return await fetchFreshHiggsfieldUrl(ref)
     }
 
     const apiKey = process.env.HEYGEN_API_KEY

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { reconcilePendingPaydunya } from '@/lib/fulfillment'
 import { reconcilePendingGeniusPay } from '@/lib/geniuspay'
 import { reconcileWaitingActivations } from '@/lib/numbers/reconcile'
-import { reconcileProcessingPhotoVideos } from '@/lib/heygen-reconcile'
+import { reconcileProcessingPhotoVideos, reconcileProcessingOtherVideos } from '@/lib/heygen-reconcile'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -42,6 +42,13 @@ export async function GET(request: NextRequest) {
     console.log('[cron/reconcile-payments] photo-video error:', (e as Error)?.message)
     return null
   })
-  console.log('[cron/reconcile-payments]', JSON.stringify({ payments, geniuspay, activations, photoVideos }))
-  return NextResponse.json({ ok: true, payments, geniuspay, activations, photoVideos, at: new Date().toISOString() })
+  // Meme filet de securite pour Traduction / Genjutsu / Motion : finalise les
+  // videos terminees restees "en cours" pour les utilisateurs qui ne reviennent
+  // pas, afin qu'elles apparaissent dans « Mes creations » sans action de leur part.
+  const otherVideos = await reconcileProcessingOtherVideos(30).catch((e) => {
+    console.log('[cron/reconcile-payments] other-videos error:', (e as Error)?.message)
+    return null
+  })
+  console.log('[cron/reconcile-payments]', JSON.stringify({ payments, geniuspay, activations, photoVideos, otherVideos }))
+  return NextResponse.json({ ok: true, payments, geniuspay, activations, photoVideos, otherVideos, at: new Date().toISOString() })
 }

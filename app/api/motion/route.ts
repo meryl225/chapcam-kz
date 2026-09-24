@@ -126,15 +126,23 @@ function extractVideoUrl(json: Record<string, any> | null): string | null {
 // atomique et renvoie le cout a rembourser (0 si deja traite) ; on RECREDITE
 // alors reellement les jetons. C'est le correctif du "debit sans resultat" :
 // avant, le montant etait calcule mais jamais rendu au portefeuille.
-async function refundGenjutsuFailure(userId: string, requestId: string): Promise<number> {
-  const amount = await failGenerationAndGetRefund(userId, "genjutsu", requestId).catch(() => 0)
+async function refundMotionFailure(
+  userId: string,
+  tool: "genjutsu" | "motion",
+  requestId: string,
+): Promise<number> {
+  const amount = await failGenerationAndGetRefund(userId, tool, requestId).catch(() => 0)
   if (amount > 0) {
     await creditJetons(userId, amount, {
-      reason: "genjutsu_generation_failed_refund",
+      reason: tool === "genjutsu" ? "genjutsu_generation_failed_refund" : "motion_generation_failed_refund",
       request_id: requestId,
     }).catch(() => {})
   }
   return amount
+}
+// Compat : l'ancien nom reste utilise dans la reconciliation Genjutsu.
+async function refundGenjutsuFailure(userId: string, requestId: string): Promise<number> {
+  return refundMotionFailure(userId, "genjutsu", requestId)
 }
 
 // GET : soit la liste des presets de mouvement (?info=motions),
@@ -286,34 +294,33 @@ export async function GET(request: NextRequest) {
     // meme si l'utilisateur avait quitte la page pendant le rendu.
     if (statusStr === "completed" && videoUrl) {
       await markMotionJobCompleted(user.id, requestId, videoUrl).catch(() => {})
-      // Historique DEDIE Genjutsu : on re-heberge la video dans le stockage
-      // permanent (Blob + R2) sous l'outil "genjutsu" pour qu'elle reste
-      // retrouvable indefiniment dans l'historique de la page Genjutsu, et pas
-      // seulement dans l'historique Motion.
+      // Historique PERMANENT (Blob + R2) pour TOUTE generation : Genjutsu garde
+      // son onglet dedie (tool "genjutsu"), les autres modeles Higgsfield vont
+      // sous l'outil "motion". La video reste ainsi retrouvable indefiniment dans
+      // « Mes creations » meme apres expiration de l'URL fournisseur.
       const jobModel = await getMotionJobModel(user.id, requestId).catch(() => null)
-      if (jobModel === "genjutsu") {
-        await finalizeCompletedVideo({
-          userId: user.id,
-          tool: "genjutsu",
-          providerRef: requestId,
-          providerUrl: videoUrl,
-          title: "Genjutsu",
-        }).catch(() => {})
-      }
+      const histTool = jobModel === "genjutsu" ? "genjutsu" : "motion"
+      await finalizeCompletedVideo({
+        userId: user.id,
+        tool: histTool,
+        providerRef: requestId,
+        providerUrl: videoUrl,
+        title: histTool === "genjutsu" ? "Genjutsu" : "Motion",
+      }).catch(() => {})
     } else if (statusStr === "failed" || statusStr === "nsfw" || statusStr === "canceled") {
       // Journaliser la charge utile complete du statut : c'est la SEULE source qui
       // explique pourquoi une generation acceptee echoue ensuite cote Higgsfield
       // (media inaccessible, duree video hors 4-30s, moderation, etc.).
-      console.error("[Genjutsu] Génération échouée (statut terminal)", {
+      console.error("[Motion/Genjutsu] Génération échouée (statut terminal)", {
         request_id: requestId,
         status: statusStr,
         response: json,
       })
       await markMotionJobFailed(user.id, requestId).catch(() => {})
+      // Marque la ligne d'historique en echec ET rembourse EXACTEMENT le montant
+      // deduit (idempotent), pour tout modele : plus de debit sans resultat.
       const jobModel = await getMotionJobModel(user.id, requestId).catch(() => null)
-      if (jobModel === "genjutsu") {
-        await refundGenjutsuFailure(user.id, requestId)
-      }
+      await refundMotionFailure(user.id, jobModel === "genjutsu" ? "genjutsu" : "motion", requestId)
     }
     return NextResponse.json({
       success: true,
@@ -560,21 +567,21 @@ export async function POST(request: NextRequest) {
       prompt,
     }).catch(() => {})
 
-    // Historique DEDIE Genjutsu : on cree tout de suite une entree "processing"
-    // dans le stockage permanent sous l'outil "genjutsu". La video apparait alors
-    // immediatement dans l'historique de la page Genjutsu (etat "Generation..."),
-    // et l'auto-reparation pourra la finaliser meme si le client quitte la page.
-    if (modelKey === "genjutsu") {
-      await saveVideoHistory({
-        userId: user.id,
-        tool: "genjutsu",
-        providerRef: requestId,
-        blobPathname: null,
-        title: prompt.slice(0, 80) || "Genjutsu",
-        status: "processing",
-        creditsCost: wallet.charged,
-      }).catch(() => {})
-    }
+    // Historique PERMANENT UNIFIE : on cree tout de suite une entree "processing"
+    // pour TOUTE generation (plus seulement Genjutsu). Ainsi chaque video apparait
+    // immediatement dans « Mes creations » (etat "Generation..."), reste
+    // permanente (re-hebergee) et peut etre finalisee/reparee meme si le client
+    // quitte la page. Genjutsu garde son onglet dedie (tool "genjutsu") ; les
+    // autres modeles Higgsfield (standard, kling3...) vont sous l'outil "motion".
+    await saveVideoHistory({
+      userId: user.id,
+      tool: modelKey === "genjutsu" ? "genjutsu" : "motion",
+      providerRef: requestId,
+      blobPathname: null,
+      title: prompt.slice(0, 80) || (modelKey === "genjutsu" ? "Genjutsu" : "Motion"),
+      status: "processing",
+      creditsCost: wallet.charged,
+    }).catch(() => {})
 
     return NextResponse.json({
       success: true,
