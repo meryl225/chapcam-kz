@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { createMotionJob, markMotionJobCompleted, markMotionJobFailed } from "@/lib/motion-jobs"
+import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, getMotionJobModel } from "@/lib/motion-jobs"
+import { saveVideoHistory, finalizeCompletedVideo, failGenerationAndGetRefund } from "@/lib/video-history"
 import { creditJetons, reserveJetons } from "@/lib/jetons"
 import { estimateGenjutsuPriceUsd, GENJUTSU_MAX_DURATION_SECONDS } from "@/lib/tool-costs"
 
@@ -150,8 +151,34 @@ export async function GET(request: NextRequest) {
     // meme si l'utilisateur avait quitte la page pendant le rendu.
     if (statusStr === "completed" && videoUrl) {
       await markMotionJobCompleted(user.id, requestId, videoUrl).catch(() => {})
+      // Historique DEDIE Genjutsu : on re-heberge la video dans le stockage
+      // permanent (Blob + R2) sous l'outil "genjutsu" pour qu'elle reste
+      // retrouvable indefiniment dans l'historique de la page Genjutsu, et pas
+      // seulement dans l'historique Motion.
+      const jobModel = await getMotionJobModel(user.id, requestId).catch(() => null)
+      if (jobModel === "genjutsu") {
+        await finalizeCompletedVideo({
+          userId: user.id,
+          tool: "genjutsu",
+          providerRef: requestId,
+          providerUrl: videoUrl,
+          title: "Genjutsu",
+        }).catch(() => {})
+      }
     } else if (statusStr === "failed" || statusStr === "nsfw") {
+      // Journaliser la charge utile complete du statut : c'est la SEULE source qui
+      // explique pourquoi une generation acceptee echoue ensuite cote Higgsfield
+      // (media inaccessible, duree video hors 4-30s, moderation, etc.).
+      console.error("[Genjutsu] Génération échouée (statut terminal)", {
+        request_id: requestId,
+        status: statusStr,
+        response: json,
+      })
       await markMotionJobFailed(user.id, requestId).catch(() => {})
+      const jobModel = await getMotionJobModel(user.id, requestId).catch(() => null)
+      if (jobModel === "genjutsu") {
+        await failGenerationAndGetRefund(user.id, "genjutsu", requestId).catch(() => {})
+      }
     }
     return NextResponse.json({
       success: true,
@@ -296,14 +323,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Une vidéo de référence est requise pour le transfert de mouvement Genjutsu." }, { status: 400 })
     }
 
-    // 2) Lancer la génération Genjutsu avec uniquement des URLs HTTPS et des scalaires JSON.
+    // 2) Lancer la génération.
+    // Genjutsu = motion transfer : le modele n'accepte QUE {prompt, video_url,
+    // image_urls, resolution}. On n'envoie ni enhance_prompt ni motions (presets
+    // de camera propres au modele DoP) : des champs inconnus peuvent faire echouer
+    // la generation cote provider apres acceptation. La resolution du modele est
+    // 720p (seule valeur supportee par Genjutsu v1.0), on la force.
     const payload: Record<string, unknown> = modelKey === "genjutsu"
       ? {
           image_urls: [imageUrl],
-          ...(videoUrl ? { video_url: videoUrl } : {}),
+          video_url: videoUrl,
           prompt,
-          enhance_prompt: enhance,
-          resolution: quality,
+          resolution: "720p",
         }
       : {
           image_url: imageUrl,
@@ -313,7 +344,7 @@ export async function POST(request: NextRequest) {
           resolution: quality,
           duration: durationSeconds,
         }
-    if (motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
+    if (modelKey !== "genjutsu" && motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
     const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, "motion", { model: modelKey, quality, providerCostUsd: pricing.providerCostUsd, marginMultiplier: 2 })
     if (!wallet.ok) {
       await admin.storage.from(STORAGE_BUCKET).remove([path, ...(referencePath ? [referencePath] : [])]).catch(() => {})
@@ -374,6 +405,22 @@ export async function POST(request: NextRequest) {
       model: modelKey,
       prompt,
     }).catch(() => {})
+
+    // Historique DEDIE Genjutsu : on cree tout de suite une entree "processing"
+    // dans le stockage permanent sous l'outil "genjutsu". La video apparait alors
+    // immediatement dans l'historique de la page Genjutsu (etat "Generation..."),
+    // et l'auto-reparation pourra la finaliser meme si le client quitte la page.
+    if (modelKey === "genjutsu") {
+      await saveVideoHistory({
+        userId: user.id,
+        tool: "genjutsu",
+        providerRef: requestId,
+        blobPathname: null,
+        title: prompt.slice(0, 80) || "Genjutsu",
+        status: "processing",
+        creditsCost: wallet.charged,
+      }).catch(() => {})
+    }
 
     return NextResponse.json({
       success: true,

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
   }
 
   const toolParam = request.nextUrl.searchParams.get('tool')
-  const tool = (['photo_video', 'motion', 'translation'] as const).includes(
+  const tool = (['photo_video', 'motion', 'translation', 'genjutsu'] as const).includes(
     toolParam as VideoTool,
   )
     ? (toolParam as VideoTool)

@@ -110,6 +110,17 @@ export async function findMotionJobOwner(
   return { userId: String(rows[0].user_id), inputPaths: parsePaths(rows[0].input_paths) }
 }
 
+/** Renvoie le modele (ex: 'genjutsu', 'kling3', 'standard') d'un job donne. */
+export async function getMotionJobModel(userId: string, requestId: string): Promise<string | null> {
+  await ensureTable()
+  const rows = (await sql`
+    SELECT model FROM motion_jobs
+    WHERE user_id = ${userId} AND request_id = ${requestId}
+    LIMIT 1
+  `) as { model: string }[]
+  return rows.length ? String(rows[0].model) : null
+}
+
 /** Renvoie les chemins Blob temporaires (image + video) d'un job donne. */
 export async function getMotionJobInputPaths(userId: string, requestId: string): Promise<string[]> {
   await ensureTable()

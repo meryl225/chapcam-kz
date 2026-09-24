@@ -23,7 +23,7 @@ import {
 // accessibles indefiniment via une route authentifiee.
 // ============================================================
 
-export type VideoTool = 'photo_video' | 'motion' | 'translation'
+export type VideoTool = 'photo_video' | 'motion' | 'translation' | 'genjutsu'
 
 export interface VideoHistoryItem {
   id: string

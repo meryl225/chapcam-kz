@@ -19,29 +19,46 @@ import { getMotionTask } from '@/lib/kling'
 const HEYGEN_API = 'https://api.heygen.com'
 const HIGGSFIELD_API = 'https://api.higgsfield.ai'
 
-/** En-tete d'auth Higgsfield (meme schema que la route de generation). */
-function higgsfieldAuth(): string | null {
+/**
+ * En-tetes d'auth Higgsfield : hf-api-key + hf-secret, derives de
+ * HIGGSFIELD_API_KEY au format "uuid:secret" (meme schema que la route de
+ * generation /api/motion, qui est le seul secret reellement disponible).
+ */
+function higgsfieldStatusHeaders(): Record<string, string> | null {
   const key = process.env.HIGGSFIELD_API_KEY
-  const secret = process.env.HIGGSFIELD_API_SECRET
-  if (!key || !secret) return null
-  return `Key ${key}:${secret}`
+  if (!key) return null
+  const idx = key.indexOf(':')
+  if (idx === -1) return { 'hf-api-key': key }
+  return { 'hf-api-key': key.slice(0, idx), 'hf-secret': key.slice(idx + 1) }
 }
 
 /**
- * Redemande a Higgsfield une URL fraiche pour une generation image->video.
- * Higgsfield garde le resultat accessible via son endpoint de statut, donc on
- * peut recuperer les anciennes videos "Motion" faites avant Kling.
+ * Redemande a Higgsfield une URL fraiche pour une generation image->video ou un
+ * transfert de mouvement Genjutsu. Higgsfield garde le resultat accessible via
+ * son endpoint de statut, donc on peut recuperer une video terminee tant que la
+ * copie permanente n'a pas encore ete faite.
  */
 async function fetchFreshHiggsfieldUrl(ref: string): Promise<string | null> {
-  const auth = higgsfieldAuth()
+  const auth = higgsfieldStatusHeaders()
   if (!auth) return null
   try {
     const res = await fetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(ref)}/status`, {
-      headers: { Authorization: auth },
+      headers: auth,
     })
     if (!res.ok) return null
     const json = await res.json().catch(() => null)
-    return json?.status === 'completed' ? json?.video?.url || null : null
+    if (!json || json.status !== 'completed') return null
+    // La video finale peut arriver sous plusieurs formes selon le modele.
+    return (
+      json.video?.url ||
+      json.video_url ||
+      json.result?.url ||
+      json.result?.video?.url ||
+      (Array.isArray(json.results) ? json.results[0]?.url || json.results[0]?.video?.url : null) ||
+      json.output?.url ||
+      json.output?.video?.url ||
+      null
+    )
   } catch {
     return null
   }
@@ -58,6 +75,10 @@ async function fetchFreshUrl(
   provider?: string,
 ): Promise<string | null> {
   try {
+    // Genjutsu : toujours Higgsfield (transfert de mouvement).
+    if (tool === 'genjutsu') {
+      return await fetchFreshHiggsfieldUrl(ref)
+    }
     // Motion : selon le fournisseur d'origine. Higgsfield (ancien) ou Kling.
     if (tool === 'motion') {
       if (provider === 'higgsfield') {
@@ -137,5 +158,6 @@ export async function repairVideoRow(input: {
 function defaultTitle(tool: VideoTool): string {
   if (tool === 'photo_video') return 'Studio Photo en Vidéo'
   if (tool === 'translation') return 'Traduction Vidéo'
+  if (tool === 'genjutsu') return 'Genjutsu'
   return 'Motion Control'
 }
