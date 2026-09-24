@@ -762,4 +762,40 @@ export const translations: Record<string, string> = {
   "Temps restant": "Time left",
   "Les réglages avancés (qualité, codec, effets) sont disponibles sur la version ordinateur.":
     "Advanced settings (quality, codec, effects) are available on the desktop version.",
+
+  // ----- Page d'accueil (reference-homepage) -----
+  Fonctionnalités: "Features",
+  "À propos": "About",
+  "S’inscrire": "Sign up",
+  "Rechercher un outil, un effet, une idée...": "Search a tool, an effect, an idea...",
+  "L'IA au service de ta créativité": "AI at the service of your creativity",
+  Crée: "Create",
+  "sans limites.": "without limits.",
+  "Première plateforme d’IA dédiée aux transformations en temps réel et à la génération de vidéos full body Swap.":
+    "The first AI platform dedicated to real-time transformations and full body swap video generation.",
+  "Commencer gratuitement": "Get started for free",
+  "Accès immédiat": "Instant access",
+  "Outils IA créatifs": "Creative AI tools",
+  "Explore ChapCam": "Explore ChapCam",
+  "Tous tes outils créatifs, dans un seul espace.": "All your creative tools, in one place.",
+  "Voir tous les outils": "See all tools",
+  "Démonstration ChapCam": "ChapCam demo",
+  // Outils
+  "Change de visage en temps réel.": "Swap your face in real time.",
+  "Anime tes images avec un mouvement naturel.": "Animate your images with natural motion.",
+  "Anime ta photo en 3D.": "Animate your photo in 3D.",
+  "Crée des voix réalistes depuis un texte.": "Create realistic voices from text.",
+  "Traduis ta vidéo en 190+ langues.": "Translate your video into 190+ languages.",
+  "Détecte les deepfakes.": "Detect deepfakes.",
+  "Compatible streaming": "Streaming ready",
+  Découvrir: "Discover",
+  "Numéros virtuels, SMS OTP et proxies premium.": "Virtual numbers, OTP SMS and premium proxies.",
+  "Message Vocal": "Voice Message",
+  "Traduction vidéo": "Video translation",
+  // Barre de navigation mobile
+  Accueil: "Home",
+  Explorer: "Explore",
+  Créer: "Create",
+  "Mes créations": "My creations",
+  Profil: "Profile",
 }
