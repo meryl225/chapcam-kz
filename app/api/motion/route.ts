@@ -94,6 +94,18 @@ function higgsfieldAuthHeaders(): Record<string, string> | null {
   return { "hf-api-key": id, "hf-secret": secret, Authorization: `Key ${id}:${secret}` }
   }
 
+// URL absolue du webhook Higgsfield a partir de la requete entrante (ou d'une
+// variable d'environnement si definie). Higgsfield POSTera le resultat terminal
+// ici -> finalisation cote SERVEUR meme si l'onglet est ferme. Renvoie undefined
+// si indeterminable (on retombe alors sur le polling / la reconciliation).
+function resolveHiggsfieldWebhookUrl(request: NextRequest): string | undefined {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL
+  if (explicit) return `${explicit.replace(/\/$/, "")}/api/webhook/higgsfield`
+  const proto = request.headers.get("x-forwarded-proto") || "https"
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host")
+  return host ? `${proto}://${host}/api/webhook/higgsfield` : undefined
+}
+
 // La video finale peut arriver sous plusieurs formes selon le modele Higgsfield.
 function extractVideoUrl(json: Record<string, any> | null): string | null {
   if (!json) return null
@@ -435,9 +447,17 @@ export async function POST(request: NextRequest) {
       await admin.storage.from(STORAGE_BUCKET).remove([path, ...(referencePath ? [referencePath] : [])]).catch(() => {})
       return NextResponse.json({ error: `Solde insuffisant. Cette génération coûte ${wallet.required} Jetons.`, required: wallet.required, balance: wallet.balance }, { status: 402 })
     }
-    console.log("[Genjutsu] Requête API", { image_url: imageUrl, video_url: videoUrl ?? null, prompt, resolution: quality, providerCostUsd: pricing.providerCostUsd, customerPriceUsd: pricing.customerPriceUsd, chargedJetons: wallet.charged, payload })
+    // Webhook : Higgsfield POSTera le resultat terminal (completed/failed/nsfw)
+    // sur notre endpoint, ce qui finalise la video cote SERVEUR meme si l'onglet
+    // est ferme. C'est le mecanisme fiable de recuperation (le polling n'est plus
+    // qu'un secours). L'URL passe en query param hf_webhook (encodee).
+    const webhookUrl = resolveHiggsfieldWebhookUrl(request)
+    const generationUrl = webhookUrl
+      ? `${HIGGSFIELD_API}/${model}?hf_webhook=${encodeURIComponent(webhookUrl)}`
+      : `${HIGGSFIELD_API}/${model}`
+    console.log("[Genjutsu] Requête API", { image_url: imageUrl, video_url: videoUrl ?? null, prompt, resolution: quality, providerCostUsd: pricing.providerCostUsd, customerPriceUsd: pricing.customerPriceUsd, chargedJetons: wallet.charged, webhook: webhookUrl ?? null, payload })
 
-    const res = await higgsfieldFetch(`${HIGGSFIELD_API}/${model}`, {
+    const res = await higgsfieldFetch(generationUrl, {
       method: "POST",
       headers: { ...auth, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(payload),
