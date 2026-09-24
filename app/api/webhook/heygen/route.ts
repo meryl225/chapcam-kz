@@ -54,16 +54,25 @@ export async function POST(request: NextRequest) {
   // 1) Lire le CORPS BRUT (indispensable : la signature porte sur ces octets
   //    exacts ; re-serialiser le JSON casserait le HMAC).
   const rawBody = await request.text()
-  const signature = request.headers.get("heygen-signature") || ""
-  const timestamp = request.headers.get("heygen-timestamp") || ""
+  // HeyGen envoie l'en-tete "signature" (HMAC-SHA256 hex du corps brut). On
+  // accepte aussi "heygen-signature" par tolerance (anciennes versions).
+  const signature =
+    request.headers.get("signature") || request.headers.get("heygen-signature") || ""
+  // Le timestamp est OPTIONNEL chez HeyGen : present seulement sur certaines
+  // versions. On ne l'exige donc pas, on ne s'en sert que pour l'anti-rejeu
+  // quand il est fourni.
+  const timestamp = request.headers.get("timestamp") || request.headers.get("heygen-timestamp") || ""
   const secret = process.env.HEYGEN_WEBHOOK_SECRET || ""
 
   // 2) Verification de securite.
   if (secret) {
-    // Anti-rejeu : rejeter les livraisons trop anciennes.
-    const ts = Number(timestamp)
-    if (!timestamp || !Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > MAX_SKEW_SECONDS) {
-      return NextResponse.json({ error: "stale timestamp" }, { status: 400 })
+    // Anti-rejeu UNIQUEMENT si HeyGen a fourni un timestamp (sinon on ne bloque
+    // pas : la doc HeyGen ne garantit pas cet en-tete).
+    if (timestamp) {
+      const ts = Number(timestamp)
+      if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > MAX_SKEW_SECONDS) {
+        return NextResponse.json({ error: "stale timestamp" }, { status: 400 })
+      }
     }
     if (!signature || !verifySignature(rawBody, signature, secret)) {
       return NextResponse.json({ error: "bad signature" }, { status: 401 })
