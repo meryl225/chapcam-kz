@@ -71,12 +71,11 @@ const MODELS: Record<string, string> = {
 }
 const DEFAULT_MODEL = "turbo"
 
-function authHeader(): string | null {
+  function authHeader(): string | null {
   const key = process.env.HIGGSFIELD_API_KEY
-  const secret = process.env.HIGGSFIELD_API_SECRET
-  if (!key || !secret) return null
-  return `Key ${key}:${secret}`
-}
+  if (!key) return null
+  return `Bearer ${key}`
+  }
 
 // GET : soit la liste des presets de mouvement (?info=motions),
 // soit le statut d'une generation (?request_id=...).
@@ -120,7 +119,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await higgsfieldFetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(requestId)}/status`, {
+    const res = await higgsfieldFetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(requestId)}`, {
       headers: { Authorization: auth },
     })
     // Un statut illisible (upstream qui tangue) ne doit PAS casser le polling du
