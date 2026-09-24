@@ -403,6 +403,27 @@ export async function failGenerationAndGetRefund(
 }
 
 /**
+ * Liste les generations encore "processing" d'un utilisateur pour un outil donne.
+ * Sert a la RECONCILIATION : au retour sur la page, on rattrape les generations
+ * dont le statut final a ete manque (page fermee pendant le rendu) pour soit
+ * recuperer la video terminee, soit rembourser un echec / un job bloque.
+ */
+export async function listProcessingGenerations(
+  userId: string,
+  tool: VideoTool,
+): Promise<Array<{ providerRef: string; createdAt: string }>> {
+  await ensureTable()
+  const rows = (await sql`
+    SELECT provider_ref, created_at FROM video_history
+    WHERE user_id = ${userId} AND tool = ${tool}
+      AND status = 'processing' AND provider_ref IS NOT NULL
+    ORDER BY created_at DESC
+    LIMIT 50
+  `) as { provider_ref: string; created_at: string }[]
+  return rows.map((r) => ({ providerRef: String(r.provider_ref), createdAt: String(r.created_at) }))
+}
+
+/**
  * Retrouve l'utilisateur proprietaire d'une generation a partir de sa reference
  * fournisseur (video_id HeyGen / translation id). INDISPENSABLE pour les
  * webhooks HeyGen : la notification serveur-a-serveur n'a AUCUNE session, on ne
