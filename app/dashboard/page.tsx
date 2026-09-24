@@ -105,7 +105,7 @@ export default async function DashboardHubPage() {
               <h2 className="text-base font-semibold text-foreground"><T>Mes créations récentes</T></h2>
               <p className="mt-1 text-xs text-muted-foreground"><T>Retrouve rapidement tes dernières vidéos.</T></p>
             </div>
-            <Link href="/dashboard/mes-demandes" className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-blue-700 transition hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200">
+            <Link href="/dashboard/mes-creations" className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-blue-700 transition hover:text-blue-800 dark:text-blue-300 dark:hover:text-blue-200">
               <T>Voir toutes mes créations</T><ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>

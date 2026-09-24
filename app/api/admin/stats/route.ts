@@ -15,10 +15,40 @@ export async function GET() {
   }
 
   const admin = createAdminClient()
-  const [{ data, error }, { data: subscriptionRows, error: subscriptionError }] = await Promise.all([
-    admin.rpc('get_admin_stats'),
-    admin.from('subscriptions').select('user_id,is_active,status,start_date,end_date,started_at,expires_at').limit(100000),
-  ])
+
+  // Supabase (PostgREST) plafonne chaque reponse a 1000 lignes : on pagine pour
+  // recuperer TOUS les abonnements (sinon le comptage des actifs est tronque).
+  const subscriptionRows: Array<{
+    user_id: string
+    is_active: boolean | null
+    status: string | null
+    start_date: string | null
+    end_date: string | null
+    started_at: string | null
+    expires_at: string | null
+  }> = []
+  let subscriptionError: { message: string } | null = null
+  {
+    const PAGE = 1000
+    let from = 0
+    for (let i = 0; i < 200; i++) {
+      const { data: page, error: pageError } = await admin
+        .from('subscriptions')
+        .select('user_id,is_active,status,start_date,end_date,started_at,expires_at')
+        .order('id', { ascending: true })
+        .range(from, from + PAGE - 1)
+      if (pageError) {
+        subscriptionError = pageError
+        break
+      }
+      if (!page || page.length === 0) break
+      subscriptionRows.push(...page)
+      if (page.length < PAGE) break
+      from += PAGE
+    }
+  }
+
+  const { data, error } = await admin.rpc('get_admin_stats')
 
   if (error || subscriptionError) {
     console.error('[admin/stats] Erreur lecture:', error?.message || subscriptionError?.message)
