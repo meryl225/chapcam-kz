@@ -29,17 +29,21 @@ type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 
 // Gestes proposes : libelle FR (affiche) -> description anglaise (HeyGen).
 // On peut en selectionner plusieurs ; elles sont combinees dans motion_prompt.
+// IMPORTANT : Avatar IV n'anime une MAIN que si l'instruction lui demande
+// EXPLICITEMENT de la faire ENTRER DANS LE CADRE. Une formulation trop courte
+// ("wave hand", "blow a kiss") est souvent ignoree car la main n'est pas visible
+// sur un portrait serre. On formule donc chaque geste de main de facon directive.
 const GESTURES: { label: string; value: string }[] = [
-  { label: "Bisou", value: "blow a kiss" },
-  { label: "Clin d'oeil", value: "wink" },
-  { label: "Toucher les cheveux", value: "touch and play with hair" },
-  { label: "Sourire", value: "smile warmly" },
-  { label: "Coucou de la main", value: "wave hello with hand" },
+  { label: "Bisou", value: "raise one hand up to the lips and blow a kiss toward the camera" },
+  { label: "Clin d'oeil", value: "wink one eye at the camera" },
+  { label: "Toucher les cheveux", value: "raise one hand and gently touch and play with the hair" },
+  { label: "Sourire", value: "smile warmly at the camera" },
+  { label: "Coucou de la main", value: "raise one hand up into the frame and wave hello to the camera" },
   { label: "Rire", value: "laugh happily" },
-  { label: "Signe de la paix", value: "make a peace sign with fingers" },
-  { label: "Hocher la tete", value: "nod head" },
-  { label: "Envoyer un coeur", value: "make a heart with hands" },
-  { label: "Pouce en l'air", value: "thumbs up" },
+  { label: "Signe de la paix", value: "raise one hand up into the frame and make a peace sign with two fingers" },
+  { label: "Hocher la tete", value: "nod the head" },
+  { label: "Envoyer un coeur", value: "raise both hands up into the frame and make a heart shape with the fingers" },
+  { label: "Pouce en l'air", value: "raise one hand up into the frame and give a thumbs up" },
 ]
 
 const EXPRESSIVENESS: { label: string; value: string }[] = [
@@ -861,6 +865,11 @@ export default function PhotoVideoPage() {
                       )
                     })}
                   </div>
+                  <p className="mt-2 text-xs text-text-faint text-pretty">
+                    Astuce : les gestes de main (bisou, coucou, cœur, pouce…) sont mieux
+                    rendus si ta photo montre le buste et laisse de la place autour de toi.
+                    Sur un portrait très serré (visage seul), la main peut ne pas apparaître.
+                  </p>
                 </div>
 
                 {/* Expressivite */}

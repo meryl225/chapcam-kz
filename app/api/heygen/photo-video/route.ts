@@ -287,8 +287,16 @@ export async function POST(request: NextRequest) {
       fit: "contain",
       resolution: "1080p",
     }
+    // NOTE : pour type:"image", HeyGen REFUSE le champ "engine" ("Extra inputs
+    // are not permitted"). Le moteur Avatar IV (qui honore motion_prompt +
+    // expressiveness) est deja celui par defaut pour les photos qui parlent, donc
+    // on ne le precise pas. Verifie par sonde API le 2026-09-24.
+    //
     // Gestes (motion_prompt) et expressivite : uniquement s'ils sont fournis.
-    if (motionPrompt) payload.motion_prompt = motionPrompt
+    // On formule comme une directive claire adressee a la personne pour maximiser
+    // la prise en compte (surtout les gestes de main, souvent ignores si le prompt
+    // est trop court ou n'exige pas de faire entrer la main dans le cadre).
+    if (motionPrompt) payload.motion_prompt = `The person should ${motionPrompt}.`
     if (expressiveness) payload.expressiveness = expressiveness
     // Vitesse d'elocution : dans voice_settings (structure validee cote HeyGen).
     // On ne l'ajoute que si differente du defaut, pour rester conservateur.
