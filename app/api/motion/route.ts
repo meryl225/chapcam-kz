@@ -65,16 +65,23 @@ const MODELS: Record<string, string> = {
   turbo: "higgsfield-ai/dop/turbo",
   standard: "higgsfield-ai/dop/standard",
   lite: "higgsfield-ai/dop/lite",
-  // Genjutsu motion transfer: slug fourni pour l'intégration Higgsfield.
-  genjutsu: "higgsfield/genjutsu/motion-transfer/v1.0",
+  // Genjutsu motion transfer. NB: le namespace officiel s'ecrit bien "higgsfiled"
+  // (avec le "d") — c'est le chemin exact attendu par l'API, pas une faute.
+  genjutsu: "higgsfiled/genjutsu/motion-transfer/v1.0",
   kling3: "kling-video/v3.0",
 }
 const DEFAULT_MODEL = "turbo"
 
-  function authHeader(): string | null {
+// Higgsfield authentifie via DEUX en-tetes : hf-api-key (UUID de la cle) et
+// hf-secret (le secret). La variable HIGGSFIELD_API_KEY stocke les deux au
+// format "uuid:secret" — on les separe ici. Un token sans ":" est renvoye tel
+// quel sur hf-api-key en secours.
+function higgsfieldAuthHeaders(): Record<string, string> | null {
   const key = process.env.HIGGSFIELD_API_KEY
   if (!key) return null
-  return `Bearer ${key}`
+  const idx = key.indexOf(":")
+  if (idx === -1) return { "hf-api-key": key }
+  return { "hf-api-key": key.slice(0, idx), "hf-secret": key.slice(idx + 1) }
   }
 
 // GET : soit la liste des presets de mouvement (?info=motions),
@@ -86,9 +93,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Non autorise" }, { status: 401 })
   }
 
-  const auth = authHeader()
+  const auth = higgsfieldAuthHeaders()
   if (!auth) {
-    return NextResponse.json({ error: "Cle API Higgsfield manquante cote serveur." }, { status: 500 })
+    return NextResponse.json({ error: "Clé API Higgsfield manquante côté serveur." }, { status: 500 })
   }
 
   const params = new URL(request.url).searchParams
@@ -96,7 +103,7 @@ export async function GET(request: NextRequest) {
   // Liste des presets de mouvement de camera (id + nom + apercu).
   if (params.get("info") === "motions") {
     try {
-      const res = await higgsfieldFetch(`${HIGGSFIELD_API}/v1/motions`, { headers: { Authorization: auth } })
+      const res = await higgsfieldFetch(`${HIGGSFIELD_API}/v1/motions`, { headers: auth })
       const json = await res.json().catch(() => [])
       const motions = Array.isArray(json)
         ? json.map((m) => ({
@@ -119,8 +126,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await higgsfieldFetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(requestId)}`, {
-      headers: { Authorization: auth },
+    const res = await higgsfieldFetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(requestId)}/status`, {
+      headers: auth,
     })
     // Un statut illisible (upstream qui tangue) ne doit PAS casser le polling du
     // client : on renvoie "in_progress" pour qu'il reessaie au prochain tick.
@@ -129,7 +136,16 @@ export async function GET(request: NextRequest) {
     }
     const json = await res.json().catch(() => ({}))
     const statusStr = json.status || "unknown" // queued | in_progress | completed | failed | nsfw
-    const videoUrl = json.video?.url || null
+    // La video finale peut arriver sous plusieurs formes selon le modele.
+    const videoUrl =
+      json.video?.url ||
+      json.video_url ||
+      json.result?.url ||
+      json.result?.video?.url ||
+      (Array.isArray(json.results) ? json.results[0]?.url || json.results[0]?.video?.url : null) ||
+      json.output?.url ||
+      json.output?.video?.url ||
+      null
     // Persister le resultat pour que la video reste retrouvable dans l'historique
     // meme si l'utilisateur avait quitte la page pendant le rendu.
     if (statusStr === "completed" && videoUrl) {
@@ -155,9 +171,9 @@ export async function GET(request: NextRequest) {
 // enhance (bool).
 export async function POST(request: NextRequest) {
   try {
-    const auth = authHeader()
+    const auth = higgsfieldAuthHeaders()
     if (!auth) {
-      return NextResponse.json({ error: "Cle API Higgsfield manquante cote serveur." }, { status: 500 })
+      return NextResponse.json({ error: "Clé API Higgsfield manquante côté serveur." }, { status: 500 })
     }
 
     const supabase = await createClient()
@@ -273,6 +289,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Genjutsu = motion transfer : la video source (mouvement a transferer) est
+    // obligatoire cote API. On le verifie avant d'appeler Higgsfield.
+    if (modelKey === "genjutsu" && !videoUrl) {
+      await admin.storage.from(STORAGE_BUCKET).remove([path, ...(referencePath ? [referencePath] : [])]).catch(() => {})
+      return NextResponse.json({ error: "Une vidéo de référence est requise pour le transfert de mouvement Genjutsu." }, { status: 400 })
+    }
+
     // 2) Lancer la génération Genjutsu avec uniquement des URLs HTTPS et des scalaires JSON.
     const payload: Record<string, unknown> = modelKey === "genjutsu"
       ? {
@@ -300,7 +323,7 @@ export async function POST(request: NextRequest) {
 
     const res = await higgsfieldFetch(`${HIGGSFIELD_API}/${model}`, {
       method: "POST",
-      headers: { Authorization: auth, "Content-Type": "application/json", Accept: "application/json" },
+      headers: { ...auth, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(payload),
     })
     const rawResponse = await res.text()
