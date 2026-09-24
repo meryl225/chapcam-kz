@@ -19,7 +19,7 @@ import { estimateGenjutsuPriceUsd, GENJUTSU_MAX_DURATION_SECONDS } from "@/lib/t
 
 export const maxDuration = 60
 
-const HIGGSFIELD_API = "https://platform.higgsfield.ai"
+const HIGGSFIELD_API = "https://api.higgsfield.ai"
 const STORAGE_BUCKET = "avatars"
 
 // Higgsfield connait des ralentissements transitoires : sans borne, un appel qui
@@ -71,12 +71,11 @@ const MODELS: Record<string, string> = {
 }
 const DEFAULT_MODEL = "turbo"
 
-function authHeader(): string | null {
+  function authHeader(): string | null {
   const key = process.env.HIGGSFIELD_API_KEY
-  const secret = process.env.HIGGSFIELD_API_SECRET
-  if (!key || !secret) return null
-  return `Key ${key}:${secret}`
-}
+  if (!key) return null
+  return `Bearer ${key}`
+  }
 
 // GET : soit la liste des presets de mouvement (?info=motions),
 // soit le statut d'une generation (?request_id=...).
@@ -120,7 +119,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await higgsfieldFetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(requestId)}/status`, {
+    const res = await higgsfieldFetch(`${HIGGSFIELD_API}/requests/${encodeURIComponent(requestId)}`, {
       headers: { Authorization: auth },
     })
     // Un statut illisible (upstream qui tangue) ne doit PAS casser le polling du
@@ -169,9 +168,11 @@ export async function POST(request: NextRequest) {
 
     const form = await request.formData()
     const fileValue = form.get("file")
-    const referenceValue = form.get("referenceVideo")
-    const file = fileValue instanceof File && fileValue.size > 0 ? fileValue : null
-    const referenceVideo = referenceValue instanceof File && referenceValue.size > 0 ? referenceValue : null
+  const referenceValue = form.get("referenceVideo")
+  const referenceVideoUrlValue = form.get("referenceVideoUrl")
+  const referenceVideoUrlInput = typeof referenceVideoUrlValue === "string" ? referenceVideoUrlValue.trim() : ""
+  const file = fileValue instanceof File && fileValue.size > 0 ? fileValue : null
+  const referenceVideo = referenceValue instanceof File && referenceValue.size > 0 ? referenceValue : null
     const promptValue = form.get("prompt")
     const modelValue = form.get("model")
     const qualityFormValue = form.get("quality")
@@ -241,9 +242,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Le stockage n'a pas fourni une URL HTTPS valide pour l'image." }, { status: 502 })
     }
 
-    let videoUrl: string | undefined
-    let referencePath: string | undefined
-    if (referenceVideo) {
+  let videoUrl: string | undefined
+  let referencePath: string | undefined
+  if (referenceVideoUrlInput) {
+    if (!isHttpsUrl(referenceVideoUrlInput)) return NextResponse.json({ error: "URL de vidéo de référence invalide." }, { status: 400 })
+    videoUrl = referenceVideoUrlInput
+  } else if (referenceVideo) {
       if (!["video/mp4", "video/webm", "video/quicktime"].includes(referenceVideo.type)) {
         return NextResponse.json({ error: "Format vidéo invalide (MP4, WebM ou MOV)." }, { status: 400 })
       }

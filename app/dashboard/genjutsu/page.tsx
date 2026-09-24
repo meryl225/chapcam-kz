@@ -25,6 +25,7 @@ export default function GenjutsuPage() {
   const [showMotions, setShowMotions] = useState(false)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [uploadingReference, setUploadingReference] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -75,8 +76,16 @@ export default function GenjutsuPage() {
     body.append('durationSeconds', String(durationSeconds))
     body.append('enhance', String(enhance))
     if (selectedMotions.length > 0) body.append('motions', JSON.stringify(selectedMotions))
-    if (reference) body.append('referenceVideo', reference)
-    try {
+  try {
+      if (reference) {
+        setUploadingReference(true)
+        const uploadResponse = await fetch('/api/motion/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contentType: reference.type }) })
+        const upload = await uploadResponse.json().catch(() => ({}))
+        if (!uploadResponse.ok || typeof upload.signedUrl !== 'string') throw new Error(upload.error || 'Impossible de préparer la vidéo.')
+        const putResponse = await fetch(upload.signedUrl, { method: 'PUT', headers: { 'Content-Type': reference.type }, body: reference })
+        if (!putResponse.ok) throw new Error('Échec de l’upload de la vidéo de référence.')
+        body.append('referenceVideoUrl', typeof upload.publicUrl === 'string' ? upload.publicUrl : '')
+      }
       const response = await fetch('/api/motion', { method: 'POST', body })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) {
@@ -87,6 +96,7 @@ export default function GenjutsuPage() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Une erreur est survenue.')
     } finally {
+      setUploadingReference(false)
       setLoading(false)
     }
   }

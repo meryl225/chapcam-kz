@@ -17,7 +17,7 @@ import { getMotionTask } from '@/lib/kling'
 // ============================================================
 
 const HEYGEN_API = 'https://api.heygen.com'
-const HIGGSFIELD_API = 'https://platform.higgsfield.ai'
+const HIGGSFIELD_API = 'https://api.higgsfield.ai'
 
 /** En-tete d'auth Higgsfield (meme schema que la route de generation). */
 function higgsfieldAuth(): string | null {
