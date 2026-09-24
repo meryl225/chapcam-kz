@@ -22,6 +22,7 @@ import {
   Banknote,
   Zap,
   Coins,
+  Mic,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -451,6 +452,13 @@ export default function AdminPaymentsPage() {
             >
               <Coins className="h-4 w-4" />
               Ajouter jetons
+            </Link>
+            <Link
+              href="/admin/voice-messages"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#ff5db1]/40 bg-[#1a0512] px-4 py-2.5 text-sm font-medium text-[#ff5db1] transition-colors hover:border-[#ff5db1] hover:text-white"
+            >
+              <Mic className="h-4 w-4" />
+              Messages vocaux
             </Link>
             <button
               onClick={() => load(true)}
