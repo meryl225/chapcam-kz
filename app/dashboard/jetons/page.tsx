@@ -25,14 +25,14 @@ export default function JetonsPage({ modal = false, onClose }: { modal?: boolean
         <section className="mx-auto max-w-3xl rounded-[24px] border border-border bg-card p-4 shadow-2xl shadow-slate-900/10 backdrop-blur-xl sm:p-7 dark:border-white/15 dark:bg-[#151e31]/95 dark:shadow-black/40">
           <header className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="h-11 w-11 shrink-0 overflow-hidden rounded-2xl ring-1 ring-cyan-300/60 sm:h-12 sm:w-12"><Image src="/images/jetons-logo.jpg" alt="Logo des Jetons ChapCam" width={48} height={48} className="h-full w-full object-cover" priority /></div>
+              <div className="h-11 w-11 shrink-0 overflow-hidden rounded-2xl bg-[#0a1024] ring-1 ring-cyan-300/60 sm:h-12 sm:w-12"><Image src="/images/jetons-logo.png" alt="Logo des Jetons ChapCam" width={48} height={48} className="h-full w-full scale-[1.3] object-cover object-center" priority /></div>
               <div className="min-w-0"><h1 className="text-2xl font-black tracking-tight sm:text-4xl">Ajouter des Jetons</h1><p className="mt-1 text-xs text-muted-foreground dark:text-slate-400 sm:text-sm">Rechargez votre solde pour utiliser les outils ChapCam.</p></div>
             </div>
             {modal ? <button type="button" onClick={onClose} aria-label="Fermer" className="rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white"><X className="h-5 w-5" /></button> : <Link href="/dashboard" aria-label="Fermer" className="rounded-full bg-white/10 p-2 text-slate-300 transition hover:bg-white/20 hover:text-white"><X className="h-5 w-5" /></Link>}
           </header>
 
           <div className="mt-5 flex items-center gap-4 rounded-2xl border border-border bg-muted p-4 dark:border-white/10 dark:bg-[#0d1525]">
-            <Image src="/images/jetons-logo.jpg" alt="Jetons" width={44} height={44} className="h-11 w-11 rounded-xl object-cover" />
+            <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-[#0a1024]"><Image src="/images/jetons-logo.png" alt="Jetons" width={44} height={44} className="h-full w-full scale-[1.3] object-cover object-center" /></div>
             <div><p className="text-xs text-muted-foreground dark:text-slate-400">Votre solde actuel</p><p className="text-lg font-bold text-emerald-300">Jetons disponibles</p></div>
             <div className="ml-auto text-2xl font-black text-emerald-300">{jetons?.balance ?? 0}</div>
             <p className="hidden max-w-[170px] border-l border-white/10 pl-4 text-xs leading-5 text-muted-foreground dark:text-slate-400 sm:block">Un seul solde pour tous les outils sauf Live Swap.</p>
@@ -45,7 +45,7 @@ export default function JetonsPage({ modal = false, onClose }: { modal?: boolean
               return <div key={offer.id} className={`relative flex items-center gap-2 rounded-2xl border p-3 transition duration-200 sm:gap-4 sm:p-4 ${active ? 'border-emerald-300 bg-emerald-400/10 shadow-[0_0_28px_rgba(52,211,153,.2)]' : 'border-white/10 bg-white/[.03] hover:-translate-y-0.5 hover:border-cyan-300/40 hover:bg-white/[.06]'}`}>
                 {offer.featured && <span className="absolute -top-3 left-6 rounded-full bg-emerald-300 px-3 py-1 text-[10px] font-black text-emerald-950">Le plus choisi</span>}
                 <button type="button" onClick={() => setSelected(offer.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left sm:gap-4">
-                  <Image src="/images/jetons-logo.jpg" alt="" width={48} height={48} className="h-11 w-11 shrink-0 rounded-xl object-cover sm:h-12 sm:w-12" />
+                  <Image src="/images/jetons-logo.png" alt="" width={48} height={48} className="h-11 w-11 shrink-0 rounded-xl object-cover sm:h-12 sm:w-12" />
                   <span className="min-w-0"><strong className="block text-base sm:text-lg">{offer.jetons.toLocaleString('fr-FR')} Jetons</strong><small className="text-xs text-muted-foreground dark:text-slate-400">Solde ajouté immédiatement après paiement</small></span>
                 </button>
                 <span className="hidden whitespace-nowrap border-l border-white/10 pl-3 text-sm font-bold tabular-nums sm:block">{offer.price.toLocaleString('fr-FR')} FCFA</span>

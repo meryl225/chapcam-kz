@@ -64,13 +64,13 @@ export function ReferenceHomepage() {
             <Link href="#a-propos" className="transition-colors hover:text-[#10234d]">{t("À propos")}</Link>
             <Link href="#faq" className="transition-colors hover:text-[#10234d]">{t("FAQ")}</Link>
           </nav>
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:min-w-fit lg:overflow-x-visible">
             <LanguageToggle variant="light" />
             <Link href="https://www.tiktok.com/@multivoix.ci" target="_blank" rel="noreferrer" aria-label="TikTok ChapCam" className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#d5e4f1] bg-white/65 text-[#10234d] transition hover:-translate-y-0.5 hover:border-[#9bbce0] hover:shadow-sm">
               <Image src="/images/tiktok-logo.png" alt="TikTok" width={19} height={19} className="h-[19px] w-[19px] object-contain" />
             </Link>
             <button type="button" onClick={() => setPlansOpen(true)} style={{ backgroundColor: "#075985", color: "#ffffff" }} className="rounded-xl border border-[#075985] px-3 py-2 text-[12px] font-bold shadow-[0_6px_18px_-10px_rgba(7,89,133,.9)] transition hover:-translate-y-0.5 hover:bg-[#0369a1] sm:px-3 sm:text-[13px]">{t("Tarifs")}</button>
-            <Link href="/auth/login" className="hidden whitespace-nowrap rounded-xl px-3 py-2 text-[13px] font-semibold text-[#53637c] transition hover:bg-white/70 hover:text-[#10234d] sm:block">{t("Se connecter")}</Link>
+            <Link href="/auth/login" className="shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-[13px] font-semibold text-[#53637c] transition hover:bg-white/70 hover:text-[#10234d]">{t("Se connecter")}</Link>
             <Link href="/auth/sign-up" className="whitespace-nowrap rounded-xl bg-gradient-to-r from-[#10a8ec] to-[#7c3aed] px-4 py-2.5 text-[13px] font-bold text-white shadow-[0_8px_24px_-8px_rgba(59,130,246,.7)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(59,130,246,.75)]">{t("S’inscrire")}</Link>
           </div>
         </header>
