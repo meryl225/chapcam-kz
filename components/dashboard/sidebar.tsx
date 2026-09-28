@@ -25,7 +25,14 @@ const PLAN_LABELS: Record<string, string> = {
   starter: 'Starter',
   standard: 'Standard',
   premium: 'Premium',
-  ultimate: 'VIP PRO',
+  premium30: 'Premium',
+  premium_30days: 'Premium',
+  'premium-30-days': 'Premium',
+  '30days': 'Premium',
+  '30_days': 'Premium',
+  '30-day': 'Premium',
+  bonus: 'Premium',
+  ultimate: 'VIP',
   vipdebout: 'VIP DEBOUT',
 }
 
@@ -192,6 +199,9 @@ function SidebarContent({
   const [jetonsOpen, setJetonsOpen] = useState(false)
   const pathname = usePathname()
   const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false
+  const displayPlan = PLAN_LABELS[plan] || plan
+  const isVipPlan = VIP_PLANS.has(plan)
+  const isPremiumPlan = displayPlan === 'Premium'
   const showUpgradeBanner = plan === 'free' || isExpired || !isActive || pointsRemaining <= 0
   const pointsPercentage = pointsTotal > 0 ? (pointsRemaining / pointsTotal) * 100 : 0
 
@@ -339,20 +349,23 @@ function SidebarContent({
       <div className="border-t border-hairline p-4">
         <p className="mb-3 truncate text-xs text-muted-foreground">{email}</p>
 
-        <div className="mb-3 flex items-center gap-2">
-          {VIP_PLANS.has(plan) ? (
-            <span className="relative inline-flex items-center gap-1.5 overflow-hidden rounded-md border border-amber-300/30 bg-amber-300/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-200">
-              <span className="pointer-events-none absolute inset-0 -translate-x-full animate-[shimmer_2.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
-              <Crown className="h-3.5 w-3.5 shrink-0" strokeWidth={2.5} />
-              {t(PLAN_LABELS[plan] || plan)}
-            </span>
-          ) : (
-            <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${PLAN_COLORS[plan] || 'bg-gray-500 text-white'}`}>
-              {t(PLAN_LABELS[plan] || plan)}
-            </span>
-          )}
-          {isExpired && <span className="text-xs text-red-400">{t('Expire')}</span>}
-        </div>
+  <div className="mb-3 rounded-xl border border-primary/20 bg-primary/[0.06] px-3 py-2.5 shadow-[0_8px_24px_-18px_rgba(34,211,238,0.7)]">
+  <div className="mb-1 flex items-center justify-between gap-2">
+  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{t('Forfait actif')}</span>
+  {isExpired && <span className="text-[10px] font-semibold uppercase tracking-wide text-red-400">{t('Expire')}</span>}
+  </div>
+  {isVipPlan ? (
+  <span className="relative inline-flex items-center gap-1.5 overflow-hidden rounded-lg border border-amber-300/40 bg-amber-300/15 px-3 py-1.5 text-sm font-black uppercase tracking-wide text-amber-200 shadow-[0_0_18px_-8px_rgba(251,191,36,0.9)]">
+  <span className="pointer-events-none absolute inset-0 -translate-x-full animate-[shimmer_2.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+  <Crown className="h-4 w-4 shrink-0" strokeWidth={2.5} />
+  {t(displayPlan)}
+  </span>
+  ) : (
+  <span className={`inline-flex rounded-lg px-3 py-1.5 text-sm font-black uppercase tracking-wide shadow-sm ${isPremiumPlan ? 'border border-fuchsia-300/40 bg-fuchsia-300/15 text-fuchsia-200 shadow-[0_0_18px_-8px_rgba(232,121,249,0.85)]' : (PLAN_COLORS[plan] || 'bg-gray-500 text-white')}`}>
+  {t(displayPlan)}
+  </span>
+  )}
+  </div>
 
   <div className="relative mb-3 overflow-hidden rounded-lg border border-emerald-300/25 bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.16),transparent_52%),linear-gradient(135deg,rgba(236,253,245,0.98),rgba(240,249,255,0.98))] dark:bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.2),transparent_52%),linear-gradient(135deg,rgba(8,35,45,0.96),rgba(10,20,35,0.98))] p-3 shadow-[0_14px_34px_-20px_rgba(16,185,129,0.65),inset_0_1px_0_rgba(255,255,255,0.1)]">
   <div className="flex items-center justify-between gap-2">
