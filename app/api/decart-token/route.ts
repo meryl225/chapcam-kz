@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createHash } from 'node:crypto'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveWatermarkForUser, getDecartApiKeyCandidates } from '@/lib/watermark'
@@ -58,6 +59,16 @@ export async function GET(request: Request) {
   //    que de renvoyer un service indisponible (voir la boucle en 5.).
   const decision = await resolveWatermarkForUser(user.id)
   const keyCandidates = getDecartApiKeyCandidates(decision.noWatermark)
+
+  console.log('[ChapCam DecartSession] Watermark decision', {
+    userId: user.id,
+    plan: decision.plan,
+    noWatermark: decision.noWatermark,
+    reason: decision.reason,
+    configuredStandardKey: Boolean(process.env.DECART_API_KEY),
+    configuredNoWatermarkKey: Boolean(process.env.DECART_API_KEY_NO_WATERMARK),
+    candidateCount: keyCandidates.length,
+  })
 
   if (keyCandidates.length === 0) {
     console.error('[Decart Token] Aucune cle Decart configuree (DECART_API_KEY / DECART_API_KEY_NO_WATERMARK)')
@@ -159,6 +170,15 @@ export async function GET(request: Request) {
             createdAt: new Date().toISOString()
           }
         }
+        const keyFingerprint = createHash('sha256').update(cand.apiKey).digest('hex').slice(0, 12)
+        console.log('[ChapCam DecartSession] Calling Decart API key', {
+          keyType: cand.usedNoWatermark ? 'DECART_API_KEY_NO_WATERMARK' : 'DECART_API_KEY',
+          keyFingerprint,
+          keySuffix: cand.apiKey.slice(-4),
+          expectedWatermark: !cand.usedNoWatermark,
+          plan: decision.plan,
+          decisionReason: decision.reason,
+        })
         const decartResponse = await fetch('https://api.decart.ai/v1/client/tokens', {
           method: 'POST',
           headers: {
@@ -232,9 +252,15 @@ export async function GET(request: Request) {
     }
 
     console.log(
-      `[Decart Token] Token cree pour user ${user.id} | plan=${decision.plan || 'none'} | ` +
-      `points=${access.points} | noWatermark=${usedNoWatermark} (${decision.reason}) | ` +
-      `origin=${requestOrigin || 'inconnue'}`
+      '[ChapCam DecartSession] LiveKit token issued',
+      {
+        userId: user.id,
+        plan: decision.plan || 'none',
+        noWatermark: usedNoWatermark,
+        keyType: usedNoWatermark ? 'DECART_API_KEY_NO_WATERMARK' : 'DECART_API_KEY',
+        decisionReason: decision.reason,
+        origin: requestOrigin || 'inconnue',
+      },
     )
 
     // 6. Journaliser l'emission pour la reconciliation avec Decart (best-effort :
