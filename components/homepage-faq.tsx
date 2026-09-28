@@ -6,6 +6,7 @@ import { ChevronDown } from "lucide-react"
 const questions = [
   ["Qu’est-ce que ChapCam ?", "ChapCam est une plateforme créative qui transforme tes photos, vidéos et idées grâce à des outils d’intelligence artificielle simples à utiliser."],
   ["Quels outils sont disponibles ?", "Tu peux créer des face swaps, animer des photos, contrôler des mouvements, générer des messages vocaux, traduire des vidéos et bien plus encore."],
+  ["Puis-je utiliser ChapCam pour mes streams et appels vidéo ?", "Oui. ChapCam accompagne les créateurs dans leurs streams et appels vidéo sur WhatsApp, Telegram, YouTube, TikTok et les principales plateformes de streaming. Utilise ses outils pour concevoir des expériences originales, enrichir tes contenus en temps réel et exprimer ta créativité, toujours dans le respect des règles de chaque plateforme et du consentement des personnes concernées."],
   ["Est-ce que je peux commencer gratuitement ?", "Oui. Commence gratuitement et découvre les outils ChapCam sans carte bancaire."],
   ["Mes créations sont-elles privées ?", "Tes créations restent protégées et tu gardes le contrôle de tes contenus."],
   ["Comment fonctionne le paiement ?", "Choisis un plan depuis la page Tarifs pour ajouter des crédits et débloquer davantage de possibilités créatives."],
