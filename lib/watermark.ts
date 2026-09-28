@@ -20,7 +20,22 @@ const NO_WATERMARK_MINUTES_PACK_ID = 'minutes_4'
  */
 
 // Forfaits qui donnent droit au sans-watermark automatique.
-const AUTO_NO_WATERMARK_PLANS = new Set(['premium', 'ultimate', 'vipdebout'])
+// Identifiants historiques utilisés par les abonnements premium 30 jours.
+// Ils doivent rester équivalents à premium pour ne pas réactiver le watermark
+// après une migration ou un ancien achat.
+const AUTO_NO_WATERMARK_PLANS = new Set([
+  'premium',
+  'premium30',
+  'premium_30days',
+  'premium-30-days',
+  '30days',
+  '30_days',
+  '30-day',
+  // Anciens abonnements premium 30 jours créés comme bonus.
+  'bonus',
+  'ultimate',
+  'vipdebout',
+])
 // Forfaits eligibles au sans-watermark manuel (active par l'admin).
 const MANUAL_NO_WATERMARK_PLANS = new Set<string>([])
 
@@ -68,9 +83,14 @@ export async function resolveWatermarkForUser(userId: string): Promise<Watermark
     .from('subscriptions')
     .select('plan, is_active, status, expires_at, end_date')
     .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle()
 
-  const plan = (isSubscriptionActive(sub) ? String(sub?.plan || '') : '').toLowerCase()
+  const plan = (isSubscriptionActive(sub) ? String(sub?.plan || '') : '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
 
   // 85 000 F : sans watermark automatique.
   if (AUTO_NO_WATERMARK_PLANS.has(plan)) {
