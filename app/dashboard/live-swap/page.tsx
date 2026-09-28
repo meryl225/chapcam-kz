@@ -457,29 +457,43 @@ export default function DashboardPage() {
   // === TRACKING UTILISATEURS ACTIFS ===
   useEffect(() => {
     const trackActivity = async () => {
+      const operation = 'upsert'
+      const conflictColumns = 'user_id'
+      let userId: string | undefined
       try {
         const { data: { user } } = await supabase.auth.getUser()
+        userId = user?.id
         if (!user) return
 
-        // Le tracking d'activite est purement "best effort" : si la table
-        // user_activity n'existe pas / n'a pas de contrainte unique sur
-        // user_id (erreur 400), on ignore silencieusement pour ne JAMAIS
-        // faire planter la page Live.
-        const { error: activityError } = await supabase
+        const { error: activityError, status } = await supabase
           .from('user_activity')
           .upsert({
             user_id: user.id,
             last_active: new Date().toISOString(),
             current_page: window.location.pathname,
           }, {
-            onConflict: 'user_id',
+            onConflict: conflictColumns,
           })
 
+        console.log('[Supabase user_activity]', {
+          operation,
+          conflictColumns,
+          userId: user.id,
+          status,
+          error: activityError,
+        })
+
         if (activityError) {
-          console.warn('[live-swap] Suivi activite ignore:', activityError.message)
+          throw new Error(`user_activity ${operation} failed: ${activityError.message}`)
         }
       } catch (err) {
-        console.warn('[live-swap] Suivi activite indisponible:', err)
+        console.error('[Supabase user_activity] request failed', {
+          operation: 'upsert',
+          conflictColumns: 'user_id',
+          userId,
+          status: undefined,
+          error: err,
+        })
       }
     }
 
