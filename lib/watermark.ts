@@ -129,42 +129,33 @@ async function hasActiveMinutesPack(userId: string): Promise<boolean> {
 
 /**
  * Renvoie la cle Decart a utiliser selon la decision de watermark.
- * Repli sur la cle avec watermark si la cle sans watermark n'est pas configuree.
+ * Pour un compte éligible au sans-watermark, il est interdit de basculer vers
+ * la clé standard : cela rendrait une vidéo filigranée malgré l'offre payée.
  */
 export function pickDecartApiKey(noWatermark: boolean): { apiKey: string | undefined; usedNoWatermark: boolean } {
   const withWm = process.env.DECART_API_KEY
   const withoutWm = process.env.DECART_API_KEY_NO_WATERMARK
 
-  // Cle ideale selon la decision de watermark.
   if (noWatermark) {
-    if (withoutWm) return { apiKey: withoutWm, usedNoWatermark: true }
-    // Repli : pas de cle sans watermark -> on utilise celle avec watermark
-    // plutot que de casser le swap.
-    if (withWm) return { apiKey: withWm, usedNoWatermark: false }
-  } else {
-    if (withWm) return { apiKey: withWm, usedNoWatermark: false }
-    // Repli symetrique : si la cle AVEC watermark manque (ex: non configuree),
-    // on ne renvoie pas un service casse pour les comptes standard/essai :
-    // on utilise la cle sans watermark disponible. Mieux vaut un rendu sans
-    // watermark qu'un service totalement indisponible.
-    if (withoutWm) return { apiKey: withoutWm, usedNoWatermark: true }
+    // Pas de fallback vers la clé avec watermark : mieux vaut refuser la session
+    // et protéger la promesse commerciale que livrer un rendu filigrané.
+    return withoutWm
+      ? { apiKey: withoutWm, usedNoWatermark: true }
+      : { apiKey: undefined, usedNoWatermark: false }
   }
 
-  // Aucune cle configuree.
+  if (withWm) return { apiKey: withWm, usedNoWatermark: false }
+  // Pour les comptes standard, le fallback sans watermark reste acceptable :
+  // il n'enlève pas un droit promis et évite une panne inutile.
+  if (withoutWm) return { apiKey: withoutWm, usedNoWatermark: true }
   return { apiKey: undefined, usedNoWatermark: false }
 }
 
 /**
- * Renvoie les cles Decart candidates par ORDRE DE PRIORITE pour l'emission d'un
- * token, sans doublon. La 1ere est la cle ideale selon la decision de watermark ;
- * la 2eme (si differente et configuree) sert de REPLI automatique.
- *
- * Pourquoi : si UNE des deux cles Decart devient invalide/expiree, elle ne doit
- * pas casser le swap pour tout un palier d'utilisateurs. Exemple reel : la cle
- * AVEC watermark (utilisee par Starter/standard) expire -> sans repli, tous les
- * comptes avec watermark voient "Service de transformation indisponible" alors
- * que la cle SANS watermark fonctionne. Mieux vaut un rendu (eventuellement avec
- * l'autre politique de watermark) qu'un service totalement indisponible.
+ * Renvoie les cles Decart candidates par ordre de priorité pour l'émission d'un
+ * token. Pour une offre sans-watermark, la clé avec watermark est volontairement
+ * exclue : il vaut mieux refuser la session que livrer un rendu filigrané payé
+ * comme étant sans logo. Pour les offres standard, le fallback reste possible.
  */
 export function getDecartApiKeyCandidates(
   noWatermark: boolean,
@@ -176,7 +167,6 @@ export function getDecartApiKeyCandidates(
   const ordered: { apiKey: string | undefined; usedNoWatermark: boolean }[] = noWatermark
     ? [
         { apiKey: withoutWm, usedNoWatermark: true },
-        { apiKey: withWm, usedNoWatermark: false },
       ]
     : [
         { apiKey: withWm, usedNoWatermark: false },
