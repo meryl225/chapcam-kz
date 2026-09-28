@@ -1,4 +1,3 @@
-import { createDecartClient } from '@decartai/sdk'
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
@@ -144,14 +143,13 @@ export async function GET(request: Request) {
     let token: any = null
     let usedNoWatermark = false
     let lastErr: any = null
+    let lastDecartStatus: number | null = null
+    let lastDecartBody = ''
     for (let i = 0; i < keyCandidates.length; i++) {
       const cand = keyCandidates[i]
       try {
-        const client = createDecartClient({ apiKey: cand.apiKey })
-        token = await client.tokens.create({
-          expiresIn: 300, // 5 min : reduit de moitie l'exposition GPU si le client cesse de
-                          // synchroniser, sans casser les usages tardifs (upload avatar,
-                          // changement de scene) qui reutilisent ce token pendant la session.
+        const decartPayload = {
+          expiresIn: 300,
           allowedModels: ['lucy-2.5', 'lucy-2.1'],
           allowedOrigins: Array.from(allowedOrigins),
           metadata: {
@@ -160,11 +158,55 @@ export async function GET(request: Request) {
             noWatermark: cand.usedNoWatermark,
             createdAt: new Date().toISOString()
           }
+        }
+        const decartResponse = await fetch('https://api.decart.ai/v1/client/tokens', {
+          method: 'POST',
+          headers: {
+            'X-API-KEY': cand.apiKey,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(decartPayload),
+          cache: 'no-store',
         })
+        const decartBodyText = await decartResponse.text()
+        console.log('[ChapCam DecartSession] Decart token/session response', {
+          status: decartResponse.status,
+          statusText: decartResponse.statusText,
+          headers: Object.fromEntries(decartResponse.headers.entries()),
+          body: decartBodyText,
+          keyCandidate: i + 1,
+          noWatermark: cand.usedNoWatermark,
+        })
+
+        if (decartResponse.status !== 200 && decartResponse.status !== 201) {
+          const detail = decartBodyText || `${decartResponse.status} ${decartResponse.statusText}`
+          throw Object.assign(new Error(`Decart session creation failed: ${detail}`), {
+            status: decartResponse.status,
+            responseBody: decartBodyText,
+          })
+        }
+
+        let decartBody: any
+        try {
+          decartBody = JSON.parse(decartBodyText)
+        } catch {
+          throw Object.assign(new Error('Decart returned a non-JSON session response'), {
+            status: decartResponse.status,
+            responseBody: decartBodyText,
+          })
+        }
+        token = decartBody
         usedNoWatermark = cand.usedNoWatermark
+        console.log('[ChapCam DecartSession] Decart session/room ID', {
+          sessionId: decartBody?.sessionId ?? decartBody?.session_id ?? decartBody?.id ?? null,
+          roomId: decartBody?.roomId ?? decartBody?.room_id ?? decartBody?.room?.id ?? decartBody?.room?.name ?? null,
+          status: decartResponse.status,
+        })
         break
       } catch (candErr: any) {
         lastErr = candErr
+        lastDecartStatus = typeof candErr?.status === 'number' ? candErr.status : lastDecartStatus
+        lastDecartBody = candErr?.responseBody || lastDecartBody
         console.error(
           `[Decart Token] Echec creation token avec cle #${i + 1}/${keyCandidates.length} ` +
           `(noWatermark=${cand.usedNoWatermark}): ${candErr?.message || candErr}` +
@@ -178,10 +220,15 @@ export async function GET(request: Request) {
       if (clientSessionId) {
         await releaseLiveSession(user.id, clientSessionId).catch(() => {})
       }
-      const policyMessage = decision.noWatermark
-        ? 'La clé Decart sans watermark est invalide ou expirée. Aucun rendu ne sera lancé avec watermark.'
-        : 'La clé Decart est invalide ou expirée.'
-      throw new Error(`${policyMessage} ${(lastErr as any)?.message || ''}`.trim())
+      const detail = lastDecartBody || (lastErr as any)?.message || 'Decart n’a pas créé la session.'
+      console.error('[ChapCam DecartSession] Session creation failed; no LiveKit token returned', {
+        status: lastDecartStatus,
+        detail,
+      })
+      return NextResponse.json(
+        { error: 'decart_session_creation_failed', detail },
+        { status: lastDecartStatus && lastDecartStatus >= 400 ? lastDecartStatus : 502 },
+      )
     }
 
     console.log(
