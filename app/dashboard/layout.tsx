@@ -7,6 +7,7 @@ import { DashboardSidebar, PlanGuardBanner } from '@/components/dashboard/sideba
 import { TelegramSupport } from '@/components/telegram-support'
 import { ChapCam2Announcement } from '@/components/dashboard/chapcam-2-announcement'
 import { AnniversaryOfferPopup } from '@/components/dashboard/anniversary-offer-popup'
+import { resolveWatermarkForUser } from '@/lib/watermark'
 
 /*
 subscriptions table schema:
@@ -96,9 +97,10 @@ export default async function DashboardLayout({
   const voiceExpired = voiceSub?.expires_at ? new Date(voiceSub.expires_at) < new Date() : false
   const voiceSecondsRemaining = voiceExpired ? 0 : voiceSub?.seconds_remaining ?? 0
 
-  const plan = subscription?.plan ?? 'free'
+  const entitlement = await resolveWatermarkForUser(user.id)
+  const plan = subscription?.plan || entitlement.plan || 'free'
   const expiresAt = subscription?.expires_at ?? null
-  const isActive = subscription?.is_active ?? false
+  const isActive = subscription?.is_active === true || entitlement.plan !== ''
   const pointsRemaining = subscription?.points ?? 0
   const pointsTotal = subscription?.max_points ?? 0
 

@@ -7,6 +7,7 @@ import { SupportBanner } from '@/components/dashboard/support-banner'
 import { VideoHistorySection } from '@/components/video-history-section'
 import { Sparkles, Crown, Check, Zap, Timer, Users, Hourglass, ArrowRight, Clock } from 'lucide-react'
 import { T } from '@/components/i18n/t'
+import { resolveWatermarkForUser } from '@/lib/watermark'
 
 const POINTS_PER_SECOND = 2
 
@@ -64,8 +65,9 @@ export default async function DashboardHubPage() {
   const minutesToday = Math.floor(secondsToday / 60)
 
   const points = subscription?.points ?? 0
-  const plan = subscription?.plan ?? 'free'
-  const isPro = plan !== 'free' && (subscription?.is_active ?? false)
+  const entitlement = user?.id ? await resolveWatermarkForUser(user.id) : null
+  const plan = subscription?.plan || entitlement?.plan || 'free'
+  const isPro = plan !== 'free' && (subscription?.is_active === true || entitlement?.plan !== '')
   const displayName =
     (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0] ||
     user?.email?.split('@')[0] ||

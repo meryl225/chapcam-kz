@@ -77,20 +77,65 @@ function isSubscriptionActive(sub: SubRow): boolean {
  */
 export async function resolveWatermarkForUser(userId: string): Promise<WatermarkDecision> {
   const supabase = await createServerClient()
+  const admin = createAdminClient()
 
-  // Plan actif depuis la table subscriptions (source de verite du forfait).
-  const { data: sub } = await supabase
+  // La table subscriptions peut contenir une ligne historique avec plan NULL
+  // alors que le paiement approuvé contient le forfait réel. Ne jamais laisser
+  // cette ligne historique faire retomber un Premium sur la clé watermarkée.
+  const { data: subscription, error: subscriptionError } = await admin
     .from('subscriptions')
-    .select('plan, is_active, status, expires_at, end_date')
+    .select('plan, is_active, status, expires_at, end_date, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle()
 
-  const plan = (isSubscriptionActive(sub) ? String(sub?.plan || '') : '')
+  let sub: SubRow = subscription
+  let planSource = 'subscriptions'
+  if (subscriptionError) {
+    console.error('[ChapCam DecartSession] Subscription lookup failed', {
+      userId,
+      error: subscriptionError.message,
+    })
+  }
+
+  let plan = (isSubscriptionActive(sub) ? String(sub?.plan || '') : '')
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '_')
+
+  if (!plan) {
+    const { data: payment } = await admin
+      .from('payment_requests')
+      .select('plan, status, created_at')
+      .eq('user_id', userId)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    plan = String(payment?.plan || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '_')
+    if (plan) {
+      planSource = 'payment_requests.approved'
+      console.warn('[ChapCam DecartSession] Recovered plan from approved payment', {
+        userId,
+        plan,
+        createdAt: payment?.created_at,
+      })
+    }
+  }
+
+  console.log('[ChapCam DecartSession] Resolved entitlement', {
+    userId,
+    plan,
+    planSource,
+    subscriptionPlan: subscription?.plan ?? null,
+    subscriptionStatus: subscription?.status ?? null,
+    subscriptionActive: isSubscriptionActive(subscription),
+  })
 
   // 85 000 F : sans watermark automatique.
   if (AUTO_NO_WATERMARK_PLANS.has(plan)) {
