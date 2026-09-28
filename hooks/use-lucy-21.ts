@@ -317,20 +317,11 @@ export function useLucy21() {
       }
 
       const realtimeClient = await client.realtime.connect(stream, {
-        model: models.realtime('lucy-2.1'),
-        // IMPORTANT : on DESACTIVE le miroir interne du SDK.
-        // Avec `mirror: 'auto'`, le SDK enveloppe la camera dans un pipeline
-        // MediaStreamTrackProcessor dont le dispose n'annule pas le flux de
-        // lecture : la camera reste alors ALLUMEE apres l'arret du swap
-        // (voyant actif) jusqu'au rechargement de la page. En publiant
-        // directement le flux camera brut, `disconnect()` (qui coupe les
-        // tracks) eteint reellement la camera. L'effet miroir "selfie" est
-        // reproduit en pur CSS (scaleX(-1)) sur les deux videos de la page.
-        mirror: false,
-        // Resolution : 1080p en mode HD (VIP), 720p sinon.
-        resolution,
-        // Codec video prefere si fourni (sinon negociation par defaut du SDK).
-        preferredVideoCodec: options?.codec ?? 'vp8',
+        // Utiliser exactement le modèle et la négociation recommandés par le
+        // SDK Decart. Les options codec/resolution non documentées peuvent
+        // empêcher la création correcte de la room LiveKit.
+        model: models.realtime('lucy-2.5'),
+        mirror: 'auto',
 
         // Qualite reseau en direct : verdict lisse + facteur limitant.
         onConnectionQuality: (report: any) => {
@@ -346,20 +337,6 @@ export function useLucy21() {
           setQueuePosition(
             qp ? { position: qp.position, queueSize: qp.queueSize } : null,
           )
-        },
-
-        // IMPORTANT : on passe l'avatar (image + prompt) via `initialState`.
-        // Ainsi le SDK applique l'etat initial pendant le handshake de
-        // connexion, une fois la WebSocket de signalisation reellement ouverte.
-        // Appeler `set()` juste apres `connect()` provoquait l'erreur
-        // "WebSocket is not open" (l'etat LiveKit est "connected" mais la
-        // WebSocket de signalisation ne l'est pas encore).
-        initialState: {
-          image: avatarImageRef,
-          prompt: {
-            text: 'Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.',
-            enhance: true,
-          },
         },
 
         // Affichage direct du flux transforme renvoye par Decart, sans aucun
@@ -429,9 +406,13 @@ export function useLucy21() {
       }
       realtimeClientRef.current = realtimeClient
 
-      // L'avatar de reference est deja transmis via `initialState` ci-dessus :
-      // aucun appel `set()` immediat ici (cela declenchait "WebSocket is not
-      // open" car la WebSocket de signalisation n'etait pas encore ouverte).
+      // Le SDK officiel applique l'état après l'établissement de la connexion.
+      // Cela permet de conserver le flux de signalisation dans son cycle normal.
+      await realtimeClient.set({
+        prompt: 'Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.',
+        enhance: true,
+        image: avatarImageRef,
+      })
 
       // On NE facture PAS sur 'connected'/'generating' : ces etats signifient que
       // la connexion WebRTC est etablie, pas que l'image transformee est affichee.
