@@ -54,6 +54,7 @@ export function useLucy21() {
   // On enregistre CE flux directement via MediaRecorder pour produire un fichier
   // video telechargeable du resultat du swap (camera OU video importee).
   const outputStreamRef = useRef<MediaStream | null>(null)
+  const remotePlaybackCleanupRef = useRef<(() => void) | null>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const recordedChunksRef = useRef<Blob[]>([])
   const [isRecording, setIsRecording] = useState(false)
@@ -113,8 +114,13 @@ export function useLucy21() {
       remoteStream.getTracks().forEach((track) => track.stop())
     }
 
-    // 4. Detacher et mettre en pause les elements video
-    if (localVideoRef.current) {
+  // Retirer les handlers de lecture qui peuvent avoir ete installes pendant
+  // l'attente des metadonnees du flux distant.
+  remotePlaybackCleanupRef.current?.()
+  remotePlaybackCleanupRef.current = null
+
+  // 4. Detacher et mettre en pause les elements video
+  if (localVideoRef.current) {
       localVideoRef.current.pause()
       localVideoRef.current.srcObject = null
     }
@@ -335,9 +341,29 @@ export function useLucy21() {
           outputStreamRef.current = transformedStream
           const el = remoteVideoRef.current
           if (!el) return
+
+          // Sur Safari/iOS, play() peut etre appele avant que les metadonnees
+          // WebRTC soient disponibles. Dans ce cas la promesse est rejetee et
+          // la video reste noire si on ne retente jamais la lecture.
+          remotePlaybackCleanupRef.current?.()
+          el.autoplay = true
+          el.muted = true
+          el.playsInline = true
           el.srcObject = transformedStream
-          // Forcer la lecture (corrige l'ecran noir si l'autoplay ne demarre pas).
-          el.play().catch(() => {})
+          const playWhenReady = () => {
+            if (el.srcObject !== transformedStream) return
+            el.play().catch(() => {
+              // canplay/loadedmetadata relanceront la lecture si le flux n'est
+              // pas encore pret au premier essai.
+            })
+          }
+          el.addEventListener('loadedmetadata', playWhenReady)
+          el.addEventListener('canplay', playWhenReady)
+          remotePlaybackCleanupRef.current = () => {
+            el.removeEventListener('loadedmetadata', playWhenReady)
+            el.removeEventListener('canplay', playWhenReady)
+          }
+          playWhenReady()
 
           // Detecter la 1ere image reellement peinte avant de facturer.
           const elAny = el as HTMLVideoElement & {
