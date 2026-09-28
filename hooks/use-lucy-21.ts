@@ -246,7 +246,12 @@ export function useLucy21() {
       }
 
       streamRef.current = stream
-      if (localVideoRef.current) localVideoRef.current.srcObject = stream
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream
+        localVideoRef.current.muted = true
+        localVideoRef.current.playsInline = true
+        void localVideoRef.current.play().catch(() => {})
+      }
 
       const avatarRes = await fetch(avatarImageUrl)
       const avatarBlob = await avatarRes.blob()
@@ -288,7 +293,7 @@ export function useLucy21() {
       }
 
       const realtimeClient = await client.realtime.connect(stream, {
-        model: models.realtime('lucy-2.5'),
+        model: models.realtime('lucy-2.1'),
         // IMPORTANT : on DESACTIVE le miroir interne du SDK.
         // Avec `mirror: 'auto'`, le SDK enveloppe la camera dans un pipeline
         // MediaStreamTrackProcessor dont le dispose n'annule pas le flux de
@@ -301,7 +306,7 @@ export function useLucy21() {
         // Resolution : 1080p en mode HD (VIP), 720p sinon.
         resolution,
         // Codec video prefere si fourni (sinon negociation par defaut du SDK).
-        ...(options?.codec ? { preferredVideoCodec: options.codec } : {}),
+        preferredVideoCodec: options?.codec ?? 'vp8',
 
         // Qualite reseau en direct : verdict lisse + facteur limitant.
         onConnectionQuality: (report: any) => {
