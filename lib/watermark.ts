@@ -19,27 +19,31 @@ const NO_WATERMARK_MINUTES_PACK_ID = 'minutes_4'
  * sa cle, il recoit seulement un token ephemere deja lie a la bonne cle.
  */
 
-// Forfaits qui donnent droit au sans-watermark automatique.
-// Identifiants historiques utilisés par les abonnements premium 30 jours.
-// Ils doivent rester équivalents à premium pour ne pas réactiver le watermark
-// après une migration ou un ancien achat.
-const AUTO_NO_WATERMARK_PLANS = new Set([
-  'premium',
-  'premium30',
-  'premium_30days',
-  'premium-30-days',
-  '30days',
-  '30_days',
-  '30-day',
-  // Anciens abonnements premium 30 jours créés comme bonus.
-  'bonus',
-  'ultimate',
-  'vip',
-  'vipdebout',
-  // Product identifiers used by payment_requests/subscriptions.
-  'items_500',
-  'items_850',
-])
+// Les paiements historiques ont parfois stocké un identifiant produit (`items_500`)
+// au lieu du nom du forfait. On le convertit une seule fois ici afin que toutes
+// les décisions métier utilisent uniquement les IDs de `lib/plans.ts`.
+const PLAN_ALIASES: Record<string, string> = {
+  items_500: 'premium',
+  items_850: 'ultimate',
+  premium30: 'premium',
+  premium_30days: 'premium',
+  'premium-30-days': 'premium',
+  '30days': 'premium',
+  '30_days': 'premium',
+  '30-day': 'premium',
+  bonus: 'premium',
+  vip: 'ultimate',
+}
+
+function normalizePlanId(value: string | null | undefined): string {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+  return PLAN_ALIASES[normalized] || normalized
+}
+
+const AUTO_NO_WATERMARK_PLANS = new Set(['premium', 'ultimate', 'vipdebout'])
 // Forfaits eligibles au sans-watermark manuel (active par l'admin).
 const MANUAL_NO_WATERMARK_PLANS = new Set<string>([])
 
@@ -103,10 +107,7 @@ export async function resolveWatermarkForUser(userId: string): Promise<Watermark
     })
   }
 
-  let plan = (isSubscriptionActive(sub) ? String(sub?.plan || '') : '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
+  let plan = normalizePlanId(isSubscriptionActive(sub) ? sub?.plan : '')
 
   if (!plan) {
     const { data: payment } = await admin
@@ -118,10 +119,7 @@ export async function resolveWatermarkForUser(userId: string): Promise<Watermark
       .limit(1)
       .maybeSingle()
 
-    plan = String(payment?.plan || '')
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, '_')
+    plan = normalizePlanId(payment?.plan)
     if (plan) {
       planSource = 'payment_requests.approved'
       console.warn('[ChapCam DecartSession] Recovered plan from approved payment', {
