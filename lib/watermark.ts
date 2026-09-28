@@ -25,6 +25,8 @@ const NO_WATERMARK_MINUTES_PACK_ID = 'minutes_4'
 const PLAN_ALIASES: Record<string, string> = {
   items_500: 'premium',
   items_850: 'ultimate',
+  jetons_500: 'premium',
+  jetons_850: 'ultimate',
   premium30: 'premium',
   premium_30days: 'premium',
   'premium-30-days': 'premium',
@@ -43,7 +45,7 @@ function normalizePlanId(value: string | null | undefined): string {
   return PLAN_ALIASES[normalized] || normalized
 }
 
-const AUTO_NO_WATERMARK_PLANS = new Set(['premium', 'ultimate', 'vipdebout'])
+const AUTO_NO_WATERMARK_PLANS = new Set(['premium', 'ultimate', 'vip', 'vipdebout'])
 // Forfaits eligibles au sans-watermark manuel (active par l'admin).
 const MANUAL_NO_WATERMARK_PLANS = new Set<string>([])
 
