@@ -48,6 +48,12 @@ export function useLucy21() {
   // du modele (ecran noir). Evite de debiter le client pour rien.
   const firstFrameRef = useRef(false)
   const connectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const connectionAttemptRef = useRef(0)
+  const activeConnectionAttemptRef = useRef<number | null>(null)
+
+  const traceCleanup = (action: string, details?: unknown) => {
+    console.warn(`[v0] Live Swap cleanup: ${action}`, details ?? '', new Error().stack)
+  }
 
   // --- Enregistrement de la sortie transformee (le "swap" rendu par Decart) ---
   // outputStreamRef = flux transforme recu de Decart (memorise dans onRemoteStream).
@@ -69,7 +75,9 @@ export function useLucy21() {
     }
   }, [])
 
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback((reason = 'manual') => {
+    console.warn(`[v0] Live Swap disconnect requested: ${reason}`, new Error().stack)
+    activeConnectionAttemptRef.current = null
     // Annuler le garde-fou de demarrage et reinitialiser l'etat 1ere image.
     if (connectTimeoutRef.current) {
       clearTimeout(connectTimeoutRef.current)
@@ -82,13 +90,17 @@ export function useLucy21() {
     // 0. Si un enregistrement est en cours, on l'arrete proprement : le
     //    handler onstop du MediaRecorder finalisera le fichier telechargeable.
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try { mediaRecorderRef.current.stop() } catch {}
+      try {
+        traceCleanup('mediaRecorder.stop()', { reason })
+        mediaRecorderRef.current.stop()
+      } catch {}
     }
     outputStreamRef.current = null
 
     // 1. Fermer la session Decart (arrete la facturation cote serveur)
     if (realtimeClientRef.current) {
       try {
+        traceCleanup('client.disconnect()', { reason })
         realtimeClientRef.current.disconnect()
       } catch (e) {
         console.error('[Lucy 2.1] Erreur disconnect Decart:', e)
@@ -98,7 +110,10 @@ export function useLucy21() {
 
     // 2. Couper la camera locale (tous les tracks du flux capture)
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current.getTracks().forEach((track) => {
+        traceCleanup('track.stop()', { reason, trackId: track.id, kind: track.kind })
+        track.stop()
+      })
       streamRef.current = null
     }
 
@@ -107,11 +122,17 @@ export function useLucy21() {
     //    ressource dans tous les cas.
     const localStream = localVideoRef.current?.srcObject as MediaStream | null
     if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop())
+      localStream.getTracks().forEach((track) => {
+        traceCleanup('attached-local-track.stop()', { reason, trackId: track.id, kind: track.kind })
+        track.stop()
+      })
     }
     const remoteStream = remoteVideoRef.current?.srcObject as MediaStream | null
     if (remoteStream) {
-      remoteStream.getTracks().forEach((track) => track.stop())
+      remoteStream.getTracks().forEach((track) => {
+        traceCleanup('attached-remote-track.stop()', { reason, trackId: track.id, kind: track.kind })
+        track.stop()
+      })
     }
 
   // Retirer les handlers de lecture qui peuvent avoir ete installes pendant
@@ -160,7 +181,10 @@ export function useLucy21() {
       onNoOutput?: (sessionId?: string) => void
     },
   ) => {
-    disconnect()
+    disconnect('new-connect')
+    const attempt = ++connectionAttemptRef.current
+    activeConnectionAttemptRef.current = attempt
+    const isCurrentAttempt = () => activeConnectionAttemptRef.current === attempt
     setIsConnecting(true)
     setError(null)
     setConnectionState('connecting')
@@ -398,6 +422,11 @@ export function useLucy21() {
         },
       })
 
+      if (!isCurrentAttempt()) {
+        traceCleanup('stale-client.disconnect()', { attempt })
+        realtimeClient.disconnect()
+        return
+      }
       realtimeClientRef.current = realtimeClient
 
       // L'avatar de reference est deja transmis via `initialState` ci-dessus :
@@ -408,7 +437,11 @@ export function useLucy21() {
       // la connexion WebRTC est etablie, pas que l'image transformee est affichee.
       // La facturation demarre via markLive() (1ere vraie image).
       realtimeClient.on('connectionChange', (state: string) => {
-        console.log('[v0] Decart connection state:', state)
+        console.warn('[v0] Decart connection state:', state, {
+          attempt,
+          isCurrent: isCurrentAttempt(),
+          hasClientRef: realtimeClientRef.current === realtimeClient,
+        })
         setConnectionState(state)
       })
       realtimeClient.on('error', (sdkError: any) => {
@@ -441,7 +474,7 @@ export function useLucy21() {
                 ? 'Session interrompue par le serveur. Reessaie dans un instant.'
                 : 'Session de transformation terminee.'
         setError(friendly)
-        disconnect()
+        disconnect('generation-ended')
       })
 
       // Alerte reseau (evenement brut) : on garde le dernier verdict a jour meme
@@ -456,7 +489,7 @@ export function useLucy21() {
         if (!firstFrameRef.current) {
           setError("Decart n'a renvoye aucune image. Aucun point ne sera conserve.")
           options?.onNoOutput?.(options?.sessionId)
-          disconnect()
+          disconnect('no-remote-frame-timeout')
         }
       }, 20000)
 
@@ -467,12 +500,16 @@ export function useLucy21() {
       // facturer Decart inutilement.
       if (realtimeClientRef.current) {
         try {
-          realtimeClientRef.current.disconnect()
-        } catch {}
-        realtimeClientRef.current = null
+        traceCleanup('client.disconnect()', { reason: 'connect-error' })
+        realtimeClientRef.current.disconnect()
+      } catch {}
+      realtimeClientRef.current = null
       }
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop())
+        streamRef.current.getTracks().forEach((track) => {
+          traceCleanup('track.stop()', { reason: 'connect-error', trackId: track.id, kind: track.kind })
+          track.stop()
+        })
         streamRef.current = null
       }
       const localStream = localVideoRef.current?.srcObject as MediaStream | null
