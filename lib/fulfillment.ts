@@ -23,6 +23,7 @@ import { getPhotoVideoOffer, type PhotoVideoOffer } from '@/lib/photo-video-offe
 import { getMinutesOffer, type MinutesOffer } from '@/lib/minutes-offers'
 import { getJetonsOffer, type JetonsOffer } from '@/lib/jetons-offers'
 import { creditJetons } from '@/lib/jetons'
+import { normalizePlanName } from '@/lib/watermark'
 import { createPcLicense } from '@/lib/pc-license'
 import { grantLiveWindow } from '@/lib/live-access'
 import {
@@ -129,7 +130,7 @@ export async function activateSubscription(
   const subPayload = {
     user_id: userId,
     email,
-    plan: plan.id,
+    plan: normalizePlanName(plan.id),
     amount: plan.price,
     status: 'active',
     points: prevPoints + plan.points,

@@ -23,27 +23,34 @@ const NO_WATERMARK_MINUTES_PACK_ID = 'minutes_4'
 // au lieu du nom du forfait. On le convertit une seule fois ici afin que toutes
 // les décisions métier utilisent uniquement les IDs de `lib/plans.ts`.
 const PLAN_ALIASES: Record<string, string> = {
-  items_500: 'premium',
-  items_850: 'ultimate',
+  starter: 'starter',
+  standard: 'starter',
+  premium: 'premium',
   premium30: 'premium',
   premium_30days: 'premium',
   'premium-30-days': 'premium',
   '30days': 'premium',
   '30_days': 'premium',
   '30-day': 'premium',
+  items_500: 'premium',
+  jetons_500: 'premium',
+  vip: 'vip pro',
+  vip_pro: 'vip pro',
+  vippro: 'vip pro',
+  ultimate: 'vip pro',
+  items_850: 'vip pro',
+  jetons_850: 'vip pro',
+  vipdebout: 'vip debout',
+  'vip debout': 'vip debout',
   bonus: 'premium',
-  vip: 'ultimate',
 }
 
-function normalizePlanId(value: string | null | undefined): string {
-  const normalized = String(value || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '_')
-  return PLAN_ALIASES[normalized] || normalized
+export function normalizePlanName(value: string | null | undefined): string {
+  const normalized = String(value || '').trim().toLowerCase().replace(/\s+/g, '_')
+  return normalized ? PLAN_ALIASES[normalized] || 'starter' : ''
 }
 
-const AUTO_NO_WATERMARK_PLANS = new Set(['premium', 'ultimate', 'vipdebout'])
+const AUTO_NO_WATERMARK_PLANS = new Set(['premium', 'vip pro', 'vip debout'])
 // Forfaits eligibles au sans-watermark manuel (active par l'admin).
 const MANUAL_NO_WATERMARK_PLANS = new Set<string>([])
 
@@ -107,7 +114,7 @@ export async function resolveWatermarkForUser(userId: string): Promise<Watermark
     })
   }
 
-  let plan = normalizePlanId(isSubscriptionActive(sub) ? sub?.plan : '')
+  let plan = normalizePlanName(isSubscriptionActive(sub) ? sub?.plan : '')
 
   if (!plan) {
     const { data: payment } = await admin
@@ -119,7 +126,7 @@ export async function resolveWatermarkForUser(userId: string): Promise<Watermark
       .limit(1)
       .maybeSingle()
 
-    plan = normalizePlanId(payment?.plan)
+    plan = normalizePlanName(payment?.plan)
     if (plan) {
       planSource = 'payment_requests.approved'
       console.warn('[ChapCam DecartSession] Recovered plan from approved payment', {
