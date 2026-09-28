@@ -34,7 +34,11 @@ const AUTO_NO_WATERMARK_PLANS = new Set([
   // Anciens abonnements premium 30 jours créés comme bonus.
   'bonus',
   'ultimate',
+  'vip',
   'vipdebout',
+  // Product identifiers used by payment_requests/subscriptions.
+  'items_500',
+  'items_850',
 ])
 // Forfaits eligibles au sans-watermark manuel (active par l'admin).
 const MANUAL_NO_WATERMARK_PLANS = new Set<string>([])
