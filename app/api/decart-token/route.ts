@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveWatermarkForUser, getDecartApiKeyCandidates } from '@/lib/watermark'
-import { checkLiveAccess, claimLiveSession } from '@/lib/live-guard'
+import { checkLiveAccess, claimLiveSession, releaseLiveSession } from '@/lib/live-guard'
 import { trackGPUUsage } from '@/lib/rate-limit'
 import { RESERVATION_SECONDS, RESERVATION_POINTS } from '@/lib/swap-pricing'
 
@@ -175,7 +175,13 @@ export async function GET(request: Request) {
 
     // Toutes les cles ont echoue : vraie indisponibilite du service Decart.
     if (!token) {
-      throw lastErr || new Error('Aucune cle Decart valide')
+      if (clientSessionId) {
+        await releaseLiveSession(user.id, clientSessionId).catch(() => {})
+      }
+      const policyMessage = decision.noWatermark
+        ? 'La clé Decart sans watermark est invalide ou expirée. Aucun rendu ne sera lancé avec watermark.'
+        : 'La clé Decart est invalide ou expirée.'
+      throw new Error(`${policyMessage} ${(lastErr as any)?.message || ''}`.trim())
     }
 
     console.log(
