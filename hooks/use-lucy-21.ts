@@ -157,6 +157,7 @@ export function useLucy21() {
       // Callback appele quand le serveur a effectivement reserve des points de
       // warmup a l'emission du token (permet a l'UI de refleter le solde a jour).
       onReserved?: (reservedPoints: number) => void
+      onNoOutput?: (sessionId?: string) => void
     },
   ) => {
     disconnect()
@@ -369,10 +370,25 @@ export function useLucy21() {
           const elAny = el as HTMLVideoElement & {
             requestVideoFrameCallback?: (cb: () => void) => number
           }
+          const markWhenFrameArrives = () => {
+            if (el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && el.videoWidth > 0 && el.videoHeight > 0) {
+              markLive()
+            }
+          }
+          el.addEventListener('playing', markWhenFrameArrives)
+          el.addEventListener('timeupdate', markWhenFrameArrives)
           if (typeof elAny.requestVideoFrameCallback === 'function') {
-            elAny.requestVideoFrameCallback(() => markLive())
-          } else {
-            el.onplaying = () => markLive()
+            elAny.requestVideoFrameCallback(() => markWhenFrameArrives())
+          }
+          // Fallback iOS : certains WebKit ne declenchent pas
+          // requestVideoFrameCallback pour un flux WebRTC.
+          const frameCheck = window.setInterval(markWhenFrameArrives, 500)
+          const previousCleanup = remotePlaybackCleanupRef.current
+          remotePlaybackCleanupRef.current = () => {
+            window.clearInterval(frameCheck)
+            el.removeEventListener('playing', markWhenFrameArrives)
+            el.removeEventListener('timeupdate', markWhenFrameArrives)
+            previousCleanup?.()
           }
         },
       })
@@ -387,7 +403,17 @@ export function useLucy21() {
       // la connexion WebRTC est etablie, pas que l'image transformee est affichee.
       // La facturation demarre via markLive() (1ere vraie image).
       realtimeClient.on('connectionChange', (state: string) => {
+        console.log('[v0] Decart connection state:', state)
         setConnectionState(state)
+      })
+      realtimeClient.on('error', (sdkError: any) => {
+        console.error('[v0] Decart realtime error:', sdkError)
+        if (!firstFrameRef.current) {
+          setError(sdkError?.message || 'Decart n\'a pas pu produire le flux vidéo.')
+        }
+      })
+      realtimeClient.on('diagnostic', (diagnostic: any) => {
+        console.log('[v0] Decart diagnostic:', diagnostic)
       })
 
       // Timer PRECIS de generation : le serveur remonte les secondes reellement
@@ -423,7 +449,8 @@ export function useLucy21() {
       // previent l'utilisateur, sans jamais l'avoir facture pour l'ecran noir.
       connectTimeoutRef.current = setTimeout(() => {
         if (!firstFrameRef.current) {
-          setError("La transformation n'a pas demarre. Reessaie dans un instant.")
+          setError("Decart n'a renvoye aucune image. Aucun point ne sera conserve.")
+          options?.onNoOutput?.(options?.sessionId)
           disconnect()
         }
       }, 20000)
