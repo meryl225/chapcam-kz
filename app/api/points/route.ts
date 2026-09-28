@@ -33,10 +33,45 @@ export async function POST(request: NextRequest) {
       avatarName,
       framesProcessed,
       startedAt,
+      releaseReservation,
     } = body
 
     // Tarif points/seconde attendu pour cette resolution (2 en 720p, 4 en 1080p).
     const rate = pointsPerSecond(resolution)
+
+    // Une session qui n'a jamais produit de frame ne doit pas rester facturee.
+    // La reservation est remboursee une seule fois puis la ligne est finalisee.
+    if (releaseReservation && sessionId) {
+      const admin = createAdminClient()
+      const { data: reservation } = await admin
+        .from('swap_sessions')
+        .select('id, points_used, finalized')
+        .eq('session_id', String(sessionId))
+        .eq('user_id', user.id)
+        .eq('finalized', false)
+        .maybeSingle()
+
+      if (reservation && (reservation.points_used || 0) > 0) {
+        const refund = Math.max(0, Math.floor(reservation.points_used))
+        const { data: subscription } = await admin
+          .from('subscriptions')
+          .select('id, points')
+          .eq('user_id', user.id)
+          .single()
+        if (subscription) {
+          await admin
+            .from('subscriptions')
+            .update({ points: (subscription.points || 0) + refund, updated_at: new Date().toISOString() })
+            .eq('id', subscription.id)
+        }
+        await admin
+          .from('swap_sessions')
+          .update({ points_used: 0, duration_seconds: 0, finalized: true, ended_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq('id', reservation.id)
+      }
+      if (sessionId) await releaseLiveSession(user.id, String(sessionId)).catch(() => {})
+      return NextResponse.json({ success: true, refunded: true })
+    }
 
     // === Enregistrement d'une session complete ===
     // Appele UNE SEULE FOIS a la fin d'un swap (pas a chaque synchronisation).

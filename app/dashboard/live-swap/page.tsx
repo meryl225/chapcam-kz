@@ -599,13 +599,37 @@ export default function DashboardPage() {
       sessionId: sessionIdRef.current ?? undefined,
       // Le serveur a debite le warmup a l'emission du token : on decremente le
       // solde local pour que l'affichage reste juste avant le 1er heartbeat.
-      onReserved: (reservedPoints) => {
-        remainingRef.current = Math.max(0, remainingRef.current - reservedPoints)
-        pointsUsedRef.current += reservedPoints
+  onReserved: (reservedPoints) => {
+  remainingRef.current = Math.max(0, remainingRef.current - reservedPoints)
+  pointsUsedRef.current += reservedPoints
+  setUserPoints(remainingRef.current)
+  setPointsUsed(pointsUsedRef.current)
+  },
+  onNoOutput: (failedSessionId) => {
+  if (!failedSessionId) return
+  void fetch('/api/points', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    keepalive: true,
+    body: JSON.stringify({ releaseReservation: true, sessionId: failedSessionId }),
+  }).then(async (res) => {
+    const data = await res.json().catch(() => null)
+    if (res.ok && data?.refunded) {
+      const pointsRes = await fetch('/api/points')
+      const pointsData = await pointsRes.json().catch(() => null)
+      if (pointsData?.success) {
+        remainingRef.current = pointsData.points ?? remainingRef.current
         setUserPoints(remainingRef.current)
-        setPointsUsed(pointsUsedRef.current)
-      },
-    })
+      }
+      pointsUsedRef.current = 0
+      pendingSyncRef.current = 0
+      setPointsUsed(0)
+    }
+  }).catch((refundError) => {
+    console.error('[v0] failed Live Swap reservation refund:', refundError)
+  })
+  },
+  })
   }
 
   const handleStopSwap = () => handleStopSwapAndSave()
