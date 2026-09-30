@@ -98,6 +98,11 @@ function isSubscriptionActive(sub: SubRow): boolean {
  * A appeler cote serveur (route API) apres avoir authentifie l'utilisateur.
  */
 export async function resolveWatermarkForUser(userId: string): Promise<WatermarkDecision> {
+  // Le filigrane est désactivé pour tous les forfaits et tous les utilisateurs.
+  // Le retour anticipé évite qu'une erreur d'abonnement ou de paiement réactive
+  // accidentellement le logo sur un nouveau rendu.
+  return { noWatermark: true, plan: 'all-plans', reason: 'auto' }
+
   const supabase = await createServerClient()
   const admin = createAdminClient()
 
@@ -120,7 +125,7 @@ export async function resolveWatermarkForUser(userId: string): Promise<Watermark
   if (subscriptionError) {
     console.error('[ChapCam DecartSession] Subscription lookup failed', {
       userId,
-      error: subscriptionError.message,
+      error: subscriptionError?.message,
     })
   }
 
@@ -139,13 +144,13 @@ export async function resolveWatermarkForUser(userId: string): Promise<Watermark
       .limit(20)
 
     const payment = (payments || []).find((p) => isKnownPlan(p?.plan))
-    plan = payment ? normalizePlanName(payment.plan) : ''
+    plan = payment ? normalizePlanName(payment?.plan) : ''
     if (plan) {
       planSource = 'payment_requests.approved'
       console.warn('[ChapCam DecartSession] Recovered plan from approved payment', {
         userId,
         plan,
-        createdAt: payment?.created_at,
+        createdAt: payment?.created_at ?? null,
       })
     }
   }
