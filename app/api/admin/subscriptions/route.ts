@@ -131,10 +131,11 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    const storedPlanName = plan.id === 'vipdebout' ? 'vip debout' : plan.id
     const subPayload = {
       user_id: userId,
       email,
-      plan: plan.id,
+      plan: storedPlanName,
       amount: plan.price,
       status: 'active',
       points: plan.points,
@@ -155,13 +156,13 @@ export async function POST(req: NextRequest) {
       const { error } = await admin.from('subscriptions').update(subPayload).eq('id', existing.id)
       if (error) {
         console.error('[admin/subscriptions] Erreur update:', error.message)
-        return NextResponse.json({ error: 'Erreur lors de l\'activation.' }, { status: 500 })
+        return NextResponse.json({ error: `Erreur lors de l'activation : ${error.message}` }, { status: 500 })
       }
     } else {
       const { error } = await admin.from('subscriptions').insert(subPayload)
       if (error) {
         console.error('[admin/subscriptions] Erreur insert:', error.message)
-        return NextResponse.json({ error: 'Erreur lors de l\'activation.' }, { status: 500 })
+        return NextResponse.json({ error: `Erreur lors de l'activation : ${error.message}` }, { status: 500 })
       }
     }
 
@@ -171,7 +172,7 @@ export async function POST(req: NextRequest) {
       admin_email: ADMIN_EMAIL,
       details: {
         email,
-        plan: plan.id,
+        plan: storedPlanName,
         points: plan.points,
         start_date: now.toISOString(),
         end_date: end.toISOString(),

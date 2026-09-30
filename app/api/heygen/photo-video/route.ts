@@ -65,6 +65,7 @@ function detectAudioContentType(buf: Buffer): string {
 // POST : cree une video a partir d'une photo + un prompt (script parle).
 // Attend un multipart/form-data : file (image), script (texte), voice_id.
 export async function POST(request: NextRequest) {
+  let refundReservation: ((reason: string) => Promise<void>) | null = null
   try {
     const apiKey = getApiKey()
     if (!apiKey) {
@@ -149,6 +150,24 @@ export async function POST(request: NextRequest) {
 
     const estimatedCostUsd = estimatedSeconds * TOOL_PROVIDER_COST.photo_video.perSecondUsd
 
+    // Debit AVANT tout appel HeyGen : sinon un compte sans solde suffisant
+    // declenchait quand meme un rendu HeyGen (paye par ChapCam) sans etre facture.
+    const wallet = await reserveJetons(user.id, estimatedCostUsd, "photo_video", {
+      provider: "heygen",
+      durationSeconds: estimatedSeconds,
+    })
+    if (!wallet.ok) {
+      return NextResponse.json({ error: `Solde insuffisant. Cette vidéo coûte ${wallet.required} Jetons.`, code: "insufficient_tokens", required: wallet.required, balance: wallet.balance }, { status: 402 })
+    }
+    let refunded = false
+    refundReservation = async (reason: string) => {
+      if (refunded) return
+      refunded = true
+      await creditJetons(user.id, wallet.charged, { reason: "photo_video_refund", detail: reason }).catch((e) =>
+        console.error("[PhotoVideo] Remboursement impossible:", e),
+      )
+    }
+
     // 1) Upload de la photo vers HeyGen -> asset_id
     const contentType = file.type === "image/png" ? "image/png" : "image/jpeg"
     const bytes = Buffer.from(await file.arrayBuffer())
@@ -160,6 +179,7 @@ export async function POST(request: NextRequest) {
     const uploadJson = await uploadRes.json().catch(() => null)
     const assetId = uploadJson?.data?.id
     if (!uploadRes.ok || !assetId) {
+      await refundReservation("photo_upload_failed")
       return NextResponse.json(
         { error: `Echec de l'upload de la photo vers HeyGen.`, detail: uploadJson?.message || uploadJson?.msg || "" },
         { status: 502 },
@@ -185,6 +205,7 @@ export async function POST(request: NextRequest) {
       const audioAssetId = audioJson?.data?.id
       if (!audioUpload.ok || !audioAssetId) {
         console.error("[v0] Clone: echec upload audio", audioUpload.status, JSON.stringify(audioJson))
+        await refundReservation("audio_upload_failed")
         return NextResponse.json(
           { error: "Echec de l'upload de l'echantillon vocal.", detail: audioJson?.message || audioJson?.msg || `HTTP ${audioUpload.status}` },
           { status: 502 },
@@ -207,6 +228,7 @@ export async function POST(request: NextRequest) {
         cloneJson?.data?.voice_clone_id || cloneJson?.data?.voice_id || cloneJson?.data?.id || null
       if (!cloneRes.ok || !cloneVoiceId) {
         console.error("[v0] Clone: echec creation clone", cloneRes.status, JSON.stringify(cloneJson))
+        await refundReservation("voice_clone_failed")
         return NextResponse.json(
           {
             error:
@@ -257,6 +279,7 @@ export async function POST(request: NextRequest) {
           method: "DELETE",
           headers: { "X-Api-Key": apiKey },
         }).catch(() => {})
+        await refundReservation("voice_clone_timeout")
         return NextResponse.json(
           {
             error:
@@ -320,8 +343,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (createRes.status === 402) {
-      // Credits HeyGen epuises : NE PAS deduire les points de l'utilisateur.
+      // Credits HeyGen epuises : on rend les Jetons deja reserves.
       await cleanupClone()
+      await refundReservation("heygen_no_credit")
       return NextResponse.json(
         { error: "Le service de generation HeyGen n'a plus de credits. Contactez l'administrateur.", code: "heygen_no_credit" },
         { status: 402 },
@@ -330,21 +354,15 @@ export async function POST(request: NextRequest) {
     const videoId = createJson?.data?.video_id || createJson?.video_id
     if (!createRes.ok || !videoId) {
       await cleanupClone()
+      await refundReservation("heygen_create_failed")
       return NextResponse.json(
         { error: createJson?.error?.message || "Echec de la creation de la video.", detail: createJson?.error?.code || "" },
         { status: 502 },
       )
     }
 
-  // Réserver les Jetons uniquement après la création HeyGen réussie.
-  const wallet = await reserveJetons(user.id, estimatedCostUsd, "photo_video", {
-    provider: "heygen",
-    durationSeconds: estimatedSeconds,
-    videoId,
-  })
-  if (!wallet.ok) {
-    return NextResponse.json({ error: `Solde insuffisant. Cette vidéo coûte ${wallet.required} Jetons.`, code: "insufficient_tokens", required: wallet.required, balance: wallet.balance }, { status: 402 })
-  }
+  // La video existe chez HeyGen : la reservation devient definitive.
+  refundReservation = null
   const remaining = wallet.balance
 
     // 3bis) Enregistrer le job "processing" AVEC le user_id. Deux buts :
@@ -387,6 +405,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error("[HeyGen PhotoVideo Error]", error)
+    if (refundReservation) await refundReservation("server_error")
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 },
