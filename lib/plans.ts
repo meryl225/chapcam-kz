@@ -1,7 +1,7 @@
 // Source de verite des formules d'abonnement ChapCam.
 // Utilise a la fois par la page /dashboard/plans et les routes API.
 
-export type PlanId = 'starter' | 'standard' | 'premium' | 'ultimate' | 'vipdebout'
+export type PlanId = 'testeur' | 'starter' | 'standard' | 'premium' | 'ultimate' | 'vipdebout'
 
 // Statut du logo (watermark) par forfait :
 // - 'with'   : rendu AVEC logo ChapCam (Starter, Standard)
@@ -33,6 +33,24 @@ export interface PlanConfig {
 }
 
 export const PLANS: PlanConfig[] = [
+  {
+    id: 'testeur',
+    name: 'Forfait Testeur',
+    duration: '30 Jours',
+    durationDays: 30,
+    price: 5000,
+    oldPrice: 5000,
+    discount: 0,
+    points: 360,
+    jetons: 0,
+    minutes: '3 min',
+    photoVideoQuota: 0,
+    features: ['Transformation du visage et corps entier', 'Filigrane ChapCam inclus'],
+    popular: false,
+    highlight: false,
+    bestOffer: false,
+    watermark: 'with',
+  },
   {
     id: 'starter',
     name: 'Starter',
@@ -130,6 +148,7 @@ export const PLANS: PlanConfig[] = [
 ]
 
 export function getPlan(id: string): PlanConfig | undefined {
+  if (id === 'anniv_5') return PLANS.find((p) => p.id === 'testeur')
   return PLANS.find((p) => p.id === id)
 }
 
@@ -138,6 +157,7 @@ export function getPlan(id: string): PlanConfig | undefined {
 // tous les pays, dimensionné selon le forfait payé. Sans forfait actif = 0 Go.
 // (Évite l'abus du "10 Go par pays activé".)
 export const PROXY_QUOTA_GB: Record<PlanId, number> = {
+  testeur: 0,
   starter: 2,
   standard: 15,
   premium: 50,
@@ -155,6 +175,7 @@ export function proxyQuotaForPlan(planId: string | null | undefined): number {
 // Nombre de videos photo->parlante incluses par periode d'abonnement (2 a 10).
 // Decouple des points/minutes du Live Swap : la photo-video ne consomme PAS de points.
 export const PHOTO_VIDEO_QUOTA: Record<PlanId, number> = {
+  testeur: 0,
   starter: 2,
   standard: 3,
   premium: 5,
@@ -174,6 +195,7 @@ export function photoVideoQuotaForPlan(planId: string | null | undefined): numbe
 // la marge : chaque clip fait au maximum 10 secondes (plafond serveur/ client).
 // Reserve aux forfaits de valeur (Starter/Standard n'en incluent pas).
 export const MOTION_VIDEO_QUOTA: Record<PlanId, number> = {
+  testeur: 0,
   starter: 0,
   standard: 0,
   premium: 1,
@@ -196,6 +218,7 @@ export const MOTION_MAX_SECONDS = 10
 // Les quotas inclus sont petits (comme Motion) pour proteger la marge. Chaque
 // credit = 1 video traduite <= 60s dans 1 langue (mode Rapide ; Precision = 2).
 export const TRANSLATION_QUOTA: Record<PlanId, number> = {
+  testeur: 0,
   starter: 0,
   standard: 0,
   premium: 1,
@@ -220,6 +243,7 @@ export const TRANSLATION_MAX_SECONDS = 60
 // Starter au VIP DEBOUT, recoit un quota gratuit inclus (1 a 10). Les recharges
 // de credits payantes viendront plus tard.
 export const VOICE_MESSAGE_QUOTA: Record<PlanId, number> = {
+  testeur: 0,
   starter: 1,
   standard: 2,
   premium: 4,

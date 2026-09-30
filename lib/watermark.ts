@@ -23,6 +23,8 @@ const NO_WATERMARK_MINUTES_PACK_ID = 'minutes_4'
 // au lieu du nom du forfait. On le convertit une seule fois ici afin que toutes
 // les décisions métier utilisent uniquement les IDs de `lib/plans.ts`.
 const PLAN_ALIASES: Record<string, string> = {
+  testeur: 'testeur',
+  anniv_5: 'testeur',
   starter: 'starter',
   standard: 'starter',
   premium: 'premium',
@@ -48,6 +50,11 @@ const PLAN_ALIASES: Record<string, string> = {
 export function normalizePlanName(value: string | null | undefined): string {
   const normalized = String(value || '').trim().toLowerCase().replace(/\s+/g, '_')
   return normalized ? PLAN_ALIASES[normalized] || 'starter' : ''
+}
+
+function isKnownPlan(value: string | null | undefined): boolean {
+  const key = String(value || '').trim().toLowerCase().replace(/\s+/g, '_')
+  return key in PLAN_ALIASES
 }
 
 const AUTO_NO_WATERMARK_PLANS = new Set(['premium', 'vip pro', 'vip debout'])
@@ -99,9 +106,12 @@ export async function resolveWatermarkForUser(userId: string): Promise<Watermark
   // cette ligne historique faire retomber un Premium sur la clé watermarkée.
   const { data: subscription, error: subscriptionError } = await admin
     .from('subscriptions')
-    .select('plan, is_active, status, expires_at, end_date, created_at')
+    // select('*') : la table n'a pas de colonne created_at (et end_date selon
+    // les environnements). Demander une colonne absente fait échouer toute la
+    // requête, ce qui faisait retomber les comptes Premium sur la clé avec logo.
+    .select('*')
     .eq('user_id', userId)
-    .order('created_at', { ascending: false })
+    .order('updated_at', { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle()
 
@@ -117,16 +127,19 @@ export async function resolveWatermarkForUser(userId: string): Promise<Watermark
   let plan = normalizePlanName(isSubscriptionActive(sub) ? sub?.plan : '')
 
   if (!plan) {
-    const { data: payment } = await admin
+    // Ne retenir que les paiements de FORFAIT : les achats `install`,
+    // `minutes_4`, `anniv_5`... ne sont pas des forfaits et, pris comme dernier
+    // paiement, faisaient retomber un Premium en "starter" (avec logo).
+    const { data: payments } = await admin
       .from('payment_requests')
       .select('plan, status, created_at')
       .eq('user_id', userId)
       .eq('status', 'approved')
       .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
+      .limit(20)
 
-    plan = normalizePlanName(payment?.plan)
+    const payment = (payments || []).find((p) => isKnownPlan(p?.plan))
+    plan = payment ? normalizePlanName(payment.plan) : ''
     if (plan) {
       planSource = 'payment_requests.approved'
       console.warn('[ChapCam DecartSession] Recovered plan from approved payment', {
