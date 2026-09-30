@@ -224,23 +224,9 @@ async function hasActiveMinutesPack(userId: string): Promise<boolean> {
  * Pour un compte éligible au sans-watermark, il est interdit de basculer vers
  * la clé standard : cela rendrait une vidéo filigranée malgré l'offre payée.
  */
-export function pickDecartApiKey(noWatermark: boolean): { apiKey: string | undefined; usedNoWatermark: boolean } {
-  const withWm = process.env.DECART_API_KEY
-  const withoutWm = process.env.DECART_API_KEY_NO_WATERMARK
-
-  if (noWatermark) {
-    // Pas de fallback vers la clé avec watermark : mieux vaut refuser la session
-    // et protéger la promesse commerciale que livrer un rendu filigrané.
-    return withoutWm
-      ? { apiKey: withoutWm, usedNoWatermark: true }
-      : { apiKey: undefined, usedNoWatermark: false }
-  }
-
-  if (withWm) return { apiKey: withWm, usedNoWatermark: false }
-  // Pour les comptes standard, le fallback sans watermark reste acceptable :
-  // il n'enlève pas un droit promis et évite une panne inutile.
-  if (withoutWm) return { apiKey: withoutWm, usedNoWatermark: true }
-  return { apiKey: undefined, usedNoWatermark: false }
+export function pickDecartApiKey(_noWatermark: boolean): { apiKey: string | undefined; usedNoWatermark: boolean } {
+  const apiKey = process.env.DECART_API_KEY_NO_WATERMARK
+  return apiKey ? { apiKey, usedNoWatermark: true } : { apiKey: undefined, usedNoWatermark: false }
 }
 
 /**
@@ -250,28 +236,8 @@ export function pickDecartApiKey(noWatermark: boolean): { apiKey: string | undef
  * comme étant sans logo. Pour les offres standard, le fallback reste possible.
  */
 export function getDecartApiKeyCandidates(
-  noWatermark: boolean,
+  _noWatermark: boolean,
 ): { apiKey: string; usedNoWatermark: boolean }[] {
-  const withWm = process.env.DECART_API_KEY
-  const withoutWm = process.env.DECART_API_KEY_NO_WATERMARK
-
-  // Ordre de preference selon la politique de watermark souhaitee.
-  const ordered: { apiKey: string | undefined; usedNoWatermark: boolean }[] = noWatermark
-    ? [
-        { apiKey: withoutWm, usedNoWatermark: true },
-      ]
-    : [
-        { apiKey: withWm, usedNoWatermark: false },
-        { apiKey: withoutWm, usedNoWatermark: true },
-      ]
-
-  // Ne garder que les cles reellement configurees (non vides) et dedupliquer.
-  const seen = new Set<string>()
-  const candidates: { apiKey: string; usedNoWatermark: boolean }[] = []
-  for (const c of ordered) {
-    if (!c.apiKey || seen.has(c.apiKey)) continue
-    seen.add(c.apiKey)
-    candidates.push({ apiKey: c.apiKey, usedNoWatermark: c.usedNoWatermark })
-  }
-  return candidates
+  const apiKey = process.env.DECART_API_KEY_NO_WATERMARK
+  return apiKey ? [{ apiKey, usedNoWatermark: true }] : []
 }
