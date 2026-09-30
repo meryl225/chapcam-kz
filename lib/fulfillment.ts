@@ -485,7 +485,9 @@ export async function creditPurchase(
   }
   }
 
-  if (minutesOffer) {
+  if (minutesOffer && !plan) {
+  // Les packs de minutes restent des recharges. Le produit anniv_5 est
+  // maintenant un vrai forfait via getPlan(), donc il passe par activateSubscription.
   // Minutes supplementaires : on credite des points SANS changer le forfait.
     const { points } = await creditMinutes(admin, userId, input.email, minutesOffer)
     return {

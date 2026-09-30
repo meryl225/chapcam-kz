@@ -23,6 +23,8 @@ const NO_WATERMARK_MINUTES_PACK_ID = 'minutes_4'
 // au lieu du nom du forfait. On le convertit une seule fois ici afin que toutes
 // les décisions métier utilisent uniquement les IDs de `lib/plans.ts`.
 const PLAN_ALIASES: Record<string, string> = {
+  testeur: 'testeur',
+  anniv_5: 'testeur',
   starter: 'starter',
   standard: 'starter',
   premium: 'premium',
