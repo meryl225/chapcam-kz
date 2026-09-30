@@ -65,13 +65,13 @@ export async function GET(request: Request) {
     plan: decision.plan,
     noWatermark: decision.noWatermark,
     reason: decision.reason,
-    configuredStandardKey: Boolean(process.env.DECART_API_KEY),
     configuredNoWatermarkKey: Boolean(process.env.DECART_API_KEY_NO_WATERMARK),
+    keyPolicy: 'DECART_API_KEY_NO_WATERMARK_ONLY',
     candidateCount: keyCandidates.length,
   })
 
   if (keyCandidates.length === 0) {
-    console.error('[Decart Token] Aucune cle Decart configuree (DECART_API_KEY / DECART_API_KEY_NO_WATERMARK)')
+    console.error('[Decart Token] DECART_API_KEY_NO_WATERMARK is not configured')
     return NextResponse.json(
       { error: 'Service temporairement indisponible' },
       { status: 500 }
@@ -148,9 +148,7 @@ export async function GET(request: Request) {
 
   try {
     // 5. Creer un token ephemere avec restrictions.
-    //    On essaie les cles candidates dans l'ordre : cle ideale, puis repli.
-    //    Une cle invalide/expiree (ex: DECART_API_KEY qui a expire) ne casse
-    //    donc plus le swap tant qu'UNE cle valide reste configuree.
+    //    Une seule clé est autorisée : DECART_API_KEY_NO_WATERMARK.
     let token: any = null
     let usedNoWatermark = false
     let lastErr: any = null
@@ -172,7 +170,7 @@ export async function GET(request: Request) {
         }
         const keyFingerprint = createHash('sha256').update(cand.apiKey).digest('hex').slice(0, 12)
         console.log('[ChapCam DecartSession] Calling Decart API key', {
-          keyType: cand.usedNoWatermark ? 'DECART_API_KEY_NO_WATERMARK' : 'DECART_API_KEY',
+          keyType: 'DECART_API_KEY_NO_WATERMARK',
           keyFingerprint,
           keySuffix: cand.apiKey.slice(-4),
           expectedWatermark: !cand.usedNoWatermark,
