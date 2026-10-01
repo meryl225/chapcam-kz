@@ -1,33 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
-
-const C = {
-  bg: '#F5F8FF',
-  ink: '#0E1530',
-  muted: '#7A84A0',
-  line: '#E6EBF5',
-  blue: '#1E6BFF',
-  violet: '#7B4DFF',
-  white: '#FFFFFF',
-}
-const BRAND = [C.blue, C.violet]
-const PAD = 18
-const GAP = 12
-
-const asset = (path) => ({ uri: `https://chapcam.com${path}` })
-
-const TOOLS = [
-  { key: 'live', title: 'Live Swap', copy: 'Change de visage en temps réel', image: '/swap/face-transformed.png', live: true },
-  { key: 'genjutsu', title: 'Genjutsu', copy: 'Anime tes images avec un mouvement naturel', image: '/images/hero/avatars/a2.png' },
-  { key: 'motion', title: 'Motion Control', copy: 'Anime ta photo en 3D', image: '/swap/poster-motion.png' },
-  { key: 'translate', title: 'Traduction vidéo', copy: 'Traduis ta vidéo en 180+ langues', image: '/swap/poster-video-translation.png' },
-  { key: 'voice', title: 'Message Vocal', copy: 'Crée des voix réalistes depuis un texte', image: '/swap/poster-message-vocal.png' },
-  { key: 'verify', title: 'ChapVerify', copy: 'Détecte les deepfakes', image: '/swap/poster-chapverify.png' },
-]
+import { BRAND, C, GAP, PAD, TOOLS, asset, shadow } from '../ui/catalog'
+import { ToolCard } from '../ui/ToolCard'
+import { ExploreScreen } from '../screens/ExploreScreen'
+import { LiveSwapScreen } from '../screens/LiveSwapScreen'
 
 const TRENDS = [
   { key: 't1', title: 'Visage cinéma', tag: 'Live Swap', image: '/images/hero/avatars/a1.png' },
@@ -76,11 +56,35 @@ function HomeShell({ user }) {
   const credits = subscription?.points_remaining ?? subscription?.points ?? 0
   const planName = subscription?.plan ? subscription.plan.replace(/[-_]/g, ' ') : null
   const onRefresh = () => { setRefreshing(true); loadAccount() }
+  const [openTool, setOpenTool] = useState(null)
+
+  const onOpenTool = (key) => {
+    if (key === 'live') {
+      setOpenTool('live')
+      return
+    }
+    const tool = TOOLS.find((t) => t.key === key)
+    Alert.alert(tool?.title ?? 'Outil', 'Cet outil arrive bientôt dans l’app iPhone.')
+  }
+
+  if (openTool === 'live') {
+    return <LiveSwapScreen onBack={() => setOpenTool(null)} topInset={insets.top} bottomInset={insets.bottom} />
+  }
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {tab === 'home' ? (
-        <HomeScreen credits={credits} planName={planName} loading={loading} refreshing={refreshing} onRefresh={onRefresh} />
+        <HomeScreen
+          credits={credits}
+          planName={planName}
+          loading={loading}
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          onOpenTool={onOpenTool}
+          onSeeAll={() => setTab('explore')}
+        />
+      ) : tab === 'explore' ? (
+        <ExploreScreen onOpenTool={onOpenTool} />
       ) : (
         <PendingScreen tab={tab} user={user} credits={credits} planName={planName} loading={loading} />
       )}
@@ -89,7 +93,7 @@ function HomeShell({ user }) {
   )
 }
 
-function HomeScreen({ credits, planName, loading, refreshing, onRefresh }) {
+function HomeScreen({ credits, planName, loading, refreshing, onRefresh, onOpenTool, onSeeAll }) {
   const { width } = useWindowDimensions()
   const cardW = (width - PAD * 2 - GAP) / 2
   const [lang, setLang] = useState('FR')
@@ -172,9 +176,9 @@ function HomeScreen({ credits, planName, loading, refreshing, onRefresh }) {
         </Pressable>
       </View>
 
-      <SectionHeader title="Outils IA" action="Tout voir" />
+      <SectionHeader title="Outils IA" action="Tout voir" onAction={onSeeAll} />
       <View style={styles.grid}>
-        {TOOLS.map((tool) => <ToolCard key={tool.key} tool={tool} width={cardW} />)}
+        {TOOLS.map((tool) => <ToolCard key={tool.key} tool={tool} width={cardW} onPress={() => onOpenTool(tool.key)} />)}
       </View>
 
       <SectionHeader title="Tendances" action="Voir plus" />
@@ -208,38 +212,17 @@ function HomeScreen({ credits, planName, loading, refreshing, onRefresh }) {
   )
 }
 
-function SectionHeader({ title, action }) {
+function SectionHeader({ title, action, onAction }) {
   return (
     <View style={styles.sectionHeader}>
       <Text style={styles.sectionTitle}>{title}</Text>
       {action ? (
-        <Pressable hitSlop={8} style={styles.sectionAction}>
+        <Pressable hitSlop={8} onPress={onAction} accessibilityRole="button" style={styles.sectionAction}>
           <Text style={styles.sectionActionText}>{action}</Text>
           <Ionicons name="chevron-forward" size={14} color={C.blue} />
         </Pressable>
       ) : null}
     </View>
-  )
-}
-
-function ToolCard({ tool, width }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${tool.title}. ${tool.copy}`}
-      style={({ pressed }) => [styles.tool, { width, height: width * 1.02 }, pressed && styles.pressed]}
-    >
-      <Image source={asset(tool.image)} style={StyleSheet.absoluteFill} />
-      <LinearGradient colors={['rgba(30,20,90,0)', 'rgba(16,14,60,0.92)']} locations={[0.35, 1]} style={StyleSheet.absoluteFill} />
-      {tool.live ? <View style={styles.live}><View style={styles.liveDot} /><Text style={styles.liveText}>LIVE</Text></View> : null}
-      <View style={styles.toolFooter}>
-        <View style={styles.flex}>
-          <Text style={styles.toolTitle} numberOfLines={1}>{tool.title}</Text>
-          <Text style={styles.toolCopy} numberOfLines={2}>{tool.copy}</Text>
-        </View>
-        <View style={styles.toolArrow}><Ionicons name="arrow-forward" size={13} color={C.ink} /></View>
-      </View>
-    </Pressable>
   )
 }
 
@@ -320,13 +303,6 @@ function TabBar({ tab, onChange, bottom }) {
   )
 }
 
-const shadow = {
-  shadowColor: '#2A3A7A',
-  shadowOpacity: 0.12,
-  shadowRadius: 16,
-  shadowOffset: { width: 0, height: 8 },
-  elevation: 4,
-}
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
