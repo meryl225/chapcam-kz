@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
-import { BRAND, C, GAP, PAD, TOOLS, asset, shadow } from '../ui/catalog'
+import { BRAND, C, GAP, PAD, asset, shadow } from '../ui/catalog'
 import { ExploreScreen } from '../screens/ExploreScreen'
 import { LiveSwapScreen } from '../screens/LiveSwapScreen'
 
@@ -23,19 +23,21 @@ const HERO_SLIDES = [
     key: 'video',
     eyebrow: 'Image en vidéo',
     title: 'Donne vie\nà tes photos.',
-    cta: 'Créer une vidéo',
+    cta: 'Explorer les outils',
     image: '/swap/poster-photo-video.png',
-    tool: 'video',
+    tool: 'explore',
   },
   {
     key: 'image',
     eyebrow: 'Studio IA',
     title: 'Portraits\nde cinéma.',
-    cta: 'Générer une image',
+    cta: 'Explorer les outils',
     image: '/dashboard/hero-avatar.jpg',
-    tool: 'image',
+    tool: 'explore',
   },
 ]
+
+const AVAILABLE_TOOLS = new Set(['live'])
 
 const QUICK_ACTIONS = [
   { key: 'live', label: 'Live Swap', hint: 'Temps réel', icon: 'videocam', colors: ['#FF3B6B', '#FF7A45'] },
@@ -44,23 +46,22 @@ const QUICK_ACTIONS = [
 ]
 
 const TRENDS = [
-  { key: 't1', title: 'Visage cinéma', tag: 'Live Swap', uses: '12,4k', image: '/images/hero/avatars/a1.png' },
-  { key: 't2', title: 'Portrait animé', tag: 'Genjutsu', uses: '8,1k', image: '/images/hero/avatars/a3.png' },
-  { key: 't3', title: 'Néon studio', tag: 'Motion', uses: '6,7k', image: '/images/hero/avatars/a4.png' },
-  { key: 't4', title: 'Voix off pro', tag: 'Vocal', uses: '4,9k', image: '/images/hero/avatars/a5.png' },
-  { key: 't5', title: 'Style éditorial', tag: 'Live Swap', uses: '3,2k', image: '/images/hero/avatars/a6.png' },
+  { key: 't1', title: 'Visage cinéma', tag: 'Live Swap', tool: 'live', image: '/images/hero/avatars/a1.png' },
+  { key: 't2', title: 'Portrait animé', tag: 'Genjutsu', tool: 'genjutsu', image: '/images/hero/avatars/a3.png' },
+  { key: 't3', title: 'Néon studio', tag: 'Motion', tool: 'motion', image: '/images/hero/avatars/a4.png' },
+  { key: 't4', title: 'Voix off pro', tag: 'Vocal', tool: 'voice', image: '/images/hero/avatars/a5.png' },
+  { key: 't5', title: 'Style éditorial', tag: 'Live Swap', tool: 'live', image: '/images/hero/avatars/a6.png' },
 ]
 
-const FOR_YOU_LEFT = [
-  { key: 'f1', title: 'Photo en vidéo', tag: 'Image en vidéo', image: '/swap/poster-photo-video.png', ratio: 1.45 },
-  { key: 'f3', title: 'Avatar en mouvement', tag: 'Genjutsu', image: '/images/hero/avatars/a2.png', ratio: 1.05 },
-]
-const FOR_YOU_RIGHT = [
-  { key: 'f2', title: 'Avant / après', tag: 'Live Swap', image: '/swap/face-original.png', ratio: 1.05 },
-  { key: 'f4', title: 'Motion 3D', tag: 'Motion Control', image: '/swap/poster-motion.png', ratio: 1.45 },
+const FOR_YOU = [
+  { key: 'f1', title: 'Photo en vidéo', tag: 'Image en vidéo', tool: 'genjutsu', video: true, image: '/swap/poster-photo-video.png' },
+  { key: 'f2', title: 'Avant / après', tag: 'Live Swap', tool: 'live', video: true, image: '/swap/face-original.png' },
+  { key: 'f3', title: 'Avatar en mouvement', tag: 'Genjutsu', tool: 'genjutsu', video: true, image: '/images/hero/avatars/a2.png' },
+  { key: 'f4', title: 'Motion 3D', tag: 'Motion Control', tool: 'motion', video: true, image: '/swap/poster-motion.png' },
 ]
 
-const TOOL_LABELS = { image: 'Image IA', video: 'Vidéo IA' }
+const R_CARD = 22
+const R_HERO = 26
 
 export function AuthenticatedHome(props) {
   return (
@@ -97,12 +98,8 @@ function HomeShell({ user }) {
   const onRefresh = () => { setRefreshing(true); loadAccount() }
 
   const onOpenTool = (key) => {
-    if (key === 'live') {
-      setOpenTool('live')
-      return
-    }
-    const title = TOOL_LABELS[key] ?? TOOLS.find((t) => t.key === key)?.title ?? 'Outil'
-    Alert.alert(title, 'Cet outil arrive bientôt dans l’app iPhone.')
+    if (key === 'live') setOpenTool('live')
+    else setTab('explore')
   }
 
   if (openTool === 'live') {
@@ -113,8 +110,10 @@ function HomeShell({ user }) {
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {tab === 'home' ? (
         <HomeScreen
-          credits={credits}
+          user={user}
+          credits={subscription ? credits : null}
           loading={loading}
+          onNavigate={setTab}
           refreshing={refreshing}
           onRefresh={onRefresh}
           onOpenTool={onOpenTool}
@@ -129,9 +128,10 @@ function HomeShell({ user }) {
   )
 }
 
-function HomeScreen({ credits, loading, refreshing, onRefresh, onOpenTool }) {
+function HomeScreen({ user, credits, loading, refreshing, onRefresh, onOpenTool, onNavigate }) {
   const { width } = useWindowDimensions()
   const colW = (width - PAD * 2 - GAP) / 2
+  const goExplore = () => onNavigate('explore')
 
   return (
     <ScrollView
@@ -140,11 +140,11 @@ function HomeScreen({ credits, loading, refreshing, onRefresh, onOpenTool }) {
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.blue} />}
     >
-      <Header credits={credits} loading={loading} />
+      <Header user={user} credits={credits} loading={loading} onOpenProfile={() => onNavigate('profile')} />
       <HeroCarousel width={width} onOpenTool={onOpenTool} />
       <QuickActions onOpenTool={onOpenTool} />
 
-      <SectionHeader title="Tendances" subtitle="Les effets du moment" />
+      <SectionHeader title="Tendances" subtitle="Les effets du moment" onSeeAll={goExplore} />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -152,23 +152,21 @@ function HomeScreen({ credits, loading, refreshing, onRefresh, onOpenTool }) {
         decelerationRate="fast"
         snapToInterval={TREND_W + GAP}
       >
-        {TRENDS.map((item) => <TrendCard key={item.key} item={item} />)}
+        {TRENDS.map((item) => <TrendCard key={item.key} item={item} onPress={() => onOpenTool(item.tool)} />)}
       </ScrollView>
 
-      <SectionHeader title="Pour toi" subtitle="Inspiré de tes créations" />
+      <SectionHeader title="Pour toi" subtitle="Des idées à recréer" onSeeAll={goExplore} />
       <View style={styles.feed}>
-        <View style={styles.feedCol}>
-          {FOR_YOU_LEFT.map((item) => <FeedTile key={item.key} item={item} width={colW} />)}
-        </View>
-        <View style={styles.feedCol}>
-          {FOR_YOU_RIGHT.map((item) => <FeedTile key={item.key} item={item} width={colW} />)}
-        </View>
+        {FOR_YOU.map((item) => (
+          <FeedTile key={item.key} item={item} width={colW} onPress={() => onOpenTool(item.tool)} />
+        ))}
       </View>
     </ScrollView>
   )
 }
 
-function Header({ credits, loading }) {
+function Header({ user, credits, loading, onOpenProfile }) {
+  const initial = (user?.email?.[0] || 'C').toUpperCase()
   return (
     <View style={styles.header}>
       <View style={styles.brandRow}>
@@ -176,15 +174,18 @@ function Header({ credits, loading }) {
         <Text style={styles.brand}>ChapCam</Text>
       </View>
       <View style={styles.headerActions}>
-        <View style={styles.creditPill} accessibilityLabel={`${credits} crédits`}>
-          <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.creditIcon}>
-            <Ionicons name="flash" size={11} color={C.white} />
+        {!loading && credits !== null ? (
+          <View style={styles.creditPill} accessible accessibilityLabel={`${credits} crédits disponibles`}>
+            <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.creditIcon}>
+              <Ionicons name="flash" size={11} color={C.white} />
+            </LinearGradient>
+            <Text style={styles.creditText}>{credits}</Text>
+          </View>
+        ) : null}
+        <Pressable accessibilityRole="button" accessibilityLabel="Mon profil" hitSlop={8} onPress={onOpenProfile}>
+          <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
+            <Text style={styles.avatarText}>{initial}</Text>
           </LinearGradient>
-          <Text style={styles.creditText}>{loading ? '…' : credits}</Text>
-        </View>
-        <Pressable accessibilityLabel="Notifications" hitSlop={8} style={styles.bell}>
-          <Ionicons name="notifications-outline" size={20} color={C.ink} />
-          <View style={styles.bellDot} />
         </Pressable>
       </View>
     </View>
@@ -195,7 +196,7 @@ function HeroCarousel({ width, onOpenTool }) {
   const [index, setIndex] = useState(0)
   const scroller = useRef(null)
   const cardW = width - PAD * 2
-  const cardH = Math.round(cardW * 1.12)
+  const cardH = Math.round(Math.min(cardW * 1.02, 400))
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -258,67 +259,101 @@ function HeroCarousel({ width, onOpenTool }) {
 function QuickActions({ onOpenTool }) {
   return (
     <View style={styles.quickRow}>
-      {QUICK_ACTIONS.map((action) => (
-        <Pressable
-          key={action.key}
-          accessibilityRole="button"
-          accessibilityLabel={action.label}
-          onPress={() => onOpenTool(action.key)}
-          style={({ pressed }) => [styles.quick, pressed && styles.pressed]}
-        >
-          <LinearGradient colors={action.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.quickIcon}>
-            <Ionicons name={action.icon} size={20} color={C.white} />
-          </LinearGradient>
-          <Text style={styles.quickLabel} numberOfLines={1}>{action.label}</Text>
-          <Text style={styles.quickHint} numberOfLines={1}>{action.hint}</Text>
-        </Pressable>
-      ))}
+      {QUICK_ACTIONS.map((action) => {
+        const enabled = AVAILABLE_TOOLS.has(action.key)
+        return (
+          <Pressable
+            key={action.key}
+            accessibilityRole="button"
+            accessibilityLabel={action.label}
+            accessibilityHint={action.hint}
+            accessibilityState={{ disabled: !enabled }}
+            disabled={!enabled}
+            onPress={() => onOpenTool(action.key)}
+            style={({ pressed }) => [styles.quick, pressed && styles.pressed]}
+          >
+            <View style={styles.quickTop}>
+              <LinearGradient
+                colors={action.colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={[styles.quickIcon, !enabled && styles.quickIconOff]}
+              >
+                <Ionicons name={action.icon} size={18} color={C.white} />
+              </LinearGradient>
+              {enabled ? (
+                <View style={styles.quickGo}><Ionicons name="arrow-forward" size={12} color={C.white} /></View>
+              ) : (
+                <Ionicons name="lock-closed" size={13} color={C.muted} />
+              )}
+            </View>
+            <View>
+              <Text style={styles.quickLabel} numberOfLines={1}>{action.label}</Text>
+              <Text style={styles.quickHint} numberOfLines={1}>{action.hint}</Text>
+            </View>
+          </Pressable>
+        )
+      })}
     </View>
   )
 }
 
-function SectionHeader({ title, subtitle }) {
+function SectionHeader({ title, subtitle, onSeeAll }) {
   return (
     <View style={styles.sectionHeader}>
-      <View>
+      <View style={styles.flex}>
         <Text style={styles.sectionTitle}>{title}</Text>
         <Text style={styles.sectionSubtitle}>{subtitle}</Text>
       </View>
-      <Pressable hitSlop={8} accessibilityRole="button" accessibilityLabel={`Voir tout : ${title}`} style={styles.seeAll}>
-        <Ionicons name="arrow-forward" size={16} color={C.ink} />
+      <Pressable
+        hitSlop={10}
+        onPress={onSeeAll}
+        accessibilityRole="button"
+        accessibilityLabel={`Voir tout : ${title}`}
+        style={({ pressed }) => [styles.seeAll, pressed && styles.pressed]}
+      >
+        <Text style={styles.seeAllText}>Tout voir</Text>
+        <Ionicons name="chevron-forward" size={14} color={C.blue} />
       </Pressable>
     </View>
   )
 }
 
-const TREND_W = 156
+const TREND_W = 148
 
-function TrendCard({ item }) {
+function TrendCard({ item, onPress }) {
   return (
-    <Pressable accessibilityLabel={item.title} style={({ pressed }) => [styles.trend, pressed && styles.pressed]}>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${item.title}, ${item.tag}`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.trend, pressed && styles.pressed]}
+    >
       <Image source={asset(item.image)} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      <LinearGradient colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.9)']} locations={[0.45, 1]} style={StyleSheet.absoluteFill} />
-      <View style={styles.trendTag}><Text style={styles.trendTagText}>{item.tag}</Text></View>
+      <LinearGradient colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.88)']} locations={[0.5, 1]} style={StyleSheet.absoluteFill} />
+      <View style={styles.trendTag}>
+        {item.tool === 'live' ? <View style={styles.liveDot} /> : null}
+        <Text style={styles.trendTagText}>{item.tag}</Text>
+      </View>
       <View style={styles.trendBody}>
         <Text style={styles.trendTitle} numberOfLines={1}>{item.title}</Text>
-        <View style={styles.trendMeta}>
-          <Ionicons name="flame" size={11} color="#FFB36B" />
-          <Text style={styles.trendMetaText}>{item.uses} créations</Text>
-        </View>
+        <View style={styles.cardGo}><Ionicons name="arrow-forward" size={12} color={C.white} /></View>
       </View>
     </Pressable>
   )
 }
 
-function FeedTile({ item, width }) {
+function FeedTile({ item, width, onPress }) {
   return (
     <Pressable
-      accessibilityLabel={item.title}
-      style={({ pressed }) => [styles.tile, { width, height: Math.round(width * item.ratio) }, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.title}, ${item.tag}`}
+      onPress={onPress}
+      style={({ pressed }) => [styles.tile, { width, height: Math.round(width * 1.28) }, pressed && styles.pressed]}
     >
       <Image source={asset(item.image)} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      <LinearGradient colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.85)']} locations={[0.5, 1]} style={StyleSheet.absoluteFill} />
-      <View style={styles.tilePlay}><Ionicons name="play" size={11} color={C.white} /></View>
+      <LinearGradient colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.85)']} locations={[0.45, 1]} style={StyleSheet.absoluteFill} />
+      {item.video ? <View style={styles.tilePlay}><Ionicons name="play" size={10} color={C.white} /></View> : null}
       <View style={styles.tileBody}>
         <Text style={styles.tileTag}>{item.tag}</Text>
         <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
@@ -399,58 +434,60 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   flex: { flex: 1 },
   pressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
-  content: { paddingBottom: 132 },
+  content: { paddingBottom: 120 },
 
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD, height: 52 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD, height: 50 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  mark: { width: 30, height: 30, borderRadius: 9 },
+  mark: { width: 28, height: 28, borderRadius: 8 },
   brand: { color: C.ink, fontSize: 19, fontWeight: '800', letterSpacing: -0.5 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  creditPill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 34, paddingLeft: 4, paddingRight: 12, borderRadius: 17, backgroundColor: C.white, borderWidth: 1, borderColor: C.line },
+  creditPill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingLeft: 4, paddingRight: 11, borderRadius: 16, backgroundColor: C.white, borderWidth: 1, borderColor: C.line },
   creditIcon: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   creditText: { color: C.ink, fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  bell: { width: 34, height: 34, borderRadius: 17, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
-  bellDot: { position: 'absolute', top: 7, right: 8, width: 7, height: 7, borderRadius: 4, backgroundColor: '#FF3B6B', borderWidth: 1.5, borderColor: C.white },
+  avatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: C.white, fontSize: 14, fontWeight: '800' },
 
-  heroWrap: { marginTop: 6 },
+  heroWrap: { marginTop: 4 },
   heroPage: { paddingHorizontal: PAD },
-  hero: { borderRadius: 28, overflow: 'hidden', backgroundColor: INK_DEEP, justifyContent: 'flex-end', ...shadow, shadowOpacity: 0.22 },
-  heroEyebrow: { position: 'absolute', top: 16, left: 16, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 26, borderRadius: 13, backgroundColor: 'rgba(11,18,51,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
+  hero: { borderRadius: R_HERO, overflow: 'hidden', backgroundColor: INK_DEEP, justifyContent: 'flex-end', ...shadow, shadowOpacity: 0.22 },
+  heroEyebrow: { position: 'absolute', top: 14, left: 14, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, height: 26, borderRadius: 13, backgroundColor: 'rgba(11,18,51,0.45)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)' },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#FF3B6B' },
   heroEyebrowText: { color: C.white, fontSize: 11, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase' },
-  heroBody: { padding: 20, gap: 16 },
-  heroTitle: { color: C.white, fontSize: 32, lineHeight: 35, fontWeight: '900', letterSpacing: -1.1 },
-  heroCta: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 10, height: 46, paddingLeft: 18, paddingRight: 5, borderRadius: 23, backgroundColor: C.white },
+  heroBody: { padding: 18, gap: 14 },
+  heroTitle: { color: C.white, fontSize: 30, lineHeight: 33, fontWeight: '900', letterSpacing: -1 },
+  heroCta: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 10, height: 44, paddingLeft: 16, paddingRight: 4, borderRadius: 22, backgroundColor: C.white },
   heroCtaText: { color: C.ink, fontSize: 14, fontWeight: '800' },
   heroCtaArrow: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center' },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 12 },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 10 },
   dotItem: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#C9D3EA' },
-  dotActive: { width: 20, backgroundColor: C.blue },
+  dotActive: { width: 18, backgroundColor: C.blue },
 
-  quickRow: { flexDirection: 'row', gap: 10, paddingHorizontal: PAD, marginTop: 18 },
-  quick: { flex: 1, backgroundColor: C.white, borderRadius: 20, paddingVertical: 14, paddingHorizontal: 12, borderWidth: 1, borderColor: C.line, gap: 2, ...shadow, shadowOpacity: 0.06 },
-  quickIcon: { width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  quickRow: { flexDirection: 'row', gap: 10, paddingHorizontal: PAD, marginTop: 14 },
+  quick: { flex: 1, height: 104, justifyContent: 'space-between', backgroundColor: C.white, borderRadius: R_CARD, padding: 12, borderWidth: 1, borderColor: C.line, ...shadow, shadowOpacity: 0.06 },
+  quickTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
+  quickIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  quickIconOff: { opacity: 0.55 },
+  quickGo: { width: 22, height: 22, borderRadius: 11, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center' },
   quickLabel: { color: C.ink, fontSize: 14, fontWeight: '800', letterSpacing: -0.2 },
-  quickHint: { color: C.muted, fontSize: 11, fontWeight: '600' },
+  quickHint: { color: C.muted, fontSize: 11, fontWeight: '600', marginTop: 1 },
 
-  sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: PAD, marginTop: 30, marginBottom: 14 },
-  sectionTitle: { color: C.ink, fontSize: 22, fontWeight: '900', letterSpacing: -0.6 },
-  sectionSubtitle: { color: C.muted, fontSize: 13, fontWeight: '600', marginTop: 2 },
-  seeAll: { width: 34, height: 34, borderRadius: 17, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, alignItems: 'center', justifyContent: 'center' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, paddingHorizontal: PAD, marginTop: 26, marginBottom: 12 },
+  sectionTitle: { color: C.ink, fontSize: 21, fontWeight: '900', letterSpacing: -0.6 },
+  sectionSubtitle: { color: C.muted, fontSize: 13, fontWeight: '600', marginTop: 1 },
+  seeAll: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingBottom: 2 },
+  seeAllText: { color: C.blue, fontSize: 13, fontWeight: '700' },
 
   trendRow: { paddingHorizontal: PAD, gap: GAP },
-  trend: { width: TREND_W, height: Math.round(TREND_W * 1.42), borderRadius: 22, overflow: 'hidden', backgroundColor: INK_DEEP },
-  trendTag: { position: 'absolute', top: 10, left: 10, paddingHorizontal: 9, height: 22, justifyContent: 'center', borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.92)' },
+  trend: { width: TREND_W, height: Math.round(TREND_W * 1.36), borderRadius: R_CARD, overflow: 'hidden', backgroundColor: INK_DEEP },
+  trendTag: { position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.94)' },
   trendTagText: { color: C.ink, fontSize: 10, fontWeight: '800' },
-  trendBody: { position: 'absolute', left: 12, right: 12, bottom: 12, gap: 4 },
-  trendTitle: { color: C.white, fontSize: 15, fontWeight: '800', letterSpacing: -0.3 },
-  trendMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  trendMetaText: { color: 'rgba(255,255,255,0.78)', fontSize: 11, fontWeight: '600' },
+  trendBody: { position: 'absolute', left: 12, right: 10, bottom: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  trendTitle: { flex: 1, color: C.white, fontSize: 15, fontWeight: '800', letterSpacing: -0.3 },
+  cardGo: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.22)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)', alignItems: 'center', justifyContent: 'center' },
 
-  feed: { flexDirection: 'row', gap: GAP, paddingHorizontal: PAD },
-  feedCol: { gap: GAP },
-  tile: { borderRadius: 22, overflow: 'hidden', backgroundColor: INK_DEEP },
-  tilePlay: { position: 'absolute', top: 10, right: 10, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(11,18,51,0.5)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  feed: { flexDirection: 'row', flexWrap: 'wrap', gap: GAP, paddingHorizontal: PAD },
+  tile: { borderRadius: R_CARD, overflow: 'hidden', backgroundColor: INK_DEEP },
+  tilePlay: { position: 'absolute', top: 10, right: 10, width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(11,18,51,0.5)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   tileBody: { position: 'absolute', left: 12, right: 12, bottom: 12 },
   tileTag: { color: '#BFD3FF', fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.6 },
   tileTitle: { color: C.white, fontSize: 15, fontWeight: '800', letterSpacing: -0.3, marginTop: 2 },
