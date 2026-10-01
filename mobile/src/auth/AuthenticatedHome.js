@@ -106,7 +106,7 @@ function HomeShell({ user }) {
   }
 
   if (openTool === 'live') {
-    return <LiveSwapScreen onBack={() => setOpenTool(null)} topInset={insets.top} bottomInset={insets.bottom} />
+    return <LiveSwapScreen onBack={() => setOpenTool(null)} topInset={insets.top} bottomInset={insets.bottom} subscription={loading ? undefined : subscription} />
   }
 
   return (

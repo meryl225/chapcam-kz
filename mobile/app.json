@@ -16,9 +16,31 @@
         "NSPhotoLibraryUsageDescription": "ChapCam permet de sélectionner des images et vidéos pour les créations."
       }
     },
-    "android": { "package": "com.chapcam.app" },
-    "web": { "bundler": "metro" },
-    "plugins": ["expo-web-browser"],
-    "extra": { "websiteUrl": "https://chapcam.com" }
+    "android": {
+      "package": "com.chapcam.app"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ChapCam utilise la caméra pour ton aperçu Live Swap.",
+          "microphonePermission": false,
+          "recordAudioAndroid": false
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ChapCam accède à tes photos pour choisir un visage source."
+        }
+      ]
+    ],
+    "extra": {
+      "websiteUrl": "https://chapcam.com"
+    }
   }
 }
