@@ -8,6 +8,7 @@ import { BRAND, C, GAP, PAD, asset, shadow } from '../ui/catalog'
 import { ExploreScreen } from '../screens/ExploreScreen'
 import { LiveSwapScreen } from '../screens/LiveSwapScreen'
 import { CreateScreen } from '../screens/CreateScreen'
+import { CreationsScreen } from '../screens/CreationsScreen'
 
 const INK_DEEP = '#0B1233'
 
@@ -123,6 +124,8 @@ function HomeShell({ user }) {
         <ExploreScreen onOpenTool={onOpenTool} />
       ) : tab === 'create' ? (
         <CreateScreen onOpenTool={onOpenTool} />
+      ) : tab === 'creations' ? (
+        <CreationsScreen onCreate={() => setTab('create')} />
       ) : (
         <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />
       )}
