@@ -9,6 +9,7 @@ import { ExploreScreen } from '../screens/ExploreScreen'
 import { LiveSwapScreen } from '../screens/LiveSwapScreen'
 import { CreateScreen } from '../screens/CreateScreen'
 import { CreationsScreen } from '../screens/CreationsScreen'
+import { ProfileScreen } from '../screens/ProfileScreen'
 
 const INK_DEEP = '#0B1233'
 
@@ -126,6 +127,8 @@ function HomeShell({ user }) {
         <CreateScreen onOpenTool={onOpenTool} />
       ) : tab === 'creations' ? (
         <CreationsScreen onCreate={() => setTab('create')} />
+      ) : tab === 'profile' ? (
+        <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} />
       ) : (
         <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />
       )}
