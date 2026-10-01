@@ -24,6 +24,14 @@
     },
     "plugins": [
       "expo-web-browser",
+      "@livekit/react-native-expo-plugin",
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "ChapCam utilise la caméra pour le Live Swap.",
+          "microphonePermission": "ChapCam utilise le microphone pour les fonctions vidéo et vocales."
+        }
+      ],
       [
         "expo-camera",
         {
