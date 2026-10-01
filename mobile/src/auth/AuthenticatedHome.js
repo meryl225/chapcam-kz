@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { BRAND, C, GAP, PAD, asset, shadow } from '../ui/catalog'
 import { ExploreScreen } from '../screens/ExploreScreen'
 import { LiveSwapScreen } from '../screens/LiveSwapScreen'
+import { CreateScreen } from '../screens/CreateScreen'
 
 const INK_DEEP = '#0B1233'
 
@@ -120,6 +121,8 @@ function HomeShell({ user }) {
         />
       ) : tab === 'explore' ? (
         <ExploreScreen onOpenTool={onOpenTool} />
+      ) : tab === 'create' ? (
+        <CreateScreen onOpenTool={onOpenTool} />
       ) : (
         <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />
       )}
@@ -402,7 +405,7 @@ function TabBar({ tab, onChange, bottom }) {
         {TABS.map((t) => {
           if (t.key === 'create') {
             return (
-              <Pressable key={t.key} accessibilityRole="button" accessibilityLabel="Créer" onPress={() => onChange('create')} style={styles.tabItem}>
+              <Pressable key={t.key} accessibilityRole="button" accessibilityLabel="Créer" accessibilityState={{ selected: tab === 'create' }} onPress={() => onChange('create')} style={styles.tabItem}>
                 <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.create}>
                   <Ionicons name="add" size={26} color={C.white} />
                 </LinearGradient>
