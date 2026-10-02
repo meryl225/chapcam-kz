@@ -89,18 +89,34 @@ async function deleteCreation(id) {
   if (!res.ok) throw new Error('delete')
 }
 
-// Same endpoint as the website "Télécharger" button: it checks ownership, then
-// redirects to a fresh signed R2 URL of the original .mp4.
+// `playback_url` is a fresh, ownership-scoped signed R2 URL returned by the
+// bearer-authenticated mobile creations endpoint. Refresh the list once when
+// an older signed URL has expired, then download the actual MP4 locally.
 async function downloadToCache(item) {
   if (!fileSystem) throw new Error('unsupported')
   const { File, Paths } = fileSystem
   const target = new File(Paths.cache, `chapcam-${item.tool}-${String(item.id).slice(0, 8)}.mp4`)
   if (target.exists) target.delete()
-  const file = await File.downloadFileAsync(`${API_URL}/api/videos/download?id=${encodeURIComponent(item.id)}`, target, {
-    headers: await authHeader(),
-  })
-  if (!file?.exists || (file.size ?? 0) < 1024) throw new Error('download')
-  return file.uri
+
+  const candidates = [item.playback_url]
+  try {
+    const fresh = (await fetchCreations()).find((creation) => creation.id === item.id)
+    if (fresh?.playback_url && fresh.playback_url !== item.playback_url) candidates.push(fresh.playback_url)
+  } catch {
+    // Keep the original URL; the caller will show an error only if the real download fails.
+  }
+
+  let lastError = null
+  for (const url of candidates.filter(Boolean)) {
+    try {
+      const file = await File.downloadFileAsync(url, target)
+      if (file?.exists && (file.size ?? 0) >= 1024) return file.uri
+      lastError = new Error('download')
+    } catch (error) {
+      lastError = error
+    }
+  }
+  throw lastError || new Error('download')
 }
 
 export function CreationsScreen({ onCreate }) {
@@ -504,7 +520,7 @@ function Viewer({ item, busy, onClose, onDownload, onShare, onDelete }) {
   const date = formatDate(item.created_at)
   const durationLabel = formatDuration(duration)
   return (
-    <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose} statusBarTranslucent>
+    <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose} onDismiss={onClose} statusBarTranslucent>
       <View style={styles.viewer}>
         <View style={[styles.viewerTop, { paddingTop: insets.top + 8 }]}>
           <Pressable accessibilityRole="button" accessibilityLabel="Fermer" hitSlop={10} onPress={onClose} style={styles.viewerClose}>
