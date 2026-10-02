@@ -30,9 +30,9 @@ export async function GET(request: NextRequest) {
     const [{ data: subscription, error: subscriptionError }, jetons] = await Promise.all([
       accountDb
         .from('subscriptions')
-        .select('plan,status,points,points_remaining,end_date,is_active')
+        .select('plan,status,points,points_remaining,end_date,expires_at,is_active,updated_at')
         .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
+        .order('updated_at', { ascending: false, nullsFirst: false })
         .limit(1)
         .maybeSingle(),
       getJetonsBalance(user.id),
@@ -40,14 +40,18 @@ export async function GET(request: NextRequest) {
 
     if (subscriptionError) throw subscriptionError
 
-    const endTime = subscription?.end_date ? new Date(subscription.end_date).getTime() : null
+    const expiration = subscription?.expires_at || subscription?.end_date || null
+    const endTime = expiration ? new Date(expiration).getTime() : null
     const active = Boolean(
       subscription &&
       subscription.plan &&
       subscription.plan !== 'free' &&
-      subscription.is_active === true &&
+      (subscription.is_active === true || subscription.status === 'active') &&
       (endTime === null || Number.isNaN(endTime) || endTime >= Date.now()),
     )
+    const remainingPoints = typeof subscription?.points_remaining === 'number'
+      ? subscription.points_remaining
+      : subscription?.points
 
     if (!jetons || typeof jetons.balance !== 'number') {
       throw new Error('Solde Jetons indisponible')
@@ -56,7 +60,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       jetons: jetons.balance,
       live_swap: {
-        points: active && typeof subscription?.points === 'number' ? subscription.points : null,
+        points: active && typeof remainingPoints === 'number' ? remainingPoints : null,
         points_per_second: active ? 2 : null,
       },
       subscription: active

@@ -119,13 +119,16 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const showPhoto = Boolean(avatarUrl) && !avatarFailed
 
   const planKey = accountSubscription?.plan || null
-  const endTime = accountSubscription?.end_date ? new Date(accountSubscription.end_date).getTime() : null
+  const expiration = accountSubscription?.expires_at || accountSubscription?.end_date || null
+  const endTime = expiration ? new Date(expiration).getTime() : null
   const expired = endTime !== null && !Number.isNaN(endTime) && endTime < Date.now()
-  const isActive = Boolean(accountSubscription && planKey && planKey !== 'free' && accountSubscription.is_active === true && !expired)
+  const isActive = Boolean(accountSubscription && planKey && planKey !== 'free' && (accountSubscription.is_active === true || accountSubscription.status === 'active') && !expired)
   const planLabel = isActive ? PLAN_LABELS[planKey] || planKey : null
   const endDate = isActive ? formatDate(accountSubscription?.end_date) : null
-  const livePoints = isActive && typeof accountSubscription?.points === 'number' ? accountSubscription.points : null
-  const livePointsPerSecond = POINTS_PER_SECOND
+  const livePoints = isActive && typeof account.summary?.live_swap?.points === 'number'
+    ? account.summary.live_swap.points
+    : null
+  const livePointsPerSecond = account.summary?.live_swap?.points_per_second || POINTS_PER_SECOND
   const jetonsBalance = typeof account.summary?.jetons === 'number' ? account.summary.jetons : null
 
   const appVersion = Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? null
