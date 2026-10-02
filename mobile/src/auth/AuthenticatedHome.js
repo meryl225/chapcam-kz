@@ -11,6 +11,7 @@ import { ChapCamBrand } from '../ui/ChapCamBrand'
 import { ExploreScreen } from '../screens/ExploreScreen'
 import { LiveSwapScreen } from '../screens/LiveSwapScreen'
 import { PhotoVideoScreen } from '../screens/PhotoVideoScreen'
+import { VoiceMessageScreen } from '../screens/VoiceMessageScreen'
 import { CreateScreen } from '../screens/CreateScreen'
 import { CreationsScreen } from '../screens/CreationsScreen'
 import { ProfileScreen } from '../screens/ProfileScreen'
@@ -110,12 +111,12 @@ function HomeShell({ user }) {
   const onRefresh = () => { setRefreshing(true); loadAccount() }
 
   const onOpenTool = (key) => {
-    if (key === 'live' || key === 'photo-video') setOpenTool(key)
+    if (key === 'live' || key === 'photo-video' || key === 'voice') setOpenTool(key)
     else setTab('explore')
   }
 
   const onQuickLaunch = (key) => {
-    if (key === 'live' || key === 'photo-video') {
+    if (key === 'live' || key === 'photo-video' || key === 'voice') {
       setOpenTool(key)
       return
     }
@@ -128,6 +129,9 @@ function HomeShell({ user }) {
   }
   if (openTool === 'photo-video') {
     return <PhotoVideoScreen onBack={() => setOpenTool(null)} />
+  }
+  if (openTool === 'voice') {
+    return <VoiceMessageScreen onBack={() => setOpenTool(null)} />
   }
 
   return (
