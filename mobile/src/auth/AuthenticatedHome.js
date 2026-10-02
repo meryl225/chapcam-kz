@@ -12,6 +12,10 @@ import { ExploreScreen } from '../screens/ExploreScreen'
 import { LiveSwapScreen } from '../screens/LiveSwapScreen'
 import { PhotoVideoScreen } from '../screens/PhotoVideoScreen'
 import { VoiceMessageScreen } from '../screens/VoiceMessageScreen'
+import { GenjutsuScreen } from '../screens/GenjutsuScreen'
+import { MotionControlScreen } from '../screens/MotionControlScreen'
+import { VideoTranslationScreen } from '../screens/VideoTranslationScreen'
+import { ChapVerifyScreen } from '../screens/ChapVerifyScreen'
 import { CreateScreen } from '../screens/CreateScreen'
 import { CreationsScreen } from '../screens/CreationsScreen'
 import { ProfileScreen } from '../screens/ProfileScreen'
@@ -57,7 +61,8 @@ const HERO_SLIDES = [
   },
 ]
 
-const AVAILABLE_TOOLS = new Set(['live'])
+const NATIVE_TOOLS = new Set(['live', 'photo-video', 'genjutsu', 'motion', 'translate', 'voice', 'verify'])
+const AVAILABLE_TOOLS = NATIVE_TOOLS
 
 const QUICK_ACTIONS = [
   { key: 'live', label: 'Live Swap', hint: 'Temps réel', icon: 'videocam', colors: ['#FF3B6B', '#FF7A45'] },
@@ -111,12 +116,12 @@ function HomeShell({ user }) {
   const onRefresh = () => { setRefreshing(true); loadAccount() }
 
   const onOpenTool = (key) => {
-    if (key === 'live' || key === 'photo-video' || key === 'voice') setOpenTool(key)
+    if (NATIVE_TOOLS.has(key)) setOpenTool(key)
     else setTab('explore')
   }
 
   const onQuickLaunch = (key) => {
-    if (key === 'live' || key === 'photo-video' || key === 'voice') {
+    if (NATIVE_TOOLS.has(key)) {
       setOpenTool(key)
       return
     }
@@ -132,6 +137,18 @@ function HomeShell({ user }) {
   }
   if (openTool === 'voice') {
     return <VoiceMessageScreen onBack={() => setOpenTool(null)} />
+  }
+  if (openTool === 'genjutsu') {
+    return <GenjutsuScreen onBack={() => setOpenTool(null)} topInset={insets.top} />
+  }
+  if (openTool === 'motion') {
+    return <MotionControlScreen onBack={() => setOpenTool(null)} />
+  }
+  if (openTool === 'translate') {
+    return <VideoTranslationScreen onBack={() => setOpenTool(null)} />
+  }
+  if (openTool === 'verify') {
+    return <ChapVerifyScreen onBack={() => setOpenTool(null)} topInset={insets.top} />
   }
 
   return (
