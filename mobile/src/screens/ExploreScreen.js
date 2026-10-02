@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { C, CATEGORIES, GAP, PAD, TOOLS, normalize } from '../ui/catalog'
 import { ToolCard } from '../ui/ToolCard'
@@ -9,6 +9,7 @@ export function ExploreScreen({ onOpenTool }) {
   const cardW = (width - PAD * 2 - GAP) / 2
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('all')
+  const [filtersOpen, setFiltersOpen] = useState(false)
 
   const results = useMemo(() => {
     const q = normalize(query)
@@ -38,10 +39,31 @@ export function ExploreScreen({ onOpenTool }) {
             accessibilityLabel="Rechercher un outil"
           />
         </View>
-        <Pressable accessibilityLabel="Filtres" style={styles.filterBtn}>
-          <Ionicons name="options-outline" size={20} color={C.ink} />
+        <Pressable accessibilityLabel="Filtres" accessibilityRole="button" onPress={() => setFiltersOpen(true)} style={[styles.filterBtn, category !== 'all' && styles.filterBtnOn]}>
+          <Ionicons name="options-outline" size={20} color={category !== 'all' ? C.white : C.ink} />
         </Pressable>
       </View>
+
+      <Modal visible={filtersOpen} transparent animationType="slide" onRequestClose={() => setFiltersOpen(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setFiltersOpen(false)} accessibilityLabel="Fermer les filtres" />
+        <View style={styles.sheet}>
+          <Text style={styles.sheetTitle}>Filtrer les outils</Text>
+          {CATEGORIES.map((c) => {
+            const active = category === c.key
+            const count = c.key === 'all' ? TOOLS.length : TOOLS.filter((t) => t.categories.includes(c.key)).length
+            return (
+              <Pressable key={c.key} onPress={() => { setCategory(c.key); setFiltersOpen(false) }} style={styles.sheetRow} accessibilityRole="button" accessibilityState={{ selected: active }}>
+                <Text style={[styles.sheetLabel, active && styles.sheetLabelOn]}>{c.label}</Text>
+                <Text style={styles.sheetCount}>{count}</Text>
+                {active ? <Ionicons name="checkmark" size={18} color={C.blue} /> : null}
+              </Pressable>
+            )
+          })}
+          <Pressable onPress={() => { setCategory('all'); setQuery(''); setFiltersOpen(false) }} style={styles.sheetReset} accessibilityRole="button">
+            <Text style={styles.sheetResetText}>Réinitialiser</Text>
+          </Pressable>
+        </View>
+      </Modal>
 
       <ScrollView
         horizontal
@@ -85,6 +107,16 @@ export function ExploreScreen({ onOpenTool }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  filterBtnOn: { backgroundColor: C.blue, borderColor: C.blue },
+  backdrop: { flex: 1, backgroundColor: 'rgba(11,18,51,0.35)' },
+  sheet: { backgroundColor: C.white, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: PAD, paddingTop: 20, paddingBottom: 40 },
+  sheetTitle: { color: C.ink, fontSize: 19, fontWeight: '900', marginBottom: 8 },
+  sheetRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F0F2F8' },
+  sheetLabel: { flex: 1, color: C.ink, fontSize: 15, fontWeight: '700' },
+  sheetLabelOn: { color: C.blue, fontWeight: '900' },
+  sheetCount: { color: C.muted, fontSize: 13 },
+  sheetReset: { marginTop: 16, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F1F3F9' },
+  sheetResetText: { color: C.ink, fontSize: 15, fontWeight: '800' },
   content: { paddingHorizontal: PAD, paddingTop: 8, paddingBottom: 120 },
   title: { color: C.ink, fontSize: 30, fontWeight: '900', letterSpacing: -0.8, marginTop: 8 },
   searchRow: { flexDirection: 'row', gap: 10, marginTop: 16 },
