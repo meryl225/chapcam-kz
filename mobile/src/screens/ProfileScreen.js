@@ -54,12 +54,20 @@ const open = async (url) => {
 }
 
 async function fetchAccountSummary() {
-  const { data } = await supabase.auth.getSession()
-  const token = data?.session?.access_token
+  let { data } = await supabase.auth.getSession()
+  let token = data?.session?.access_token
   if (!token) return null
-  const res = await fetch(`${WEB_URL}/api/mobile/account-summary`, {
+  let res = await fetch(`${WEB_URL}/api/mobile/account-summary`, {
     headers: { Authorization: `Bearer ${token}` },
   })
+  if (res.status === 401) {
+    const refreshed = await supabase.auth.refreshSession()
+    token = refreshed.data?.session?.access_token
+    if (!token) throw new Error('Chargement impossible')
+    res = await fetch(`${WEB_URL}/api/mobile/account-summary`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  }
   if (!res.ok) throw new Error('Chargement impossible')
   return res.json()
 }
@@ -91,8 +99,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   // Live Swap + plan come from the same Supabase `subscriptions` row the website dashboard reads
   // (loaded by AuthenticatedHome under the user's session / RLS). Jetons live in the Neon
   // `jetons_wallets` table and can only be read server-side through /api/mobile/account-summary.
-  const accountSubscription = subscription ?? null
-  const subscriptionLoading = Boolean(loading)
+  const accountSubscription = account.summary?.subscription ?? subscription ?? null
+  const subscriptionLoading = account.loading || Boolean(loading && !account.summary)
   const jetonsLoading = account.loading
   const jetonsError = account.error
 

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getJetonsBalance } from '@/lib/jetons'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,8 +24,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Authenticate with the mobile bearer token, then read the same production
+    // tables as the website with service-role scope (RLS otherwise hides them).
+    const accountDb = createAdminClient()
     const [{ data: subscription, error: subscriptionError }, jetons] = await Promise.all([
-      supabase
+      accountDb
         .from('subscriptions')
         .select('plan,status,points,points_remaining,end_date,is_active')
         .eq('user_id', user.id)
