@@ -30,8 +30,8 @@ const PLAN_LABELS = {
 }
 const POINTS_PER_SECOND = 2
 
-const fmtMinutes = (points) => {
-  const totalSeconds = Math.floor(points / POINTS_PER_SECOND)
+const fmtMinutes = (points, pointsPerSecond = POINTS_PER_SECOND) => {
+  const totalSeconds = Math.floor(points / pointsPerSecond)
   const m = Math.floor(totalSeconds / 60)
   const s = totalSeconds % 60
   return `${m}:${s.toString().padStart(2, '0')} min`
@@ -52,52 +52,56 @@ const open = async (url) => {
   }
 }
 
-async function fetchJetons() {
+async function fetchAccountSummary() {
   const { data } = await supabase.auth.getSession()
   const token = data?.session?.access_token
   if (!token) return null
-  const res = await fetch(`${WEB_URL}/api/jetons`, { headers: { Authorization: `Bearer ${token}` } })
+  const res = await fetch(`${WEB_URL}/api/mobile/account-summary`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
   if (!res.ok) return null
-  const json = await res.json()
-  return typeof json?.balance === 'number' ? json.balance : null
+  return res.json()
 }
 
-function useJetons() {
-  const [balance, setBalance] = useState(null)
+function useAccountSummary() {
+  const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
   const load = useCallback(async () => {
     try {
-      setBalance(await fetchJetons())
+      setSummary(await fetchAccountSummary())
     } catch {
-      setBalance(null)
+      setSummary(null)
     } finally {
       setLoading(false)
     }
   }, [])
   useEffect(() => { load() }, [load])
-  return { balance, loading, reload: load }
+  return { summary, loading, reload: load }
 }
 
 export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh }) {
-  const jetons = useJetons()
+  const account = useAccountSummary()
+  const accountSubscription = account.summary?.subscription ?? null
 
   const email = user?.email ?? ''
   const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || null
   const initial = (metaName || email || '?').trim().charAt(0).toUpperCase()
 
-  const planKey = subscription?.plan || null
+  const planKey = accountSubscription?.plan || null
   const planLabel = planKey ? PLAN_LABELS[planKey] || planKey : null
-  const endTime = subscription?.end_date ? new Date(subscription.end_date).getTime() : null
+  const endTime = accountSubscription?.end_date ? new Date(accountSubscription.end_date).getTime() : null
   const expired = endTime !== null && !Number.isNaN(endTime) && endTime < Date.now()
-  const isActive = Boolean(subscription && planKey !== 'free' && subscription.is_active === true && !expired)
-  const endDate = formatDate(subscription?.end_date)
-  const livePoints = typeof subscription?.points === 'number' ? subscription.points : null
+  const isActive = Boolean(accountSubscription && planKey !== 'free' && accountSubscription.is_active === true && !expired)
+  const endDate = formatDate(accountSubscription?.end_date)
+  const livePoints = typeof account.summary?.live_swap?.points === 'number' ? account.summary.live_swap.points : null
+  const livePointsPerSecond = account.summary?.live_swap?.points_per_second
+  const jetonsBalance = typeof account.summary?.jetons === 'number' ? account.summary.jetons : null
 
   const appVersion = Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? null
   const buildNumber = Constants.nativeBuildVersion ?? Constants.expoConfig?.ios?.buildNumber ?? null
 
   const handleRefresh = () => {
-    jetons.reload()
+    account.reload()
     onRefresh?.()
   }
 
@@ -126,7 +130,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </View>
           {metaName ? <Text style={styles.name} numberOfLines={1}>{metaName}</Text> : null}
           <Text style={metaName ? styles.emailSub : styles.name} numberOfLines={1}>{email}</Text>
-          {loading ? (
+          {account.loading ? (
             <ChapCamLoader size="small" style={styles.heroLoader} />
           ) : (
             <View style={styles.heroChips}>
@@ -149,7 +153,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
       <View style={styles.balances}>
         <Pressable
           accessibilityRole="link"
-          accessibilityLabel={`Jetons, ${jetons.balance ?? 'indisponible'}`}
+          accessibilityLabel={`Jetons, ${jetonsBalance ?? 'indisponible'}`}
           accessibilityHint="Ouvre la page Jetons ChapCam"
           onPress={() => open(LINKS.jetons)}
           style={({ pressed }) => [styles.balance, pressed && styles.pressed]}
@@ -158,17 +162,17 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             <Image source={{ uri: JETONS_LOGO }} style={styles.jetonsLogo} accessibilityIgnoresInvertColors />
             <Text style={styles.balanceTitle}>Jetons</Text>
           </View>
-          {jetons.loading ? (
+          {account.loading ? (
             <ChapCamLoader size="small" style={styles.balanceLoader} />
           ) : (
-            <Text style={styles.balanceValue}>{jetons.balance !== null ? jetons.balance.toLocaleString('fr-FR') : '—'}</Text>
+            <Text style={styles.balanceValue}>{jetonsBalance !== null ? jetonsBalance.toLocaleString('fr-FR') : '—'}</Text>
           )}
           <Text style={styles.balanceHint}>Pour tous les outils ChapCam, sauf Live Swap.</Text>
         </Pressable>
 
         <Pressable
           accessibilityRole="link"
-          accessibilityLabel={`Live Swap, ${livePoints !== null ? fmtMinutes(livePoints) : 'indisponible'}`}
+          accessibilityLabel={`Live Swap, ${livePoints !== null ? fmtMinutes(livePoints, livePointsPerSecond) : 'indisponible'}`}
           accessibilityHint="Ouvre les forfaits ChapCam"
           onPress={() => open(LINKS.plans)}
           style={({ pressed }) => [styles.balance, pressed && styles.pressed]}
@@ -179,10 +183,10 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             </LinearGradient>
             <Text style={styles.balanceTitle}>Live Swap</Text>
           </View>
-          {loading ? (
+          {account.loading ? (
             <ChapCamLoader size="small" style={styles.balanceLoader} />
           ) : (
-            <Text style={styles.balanceValue}>{livePoints !== null ? fmtMinutes(livePoints) : '—'}</Text>
+            <Text style={styles.balanceValue}>{livePoints !== null ? fmtMinutes(livePoints, livePointsPerSecond) : '—'}</Text>
           )}
           <Text style={styles.balanceHint}>
             {livePoints !== null ? `${livePoints.toLocaleString('fr-FR')} points · ${isActive ? 'forfait actif' : 'forfait inactif'}` : 'Aucun forfait Live Swap'}
@@ -198,7 +202,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </LinearGradient>
           <View style={styles.flex}>
             <Text style={styles.subEyebrow}>Forfait actuel</Text>
-            {loading ? (
+            {account.loading ? (
               <ChapCamLoader size="small" tone="light" style={styles.balanceLoader} />
             ) : (
               <Text style={styles.subPlan} numberOfLines={1}>{planLabel || 'Aucun forfait'}</Text>
