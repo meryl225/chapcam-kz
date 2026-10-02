@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
 
   const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
   })
   const { data: { user }, error: authError } = await supabase.auth.getUser(token)
   if (authError || !user) {
@@ -44,11 +45,15 @@ export async function GET(request: NextRequest) {
       (endTime === null || Number.isNaN(endTime) || endTime >= Date.now()),
     )
 
+    if (!jetons || typeof jetons.balance !== 'number') {
+      throw new Error('Solde Jetons indisponible')
+    }
+
     return NextResponse.json({
-      jetons: typeof jetons?.balance === 'number' ? jetons.balance : 0,
+      jetons: jetons.balance,
       live_swap: {
-        points: typeof subscription?.points === 'number' ? subscription.points : 0,
-        points_per_second: 2,
+        points: active && typeof subscription?.points === 'number' ? subscription.points : null,
+        points_per_second: active ? 2 : null,
       },
       subscription: active
         ? {

@@ -59,29 +59,34 @@ async function fetchAccountSummary() {
   const res = await fetch(`${WEB_URL}/api/mobile/account-summary`, {
     headers: { Authorization: `Bearer ${token}` },
   })
-  if (!res.ok) return null
+  if (!res.ok) throw new Error('Chargement impossible')
   return res.json()
 }
 
 function useAccountSummary() {
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const load = useCallback(async () => {
+    setLoading(true)
+    setError(false)
     try {
       setSummary(await fetchAccountSummary())
     } catch {
       setSummary(null)
+      setError(true)
     } finally {
       setLoading(false)
     }
   }, [])
   useEffect(() => { load() }, [load])
-  return { summary, loading, reload: load }
+  return { summary, loading, error, reload: load }
 }
 
 export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh }) {
   const account = useAccountSummary()
   const accountSubscription = account.summary?.subscription ?? null
+  const accountError = account.error
 
   const email = user?.email ?? ''
   const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || null
@@ -150,6 +155,12 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
       </View>
 
       <Text style={styles.groupLabel}>Mes soldes</Text>
+      {accountError ? (
+        <Pressable onPress={account.reload} style={styles.retry} accessibilityRole="button">
+          <Ionicons name="refresh" size={14} color={C.blue} />
+          <Text style={styles.retryText}>Réessayer</Text>
+        </Pressable>
+      ) : null}
       <View style={styles.balances}>
         <Pressable
           accessibilityRole="link"
@@ -164,8 +175,10 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </View>
           {account.loading ? (
             <ChapCamLoader size="small" style={styles.balanceLoader} />
+          ) : accountError ? (
+            <Text style={styles.balanceError}>Indisponible</Text>
           ) : (
-            <Text style={styles.balanceValue}>{jetonsBalance !== null ? jetonsBalance.toLocaleString('fr-FR') : '—'}</Text>
+            <Text style={styles.balanceValue}>{jetonsBalance.toLocaleString('fr-FR')}</Text>
           )}
           <Text style={styles.balanceHint}>Pour tous les outils ChapCam, sauf Live Swap.</Text>
         </Pressable>
@@ -185,11 +198,15 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </View>
           {account.loading ? (
             <ChapCamLoader size="small" style={styles.balanceLoader} />
+          ) : accountError ? (
+            <Text style={styles.balanceError}>Indisponible</Text>
+          ) : livePoints !== null ? (
+            <Text style={styles.balanceValue}>{fmtMinutes(livePoints, livePointsPerSecond)}</Text>
           ) : (
-            <Text style={styles.balanceValue}>{livePoints !== null ? fmtMinutes(livePoints, livePointsPerSecond) : '—'}</Text>
+            <Text style={styles.balanceEmpty}>Aucun forfait</Text>
           )}
           <Text style={styles.balanceHint}>
-            {livePoints !== null ? `${livePoints.toLocaleString('fr-FR')} points · ${isActive ? 'forfait actif' : 'forfait inactif'}` : 'Aucun forfait Live Swap'}
+            {livePoints !== null ? `${livePoints.toLocaleString('fr-FR')} points · forfait actif` : accountError ? 'Réessaie pour actualiser' : 'Aucun forfait Live Swap'}
           </Text>
         </Pressable>
       </View>
@@ -208,9 +225,9 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
               <Text style={styles.subPlan} numberOfLines={1}>{planLabel || 'Aucun forfait'}</Text>
             )}
           </View>
-          {!loading ? (
+          {!account.loading && !accountError ? (
             <View style={[styles.subBadge, isActive ? styles.subBadgeOn : styles.subBadgeOff]}>
-              <Text style={styles.subBadgeText}>{isActive ? 'Actif' : expired ? 'Expiré' : 'Inactif'}</Text>
+              <Text style={styles.subBadgeText}>{isActive ? 'Actif' : 'Aucun forfait'}</Text>
             </View>
           ) : null}
         </View>
@@ -324,7 +341,11 @@ const styles = StyleSheet.create({
   liveIcon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   balanceTitle: { color: C.ink, fontSize: 14, fontWeight: '800' },
   balanceValue: { color: C.ink, fontSize: 24, fontWeight: '900', letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
+  balanceError: { color: '#B42318', fontSize: 17, fontWeight: '800' },
+  balanceEmpty: { color: C.muted, fontSize: 17, fontWeight: '800' },
   balanceLoader: { alignSelf: 'flex-start', height: 30 },
+  retry: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, marginHorizontal: 4, marginBottom: 8 },
+  retryText: { color: C.blue, fontSize: 13, fontWeight: '800' },
   balanceHint: { color: C.muted, fontSize: 12, fontWeight: '600', lineHeight: 16 },
 
   sub: { borderRadius: 24, padding: 16, gap: 14, ...shadow, shadowOpacity: 0.18 },
