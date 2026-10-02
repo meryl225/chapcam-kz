@@ -142,7 +142,7 @@ function HomeShell({ user }) {
     return <GenjutsuScreen onBack={() => setOpenTool(null)} onOpenCreations={() => { setOpenTool(null); setTab('creations') }} topInset={insets.top} />
   }
   if (openTool === 'motion') {
-    return <MotionControlScreen onBack={() => setOpenTool(null)} />
+    return <MotionControlScreen onBack={() => setOpenTool(null)} onOpenCreations={() => { setOpenTool(null); setTab('creations') }} topInset={insets.top} />
   }
   if (openTool === 'translate') {
     return <VideoTranslationScreen onBack={() => setOpenTool(null)} />
