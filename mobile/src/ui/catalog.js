@@ -11,7 +11,10 @@ export const BRAND = [C.blue, C.violet]
 export const PAD = 18
 export const GAP = 12
 
-export const asset = (path) => ({ uri: `https://chapcam.com${path}` })
+export const asset = (path) => (typeof path === 'string' ? { uri: `https://chapcam.com${path}` } : path)
+
+const LIVE_SWAP_HERO = require('../../assets/live-swap-hero.mp4')
+
 
 export const CATEGORIES = [
   { key: 'all', label: 'Tous' },
@@ -23,7 +26,7 @@ export const CATEGORIES = [
 
 // Mirrors components/dashboard/hub/tools-grid.tsx on chapcam.com.
 export const TOOL_MEDIA = {
-  live: { type: 'video', src: '/swap/live-swap-demo.mp4' },
+  live: { type: 'video', src: LIVE_SWAP_HERO },
   'photo-video': { type: 'image', src: '/swap/poster-photo-video.png' },
   genjutsu: { type: 'video', src: '/videos/genjutsu-demo.mov' },
   motion: { type: 'video', src: '/videos/motion-control-demo.mp4', poster: '/swap/poster-motion.png' },
