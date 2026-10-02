@@ -9,7 +9,8 @@ import { ChapCamLoader } from '../ui/ChapCamLoader'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const DANGER = '#E5484D'
-const JETONS_LOGO = `${WEB_URL}/images/jetons-logo.png`
+// Exact copy of chapcam.com public/images/jetons-logo.png, bundled so it never depends on the network.
+const JETONS_LOGO = require('../../assets/jetons-logo.png')
 
 const LINKS = {
   plans: `${WEB_URL}/dashboard/plans`,
@@ -85,21 +86,30 @@ function useAccountSummary() {
 
 export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh }) {
   const account = useAccountSummary()
-  const accountSubscription = account.summary?.subscription ?? null
-  const accountError = account.error
+  const [avatarFailed, setAvatarFailed] = useState(false)
+
+  // Live Swap + plan come from the same Supabase `subscriptions` row the website dashboard reads
+  // (loaded by AuthenticatedHome under the user's session / RLS). Jetons live in the Neon
+  // `jetons_wallets` table and can only be read server-side through /api/mobile/account-summary.
+  const accountSubscription = subscription ?? null
+  const subscriptionLoading = Boolean(loading)
+  const jetonsLoading = account.loading
+  const jetonsError = account.error
 
   const email = user?.email ?? ''
   const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || null
-  const initial = (metaName || email || '?').trim().charAt(0).toUpperCase()
+  const initial = ((metaName || email).trim().charAt(0) || 'C').toUpperCase()
+  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null
+  const showPhoto = Boolean(avatarUrl) && !avatarFailed
 
   const planKey = accountSubscription?.plan || null
-  const planLabel = planKey ? PLAN_LABELS[planKey] || planKey : null
   const endTime = accountSubscription?.end_date ? new Date(accountSubscription.end_date).getTime() : null
   const expired = endTime !== null && !Number.isNaN(endTime) && endTime < Date.now()
-  const isActive = Boolean(accountSubscription && planKey !== 'free' && accountSubscription.is_active === true && !expired)
-  const endDate = formatDate(accountSubscription?.end_date)
-  const livePoints = typeof account.summary?.live_swap?.points === 'number' ? account.summary.live_swap.points : null
-  const livePointsPerSecond = account.summary?.live_swap?.points_per_second
+  const isActive = Boolean(accountSubscription && planKey && planKey !== 'free' && accountSubscription.is_active === true && !expired)
+  const planLabel = isActive ? PLAN_LABELS[planKey] || planKey : null
+  const endDate = isActive ? formatDate(accountSubscription?.end_date) : null
+  const livePoints = isActive && typeof accountSubscription?.points === 'number' ? accountSubscription.points : null
+  const livePointsPerSecond = POINTS_PER_SECOND
   const jetonsBalance = typeof account.summary?.jetons === 'number' ? account.summary.jetons : null
 
   const appVersion = Constants.nativeAppVersion ?? Constants.expoConfig?.version ?? null
@@ -131,11 +141,19 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           <View style={styles.avatarRing}>
             <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
               <Text style={styles.avatarText}>{initial}</Text>
+              {showPhoto ? (
+                <Image
+                  source={{ uri: avatarUrl }}
+                  style={styles.avatarPhoto}
+                  onError={() => setAvatarFailed(true)}
+                  accessibilityLabel="Photo de profil"
+                />
+              ) : null}
             </LinearGradient>
           </View>
           {metaName ? <Text style={styles.name} numberOfLines={1}>{metaName}</Text> : null}
           <Text style={metaName ? styles.emailSub : styles.name} numberOfLines={1}>{email}</Text>
-          {account.loading ? (
+          {subscriptionLoading ? (
             <ChapCamLoader size="small" style={styles.heroLoader} />
           ) : (
             <View style={styles.heroChips}>
@@ -155,7 +173,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
       </View>
 
       <Text style={styles.groupLabel}>Mes soldes</Text>
-      {accountError ? (
+      {jetonsError ? (
         <Pressable onPress={account.reload} style={styles.retry} accessibilityRole="button">
           <Ionicons name="refresh" size={14} color={C.blue} />
           <Text style={styles.retryText}>Réessayer</Text>
@@ -170,12 +188,14 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           style={({ pressed }) => [styles.balance, pressed && styles.pressed]}
         >
           <View style={styles.balanceHead}>
-            <Image source={{ uri: JETONS_LOGO }} style={styles.jetonsLogo} accessibilityIgnoresInvertColors />
+            <View style={styles.jetonsLogo}>
+              <Image source={JETONS_LOGO} style={styles.jetonsLogoImage} accessibilityIgnoresInvertColors />
+            </View>
             <Text style={styles.balanceTitle}>Jetons</Text>
           </View>
-          {account.loading ? (
+          {jetonsLoading ? (
             <ChapCamLoader size="small" style={styles.balanceLoader} />
-          ) : accountError ? (
+          ) : jetonsError || jetonsBalance === null ? (
             <Text style={styles.balanceError}>Indisponible</Text>
           ) : (
             <Text style={styles.balanceValue}>{jetonsBalance.toLocaleString('fr-FR')}</Text>
@@ -196,17 +216,15 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             </LinearGradient>
             <Text style={styles.balanceTitle}>Live Swap</Text>
           </View>
-          {account.loading ? (
+          {subscriptionLoading ? (
             <ChapCamLoader size="small" style={styles.balanceLoader} />
-          ) : accountError ? (
-            <Text style={styles.balanceError}>Indisponible</Text>
           ) : livePoints !== null ? (
             <Text style={styles.balanceValue}>{fmtMinutes(livePoints, livePointsPerSecond)}</Text>
           ) : (
             <Text style={styles.balanceEmpty}>Aucun forfait</Text>
           )}
           <Text style={styles.balanceHint}>
-            {livePoints !== null ? `${livePoints.toLocaleString('fr-FR')} points · forfait actif` : accountError ? 'Réessaie pour actualiser' : 'Aucun forfait Live Swap'}
+            {livePoints !== null ? `${livePoints.toLocaleString('fr-FR')} points · forfait actif` : 'Aucun forfait Live Swap'}
           </Text>
         </Pressable>
       </View>
@@ -219,13 +237,13 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </LinearGradient>
           <View style={styles.flex}>
             <Text style={styles.subEyebrow}>Forfait actuel</Text>
-            {account.loading ? (
+            {subscriptionLoading ? (
               <ChapCamLoader size="small" tone="light" style={styles.balanceLoader} />
             ) : (
               <Text style={styles.subPlan} numberOfLines={1}>{planLabel || 'Aucun forfait'}</Text>
             )}
           </View>
-          {!account.loading && !accountError ? (
+          {!subscriptionLoading ? (
             <View style={[styles.subBadge, isActive ? styles.subBadgeOn : styles.subBadgeOff]}>
               <Text style={styles.subBadgeText}>{isActive ? 'Actif' : 'Aucun forfait'}</Text>
             </View>
@@ -320,6 +338,7 @@ const styles = StyleSheet.create({
   avatarRing: { padding: 4, borderRadius: 46, backgroundColor: C.white, marginBottom: 10 },
   avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: C.white, fontSize: 32, fontWeight: '900' },
+  avatarPhoto: { ...StyleSheet.absoluteFillObject, borderRadius: 40 },
   name: { color: C.ink, fontSize: 18, fontWeight: '800', letterSpacing: -0.3, maxWidth: '100%' },
   emailSub: { color: C.muted, fontSize: 13, fontWeight: '600', marginTop: 2, maxWidth: '100%' },
   heroLoader: { marginTop: 12 },
@@ -337,7 +356,8 @@ const styles = StyleSheet.create({
   balances: { flexDirection: 'row', gap: 12 },
   balance: { flex: 1, backgroundColor: C.white, borderRadius: 22, padding: 14, borderWidth: 1, borderColor: C.line, gap: 8, ...shadow, shadowOpacity: 0.06 },
   balanceHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  jetonsLogo: { width: 28, height: 28, borderRadius: 9, backgroundColor: '#0A1024' },
+  jetonsLogo: { width: 28, height: 28, borderRadius: 9, backgroundColor: '#0A1024', overflow: 'hidden' },
+  jetonsLogoImage: { width: '100%', height: '100%', transform: [{ scale: 1.3 }] },
   liveIcon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   balanceTitle: { color: C.ink, fontSize: 14, fontWeight: '800' },
   balanceValue: { color: C.ink, fontSize: 24, fontWeight: '900', letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
