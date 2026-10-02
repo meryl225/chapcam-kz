@@ -23,10 +23,11 @@ export const CATEGORIES = [
 
 export const TOOLS = [
   { key: 'live', title: 'Live Swap', copy: 'Change de visage en temps réel', image: '/swap/face-transformed.png', live: true, categories: ['video', 'face'] },
-  { key: 'genjutsu', title: 'Genjutsu', copy: 'Anime tes images avec un mouvement naturel', image: '/images/hero/avatars/a2.png', categories: ['image', 'video'] },
-  { key: 'motion', title: 'Motion Control', copy: 'Anime ta photo en 3D', image: '/swap/poster-motion.png', categories: ['image', 'video'] },
-  { key: 'translate', title: 'Traduction vidéo', copy: 'Traduis ta vidéo en 180+ langues', image: '/swap/poster-video-translation.png', categories: ['video', 'audio'] },
-  { key: 'voice', title: 'Message Vocal', copy: 'Crée des voix réalistes depuis un texte', image: '/swap/poster-message-vocal.png', categories: ['audio'] },
+  { key: 'photo-video', title: 'Photos en Vidéo', copy: 'Anime ta photo en vidéo', image: '/swap/poster-photo-video.png', categories: ['image', 'video'] },
+  { key: 'genjutsu', title: 'Genjutsu', copy: 'Anime tes images', image: '/images/hero/avatars/a2.png', categories: ['image', 'video'] },
+  { key: 'motion', title: 'Motion', copy: 'Anime ta photo en 3D', image: '/swap/poster-motion.png', categories: ['image', 'video'] },
+  { key: 'translate', title: 'Traduction de Vidéo', copy: 'Traduis ta vidéo en 190+ langues', image: '/swap/poster-video-translation.png', categories: ['video', 'audio'] },
+  { key: 'voice', title: 'Message Vocal', copy: 'Change ta voix ou crée-la depuis un texte', image: '/swap/poster-message-vocal.png', categories: ['audio'] },
   { key: 'verify', title: 'ChapVerify', copy: 'Détecte les deepfakes', image: '/swap/poster-chapverify.png', categories: ['video', 'image', 'face'] },
 ]
 

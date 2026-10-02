@@ -11,9 +11,9 @@ const BlurView = requireOptionalNativeModule('ExpoBlur') ? require('expo-blur').
 export const QUICK_TOOLS = [
   { key: 'live', label: 'Live Swap', icon: 'videocam', accent: '#1E6BFF', live: true },
   { key: 'genjutsu', label: 'Genjutsu', icon: 'sparkles', accent: '#5B5BFF' },
-  { key: 'photo-video', label: 'Image vers vidéo', icon: 'film', accent: '#7B4DFF' },
-  { key: 'translate', label: 'Traduction', icon: 'language', accent: '#3D8BFF' },
-  { key: 'voice', label: 'Message vocal', icon: 'mic', accent: '#6A55FF' },
+  { key: 'photo-video', label: 'Photos en Vidéo', icon: 'film', accent: '#7B4DFF' },
+  { key: 'translate', label: 'Traduction de Vidéo', icon: 'language', accent: '#3D8BFF' },
+  { key: 'voice', label: 'Message Vocal', icon: 'mic', accent: '#6A55FF' },
   { key: 'verify', label: 'ChapVerify', icon: 'shield-checkmark', accent: '#8E5CFF' },
 ]
 

@@ -10,9 +10,9 @@ import { BRAND, C, GAP, PAD, shadow } from '../ui/catalog'
 const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 
 const TOOL_META = {
-  photo_video: { label: 'Photo animée', icon: 'image' },
-  motion: { label: 'Motion Control', icon: 'body' },
-  translation: { label: 'Traduction vidéo', icon: 'language' },
+  photo_video: { label: 'Photos en Vidéo', icon: 'image' },
+  motion: { label: 'Motion', icon: 'body' },
+  translation: { label: 'Traduction de Vidéo', icon: 'language' },
   genjutsu: { label: 'Genjutsu', icon: 'sparkles' },
 }
 

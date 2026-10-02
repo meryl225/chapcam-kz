@@ -11,18 +11,18 @@ const R_HERO = 26
 const toolFromCatalog = (key) => TOOLS.find((t) => t.key === key)
 
 const CREATION_TOOLS = [
-  { key: 'image', title: 'Image IA', copy: 'Du texte à l’image', image: '/dashboard/hero-avatar.jpg' },
-  { key: 'video', title: 'Vidéo IA', copy: 'Ta photo en vidéo', image: '/swap/poster-photo-video.png' },
-  { key: 'genjutsu', title: 'Genjutsu', copy: 'Mouvement naturel', image: toolFromCatalog('genjutsu').image },
-  { key: 'motion', title: 'Motion Control', copy: 'Photo animée en 3D', image: toolFromCatalog('motion').image },
-  { key: 'translate', title: 'Traduction vidéo', copy: '180+ langues', image: toolFromCatalog('translate').image },
-  { key: 'voice', title: 'Message Vocal', copy: 'Texte en voix réaliste', image: toolFromCatalog('voice').image },
+  { key: 'photo-video', title: 'Photos en Vidéo', copy: 'Anime ta photo en vidéo', image: toolFromCatalog('photo-video').image },
+  { key: 'genjutsu', title: 'Genjutsu', copy: 'Anime tes images', image: toolFromCatalog('genjutsu').image },
+  { key: 'motion', title: 'Motion', copy: 'Anime ta photo en 3D', image: toolFromCatalog('motion').image },
+  { key: 'translate', title: 'Traduction de Vidéo', copy: '190+ langues', image: toolFromCatalog('translate').image },
+  { key: 'voice', title: 'Message Vocal', copy: 'Change ta voix ou crée-la', image: toolFromCatalog('voice').image },
+  { key: 'verify', title: 'ChapVerify', copy: 'Détecte les deepfakes', image: toolFromCatalog('verify').image },
 ]
 
 const QUICK_START = [
   { key: 'live', label: 'Live Swap', icon: 'videocam', colors: ['#FF3B6B', '#FF7A45'] },
-  { key: 'genjutsu', label: 'Image vers vidéo', icon: 'film', colors: [C.violet, '#B06BFF'] },
-  { key: 'translate', label: 'Traduire une vidéo', icon: 'language', colors: [C.blue, '#3FA2FF'] },
+  { key: 'photo-video', label: 'Photos en Vidéo', icon: 'film', colors: [C.violet, '#B06BFF'] },
+  { key: 'translate', label: 'Traduction de Vidéo', icon: 'language', colors: [C.blue, '#3FA2FF'] },
 ]
 
 export function CreateScreen({ onOpenTool }) {

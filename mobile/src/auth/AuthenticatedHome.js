@@ -36,7 +36,7 @@ const HERO_SLIDES = [
   },
   {
     key: 'video',
-    eyebrow: 'Image en vidéo',
+    eyebrow: 'Photos en Vidéo',
     title: 'Donne vie\nà tes photos.',
     cta: 'Explorer les outils',
     image: '/swap/poster-photo-video.png',
@@ -44,7 +44,7 @@ const HERO_SLIDES = [
   },
   {
     key: 'image',
-    eyebrow: 'Studio IA',
+    eyebrow: 'Genjutsu',
     title: 'Portraits\nde cinéma.',
     cta: 'Explorer les outils',
     image: '/dashboard/hero-avatar.jpg',
@@ -56,23 +56,23 @@ const AVAILABLE_TOOLS = new Set(['live'])
 
 const QUICK_ACTIONS = [
   { key: 'live', label: 'Live Swap', hint: 'Temps réel', icon: 'videocam', colors: ['#FF3B6B', '#FF7A45'] },
-  { key: 'image', label: 'Image IA', hint: 'Texte en image', icon: 'image', colors: [C.blue, '#3FA2FF'] },
-  { key: 'video', label: 'Vidéo IA', hint: 'Photo en vidéo', icon: 'film', colors: [C.violet, '#B06BFF'] },
+  { key: 'genjutsu', label: 'Genjutsu', hint: 'Anime tes images', icon: 'sparkles', colors: [C.blue, '#3FA2FF'] },
+  { key: 'photo-video', label: 'Photos en Vidéo', hint: 'Anime ta photo en vidéo', icon: 'film', colors: [C.violet, '#B06BFF'] },
 ]
 
 const TRENDS = [
   { key: 't1', title: 'Visage cinéma', tag: 'Live Swap', tool: 'live', image: '/images/hero/avatars/a1.png' },
   { key: 't2', title: 'Portrait animé', tag: 'Genjutsu', tool: 'genjutsu', image: '/images/hero/avatars/a3.png' },
   { key: 't3', title: 'Néon studio', tag: 'Motion', tool: 'motion', image: '/images/hero/avatars/a4.png' },
-  { key: 't4', title: 'Voix off pro', tag: 'Vocal', tool: 'voice', image: '/images/hero/avatars/a5.png' },
+  { key: 't4', title: 'Voix off pro', tag: 'Message Vocal', tool: 'voice', image: '/images/hero/avatars/a5.png' },
   { key: 't5', title: 'Style éditorial', tag: 'Live Swap', tool: 'live', image: '/images/hero/avatars/a6.png' },
 ]
 
 const FOR_YOU = [
-  { key: 'f1', title: 'Photo en vidéo', tag: 'Image en vidéo', tool: 'genjutsu', video: true, image: '/swap/poster-photo-video.png' },
+  { key: 'f1', title: 'Anime ta photo en vidéo', tag: 'Photos en Vidéo', tool: 'photo-video', video: true, image: '/swap/poster-photo-video.png' },
   { key: 'f2', title: 'Avant / après', tag: 'Live Swap', tool: 'live', video: true, image: '/swap/face-original.png' },
   { key: 'f3', title: 'Avatar en mouvement', tag: 'Genjutsu', tool: 'genjutsu', video: true, image: '/images/hero/avatars/a2.png' },
-  { key: 'f4', title: 'Motion 3D', tag: 'Motion Control', tool: 'motion', video: true, image: '/swap/poster-motion.png' },
+  { key: 'f4', title: 'Anime ta photo en 3D', tag: 'Motion', tool: 'motion', video: true, image: '/swap/poster-motion.png' },
 ]
 
 const R_CARD = 22
