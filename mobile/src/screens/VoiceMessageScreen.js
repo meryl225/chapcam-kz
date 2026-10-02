@@ -12,8 +12,11 @@ import { VoicePicker } from '../ui/VoicePicker'
 
 const WEB_URL = 'https://chapcam.com'
 // Mirrors lib/plans.ts VOICE_MESSAGE_MAX_CHARS / VOICE_MESSAGE_MAX_SECONDS.
-const MAX_CHARS = 250
+const MAX_CHARS = 240
 const MAX_SECONDS = 15
+// Mirrors components/message-vocal/message-vocal-client.tsx and lib/jetons.ts (1 000 Jetons = 10 000 FCFA).
+const JETONS_PER_MESSAGE = 10
+const FCFA_PER_JETON = 10
 
 async function authHeaders() {
   const { data } = await supabase.auth.getSession()
@@ -83,7 +86,7 @@ export function VoiceMessageScreen({ onBack }) {
         <View style={styles.quota}>
           <Ionicons name="chatbubble-ellipses-outline" size={18} color={C.blue} />
           <Text style={styles.quotaText}>{quota ? `${quota.remaining} message${quota.remaining > 1 ? 's' : ''} vocal${quota.remaining > 1 ? 'aux' : ''} restant${quota.remaining > 1 ? 's' : ''}` : 'Chargement du solde…'}</Text>
-          <Text style={styles.quotaCost}>1 message / génération</Text>
+          <Text style={styles.quotaCost}>{`1 message = ${JETONS_PER_MESSAGE} Jetons · ${(JETONS_PER_MESSAGE * FCFA_PER_JETON).toLocaleString('fr-FR')} FCFA`}</Text>
         </View>
         {quota && quota.remaining < 1 ? (
           <Text style={styles.warn}>{quota.subActive ? 'Tu as utilisé tous tes messages vocaux inclus.' : 'Les messages vocaux sont inclus avec un abonnement ChapCam.'}</Text>
@@ -175,9 +178,9 @@ function TextTab({ voices, selected, onSelect, locked, onConsumed }) {
         <ValueSlider label="Vitesse" value={speed} min={0.7} max={1.2} step={0.05} display={`${speed.toFixed(2)}×`} onChange={setSpeed} hint="Débit de parole" />
       </Advanced>
       {error ? <Text style={styles.error}>{error}</Text> : null}
-      {busy ? <Busy label="Génération de l'audio…" /> : (
+      {busy ? <Busy label="Génération du message vocal…" /> : (
         <Pressable onPress={generate} disabled={!canGenerate} style={[styles.cta, { backgroundColor: C.violet }, !canGenerate && styles.ctaOff]} accessibilityRole="button">
-          <Ionicons name="sparkles" size={19} color={C.white} /><Text style={styles.ctaText}>{"Générer l'audio"}</Text>
+          <Ionicons name="sparkles" size={19} color={C.white} /><Text style={styles.ctaText}>Générer le message vocal</Text>
         </Pressable>
       )}
       {result ? <><Step n={3} title="Écoute ton message" /><AudioClip uri={result} label={`Audio · ${selected?.name ?? ''}`} accent={C.violet} /></> : null}
