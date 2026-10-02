@@ -62,8 +62,19 @@ export function VideoTranslationScreen({ onBack }) {
     setVideo(selected); setResult(null); setStatus('idle'); setError('')
   }
 
+  const refreshQuota = async (token) => {
+    try {
+      const res = await fetch(`${API_URL}/api/heygen/video-translation?info=quota`, { headers: { Authorization: `Bearer ${token}` } })
+      const json = await res.json().catch(() => ({}))
+      if (res.ok) setCredits(Math.max(0, Number(json.remaining) || 0))
+    } catch {}
+  }
+
   const translate = async () => {
     if (!video?.uri || !language || busy) return
+    if (credits !== null && credits < cost) {
+      return Alert.alert('Crédits insuffisants', `Cette traduction coûte ${cost} crédit${cost > 1 ? 's' : ''}. Achète un pack ou passe à un forfait Premium/VIP.`)
+    }
     setStatus('uploading'); setResult(null); setError('')
     try {
       const { data } = await supabase.auth.getSession()
@@ -76,23 +87,33 @@ export function VideoTranslationScreen({ onBack }) {
       form.append('caption', String(caption))
       const response = await fetch(`${API_URL}/api/heygen/video-translation`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form })
       const json = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(json.error || 'La traduction a échoué.')
+      if (!response.ok) {
+        if (response.status === 402 && (json.code === 'quota_exhausted' || json.code === 'no_plan')) setCredits(0)
+        throw new Error(json.error || 'Impossible de lancer la traduction.')
+      }
       const id = json.id || json.video_translation_id
       if (!id) throw new Error('Réponse de traduction invalide.')
+      if (typeof json.remaining === 'number') setCredits(json.remaining)
       setStatus('processing')
+      if (pollRef.current) clearInterval(pollRef.current)
       pollRef.current = setInterval(async () => {
-        const poll = await fetch(`${API_URL}/api/heygen/video-translation?id=${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` } })
-        const body = await poll.json().catch(() => ({}))
-        if (body.status === 'completed' && body.video_url) {
-          clearInterval(pollRef.current); pollRef.current = null; setResult(body.video_url); setStatus('completed')
-        } else if (body.status === 'failed') {
-          clearInterval(pollRef.current); pollRef.current = null; setError(body.error || 'La traduction a échoué.'); setStatus('failed')
-        }
+        try {
+          const poll = await fetch(`${API_URL}/api/heygen/video-translation?id=${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${token}` } })
+          const body = await poll.json().catch(() => ({}))
+          if (body.status === 'completed' && body.video_url) {
+            clearInterval(pollRef.current); pollRef.current = null; setResult(body.video_url); setStatus('completed')
+          } else if (body.status === 'failed') {
+            clearInterval(pollRef.current); pollRef.current = null
+            setError(`${body.error || "La vidéo n'a pas pu être traduite."}${body.refunded ? ' Ton crédit a été remboursé.' : ''}`)
+            setStatus('failed')
+            refreshQuota(token)
+          }
+        } catch {}
       }, 8000)
     } catch (e) { setError(e.message || 'La traduction a échoué.'); setStatus('failed') }
   }
 
-  const visibleLanguages = languages.filter((item) => item.toLowerCase().includes(search.trim().toLowerCase())).slice(0, 24)
+  const visibleLanguages = languages.filter((item) => item.toLowerCase().includes(search.trim().toLowerCase()))
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.topBar}><Pressable onPress={onBack} style={styles.back} accessibilityLabel="Retour"><Ionicons name="chevron-back" size={24} color={C.ink} /></Pressable><View style={styles.heading}><Text style={styles.title}>Traduction de Vidéo</Text><Text style={styles.subtitle}>Traduis une vidéo dans une autre langue</Text></View></View>
@@ -102,11 +123,11 @@ export function VideoTranslationScreen({ onBack }) {
         <Text style={styles.section}>Langue cible</Text>
         <View style={styles.search}><Ionicons name="search-outline" size={18} color={C.muted} /><TextInput value={search} onChangeText={setSearch} placeholder="Rechercher une langue" placeholderTextColor={C.muted} style={styles.searchInput} /></View>
         <View style={styles.languageGrid}>{visibleLanguages.map((item) => <Pressable key={item} onPress={() => setLanguage(item)} style={[styles.language, language === item && styles.languageSelected]}><Text style={[styles.languageText, language === item && styles.languageTextSelected]}>{item}</Text></Pressable>)}</View>
-        {!languages.length ? <Text style={styles.muted}>Chargement des langues disponibles…</Text> : null}
+        {!languages.length ? <Text style={styles.muted}>Chargement des langues disponibles…</Text> : visibleLanguages.length === 0 ? <Text style={styles.muted}>Aucune langue trouvée.</Text> : null}
         <Text style={styles.section}>Options</Text>
         <View style={styles.segment}><Pressable onPress={() => setMode('speed')} style={[styles.segmentItem, mode === 'speed' && styles.segmentActive]}><Text style={[styles.segmentText, mode === 'speed' && styles.segmentTextActive]}>Rapide · 1 crédit</Text></Pressable><Pressable onPress={() => setMode('precision')} style={[styles.segmentItem, mode === 'precision' && styles.segmentActive]}><Text style={[styles.segmentText, mode === 'precision' && styles.segmentTextActive]}>Précision · 2 crédits</Text></Pressable></View>
         <Pressable onPress={() => setCaption(!caption)} style={styles.optionRow}><Ionicons name={caption ? 'checkbox' : 'square-outline'} size={22} color={caption ? C.blue : C.muted} /><View><Text style={styles.optionTitle}>Sous-titres</Text><Text style={styles.muted}>Ajouter des sous-titres à la vidéo traduite</Text></View></Pressable>
-        <View style={styles.cost}><Text style={styles.costLabel}>Coût : <Text style={styles.costStrong}>{cost} Jeton{cost > 1 ? 's' : ''}</Text></Text>{credits !== null ? <Text style={styles.muted}>{credits} crédit{credits > 1 ? 's' : ''} disponible{credits > 1 ? 's' : ''}</Text> : null}</View>
+        <View style={styles.cost}><Text style={styles.costLabel}>Coût : <Text style={styles.costStrong}>{cost} crédit{cost > 1 ? 's' : ''}</Text></Text>{credits !== null ? <Text style={styles.muted}>{credits} crédit{credits > 1 ? 's' : ''} disponible{credits > 1 ? 's' : ''}</Text> : null}</View>
         {error ? <View style={styles.error}><Text style={styles.errorText}>{error}</Text></View> : null}
         {busy ? <View style={styles.loading}><ChapCamLoader size="small" /><Text style={styles.loadingText}>Traduction en cours</Text></View> : <Pressable disabled={!video?.uri || !language || busy} onPress={translate} style={[styles.cta, (!video?.uri || !language || busy) && styles.ctaDisabled]}><Ionicons name="language" size={20} color={C.white} /><Text style={styles.ctaText}>Traduire la vidéo</Text></Pressable>}
         {result ? <View style={styles.result}><Text style={styles.section}>Vidéo traduite</Text><Preview uri={result} result /></View> : null}
