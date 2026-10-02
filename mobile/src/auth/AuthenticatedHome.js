@@ -139,7 +139,7 @@ function HomeShell({ user }) {
     return <VoiceMessageScreen onBack={() => setOpenTool(null)} />
   }
   if (openTool === 'genjutsu') {
-    return <GenjutsuScreen onBack={() => setOpenTool(null)} topInset={insets.top} />
+    return <GenjutsuScreen onBack={() => setOpenTool(null)} onOpenCreations={() => { setOpenTool(null); setTab('creations') }} topInset={insets.top} />
   }
   if (openTool === 'motion') {
     return <MotionControlScreen onBack={() => setOpenTool(null)} />
