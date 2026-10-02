@@ -66,7 +66,14 @@ async function authHeader() {
 }
 
 async function fetchCreations() {
-  const res = await fetch(`${API_URL}/api/mobile/creations`, { headers: await authHeader() })
+  let res = await fetch(`${API_URL}/api/mobile/creations`, { headers: await authHeader() })
+  if (res.status === 401) {
+    // The stored access token may have expired while the app was backgrounded.
+    const { data } = await supabase.auth.refreshSession()
+    const token = data?.session?.access_token
+    if (!token) throw new Error('auth')
+    res = await fetch(`${API_URL}/api/mobile/creations`, { headers: { Authorization: `Bearer ${token}` } })
+  }
   if (res.status === 401) throw new Error('auth')
   if (!res.ok) throw new Error('http')
   const json = await res.json()
