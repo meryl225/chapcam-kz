@@ -25,6 +25,7 @@
     "@react-navigation/native-stack": "^7.20.0",
     "@supabase/supabase-js": "^2.117.2",
     "expo": "^57.0.26",
+    "expo-blur": "~57.0.3",
     "expo-camera": "~57.0.6",
     "expo-constants": "^57.0.20",
     "expo-image-picker": "~57.0.20",

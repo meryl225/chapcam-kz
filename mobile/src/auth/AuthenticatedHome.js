@@ -10,6 +10,18 @@ import { LiveSwapScreen } from '../screens/LiveSwapScreen'
 import { CreateScreen } from '../screens/CreateScreen'
 import { CreationsScreen } from '../screens/CreationsScreen'
 import { ProfileScreen } from '../screens/ProfileScreen'
+import { QuickLaunchMenu } from '../ui/QuickLaunchMenu'
+import * as WebBrowser from 'expo-web-browser'
+import Constants from 'expo-constants'
+
+const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
+const TOOL_ROUTES = {
+  genjutsu: '/dashboard/genjutsu',
+  'photo-video': '/dashboard/photo-video',
+  translate: '/dashboard/video-translation',
+  voice: '/dashboard/message-vocal',
+  verify: '/dashboard/chapverify',
+}
 
 const INK_DEEP = '#0B1233'
 
@@ -81,6 +93,7 @@ function HomeShell({ user }) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [openTool, setOpenTool] = useState(null)
+  const [quickOpen, setQuickOpen] = useState(false)
 
   const loadAccount = useCallback(async () => {
     const { data } = await supabase
@@ -103,6 +116,15 @@ function HomeShell({ user }) {
   const onOpenTool = (key) => {
     if (key === 'live') setOpenTool('live')
     else setTab('explore')
+  }
+
+  const onQuickLaunch = (key) => {
+    if (key === 'live') {
+      setOpenTool('live')
+      return
+    }
+    const route = TOOL_ROUTES[key]
+    if (route) WebBrowser.openBrowserAsync(`${WEB_URL}${route}`, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET }).catch(() => {})
   }
 
   if (openTool === 'live') {
@@ -132,7 +154,8 @@ function HomeShell({ user }) {
       ) : (
         <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />
       )}
-      <TabBar tab={tab} onChange={setTab} bottom={insets.bottom} />
+      <TabBar tab={tab} onChange={(key) => (key === 'create' ? setQuickOpen(true) : setTab(key))} bottom={insets.bottom} />
+      <QuickLaunchMenu visible={quickOpen} bottom={insets.bottom} onClose={() => setQuickOpen(false)} onSelect={onQuickLaunch} />
     </View>
   )
 }
