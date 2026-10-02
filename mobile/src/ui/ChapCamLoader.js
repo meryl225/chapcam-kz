@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native'
-import { Ionicons } from '@expo/vector-icons'
-import { C } from './catalog'
+import { AccessibilityInfo, Animated, Easing, Image, StyleSheet } from 'react-native'
+
+// Transparent export of the website's /public/chapcam-mark.png (the mark used in the web sidebar).
+const MARK = require('../../assets/chapcam-mark.png')
+const MARK_RATIO = 565 / 283
 
 const SIZES = { small: 22, medium: 32, large: 48 }
 const ROTATION_MS = 1400
@@ -64,6 +66,9 @@ export function ChapCamLoader({ visible = true, size = 'medium', tone = 'brand',
     : [{ rotate: motion.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] }) }]
   const glyphOpacity = reduceMotion ? motion.interpolate({ inputRange: [0, 1], outputRange: [0.65, 1] }) : 1
   const light = tone === 'light'
+  const box = px * 1.4
+  const markW = box
+  const markH = box / MARK_RATIO
 
   return (
     <Animated.View
@@ -74,10 +79,19 @@ export function ChapCamLoader({ visible = true, size = 'medium', tone = 'brand',
       accessibilityState={{ busy: true }}
       style={[fill ? styles.fill : styles.inline, { opacity }, style]}
     >
-      <Animated.View style={[styles.glyph, { width: px * 1.4, height: px * 1.4, opacity: glyphOpacity, transform }]}>
-        {/* Violet glyph offset beneath the blue one gives the blue-to-violet brand sheen without a native mask module. */}
-        {!light ? <Ionicons name="infinite" size={px} color={C.violet} style={[styles.layer, styles.under]} /> : null}
-        <Ionicons name="infinite" size={px} color={light ? C.white : C.blue} style={[styles.layer, light ? styles.lightGlow : styles.glow]} />
+      <Animated.View style={[styles.glyph, { width: box, height: box, opacity: glyphOpacity, transform }]}>
+        {/* A blurred copy of the mark underneath acts as its own blue/violet halo, so the glow always follows the logo shape. */}
+        <Image
+          source={MARK}
+          blurRadius={Math.max(4, Math.round(px / 4))}
+          resizeMode="contain"
+          style={[styles.layer, { width: markW * 1.08, height: markH * 1.08, opacity: light ? 0.35 : 0.55 }]}
+        />
+        <Image
+          source={MARK}
+          resizeMode="contain"
+          style={[styles.layer, styles.mark, light ? styles.markLight : null, { width: markW, height: markH }]}
+        />
       </Animated.View>
     </Animated.View>
   )
@@ -88,7 +102,6 @@ const styles = StyleSheet.create({
   inline: { alignItems: 'center', justifyContent: 'center' },
   glyph: { alignItems: 'center', justifyContent: 'center' },
   layer: { position: 'absolute' },
-  under: { transform: [{ translateX: 1.5 }, { translateY: 1 }], opacity: 0.85 },
-  glow: { textShadowColor: 'rgba(123,77,255,0.55)', textShadowRadius: 10, textShadowOffset: { width: 0, height: 0 } },
-  lightGlow: { textShadowColor: 'rgba(255,255,255,0.35)', textShadowRadius: 8, textShadowOffset: { width: 0, height: 0 } },
+  mark: { shadowColor: '#7B4DFF', shadowOpacity: 0.45, shadowRadius: 6, shadowOffset: { width: 0, height: 0 } },
+  markLight: { shadowColor: '#FFFFFF', shadowOpacity: 0.3 },
 })
