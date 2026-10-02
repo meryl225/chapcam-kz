@@ -21,14 +21,32 @@ export const CATEGORIES = [
   { key: 'face', label: 'Visage' },
 ]
 
+// Mirrors components/dashboard/hub/tools-grid.tsx on chapcam.com.
+export const TOOL_MEDIA = {
+  live: { type: 'video', src: '/swap/live-swap-demo.mp4' },
+  'photo-video': { type: 'image', src: '/swap/poster-photo-video.png' },
+  genjutsu: { type: 'video', src: '/videos/genjutsu-demo.mov' },
+  motion: { type: 'video', src: '/videos/motion-control-demo.mp4', poster: '/swap/poster-motion.png' },
+  translate: { type: 'image', src: '/swap/poster-video-translation.png' },
+  voice: { type: 'image', src: '/swap/poster-message-vocal.png' },
+  verify: { type: 'image', src: '/swap/poster-chapverify.png' },
+}
+
+// Mirrors components/creator-video-strip.tsx rendered on the chapcam.com homepage.
+export const CREATOR_VIDEOS = [1466, 1469, 1471, 1472, 1473, 1475].map((id, i) => ({
+  key: `creator-${id}`,
+  label: `Vidéo créateur ChapCam ${i + 1}`,
+  media: { type: 'video', src: `/videos/creator-${id}.mp4` },
+}))
+
 export const TOOLS = [
-  { key: 'live', title: 'Live Swap', copy: 'Change de visage en temps réel', image: '/swap/face-transformed.png', live: true, categories: ['video', 'face'] },
-  { key: 'photo-video', title: 'Photos en Vidéo', copy: 'Anime ta photo en vidéo', image: '/swap/poster-photo-video.png', categories: ['image', 'video'] },
-  { key: 'genjutsu', title: 'Genjutsu', copy: 'Anime tes images', image: '/images/hero/avatars/a2.png', categories: ['image', 'video'] },
-  { key: 'motion', title: 'Motion', copy: 'Anime ta photo en 3D', image: '/swap/poster-motion.png', categories: ['image', 'video'] },
-  { key: 'translate', title: 'Traduction de Vidéo', copy: 'Traduis ta vidéo en 190+ langues', image: '/swap/poster-video-translation.png', categories: ['video', 'audio'] },
-  { key: 'voice', title: 'Message Vocal', copy: 'Change ta voix ou crée-la depuis un texte', image: '/swap/poster-message-vocal.png', categories: ['audio'] },
-  { key: 'verify', title: 'ChapVerify', copy: 'Détecte les deepfakes', image: '/swap/poster-chapverify.png', categories: ['video', 'image', 'face'] },
+  { key: 'live', title: 'Live Swap', copy: 'Change de visage en temps réel', media: TOOL_MEDIA.live, live: true, categories: ['video', 'face'] },
+  { key: 'photo-video', title: 'Photos en Vidéo', copy: 'Anime ta photo en vidéo', media: TOOL_MEDIA['photo-video'], categories: ['image', 'video'] },
+  { key: 'genjutsu', title: 'Genjutsu', copy: 'Anime tes images', media: TOOL_MEDIA.genjutsu, categories: ['image', 'video'] },
+  { key: 'motion', title: 'Motion', copy: 'Anime ta photo en 3D', media: TOOL_MEDIA.motion, categories: ['image', 'video'] },
+  { key: 'translate', title: 'Traduction de Vidéo', copy: 'Traduis ta vidéo en 190+ langues', media: TOOL_MEDIA.translate, categories: ['video', 'audio'] },
+  { key: 'voice', title: 'Message Vocal', copy: 'Change ta voix ou crée-la depuis un texte', media: TOOL_MEDIA.voice, categories: ['audio'] },
+  { key: 'verify', title: 'ChapVerify', copy: 'Détecte les deepfakes', media: TOOL_MEDIA.verify, categories: ['video', 'image', 'face'] },
 ]
 
 export const normalize = (value) =>

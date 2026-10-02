@@ -1,8 +1,9 @@
 import React from 'react'
-import { Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
-import { BRAND, C, GAP, PAD, TOOLS, asset, shadow } from '../ui/catalog'
+import { BRAND, C, GAP, PAD, TOOLS, shadow } from '../ui/catalog'
+import { MediaView } from '../ui/ToolMedia'
 
 const INK_DEEP = '#0B1233'
 const R_CARD = 22
@@ -11,12 +12,12 @@ const R_HERO = 26
 const toolFromCatalog = (key) => TOOLS.find((t) => t.key === key)
 
 const CREATION_TOOLS = [
-  { key: 'photo-video', title: 'Photos en Vidéo', copy: 'Anime ta photo en vidéo', image: toolFromCatalog('photo-video').image },
-  { key: 'genjutsu', title: 'Genjutsu', copy: 'Anime tes images', image: toolFromCatalog('genjutsu').image },
-  { key: 'motion', title: 'Motion', copy: 'Anime ta photo en 3D', image: toolFromCatalog('motion').image },
-  { key: 'translate', title: 'Traduction de Vidéo', copy: '190+ langues', image: toolFromCatalog('translate').image },
-  { key: 'voice', title: 'Message Vocal', copy: 'Change ta voix ou crée-la', image: toolFromCatalog('voice').image },
-  { key: 'verify', title: 'ChapVerify', copy: 'Détecte les deepfakes', image: toolFromCatalog('verify').image },
+  { key: 'photo-video', title: 'Photos en Vidéo', copy: 'Anime ta photo en vidéo', media: toolFromCatalog('photo-video').media },
+  { key: 'genjutsu', title: 'Genjutsu', copy: 'Anime tes images', media: toolFromCatalog('genjutsu').media },
+  { key: 'motion', title: 'Motion', copy: 'Anime ta photo en 3D', media: toolFromCatalog('motion').media },
+  { key: 'translate', title: 'Traduction de Vidéo', copy: '190+ langues', media: toolFromCatalog('translate').media },
+  { key: 'voice', title: 'Message Vocal', copy: 'Change ta voix ou crée-la', media: toolFromCatalog('voice').media },
+  { key: 'verify', title: 'ChapVerify', copy: 'Détecte les deepfakes', media: toolFromCatalog('verify').media },
 ]
 
 const QUICK_START = [
@@ -41,7 +42,7 @@ export function CreateScreen({ onOpenTool }) {
         onPress={() => onOpenTool('live')}
         style={({ pressed }) => [styles.featured, { height: Math.round(Math.min((width - PAD * 2) * 0.86, 340)) }, pressed && styles.pressed]}
       >
-        <Image source={asset(live.image)} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <MediaView media={live.media} />
         <LinearGradient
           colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.4)', 'rgba(11,18,51,0.92)']}
           locations={[0.3, 0.6, 1]}
@@ -91,7 +92,7 @@ export function CreateScreen({ onOpenTool }) {
             onPress={() => onOpenTool(tool.key)}
             style={({ pressed }) => [styles.tool, { width: colW, height: Math.round(colW * 1.18) }, pressed && styles.pressed]}
           >
-            <Image source={asset(tool.image)} style={StyleSheet.absoluteFill} resizeMode="cover" />
+            <MediaView media={tool.media} />
             <LinearGradient colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.9)']} locations={[0.4, 1]} style={StyleSheet.absoluteFill} />
             <View style={styles.toolBody}>
               <View style={styles.flex}>

@@ -33,6 +33,7 @@
     "expo-linking": "^57.0.11",
     "expo-secure-store": "^57.0.4",
     "expo-status-bar": "^57.0.1",
+    "expo-video": "~57.0.5",
     "expo-web-browser": "^57.0.3",
     "livekit-client": "^2.22.3",
     "react": "19.2.3",

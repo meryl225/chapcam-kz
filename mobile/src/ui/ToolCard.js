@@ -1,8 +1,9 @@
 import React from 'react'
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
-import { C, asset, shadow } from './catalog'
+import { C, shadow } from './catalog'
+import { MediaView } from './ToolMedia'
 
 export function ToolCard({ tool, width, onPress }) {
   return (
@@ -12,7 +13,7 @@ export function ToolCard({ tool, width, onPress }) {
       onPress={onPress}
       style={({ pressed }) => [styles.tool, { width, height: width * 1.02 }, pressed && styles.pressed]}
     >
-      <Image source={asset(tool.image)} style={StyleSheet.absoluteFill} />
+      <MediaView media={tool.media} />
       <LinearGradient colors={['rgba(30,20,90,0)', 'rgba(16,14,60,0.92)']} locations={[0.35, 1]} style={StyleSheet.absoluteFill} />
       {tool.live ? (
         <View style={styles.live}>

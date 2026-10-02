@@ -4,7 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
-import { BRAND, C, GAP, PAD, asset, shadow } from '../ui/catalog'
+import { BRAND, C, CREATOR_VIDEOS, GAP, PAD, TOOL_MEDIA, asset, shadow } from '../ui/catalog'
+import { MediaView } from '../ui/ToolMedia'
 import { ExploreScreen } from '../screens/ExploreScreen'
 import { LiveSwapScreen } from '../screens/LiveSwapScreen'
 import { CreateScreen } from '../screens/CreateScreen'
@@ -31,7 +32,7 @@ const HERO_SLIDES = [
     eyebrow: 'En direct',
     title: 'Change de visage\nen temps réel.',
     cta: 'Lancer Live Swap',
-    image: '/swap/face-transformed.png',
+    media: TOOL_MEDIA.live,
     tool: 'live',
   },
   {
@@ -39,7 +40,7 @@ const HERO_SLIDES = [
     eyebrow: 'Photos en Vidéo',
     title: 'Donne vie\nà tes photos.',
     cta: 'Explorer les outils',
-    image: '/swap/poster-photo-video.png',
+    media: TOOL_MEDIA['photo-video'],
     tool: 'explore',
   },
   {
@@ -47,7 +48,7 @@ const HERO_SLIDES = [
     eyebrow: 'Genjutsu',
     title: 'Portraits\nde cinéma.',
     cta: 'Explorer les outils',
-    image: '/dashboard/hero-avatar.jpg',
+    media: TOOL_MEDIA.genjutsu,
     tool: 'explore',
   },
 ]
@@ -61,18 +62,10 @@ const QUICK_ACTIONS = [
 ]
 
 const TRENDS = [
-  { key: 't1', title: 'Visage cinéma', tag: 'Live Swap', tool: 'live', image: '/images/hero/avatars/a1.png' },
-  { key: 't2', title: 'Portrait animé', tag: 'Genjutsu', tool: 'genjutsu', image: '/images/hero/avatars/a3.png' },
-  { key: 't3', title: 'Néon studio', tag: 'Motion', tool: 'motion', image: '/images/hero/avatars/a4.png' },
-  { key: 't4', title: 'Voix off pro', tag: 'Message Vocal', tool: 'voice', image: '/images/hero/avatars/a5.png' },
-  { key: 't5', title: 'Style éditorial', tag: 'Live Swap', tool: 'live', image: '/images/hero/avatars/a6.png' },
-]
-
-const FOR_YOU = [
-  { key: 'f1', title: 'Anime ta photo en vidéo', tag: 'Photos en Vidéo', tool: 'photo-video', video: true, image: '/swap/poster-photo-video.png' },
-  { key: 'f2', title: 'Avant / après', tag: 'Live Swap', tool: 'live', video: true, image: '/swap/face-original.png' },
-  { key: 'f3', title: 'Avatar en mouvement', tag: 'Genjutsu', tool: 'genjutsu', video: true, image: '/images/hero/avatars/a2.png' },
-  { key: 'f4', title: 'Anime ta photo en 3D', tag: 'Motion', tool: 'motion', video: true, image: '/swap/poster-motion.png' },
+  { key: 't1', title: 'Visage cinéma', tag: 'Live Swap', tool: 'live', media: TOOL_MEDIA.live },
+  { key: 't2', title: 'Portrait animé', tag: 'Genjutsu', tool: 'genjutsu', media: TOOL_MEDIA.genjutsu },
+  { key: 't3', title: 'Néon studio', tag: 'Motion', tool: 'motion', media: TOOL_MEDIA.motion },
+  { key: 't4', title: 'Voix off pro', tag: 'Message Vocal', tool: 'voice', media: TOOL_MEDIA.voice },
 ]
 
 const R_CARD = 22
@@ -189,8 +182,8 @@ function HomeScreen({ user, credits, loading, refreshing, onRefresh, onOpenTool,
 
       <SectionHeader title="Pour toi" subtitle="Des idées à recréer" onSeeAll={goExplore} />
       <View style={styles.feed}>
-        {FOR_YOU.map((item) => (
-          <FeedTile key={item.key} item={item} width={colW} onPress={() => onOpenTool(item.tool)} />
+        {CREATOR_VIDEOS.map((item) => (
+          <CreatorTile key={item.key} item={item} width={colW} />
         ))}
       </View>
     </ScrollView>
@@ -256,7 +249,7 @@ function HeroCarousel({ width, onOpenTool }) {
               onPress={() => onOpenTool(slide.tool)}
               style={({ pressed }) => [styles.hero, { height: cardH }, pressed && styles.pressed]}
             >
-              <Image source={asset(slide.image)} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <MediaView media={slide.media} />
               <LinearGradient
                 colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.35)', 'rgba(11,18,51,0.92)']}
                 locations={[0.35, 0.6, 1]}
@@ -361,7 +354,7 @@ function TrendCard({ item, onPress }) {
       onPress={onPress}
       style={({ pressed }) => [styles.trend, pressed && styles.pressed]}
     >
-      <Image source={asset(item.image)} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      <MediaView media={item.media} />
       <LinearGradient colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.88)']} locations={[0.5, 1]} style={StyleSheet.absoluteFill} />
       <View style={styles.trendTag}>
         {item.tool === 'live' ? <View style={styles.liveDot} /> : null}
@@ -375,22 +368,16 @@ function TrendCard({ item, onPress }) {
   )
 }
 
-function FeedTile({ item, width, onPress }) {
+function CreatorTile({ item, width }) {
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${item.title}, ${item.tag}`}
-      onPress={onPress}
-      style={({ pressed }) => [styles.tile, { width, height: Math.round(width * 1.28) }, pressed && styles.pressed]}
-    >
-      <Image source={asset(item.image)} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      <LinearGradient colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.85)']} locations={[0.45, 1]} style={StyleSheet.absoluteFill} />
-      {item.video ? <View style={styles.tilePlay}><Ionicons name="play" size={10} color={C.white} /></View> : null}
+    <View style={[styles.tile, { width, height: Math.round(width * 1.28) }]}>
+      <MediaView media={item.media} label={item.label} />
+      <LinearGradient colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.85)']} locations={[0.55, 1]} style={StyleSheet.absoluteFill} />
+      <View style={styles.tilePlay}><Ionicons name="play" size={10} color={C.white} /></View>
       <View style={styles.tileBody}>
-        <Text style={styles.tileTag}>{item.tag}</Text>
-        <Text style={styles.tileTitle} numberOfLines={2}>{item.title}</Text>
+        <Text style={styles.tileTag}>Vidéo créateur</Text>
       </View>
-    </Pressable>
+    </View>
   )
 }
 

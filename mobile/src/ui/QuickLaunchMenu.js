@@ -3,7 +3,8 @@ import { Animated, Easing, Pressable, StyleSheet, Text, useWindowDimensions, Vie
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { requireOptionalNativeModule } from 'expo-modules-core'
-import { BRAND, C } from './catalog'
+import { BRAND, C, TOOL_MEDIA } from './catalog'
+import { MediaView } from './ToolMedia'
 
 // expo-blur needs a native rebuild; fall back to a dim-only backdrop on older dev clients.
 const BlurView = requireOptionalNativeModule('ExpoBlur') ? require('expo-blur').BlurView : null
@@ -141,14 +142,9 @@ export function QuickLaunchMenu({ visible, bottom, onClose, onSelect }) {
             >
               <View style={[styles.glow, { shadowColor: tool.accent }]}>
                 <View style={[styles.iconOuter, { borderColor: `${tool.accent}66` }]}>
-                  <LinearGradient
-                    colors={[`${tool.accent}`, `${tool.accent}55`]}
-                    start={{ x: 0.2, y: 0 }}
-                    end={{ x: 0.8, y: 1 }}
-                    style={styles.icon}
-                  >
-                    <Ionicons name={tool.icon} size={23} color={C.white} />
-                  </LinearGradient>
+                  <View style={[styles.icon, styles.media]}>
+                    <MediaView media={TOOL_MEDIA[tool.key]} />
+                  </View>
                 </View>
                 {tool.live ? <View style={styles.liveDot} /> : null}
               </View>
@@ -183,6 +179,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   ring: { borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
+  media: { overflow: 'hidden', backgroundColor: '#1A1F45' },
   title: {
     position: 'absolute',
     left: 0,
