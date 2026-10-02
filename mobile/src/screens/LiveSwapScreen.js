@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, AppState, Image, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
+import { Alert, AppState, Image, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useCameraPermissions } from 'expo-camera'
@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker'
 import * as WebBrowser from 'expo-web-browser'
 import Constants from 'expo-constants'
 import { BRAND, C, PAD, shadow } from '../ui/catalog'
+import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { supabase } from '../lib/supabase'
 import { loadDecart, mediaDevices, newSessionId, RTCView } from '../lib/realtime'
 
@@ -269,7 +270,7 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
   const shownStream = live && remoteStream ? remoteStream : localStream
   const mirrored = shownStream === localStream && facing === 'front' && mirror
   const busy = phase === 'preparing' || phase === 'connecting' || phase === 'stopping'
-  const busyText = phase === 'preparing' ? 'Préparation de la session…' : phase === 'connecting' ? 'Connexion au moteur temps réel…' : 'Arrêt de la session…'
+  const busyText = phase === 'preparing' ? 'Préparation de la session���' : phase === 'connecting' ? 'Connexion au moteur temps réel…' : 'Arrêt de la session…'
 
   return (
     <View style={[styles.root, { paddingTop: topInset }]}>
@@ -291,7 +292,7 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
           {granted && shownStream ? (
             <RTCView streamURL={shownStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" mirror={mirrored} zOrder={0} />
           ) : granted ? (
-            <View style={styles.permission}><ActivityIndicator color={C.white} /></View>
+            <View style={styles.permission}><ChapCamLoader size="large" /></View>
           ) : (
             <PermissionState loading={!permission} canAskAgain={canAskAgain} onPress={askCamera} />
           )}
@@ -327,7 +328,7 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
 
           {busy ? (
             <View style={styles.overlay} accessibilityLiveRegion="polite">
-              <ActivityIndicator color={C.white} />
+              <ChapCamLoader size="large" />
               <Text style={styles.overlayText}>{busyText}</Text>
             </View>
           ) : null}
@@ -420,7 +421,7 @@ function PermissionState({ loading, canAskAgain, onPress }) {
   return (
     <View style={styles.permission}>
       {loading ? (
-        <ActivityIndicator color={C.white} />
+        <ChapCamLoader size="large" />
       ) : (
         <>
           <View style={styles.permissionIcon}><Ionicons name="camera-outline" size={26} color={C.white} /></View>

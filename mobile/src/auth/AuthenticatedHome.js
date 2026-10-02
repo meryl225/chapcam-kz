@@ -6,6 +6,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { supabase } from '../lib/supabase'
 import { BRAND, C, CREATOR_VIDEOS, GAP, PAD, TOOL_MEDIA, asset, shadow } from '../ui/catalog'
 import { MediaView } from '../ui/ToolMedia'
+import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { ExploreScreen } from '../screens/ExploreScreen'
 import { LiveSwapScreen } from '../screens/LiveSwapScreen'
 import { CreateScreen } from '../screens/CreateScreen'
@@ -206,6 +207,8 @@ function Header({ user, credits, loading, onOpenProfile }) {
             </LinearGradient>
             <Text style={styles.creditText}>{credits}</Text>
           </View>
+        ) : loading ? (
+          <ChapCamLoader size="small" />
         ) : null}
         <Pressable accessibilityRole="button" accessibilityLabel="Mon profil" hitSlop={8} onPress={onOpenProfile}>
           <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
@@ -391,9 +394,11 @@ function PendingScreen({ tab, user, credits, plan, loading }) {
       {tab === 'profile' ? (
         <View style={styles.profileCard}>
           <Text style={styles.profileEmail}>{user.email}</Text>
-          <Text style={styles.profileMeta}>
-            {loading ? 'Chargement…' : `${planName || 'Aucun forfait actif'} · ${credits} crédits`}
-          </Text>
+          {loading ? (
+            <ChapCamLoader size="small" style={{ alignSelf: 'flex-start' }} />
+          ) : (
+            <Text style={styles.profileMeta}>{`${planName || 'Aucun forfait actif'} · ${credits} crédits`}</Text>
+          )}
           <Pressable accessibilityRole="button" onPress={() => supabase.auth.signOut()} style={styles.signOut}>
             <Ionicons name="log-out-outline" size={18} color="#E5484D" />
             <Text style={styles.signOutText}>Se déconnecter</Text>

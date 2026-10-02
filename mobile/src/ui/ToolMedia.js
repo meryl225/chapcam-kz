@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Dimensions, Image, StyleSheet, View } from 'react-native'
 import { requireOptionalNativeModule } from 'expo-modules-core'
 import { asset } from './catalog'
+import { ChapCamLoader } from './ChapCamLoader'
 
 // expo-video needs a native rebuild; older dev clients fall back to the production poster.
 const video = requireOptionalNativeModule('ExpoVideo') ? require('expo-video') : null
@@ -57,8 +58,21 @@ function LoopingVideo({ src, active, label }) {
 }
 
 function Still({ src, label }) {
+  const [ready, setReady] = useState(false)
   if (!src) return <View style={[StyleSheet.absoluteFill, styles.empty]} />
-  return <Image source={asset(src)} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel={label} />
+  return (
+    <>
+      <View style={[StyleSheet.absoluteFill, styles.empty]} />
+      <Image
+        source={asset(src)}
+        style={StyleSheet.absoluteFill}
+        resizeMode="cover"
+        accessibilityLabel={label}
+        onLoadEnd={() => setReady(true)}
+      />
+      <ChapCamLoader fill size="small" visible={!ready} />
+    </>
+  )
 }
 
 function LazyVideo({ media, style, label }) {

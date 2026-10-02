@@ -1,6 +1,5 @@
 import React, { useRef, useState } from 'react'
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -177,7 +176,7 @@ function AuthContent() {
             >
               <LinearGradient colors={BRAND} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={styles.primary}>
                 {loading ? (
-                  <ActivityIndicator color={C.white} />
+                  <ChapCamLoader size="small" tone="light" />
                 ) : (
                   <Text style={styles.primaryText}>{isSignIn ? 'Se connecter' : 'Créer le compte'}</Text>
                 )}

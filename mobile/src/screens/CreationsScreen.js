@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActionSheetIOS,
-  ActivityIndicator,
   Alert,
   FlatList,
   Image,
@@ -24,6 +23,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Constants from 'expo-constants'
 import { supabase } from '../lib/supabase'
 import { BRAND, C, GAP, PAD, shadow } from '../ui/catalog'
+import { ChapCamLoader } from '../ui/ChapCamLoader'
 
 // Native modules are optional so an older dev build without them still runs:
 // the affected action falls back instead of crashing.
@@ -295,10 +295,8 @@ export function CreationsScreen({ onCreate }) {
     return (
       <View style={styles.flex}>
         {header}
-        <View style={[styles.row, styles.skeletonRow]}>
-          {[0, 1, 2, 3].map((k) => (
-            <View key={k} style={[styles.skeleton, { width: cardW, height: cardW * 1.25 + 56 }]} />
-          ))}
+        <View style={[styles.flex, styles.center]}>
+          <ChapCamLoader size="large" />
         </View>
       </View>
     )
@@ -427,7 +425,7 @@ const CreationCard = React.memo(function CreationCard({ item, width, busy, onPre
         </View>
         {item.status === 'processing' ? (
           <View style={[styles.overlay, styles.center]}>
-            <ActivityIndicator color={C.white} size="small" />
+            <ChapCamLoader size="small" tone="light" />
             <Text style={styles.overlayText}>En cours</Text>
           </View>
         ) : item.status === 'failed' ? (
@@ -442,7 +440,7 @@ const CreationCard = React.memo(function CreationCard({ item, width, busy, onPre
         ) : null}
         {busy ? (
           <View style={[styles.overlay, styles.center]}>
-            <ActivityIndicator color={C.white} />
+            <ChapCamLoader tone="light" />
           </View>
         ) : null}
       </View>
@@ -556,7 +554,7 @@ function ViewerAction({ icon, label, onPress, loading, disabled, danger }) {
   return (
     <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled, busy: loading }} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.viewerAction, (pressed || (disabled && !loading)) && styles.dim]}>
       <View style={[styles.viewerActionIcon, danger && styles.viewerActionDanger]}>
-        {loading ? <ActivityIndicator color={C.white} size="small" /> : <Ionicons name={icon} size={22} color={C.white} />}
+        {loading ? <ChapCamLoader size="small" tone="light" /> : <Ionicons name={icon} size={22} color={C.white} />}
       </View>
       <Text style={styles.viewerActionText}>{label}</Text>
     </Pressable>
@@ -628,8 +626,6 @@ const styles = StyleSheet.create({
   activeFilter: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingHorizontal: 12, height: 30, borderRadius: 15, backgroundColor: '#E9EFFF' },
   activeFilterText: { color: C.blue, fontSize: 13, fontWeight: '800' },
   row: { paddingHorizontal: PAD, gap: GAP, marginBottom: GAP },
-  skeletonRow: { flexDirection: 'row', flexWrap: 'wrap' },
-  skeleton: { borderRadius: 20, backgroundColor: '#ECF0FA' },
   card: { backgroundColor: C.white, borderRadius: 20, borderWidth: 1, borderColor: C.line, overflow: 'hidden', ...shadow, shadowOpacity: 0.07 },
   thumb: { backgroundColor: '#E9EFFF', overflow: 'hidden' },
   thumbShade: { position: 'absolute', left: 0, right: 0, bottom: 0, height: '40%' },

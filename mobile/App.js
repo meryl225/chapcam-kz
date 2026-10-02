@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { ActivityIndicator, SafeAreaView, StyleSheet, Text, View } from 'react-native'
+import { SafeAreaView, StyleSheet, View } from 'react-native'
+import { ChapCamLoader } from './src/ui/ChapCamLoader'
 import { StatusBar } from 'expo-status-bar'
 import { supabase } from './src/lib/supabase'
 import { AuthScreen } from './src/auth/AuthScreen'
@@ -30,7 +31,7 @@ export default function App() {
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar style="light" />
-      {loading ? <View style={styles.loading}><ActivityIndicator color="#00e887" size="large" /><Text style={styles.loadingText}>Connexion à ChapCam…</Text></View> : session?.user ? <AuthenticatedHome user={session.user} /> : <AuthScreen />}
+      {loading ? <View style={styles.loading}><ChapCamLoader size="large" /></View> : session?.user ? <AuthenticatedHome user={session.user} /> : <AuthScreen />}
     </SafeAreaView>
   )
 }
@@ -38,5 +39,4 @@ export default function App() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#070c18' },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#070c18' },
-  loadingText: { color: '#aab7cd', marginTop: 14, fontSize: 15 },
 })

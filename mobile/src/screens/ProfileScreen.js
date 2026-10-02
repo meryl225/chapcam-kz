@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
 import { supabase } from '../lib/supabase'
 import { BRAND, C, PAD, shadow } from '../ui/catalog'
+import { ChapCamLoader } from '../ui/ChapCamLoader'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const DANGER = '#E5484D'
@@ -126,7 +127,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           {metaName ? <Text style={styles.name} numberOfLines={1}>{metaName}</Text> : null}
           <Text style={metaName ? styles.emailSub : styles.name} numberOfLines={1}>{email}</Text>
           {loading ? (
-            <ActivityIndicator size="small" color={C.blue} style={styles.heroLoader} />
+            <ChapCamLoader size="small" style={styles.heroLoader} />
           ) : (
             <View style={styles.heroChips}>
               {planLabel ? (
@@ -158,7 +159,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             <Text style={styles.balanceTitle}>Jetons</Text>
           </View>
           {jetons.loading ? (
-            <ActivityIndicator size="small" color={C.blue} style={styles.balanceLoader} />
+            <ChapCamLoader size="small" style={styles.balanceLoader} />
           ) : (
             <Text style={styles.balanceValue}>{jetons.balance !== null ? jetons.balance.toLocaleString('fr-FR') : '—'}</Text>
           )}
@@ -179,7 +180,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             <Text style={styles.balanceTitle}>Live Swap</Text>
           </View>
           {loading ? (
-            <ActivityIndicator size="small" color={C.blue} style={styles.balanceLoader} />
+            <ChapCamLoader size="small" style={styles.balanceLoader} />
           ) : (
             <Text style={styles.balanceValue}>{livePoints !== null ? fmtMinutes(livePoints) : '—'}</Text>
           )}
@@ -197,7 +198,11 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </LinearGradient>
           <View style={styles.flex}>
             <Text style={styles.subEyebrow}>Forfait actuel</Text>
-            <Text style={styles.subPlan} numberOfLines={1}>{loading ? 'Chargement…' : planLabel || 'Aucun forfait'}</Text>
+            {loading ? (
+              <ChapCamLoader size="small" tone="light" style={styles.balanceLoader} />
+            ) : (
+              <Text style={styles.subPlan} numberOfLines={1}>{planLabel || 'Aucun forfait'}</Text>
+            )}
           </View>
           {!loading ? (
             <View style={[styles.subBadge, isActive ? styles.subBadgeOn : styles.subBadgeOff]}>
