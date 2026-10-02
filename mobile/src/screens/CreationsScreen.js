@@ -72,19 +72,17 @@ async function logApiResponse(label, url, res) {
 }
 
 async function fetchCreations() {
-  const { data: sessionData } = await supabase.auth.getSession()
-  const initialToken = sessionData?.session?.access_token
-  const userId = sessionData?.session?.user?.id ?? null
   const url = `${API_URL}/api/mobile/creations`
-  console.log('[v0] iOS API request', { endpoint: url, accessTokenExists: Boolean(initialToken), userId })
-  if (!initialToken) throw new Error('auth')
-  let res = await fetch(url, { headers: { Authorization: `Bearer ${initialToken}` } })
+  const session = await supabase.auth.getSession()
+  const initialToken = session.data?.session?.access_token
+  console.log('[v0] iOS API request', { endpoint: url, accessTokenExists: Boolean(initialToken), userId: session.data?.session?.user?.id ?? null })
+  let res = await fetch(url, { headers: await authHeader() })
   await logApiResponse('creations initial', url, res)
   if (res.status === 401) {
-    // The stored access token may have expired while the app was backgrounded.
+    // Preserve the previously working Supabase refresh flow.
     const refreshed = await supabase.auth.refreshSession()
     const token = refreshed.data?.session?.access_token
-    console.log('[v0] iOS Supabase refreshSession', { succeeds: Boolean(token), userId: refreshed.data?.session?.user?.id ?? userId })
+    console.log('[v0] iOS Supabase refreshSession', { succeeds: Boolean(token), userId: refreshed.data?.session?.user?.id ?? session.data?.session?.user?.id ?? null })
     if (!token) throw new Error('auth')
     res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
     await logApiResponse('creations after refresh', url, res)
