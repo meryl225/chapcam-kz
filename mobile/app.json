@@ -25,6 +25,14 @@
     "plugins": [
       "expo-web-browser",
       "expo-video",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "ChapCam accède à tes photos pour enregistrer tes créations.",
+          "savePhotosPermission": "ChapCam enregistre tes créations dans ta galerie Photos.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
       "@livekit/react-native-expo-plugin",
       [
         "@config-plugins/react-native-webrtc",

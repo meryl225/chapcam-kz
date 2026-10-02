@@ -141,7 +141,7 @@ function HomeShell({ user }) {
       ) : tab === 'create' ? (
         <CreateScreen onOpenTool={onOpenTool} />
       ) : tab === 'creations' ? (
-        <CreationsScreen onCreate={() => setTab('create')} />
+        <CreationsScreen onCreate={() => setQuickOpen(true)} />
       ) : tab === 'profile' ? (
         <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} />
       ) : (
