@@ -372,12 +372,7 @@ function TrendCard({ item, onPress }) {
 function CreatorTile({ item, width }) {
   return (
     <View style={[styles.tile, { width, height: Math.round(width * 1.28) }]}>
-      <MediaView media={item.media} label={item.label} />
-      <LinearGradient colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.85)']} locations={[0.55, 1]} style={StyleSheet.absoluteFill} />
-      <View style={styles.tilePlay}><Ionicons name="play" size={10} color={C.white} /></View>
-      <View style={styles.tileBody}>
-        <Text style={styles.tileTag}>Vidéo créateur</Text>
-      </View>
+      <MediaView media={item.media} />
     </View>
   )
 }

@@ -35,12 +35,22 @@ export const TOOL_MEDIA = {
   verify: { type: 'image', src: '/swap/poster-chapverify.png' },
 }
 
-// Mirrors components/creator-video-strip.tsx rendered on the chapcam.com homepage.
-export const CREATOR_VIDEOS = [1466, 1469, 1471, 1472, 1473, 1475].map((id, i) => ({
-  key: `creator-${id}`,
-  label: `Vidéo créateur ChapCam ${i + 1}`,
-  media: { type: 'video', src: `/videos/creator-${id}.mp4` },
-}))
+const CREATOR_1491 = require('../../assets/creator-1491.mp4')
+const CREATOR_1466 = require('../../assets/creator-1466.mp4')
+const CREATOR_1469 = require('../../assets/creator-1469.mp4')
+const CREATOR_1475 = require('../../assets/creator-1475.mp4')
+const CREATOR_1474 = require('../../assets/creator-1474.mp4')
+const CREATOR_1472 = require('../../assets/creator-1472.mp4')
+
+// Only the six videos attached for the Home "Pour toi" section.
+export const CREATOR_VIDEOS = [
+  ['creator-1491', CREATOR_1491],
+  ['creator-1466', CREATOR_1466],
+  ['creator-1469', CREATOR_1469],
+  ['creator-1475', CREATOR_1475],
+  ['creator-1474', CREATOR_1474],
+  ['creator-1472', CREATOR_1472],
+].map(([key, src]) => ({ key, media: { type: 'video', src } }))
 
 export const TOOLS = [
   { key: 'live', title: 'Live Swap', copy: 'Change de visage en temps réel', media: TOOL_MEDIA.live, live: true, categories: ['video', 'face'] },

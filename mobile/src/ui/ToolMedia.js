@@ -37,7 +37,8 @@ function useOnScreen(ref) {
 }
 
 function LoopingVideo({ src, active, label }) {
-  const player = video.useVideoPlayer(asset(src).uri, (p) => {
+  const source = typeof src === 'string' ? asset(src).uri : src
+  const player = video.useVideoPlayer(source, (p) => {
     p.loop = true
     p.muted = true
   })
