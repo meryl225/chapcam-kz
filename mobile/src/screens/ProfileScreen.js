@@ -53,20 +53,28 @@ const open = async (url) => {
   }
 }
 
+async function logAccountSummaryResponse(label, url, res) {
+  let body = null
+  try { body = await res.clone().json() } catch { body = { nonJson: true } }
+  console.log('[v0] iOS API response', { label, url, status: res.status, error: body?.error ?? null, body })
+}
+
 async function fetchAccountSummary() {
   let { data } = await supabase.auth.getSession()
   let token = data?.session?.access_token
+  const url = `${WEB_URL}/api/mobile/account-summary`
+  const userId = data?.session?.user?.id ?? null
+  console.log('[v0] iOS API request', { endpoint: url, accessTokenExists: Boolean(token), userId })
   if (!token) return null
-  let res = await fetch(`${WEB_URL}/api/mobile/account-summary`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
+  let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+  await logAccountSummaryResponse('account-summary initial', url, res)
   if (res.status === 401) {
     const refreshed = await supabase.auth.refreshSession()
     token = refreshed.data?.session?.access_token
+    console.log('[v0] iOS Supabase refreshSession', { succeeds: Boolean(token), userId: refreshed.data?.session?.user?.id ?? userId })
     if (!token) throw new Error('Chargement impossible')
-    res = await fetch(`${WEB_URL}/api/mobile/account-summary`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    await logAccountSummaryResponse('account-summary after refresh', url, res)
   }
   if (!res.ok) throw new Error('Chargement impossible')
   return res.json()
