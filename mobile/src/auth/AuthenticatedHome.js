@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { BRAND, C, CREATOR_VIDEOS, GAP, PAD, TOOL_MEDIA, asset, shadow } from '../ui/catalog'
 import { MediaView } from '../ui/ToolMedia'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
+import { ChapCamBrand } from '../ui/ChapCamBrand'
 import { ExploreScreen } from '../screens/ExploreScreen'
 import { LiveSwapScreen } from '../screens/LiveSwapScreen'
 import { CreateScreen } from '../screens/CreateScreen'
@@ -195,10 +196,7 @@ function Header({ user, credits, loading, onOpenProfile }) {
   const initial = (user?.email?.[0] || 'C').toUpperCase()
   return (
     <View style={styles.header}>
-      <View style={styles.brandRow}>
-        <Image source={asset('/chapcam-mark.png')} style={styles.mark} accessibilityIgnoresInvertColors />
-        <Text style={styles.brand}>ChapCam</Text>
-      </View>
+      <ChapCamBrand />
       <View style={styles.headerActions}>
         {!loading && credits !== null ? (
           <View style={styles.creditPill} accessible accessibilityLabel={`${credits} crédits disponibles`}>
@@ -460,10 +458,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
   content: { paddingBottom: 120 },
 
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD, height: 50 },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  mark: { width: 28, height: 28, borderRadius: 8 },
-  brand: { color: C.ink, fontSize: 19, fontWeight: '800', letterSpacing: -0.5 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD, height: 64 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   creditPill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingLeft: 4, paddingRight: 11, borderRadius: 16, backgroundColor: C.white, borderWidth: 1, borderColor: C.line },
   creditIcon: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

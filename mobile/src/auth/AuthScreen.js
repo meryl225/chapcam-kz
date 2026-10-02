@@ -14,6 +14,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
 import { BRAND, C, shadow } from '../ui/catalog'
+import { ChapCamBrand } from '../ui/ChapCamBrand'
 
 export function AuthScreen() {
   return (
@@ -79,12 +80,7 @@ function AuthContent() {
             { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 24 },
           ]}
         >
-          <View style={styles.brandRow}>
-            <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.logo}>
-              <Ionicons name="infinite" size={26} color={C.white} />
-            </LinearGradient>
-            <Text style={styles.wordmark}>ChapCam</Text>
-          </View>
+          <ChapCamBrand />
 
           <View style={styles.header}>
             <Text style={styles.title} accessibilityRole="header">
