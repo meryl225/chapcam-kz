@@ -10,6 +10,7 @@ import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { ChapCamBrand } from '../ui/ChapCamBrand'
 import { ExploreScreen } from '../screens/ExploreScreen'
 import { LiveSwapScreen } from '../screens/LiveSwapScreen'
+import { PhotoVideoScreen } from '../screens/PhotoVideoScreen'
 import { CreateScreen } from '../screens/CreateScreen'
 import { CreationsScreen } from '../screens/CreationsScreen'
 import { ProfileScreen } from '../screens/ProfileScreen'
@@ -109,13 +110,13 @@ function HomeShell({ user }) {
   const onRefresh = () => { setRefreshing(true); loadAccount() }
 
   const onOpenTool = (key) => {
-    if (key === 'live') setOpenTool('live')
+    if (key === 'live' || key === 'photo-video') setOpenTool(key)
     else setTab('explore')
   }
 
   const onQuickLaunch = (key) => {
-    if (key === 'live') {
-      setOpenTool('live')
+    if (key === 'live' || key === 'photo-video') {
+      setOpenTool(key)
       return
     }
     const route = TOOL_ROUTES[key]
@@ -124,6 +125,9 @@ function HomeShell({ user }) {
 
   if (openTool === 'live') {
     return <LiveSwapScreen onBack={() => setOpenTool(null)} topInset={insets.top} bottomInset={insets.bottom} subscription={loading ? undefined : subscription} />
+  }
+  if (openTool === 'photo-video') {
+    return <PhotoVideoScreen onBack={() => setOpenTool(null)} />
   }
 
   return (
