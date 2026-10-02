@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
         .from('subscriptions')
         .select('plan,status,points,points_remaining,end_date,is_active')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
+        .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
       getJetonsBalance(user.id),
