@@ -3,16 +3,18 @@ import { ActivityIndicator, Alert, Image, Linking, Pressable, RefreshControl, Sc
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
 import { apiJson, friendlyError } from '../lib/api'
 import { AccountSummaryError, accountSummaryMessage, fetchAccountSummary } from '../lib/accountSummary'
-import { BRAND, C, PAD, shadow } from '../ui/catalog'
+import { BRAND, C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const DANGER = '#E5484D'
 // Exact copy of chapcam.com public/images/jetons-logo.png, bundled so it never depends on the network.
 const JETONS_LOGO = require('../../assets/jetons-logo.png')
+const CHAPCAM_MARK = require('../../assets/chapcam-mark.png')
 
 const LINKS = {
   plans: `${WEB_URL}/dashboard/plans`,
@@ -33,12 +35,13 @@ const PLAN_LABELS = {
 }
 const POINTS_PER_SECOND = 2
 
-const fmtMinutes = (points, pointsPerSecond = POINTS_PER_SECOND) => {
+const fmtClock = (points, pointsPerSecond = POINTS_PER_SECOND) => {
   const totalSeconds = Math.floor(points / pointsPerSecond)
   const m = Math.floor(totalSeconds / 60)
   const s = totalSeconds % 60
-  return `${m}:${s.toString().padStart(2, '0')} min`
+  return `${m}:${s.toString().padStart(2, '0')}`
 }
+const fmtMinutes = (points, pointsPerSecond = POINTS_PER_SECOND) => `${fmtClock(points, pointsPerSecond)} min`
 
 const formatDate = (value) => {
   if (!value) return null
@@ -47,11 +50,26 @@ const formatDate = (value) => {
   return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
+const formatMemberSince = (value) => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+}
+
 const open = async (url) => {
   try {
     await Linking.openURL(url)
   } catch {
     Alert.alert('Lien indisponible', "Impossible d'ouvrir ce lien sur cet appareil.")
+  }
+}
+
+const openNotificationSettings = async () => {
+  try {
+    await Linking.openSettings()
+  } catch {
+    Alert.alert('Réglages indisponibles', 'Ouvre Réglages > ChapCam > Notifications sur ton iPhone.')
   }
 }
 
@@ -77,6 +95,7 @@ function useAccountSummary() {
 
 export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh }) {
   const account = useAccountSummary()
+  const insets = useSafeAreaInsets()
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -93,6 +112,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const initial = ((metaName || email).trim().charAt(0) || 'C').toUpperCase()
   const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null
   const showPhoto = Boolean(avatarUrl) && !avatarFailed
+  const memberSince = formatMemberSince(user?.created_at)
 
   const planKey = accountSubscription?.plan || null
   const expiration = accountSubscription?.expires_at || accountSubscription?.end_date || null
@@ -154,50 +174,69 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   return (
     <ScrollView
       style={styles.flex}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: 120 + insets.bottom }]}
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={C.blue} />}
     >
-      <Text style={styles.title} accessibilityRole="header">Mon profil</Text>
+      <View style={styles.header}>
+        <View style={styles.flex}>
+          <Text style={styles.title} accessibilityRole="header">Mon profil</Text>
+          <Text style={styles.subtitle}>Gérez votre compte et vos avantages</Text>
+        </View>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Paramètres du compte"
+          onPress={() => open(LINKS.settings)}
+          hitSlop={8}
+          style={({ pressed }) => [styles.settingsBtn, pressed && styles.pressed]}
+        >
+          <Ionicons name="settings-outline" size={22} color={C.ink} />
+        </Pressable>
+      </View>
 
-      <View style={styles.hero}>
-        <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.heroBand} />
-        <View style={styles.heroBody}>
-          <View style={styles.avatarRing}>
-            <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-              <Text style={styles.avatarText}>{initial}</Text>
-              {showPhoto ? (
-                <Image
-                  source={{ uri: avatarUrl }}
-                  style={styles.avatarPhoto}
-                  onError={() => setAvatarFailed(true)}
-                  accessibilityLabel="Photo de profil"
-                />
-              ) : null}
-            </LinearGradient>
-          </View>
-          {metaName ? <Text style={styles.name} numberOfLines={1}>{metaName}</Text> : null}
-          <Text style={metaName ? styles.emailSub : styles.name} numberOfLines={1}>{email}</Text>
+      <LinearGradient colors={[NAVY, NAVY_2, '#2A2A8C']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.card, styles.hero]}>
+        <View style={styles.heroClip} pointerEvents="none">
+          <Image source={CHAPCAM_MARK} style={styles.heroMark} resizeMode="contain" accessibilityIgnoresInvertColors />
+        </View>
+        <View style={styles.avatarRing}>
+          <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
+            <Text style={styles.avatarText}>{initial}</Text>
+            {showPhoto ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                style={styles.avatarPhoto}
+                onError={() => setAvatarFailed(true)}
+                accessibilityLabel="Photo de profil"
+              />
+            ) : null}
+          </LinearGradient>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Modifier le profil"
+            onPress={() => open(LINKS.settings)}
+            hitSlop={6}
+            style={styles.avatarEdit}
+          >
+            <Ionicons name="pencil" size={12} color={C.white} />
+          </Pressable>
+        </View>
+        <View style={styles.heroInfo}>
+          {metaName ? <Text style={styles.heroName} numberOfLines={1}>{metaName}</Text> : null}
+          <Text style={metaName ? styles.heroEmailSub : styles.heroName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{email}</Text>
           {subscriptionLoading ? (
-            <ChapCamLoader size="small" style={styles.heroLoader} />
+            <ChapCamLoader size="small" tone="light" style={styles.heroLoader} />
           ) : (
             <View style={styles.heroChips}>
-              {planLabel ? (
-                <View style={styles.planChip}>
-                  <Ionicons name="diamond" size={12} color={C.violet} />
-                  <Text style={styles.planChipText}>{planLabel}</Text>
-                </View>
-              ) : null}
               <View style={[styles.status, isActive ? styles.statusOn : styles.statusOff]}>
-                <View style={[styles.statusDot, { backgroundColor: isActive ? '#1F9D5C' : '#9AA3BA' }]} />
-                <Text style={[styles.statusText, { color: isActive ? '#157A47' : '#5D6785' }]}>{isActive ? 'Actif' : 'Inactif'}</Text>
+                <View style={[styles.statusDot, { backgroundColor: isActive ? '#34D399' : '#AEB8DA' }]} />
+                <Text style={styles.statusText}>{isActive ? 'Actif' : 'Inactif'}</Text>
               </View>
             </View>
           )}
+          {memberSince ? <Text style={styles.memberSince}>Membre depuis {memberSince}</Text> : null}
         </View>
-      </View>
+      </LinearGradient>
 
-      <Text style={styles.groupLabel}>Mes soldes</Text>
       {jetonsError ? (
         <View style={styles.summaryError}>
           <Text style={styles.summaryErrorText}>{accountSummaryMessage(jetonsError)}</Text>
@@ -214,104 +253,158 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           )}
         </View>
       ) : null}
+
       <View style={styles.balances}>
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel={`Jetons, ${jetonsBalance ?? 'indisponible'}`}
-          accessibilityHint="Ouvre la page Jetons ChapCam"
-          onPress={() => open(LINKS.jetons)}
-          style={({ pressed }) => [styles.balance, pressed && styles.pressed]}
-        >
+        <LinearGradient colors={[NAVY, NAVY_2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.card, styles.balance]}>
           <View style={styles.balanceHead}>
-            <View style={styles.jetonsLogo}>
+            <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceIcon}>
               <Image source={JETONS_LOGO} style={styles.jetonsLogoImage} accessibilityIgnoresInvertColors />
-            </View>
-            <Text style={styles.balanceTitle}>Jetons</Text>
+            </LinearGradient>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="À propos des Jetons"
+              hitSlop={8}
+              onPress={() => Alert.alert('Jetons', 'Les Jetons sont utilisés par tous les outils ChapCam, sauf Live Swap.')}
+            >
+              <Ionicons name="information-circle-outline" size={20} color={MUTED_ON_DARK} />
+            </Pressable>
           </View>
+          <Text style={styles.balanceTitle}>Jetons</Text>
           {jetonsLoading ? (
-            <ChapCamLoader size="small" style={styles.balanceLoader} />
+            <ChapCamLoader size="small" tone="light" style={styles.balanceLoader} />
           ) : jetonsError || jetonsBalance === null ? (
-            <Text style={styles.balanceError}>Indisponible</Text>
+            <Text style={styles.balanceUnavailable}>Indisponible</Text>
           ) : (
-            <Text style={styles.balanceValue}>{jetonsBalance.toLocaleString('fr-FR')}</Text>
+            <Text style={styles.balanceValue} numberOfLines={1} adjustsFontSizeToFit>{jetonsBalance.toLocaleString('fr-FR')}</Text>
           )}
           <Text style={styles.balanceHint}>Pour tous les outils ChapCam, sauf Live Swap.</Text>
-        </Pressable>
-
-        <Pressable
-          accessibilityRole="link"
-          accessibilityLabel={`Live Swap, ${livePoints !== null ? fmtMinutes(livePoints, livePointsPerSecond) : 'indisponible'}`}
-          accessibilityHint="Ouvre les forfaits ChapCam"
-          onPress={() => open(LINKS.plans)}
-          style={({ pressed }) => [styles.balance, pressed && styles.pressed]}
-        >
-          <View style={styles.balanceHead}>
-            <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.liveIcon}>
-              <Ionicons name="videocam" size={14} color={C.white} />
+          <View style={styles.flexFill} />
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={`Acheter des jetons. Solde actuel : ${jetonsBalance ?? 'indisponible'}`}
+            onPress={() => open(LINKS.jetons)}
+            style={({ pressed }) => [pressed && styles.pressed]}
+          >
+            <LinearGradient colors={[C.blue, '#4B5BFF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.balanceCta}>
+              <Text style={styles.balanceCtaText} numberOfLines={1}>Acheter des jetons</Text>
+              <View style={styles.balanceCtaPlus}>
+                <Ionicons name="add" size={16} color={C.blue} />
+              </View>
             </LinearGradient>
-            <Text style={styles.balanceTitle}>Live Swap</Text>
+          </Pressable>
+        </LinearGradient>
+
+        <LinearGradient colors={[NAVY, NAVY_2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.card, styles.balance]}>
+          <View style={styles.balanceHead}>
+            <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.balanceIcon}>
+              <Ionicons name="videocam" size={20} color={C.white} />
+            </LinearGradient>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="À propos de Live Swap"
+              hitSlop={8}
+              onPress={() => Alert.alert('Live Swap', 'Les minutes Live Swap sont incluses dans ton forfait Live Swap et sont distinctes des Jetons.')}
+            >
+              <Ionicons name="information-circle-outline" size={20} color={MUTED_ON_DARK} />
+            </Pressable>
           </View>
+          <Text style={styles.balanceTitle}>Live Swap</Text>
           {subscriptionLoading ? (
-            <ChapCamLoader size="small" style={styles.balanceLoader} />
+            <ChapCamLoader size="small" tone="light" style={styles.balanceLoader} />
           ) : livePoints !== null ? (
-            <Text style={styles.balanceValue}>{fmtMinutes(livePoints, livePointsPerSecond)}</Text>
+            <View>
+              <Text style={styles.balanceValue} numberOfLines={1} adjustsFontSizeToFit accessibilityLabel={fmtMinutes(livePoints, livePointsPerSecond)}>
+                {fmtClock(livePoints, livePointsPerSecond)}
+              </Text>
+              <Text style={styles.balanceUnit}>minutes restantes</Text>
+            </View>
           ) : (
             <Text style={styles.balanceEmpty}>Aucun forfait</Text>
           )}
           <Text style={styles.balanceHint}>
-            {livePoints !== null ? `${livePoints.toLocaleString('fr-FR')} points · forfait actif` : 'Aucun forfait Live Swap'}
+            {livePoints !== null ? 'Inclus dans votre forfait Live Swap.' : 'Aucun forfait Live Swap'}
           </Text>
-        </Pressable>
+          <View style={styles.flexFill} />
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel="Voir les options Live Swap"
+            onPress={() => open(LINKS.plans)}
+            style={({ pressed }) => [styles.balanceCtaLight, pressed && styles.pressed]}
+          >
+            <Text style={styles.balanceCtaLightText} numberOfLines={1}>Voir les options</Text>
+            <Ionicons name="arrow-forward" size={16} color={C.violet} />
+          </Pressable>
+        </LinearGradient>
       </View>
 
-      <Text style={styles.groupLabel}>Abonnement</Text>
-      <LinearGradient colors={['#0E1530', '#1B2350']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.sub}>
-        <View style={styles.subTop}>
+      <LinearGradient colors={[NAVY, NAVY_2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.card, styles.sub]}>
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`Mon abonnement : ${planLabel || 'Aucun forfait'}`}
+          onPress={() => open(LINKS.plans)}
+          style={styles.subTop}
+        >
           <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.subIcon}>
-            <Ionicons name="diamond" size={18} color={C.white} />
+            <Ionicons name="diamond" size={30} color={C.white} />
           </LinearGradient>
           <View style={styles.flex}>
-            <Text style={styles.subEyebrow}>Forfait actuel</Text>
+            <Text style={styles.subEyebrow}>Mon abonnement</Text>
             {subscriptionLoading ? (
               <ChapCamLoader size="small" tone="light" style={styles.balanceLoader} />
             ) : (
-              <Text style={styles.subPlan} numberOfLines={1}>{planLabel || 'Aucun forfait'}</Text>
+              <>
+                <Text style={styles.subPlan} numberOfLines={1}>{planLabel || 'Aucun forfait'}</Text>
+                <Text style={styles.subDesc}>
+                  {isActive
+                    ? endDate
+                      ? `Valable jusqu'au ${endDate}`
+                      : 'Votre forfait est actif.'
+                    : 'Profitez de tous les avantages ChapCam avec un forfait adapté à vos besoins.'}
+                </Text>
+              </>
             )}
           </View>
-          {!subscriptionLoading ? (
-            <View style={[styles.subBadge, isActive ? styles.subBadgeOn : styles.subBadgeOff]}>
-              <Text style={styles.subBadgeText}>{isActive ? 'Actif' : 'Aucun forfait'}</Text>
-            </View>
-          ) : null}
-        </View>
-        {endDate ? (
-          <View style={styles.subDate}>
-            <Ionicons name="calendar-outline" size={14} color="#AEB8DA" />
-            <Text style={styles.subDateText}>{expired ? `Expiré le ${endDate}` : `Valable jusqu'au ${endDate}`}</Text>
+          <Ionicons name="chevron-forward" size={20} color={C.white} />
+        </Pressable>
+
+        {!subscriptionLoading && !isActive ? (
+          <View style={styles.perks}>
+            <Perk icon="flash" label="Plus de jetons" />
+            <Perk icon="infinite" label="Live Swap inclus" />
+            <Perk text="HD" label="Qualité maximale" />
+            <Perk icon="ribbon" label="Accès prioritaire" />
           </View>
         ) : null}
-        <Pressable
-          accessibilityRole="link"
-          accessibilityHint="Ouvre la page des forfaits ChapCam"
-          onPress={() => open(LINKS.plans)}
-          style={({ pressed }) => [styles.subCta, pressed && styles.pressed]}
-        >
-          <Text style={styles.subCtaText}>Gérer mon abonnement</Text>
-          <Ionicons name="arrow-forward" size={16} color={C.ink} />
-        </Pressable>
+
+        {!subscriptionLoading ? (
+          <Pressable
+            accessibilityRole="link"
+            accessibilityHint="Ouvre la page des forfaits ChapCam"
+            onPress={() => open(LINKS.plans)}
+            style={({ pressed }) => [pressed && styles.pressed]}
+          >
+            <LinearGradient colors={[C.blue, C.violet]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.subCta}>
+              <Text style={styles.subCtaText}>{isActive ? 'Gérer mon abonnement' : 'Découvrir les forfaits'}</Text>
+              <Ionicons name="arrow-forward" size={18} color={C.white} />
+            </LinearGradient>
+          </Pressable>
+        ) : null}
       </LinearGradient>
 
-      <Text style={styles.groupLabel}>Paramètres du compte</Text>
-      <View style={styles.group}>
-        <Row icon="person-circle-outline" tint={C.blue} label="Compte" onPress={() => open(LINKS.settings)} external />
-        <Row icon="language-outline" tint={C.violet} label="Langue" value="Français" last />
+      <Text style={styles.sectionTitle} accessibilityRole="header">Paramètres du compte</Text>
+      <View style={styles.rows}>
+        <Row icon="person-outline" tint={C.blue} label="Informations personnelles" onPress={() => open(LINKS.settings)} />
+        <Row icon="shield-half-outline" tint={C.violet} label="Sécurité et confidentialité" onPress={() => open(LINKS.settings)} />
+        <Row icon="wallet-outline" tint={C.blue} label="Historique des achats" onPress={() => open(LINKS.jetons)} />
+        <Row icon="notifications-outline" tint={WARM} label="Notifications" onPress={openNotificationSettings} />
       </View>
 
-      <Text style={styles.groupLabel}>Support</Text>
-      <View style={styles.group}>
+      <Text style={styles.sectionTitle} accessibilityRole="header">Support</Text>
+      <View style={styles.rows}>
         <Row icon="help-buoy-outline" tint={C.blue} label="Aide & support" value="contact@chapcam.com" onPress={() => open(LINKS.support)} />
-        <Row icon="document-text-outline" tint={C.violet} label="Conditions d'utilisation" onPress={() => open(LINKS.terms)} external />
-        <Row icon="lock-closed-outline" tint={C.blue} label="Politique de confidentialité" onPress={() => open(LINKS.privacy)} external last />
+        <Row icon="document-text-outline" tint={C.violet} label="Conditions d'utilisation" onPress={() => open(LINKS.terms)} />
+        <Row icon="lock-closed-outline" tint={C.blue} label="Politique de confidentialité" onPress={() => open(LINKS.privacy)} />
+        <Row icon="language-outline" tint={C.violet} label="Langue" value="Français" />
       </View>
 
       <Pressable
@@ -351,100 +444,145 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   )
 }
 
-function Row({ icon, tint, label, value, onPress, external, last }) {
+function Perk({ icon, text, label }) {
+  return (
+    <View style={styles.perk}>
+      <View style={styles.perkIcon}>
+        {text ? <Text style={styles.perkIconText}>{text}</Text> : <Ionicons name={icon} size={13} color={C.white} />}
+      </View>
+      <Text style={styles.perkLabel} numberOfLines={2}>{label}</Text>
+    </View>
+  )
+}
+
+const TINT_BG = { [C.blue]: '#EAF1FF', [C.violet]: '#F1ECFF' }
+
+function Row({ icon, tint, label, value, onPress }) {
   const interactive = typeof onPress === 'function'
   const body = (
     <>
-      <View style={[styles.rowIcon, { backgroundColor: tint === C.violet ? '#F1ECFF' : '#EEF3FF' }]}>
-        <Ionicons name={icon} size={18} color={tint} />
+      <View style={[styles.rowIcon, { backgroundColor: TINT_BG[tint] || '#FFF4E5' }]}>
+        <Ionicons name={icon} size={19} color={tint} />
       </View>
       <Text style={styles.rowLabel} numberOfLines={1}>{label}</Text>
       {value ? <Text style={styles.rowValue} numberOfLines={1}>{value}</Text> : null}
-      {interactive ? <Ionicons name={external ? 'open-outline' : 'chevron-forward'} size={16} color="#B3BCD3" /> : null}
+      {interactive ? <Ionicons name="chevron-forward" size={18} color="#A8B1C8" /> : null}
     </>
   )
-  const rowStyle = [styles.row, !last && styles.rowBorder]
   if (!interactive) {
-    return <View style={rowStyle} accessible accessibilityLabel={value ? `${label}, ${value}` : label}>{body}</View>
+    return <View style={styles.row} accessible accessibilityLabel={value ? `${label}, ${value}` : label}>{body}</View>
   }
   return (
-    <Pressable accessibilityRole="link" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [...rowStyle, pressed && styles.rowPressed]}>
+    <Pressable accessibilityRole="link" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}>
       {body}
     </Pressable>
   )
 }
 
+const BG = '#F5F7FF'
+const NAVY = '#0B1230'
+const NAVY_2 = '#18205A'
+const MUTED_ON_DARK = '#AEB8DA'
+const WARM = '#F59E0B'
+
+const cardShadow = {
+  shadowColor: '#1B2A6B',
+  shadowOpacity: 0.16,
+  shadowRadius: 18,
+  shadowOffset: { width: 0, height: 10 },
+  elevation: 5,
+}
+const softShadow = {
+  shadowColor: '#2A3A7A',
+  shadowOpacity: 0.06,
+  shadowRadius: 10,
+  shadowOffset: { width: 0, height: 4 },
+  elevation: 1,
+}
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  content: { paddingHorizontal: PAD, paddingTop: 8, paddingBottom: 120 },
-  pressed: { opacity: 0.9, transform: [{ scale: 0.985 }] },
-  title: { color: C.ink, fontSize: 30, fontWeight: '900', letterSpacing: -0.8, marginTop: 6, marginBottom: 16 },
+  flexFill: { flexGrow: 1 },
+  content: { flexGrow: 1, backgroundColor: BG, paddingHorizontal: PAD, paddingTop: 8, gap: 14 },
+  pressed: { opacity: 0.88, transform: [{ scale: 0.985 }] },
 
-  hero: { backgroundColor: C.white, borderRadius: 26, borderWidth: 1, borderColor: C.line, overflow: 'hidden', ...shadow, shadowOpacity: 0.08 },
-  heroBand: { height: 74 },
-  heroBody: { alignItems: 'center', paddingHorizontal: 16, paddingBottom: 18, marginTop: -40 },
-  avatarRing: { padding: 4, borderRadius: 46, backgroundColor: C.white, marginBottom: 10 },
-  avatar: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: C.white, fontSize: 32, fontWeight: '900' },
-  avatarPhoto: { ...StyleSheet.absoluteFillObject, borderRadius: 40 },
-  name: { color: C.ink, fontSize: 18, fontWeight: '800', letterSpacing: -0.3, maxWidth: '100%' },
-  emailSub: { color: C.muted, fontSize: 13, fontWeight: '600', marginTop: 2, maxWidth: '100%' },
-  heroLoader: { marginTop: 12 },
-  heroChips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
-  planChip: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 28, paddingHorizontal: 11, borderRadius: 14, backgroundColor: '#F1ECFF' },
-  planChipText: { color: C.ink, fontSize: 13, fontWeight: '800' },
-  status: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 28, paddingHorizontal: 11, borderRadius: 14 },
-  statusOn: { backgroundColor: '#E6F8EF' },
-  statusOff: { backgroundColor: '#EEF1F7' },
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginTop: 6, marginBottom: 4 },
+  title: { color: C.ink, fontSize: 34, fontWeight: '900', letterSpacing: -1 },
+  subtitle: { color: C.muted, fontSize: 15, fontWeight: '500', marginTop: 2, lineHeight: 21 },
+  settingsBtn: { width: 46, height: 46, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#E9EDF9', marginTop: 2 },
+
+  card: { borderRadius: 24, borderWidth: 1, borderColor: 'rgba(123, 77, 255, 0.35)', ...cardShadow },
+
+  hero: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 18, minHeight: 148 },
+  heroClip: { ...StyleSheet.absoluteFillObject, borderRadius: 23, overflow: 'hidden' },
+  heroMark: { position: 'absolute', right: -40, top: 6, width: 230, height: 116, opacity: 0.32 },
+  avatarRing: { padding: 3, borderRadius: 50, backgroundColor: 'rgba(255, 255, 255, 0.9)' },
+  avatar: { width: 82, height: 82, borderRadius: 41, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarText: { color: C.white, fontSize: 34, fontWeight: '900' },
+  avatarPhoto: { ...StyleSheet.absoluteFillObject, borderRadius: 41 },
+  avatarEdit: { position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, backgroundColor: NAVY, borderWidth: 2, borderColor: C.white, alignItems: 'center', justifyContent: 'center' },
+  heroInfo: { flex: 1, gap: 8 },
+  heroName: { color: C.white, fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  heroEmailSub: { color: '#DCE2F5', fontSize: 14, fontWeight: '600' },
+  heroLoader: { alignSelf: 'flex-start', height: 28 },
+  heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 30, paddingHorizontal: 12, borderRadius: 15 },
+  statusOn: { backgroundColor: 'rgba(52, 211, 153, 0.2)' },
+  statusOff: { backgroundColor: 'rgba(255, 255, 255, 0.14)' },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
-  statusText: { fontSize: 13, fontWeight: '800' },
+  statusText: { color: C.white, fontSize: 14, fontWeight: '800' },
+  memberSince: { color: '#DCE2F5', fontSize: 13, fontWeight: '500' },
 
-  groupLabel: { color: C.muted, fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 24, marginBottom: 8, marginLeft: 4 },
+  summaryError: { gap: 4, marginHorizontal: 4 },
+  summaryErrorText: { color: '#5D6785', fontSize: 14, lineHeight: 20 },
+  retry: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6 },
+  retryText: { color: C.blue, fontSize: 14, fontWeight: '800' },
 
   balances: { flexDirection: 'row', gap: 12 },
-  balance: { flex: 1, backgroundColor: C.white, borderRadius: 22, padding: 14, borderWidth: 1, borderColor: C.line, gap: 8, ...shadow, shadowOpacity: 0.06 },
-  balanceHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  jetonsLogo: { width: 28, height: 28, borderRadius: 9, backgroundColor: '#0A1024', overflow: 'hidden' },
-  jetonsLogoImage: { width: '100%', height: '100%', transform: [{ scale: 1.3 }] },
-  liveIcon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  balanceTitle: { color: C.ink, fontSize: 14, fontWeight: '800' },
-  balanceValue: { color: C.ink, fontSize: 24, fontWeight: '900', letterSpacing: -0.6, fontVariant: ['tabular-nums'] },
-  balanceError: { color: '#B42318', fontSize: 17, fontWeight: '800' },
-  balanceEmpty: { color: C.muted, fontSize: 17, fontWeight: '800' },
-  balanceLoader: { alignSelf: 'flex-start', height: 30 },
-  summaryError: { gap: 4, marginHorizontal: 4, marginBottom: 8 },
-  summaryErrorText: { color: '#5D6785', fontSize: 14, lineHeight: 20 },
-  retry: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, marginHorizontal: 4, marginBottom: 8 },
-  retryText: { color: C.blue, fontSize: 13, fontWeight: '800' },
-  balanceHint: { color: C.muted, fontSize: 12, fontWeight: '600', lineHeight: 16 },
+  balance: { flex: 1, padding: 14, gap: 6, minHeight: 230 },
+  balanceHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 4 },
+  balanceIcon: { width: 48, height: 48, borderRadius: 15, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  jetonsLogoImage: { width: '100%', height: '100%', transform: [{ scale: 1.25 }] },
+  balanceTitle: { color: C.white, fontSize: 15, fontWeight: '700' },
+  balanceValue: { color: C.white, fontSize: 30, fontWeight: '900', letterSpacing: -0.8, fontVariant: ['tabular-nums'] },
+  balanceUnit: { color: '#DCE2F5', fontSize: 13, fontWeight: '600', marginTop: -2 },
+  balanceUnavailable: { color: '#FF8A8E', fontSize: 18, fontWeight: '800' },
+  balanceEmpty: { color: MUTED_ON_DARK, fontSize: 18, fontWeight: '800' },
+  balanceLoader: { alignSelf: 'flex-start', height: 34 },
+  balanceHint: { color: MUTED_ON_DARK, fontSize: 12, fontWeight: '500', lineHeight: 17 },
+  balanceCta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6, height: 44, borderRadius: 22, paddingLeft: 14, paddingRight: 6, marginTop: 8 },
+  balanceCtaText: { flexShrink: 1, color: C.white, fontSize: 13, fontWeight: '800' },
+  balanceCtaPlus: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
+  balanceCtaLight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6, height: 44, borderRadius: 22, paddingHorizontal: 14, marginTop: 8, backgroundColor: '#E7E2FF' },
+  balanceCtaLightText: { flexShrink: 1, color: NAVY, fontSize: 13, fontWeight: '800' },
 
-  sub: { borderRadius: 24, padding: 16, gap: 14, ...shadow, shadowOpacity: 0.18 },
-  subTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  subIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  subEyebrow: { color: '#AEB8DA', fontSize: 12, fontWeight: '700' },
-  subPlan: { color: C.white, fontSize: 18, fontWeight: '900', letterSpacing: -0.3, marginTop: 1 },
-  subBadge: { height: 26, paddingHorizontal: 10, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  subBadgeOn: { backgroundColor: 'rgba(52, 211, 153, 0.18)' },
-  subBadgeOff: { backgroundColor: 'rgba(255, 255, 255, 0.12)' },
-  subBadgeText: { color: C.white, fontSize: 12, fontWeight: '800' },
-  subDate: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255, 255, 255, 0.07)', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
-  subDateText: { color: '#DCE2F5', fontSize: 13, fontWeight: '600' },
-  subCta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 48, borderRadius: 16, backgroundColor: C.white },
-  subCtaText: { color: C.ink, fontSize: 15, fontWeight: '800' },
+  sub: { padding: 16, gap: 16 },
+  subTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  subIcon: { width: 74, height: 74, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
+  subEyebrow: { color: MUTED_ON_DARK, fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
+  subPlan: { color: C.white, fontSize: 22, fontWeight: '900', letterSpacing: -0.4, marginTop: 2 },
+  subDesc: { color: '#DCE2F5', fontSize: 13, fontWeight: '500', lineHeight: 19, marginTop: 4 },
+  perks: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 10, columnGap: 8 },
+  perk: { flexDirection: 'row', alignItems: 'center', gap: 6, flexBasis: '47%', flexGrow: 1 },
+  perkIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(123, 77, 255, 0.35)' },
+  perkIconText: { color: C.white, fontSize: 10, fontWeight: '900' },
+  perkLabel: { flexShrink: 1, color: '#DCE2F5', fontSize: 12, fontWeight: '600' },
+  subCta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, height: 54, borderRadius: 27 },
+  subCtaText: { color: C.white, fontSize: 16, fontWeight: '800' },
 
-  group: { backgroundColor: C.white, borderRadius: 22, borderWidth: 1, borderColor: C.line, overflow: 'hidden', ...shadow, shadowOpacity: 0.05 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 14 },
-  rowBorder: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#DCE3F1' },
+  sectionTitle: { color: C.ink, fontSize: 20, fontWeight: '900', letterSpacing: -0.4, marginTop: 10 },
+  rows: { gap: 10 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 60, paddingHorizontal: 16, borderRadius: 20, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, ...softShadow },
   rowPressed: { backgroundColor: '#F2F6FF' },
-  rowIcon: { width: 34, height: 34, borderRadius: 11, alignItems: 'center', justifyContent: 'center' },
-  rowLabel: { flex: 1, color: C.ink, fontSize: 15, fontWeight: '700' },
-  rowValue: { color: C.muted, fontSize: 13, fontWeight: '600', maxWidth: 160 },
+  rowIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  rowLabel: { flex: 1, color: C.ink, fontSize: 16, fontWeight: '600' },
+  rowValue: { color: C.muted, fontSize: 13, fontWeight: '600', maxWidth: 150 },
 
-  signOut: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, marginTop: 24, borderRadius: 16, backgroundColor: '#FFF1F1', borderWidth: 1, borderColor: '#FFDADB' },
+  signOut: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, marginTop: 10, borderRadius: 20, backgroundColor: '#FFF1F1', borderWidth: 1, borderColor: '#FFDADB' },
   signOutText: { color: DANGER, fontSize: 15, fontWeight: '800' },
-  deleteAccount: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, marginTop: 12, borderRadius: 16, borderWidth: 1, borderColor: '#FFDADB' },
+  deleteAccount: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, borderRadius: 20, borderWidth: 1, borderColor: '#FFDADB' },
 
-  appInfo: { alignItems: 'center', gap: 2, marginTop: 18 },
+  appInfo: { alignItems: 'center', gap: 2, marginTop: 4 },
   appName: { color: '#5D6785', fontSize: 13, fontWeight: '800' },
   version: { color: '#A3ACC4', fontSize: 12, fontWeight: '600' },
 })
