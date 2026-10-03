@@ -6,7 +6,7 @@ import { useVideoPlayer, VideoView } from 'expo-video'
 import { supabase } from '../lib/supabase'
 import { C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
-import { API_URL } from '../lib/api'
+import { API_URL, friendlyError } from '../lib/api'
 import { AiBadge, ReportAbuseButton, RightsConsent } from '../ui/Safety'
 
 const MAX_SECONDS = 60
@@ -111,7 +111,7 @@ export function VideoTranslationScreen({ onBack }) {
           }
         } catch {}
       }, 8000)
-    } catch (e) { setError(e.message || 'La traduction a échoué.'); setStatus('failed') }
+    } catch (e) { setError(friendlyError(e, 'La traduction a échoué.')); setStatus('failed') }
   }
 
   const visibleLanguages = languages.filter((item) => item.toLowerCase().includes(search.trim().toLowerCase()))

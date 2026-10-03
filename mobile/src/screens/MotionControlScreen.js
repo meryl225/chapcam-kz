@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase'
 import { C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { useJetonsBalance } from '../lib/useJetonsBalance'
-import { API_URL } from '../lib/api'
+import { API_URL, friendlyError } from '../lib/api'
 import { AiBadge, ReportAbuseButton, RightsConsent } from '../ui/Safety'
 
 
@@ -304,7 +304,7 @@ export function MotionControlScreen({ onBack, onOpenCreations, topInset = 0 }) {
           : 'Génération lancée (1 à 3 min). Le résultat sera enregistré dans Mes créations.',
       })
     } catch (error) {
-      setMessage({ tone: 'error', text: error instanceof Error ? error.message : 'Une erreur est survenue.' })
+      setMessage({ tone: 'error', text: friendlyError(error) })
     } finally {
       setStage('')
       setLoading(false)

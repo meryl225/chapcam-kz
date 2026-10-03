@@ -9,7 +9,7 @@ import { ValueSlider } from '../ui/ValueSlider'
 import { VoiceRecorder } from '../ui/VoiceRecorder'
 import { AudioClip } from '../ui/AudioClip'
 import { VoicePicker } from '../ui/VoicePicker'
-import { API_URL as WEB_URL } from '../lib/api'
+import { API_URL as WEB_URL, friendlyError } from '../lib/api'
 import { AiBadge, RightsConsent } from '../ui/Safety'
 
 // Mirrors lib/plans.ts VOICE_MESSAGE_MAX_CHARS / VOICE_MESSAGE_MAX_SECONDS.
@@ -72,7 +72,7 @@ export function VoiceMessageScreen({ onBack }) {
     setQuota(quotaData)
   }, [])
 
-  useEffect(() => { load().catch((e) => setLoadError(e.message)) }, [load])
+  useEffect(() => { load().catch((e) => setLoadError(friendlyError(e, 'Chargement des voix impossible.'))) }, [load])
 
   const locked = quota ? quota.remaining < 1 : true
   const onConsumed = (remaining) => setQuota((q) => ({ ...q, remaining }))
@@ -160,7 +160,7 @@ function TextTab({ voices, selected, onSelect, locked, onConsumed }) {
       const remaining = Number(res.headers.get('X-Remaining-Credits'))
       setResult(await saveAudio(res))
       if (Number.isFinite(remaining)) onConsumed(remaining)
-    } catch (e) { setError(e.message) } finally { setBusy(false) }
+    } catch (e) { setError(friendlyError(e)) } finally { setBusy(false) }
   }
 
   return (
@@ -222,7 +222,7 @@ function RecordTab({ voices, selected, onSelect, locked, onConsumed }) {
       const remaining = Number(res.headers.get('X-Remaining-Credits'))
       setResult(await saveAudio(res))
       if (Number.isFinite(remaining)) onConsumed(remaining)
-    } catch (e) { setError(e.message) } finally { setBusy(false) }
+    } catch (e) { setError(friendlyError(e)) } finally { setBusy(false) }
   }
 
   return (

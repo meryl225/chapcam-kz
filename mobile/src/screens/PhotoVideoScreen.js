@@ -10,7 +10,7 @@ import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { VoicePicker } from '../ui/VoicePicker'
 import { VoiceRecorder } from '../ui/VoiceRecorder'
 import { AudioClip } from '../ui/AudioClip'
-import { API_URL } from '../lib/api'
+import { API_URL, friendlyError } from '../lib/api'
 import { AiBadge, ReportAbuseButton, RightsConsent } from '../ui/Safety'
 
 const MAX_SCRIPT_CHARS = 420
@@ -104,7 +104,7 @@ export function PhotoVideoScreen({ onBack }) {
       const list = json.voices || []
       setRawVoices(list)
       if (list.length) setVoiceId(list[0].voice_id)
-    })().catch((e) => active && setVoicesError(e.message))
+    })().catch((e) => active && setVoicesError(friendlyError(e, 'Voix indisponibles pour le moment.')))
     return () => { active = false }
   }, [])
 
@@ -151,7 +151,7 @@ export function PhotoVideoScreen({ onBack }) {
       file.write(new Uint8Array(await res.arrayBuffer()))
       setPreviewUri(file.uri)
     } catch (e) {
-      Alert.alert('Aperçu indisponible', e.message)
+      Alert.alert('Aperçu indisponible', friendlyError(e))
     } finally {
       setPreviewing(false)
     }
@@ -187,7 +187,7 @@ export function PhotoVideoScreen({ onBack }) {
       }, 4000)
     } catch (e) {
       if (pollRef.current) clearInterval(pollRef.current)
-      pollRef.current = null; setError(e.message || 'Réessaie dans un instant.'); setBusy(false)
+      pollRef.current = null; setError(friendlyError(e, 'Réessaie dans un instant.')); setBusy(false)
     }
   }
 

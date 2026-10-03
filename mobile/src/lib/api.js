@@ -34,6 +34,17 @@ export async function readApiError(response, fallback = 'Une erreur est survenue
   return body.error || fallback
 }
 
+const TECHNICAL_ERROR = /network request failed|failed to fetch|json parse|unexpected token|undefined is not|null is not|cannot read|typeerror|erreur http \d+|^http$|^auth$|timeout|aborted/i
+
+export function friendlyError(error, fallback = 'Une erreur est survenue. Réessaie dans un instant.') {
+  const message = typeof error === 'string' ? error : error?.message
+  if (!message) return fallback
+  if (/network request failed|failed to fetch/i.test(message)) return 'Connexion impossible. Vérifie ta connexion internet et réessaie.'
+  if (/^auth$|session expir/i.test(message)) return 'Session expirée. Reconnecte-toi.'
+  if (TECHNICAL_ERROR.test(message)) return fallback
+  return message
+}
+
 export const productionToolMap = {
   liveSwap: { endpoint: '/api/decart-token', provider: 'Decart', billing: '/api/points' },
   photoVideo: { endpoint: '/api/heygen/photo-video', provider: 'HeyGen', billing: 'server-side' },

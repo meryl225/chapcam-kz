@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import * as WebBrowser from 'expo-web-browser'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
-import { API_URL } from '../lib/api'
+import { API_URL, friendlyError } from '../lib/api'
 import { C } from './catalog'
 import { ChapCamLoader } from './ChapCamLoader'
 
@@ -110,7 +110,7 @@ export function ReportAbuseSheet({ visible, onClose, contentUrl, context }) {
       onClose()
       Alert.alert('Signalement envoyé', 'Merci. Notre équipe va examiner ce contenu.')
     } catch (e) {
-      Alert.alert('Signalement', e.message || 'Envoi impossible. Réessaie dans un instant.')
+      Alert.alert('Signalement', friendlyError(e, 'Envoi impossible. Réessaie dans un instant.'))
     } finally {
       setSending(false)
     }

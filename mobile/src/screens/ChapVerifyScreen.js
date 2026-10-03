@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase'
 import { C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { AudioClip } from '../ui/AudioClip'
+import { friendlyError } from '../lib/api'
 
 const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 // Mirrors app/dashboard/chapverify/page.tsx COST and MAX_MB.
@@ -144,7 +145,7 @@ export function ChapVerifyScreen({ onBack, topInset = 0 }) {
       poll(json.uuid)
     } catch (e) {
       setStatus('idle')
-      setError(e.message || 'Vérifie ta connexion et réessaie.')
+      setError(friendlyError(e, 'Vérifie ta connexion et réessaie.'))
     }
   }
 

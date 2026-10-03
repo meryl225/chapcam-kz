@@ -65,27 +65,14 @@ async function authHeader() {
   return { Authorization: `Bearer ${token}` }
 }
 
-async function logApiResponse(label, url, res) {
-  let body = null
-  try { body = await res.clone().json() } catch { body = { nonJson: true } }
-  console.log('[v0] iOS API response', { label, url, status: res.status, error: body?.error ?? null, body })
-}
-
 async function fetchCreations() {
   const url = `${API_URL}/api/mobile/creations`
-  const session = await supabase.auth.getSession()
-  const initialToken = session.data?.session?.access_token
-  console.log('[v0] iOS API request', { endpoint: url, accessTokenExists: Boolean(initialToken), userId: session.data?.session?.user?.id ?? null })
   let res = await fetch(url, { headers: await authHeader() })
-  await logApiResponse('creations initial', url, res)
   if (res.status === 401) {
-    // Preserve the previously working Supabase refresh flow.
     const refreshed = await supabase.auth.refreshSession()
     const token = refreshed.data?.session?.access_token
-    console.log('[v0] iOS Supabase refreshSession', { succeeds: Boolean(token), userId: refreshed.data?.session?.user?.id ?? session.data?.session?.user?.id ?? null })
     if (!token) throw new Error('auth')
     res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-    await logApiResponse('creations after refresh', url, res)
   }
   if (res.status === 401) throw new Error('auth')
   if (!res.ok) throw new Error('http')

@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
 import { supabase } from '../lib/supabase'
-import { apiJson } from '../lib/api'
+import { apiJson, friendlyError } from '../lib/api'
 import { BRAND, C, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 
@@ -54,33 +54,20 @@ const open = async (url) => {
   }
 }
 
-async function logAccountSummaryResponse(label, url, res) {
-  let body = null
-  try { body = await res.clone().json() } catch { body = { nonJson: true } }
-  console.log('[v0] iOS API response', { label, url, status: res.status, error: body?.error ?? null, body })
-}
-
 async function fetchAccountSummary() {
   let { data } = await supabase.auth.getSession()
   let token = data?.session?.access_token
   const url = `${WEB_URL}/api/mobile/account-summary`
-  const userId = data?.session?.user?.id ?? null
-  console.log('[v0] iOS API request', { endpoint: url, accessTokenExists: Boolean(token), userId })
   if (!token) return null
   let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-  await logAccountSummaryResponse('account-summary initial', url, res)
   if (res.status === 401) {
     const refreshed = await supabase.auth.refreshSession()
     token = refreshed.data?.session?.access_token
-    console.log('[v0] iOS Supabase refreshSession', { succeeds: Boolean(token), userId: refreshed.data?.session?.user?.id ?? userId })
     if (!token) throw new Error('Chargement impossible')
     res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-    await logAccountSummaryResponse('account-summary after refresh', url, res)
   }
   if (!res.ok) throw new Error('Chargement impossible')
-  const json = await res.json()
-  console.log('[v0] account-summary JSON', { jetons: json?.jetons, live_swap: json?.live_swap, subscription: json?.subscription })
-  return json
+  return res.json()
 }
 
 function useAccountSummary() {
@@ -105,7 +92,6 @@ function useAccountSummary() {
 
 export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh }) {
   const account = useAccountSummary()
-  console.log('[v0] ProfileScreen accountSummary', { summary: account.summary })
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -168,7 +154,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
       await supabase.auth.signOut({ scope: 'local' })
     } catch (error) {
       setDeleting(false)
-      Alert.alert('Suppression impossible', error?.message || String(error))
+      Alert.alert('Suppression impossible', friendlyError(error, 'Suppression impossible pour le moment. Réessaie ou contacte contact@chapcam.com.'))
     }
   }
 
@@ -325,9 +311,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
       <Text style={styles.groupLabel}>Paramètres du compte</Text>
       <View style={styles.group}>
         <Row icon="person-circle-outline" tint={C.blue} label="Compte" onPress={() => open(LINKS.settings)} external />
-        <Row icon="language-outline" tint={C.violet} label="Langue" value="Français" />
-        <Row icon="notifications-outline" tint={C.blue} label="Notifications" onPress={() => open(LINKS.settings)} external />
-        <Row icon="shield-checkmark-outline" tint={C.violet} label="Sécurité" onPress={() => open(LINKS.settings)} external last />
+        <Row icon="language-outline" tint={C.violet} label="Langue" value="Français" last />
       </View>
 
       <Text style={styles.groupLabel}>Support</Text>
