@@ -60,7 +60,11 @@ export const TOOLS = [
   { key: 'translate', title: 'Traduction de Vidéo', copy: 'Traduis ta vidéo en 190+ langues', media: TOOL_MEDIA.translate, categories: ['video', 'audio'] },
   { key: 'voice', title: 'Message Vocal', copy: 'Change ta voix ou crée-la depuis un texte', media: TOOL_MEDIA.voice, categories: ['audio'] },
   { key: 'verify', title: 'ChapVerify', copy: 'Détecte les deepfakes', media: TOOL_MEDIA.verify, categories: ['video', 'image', 'face'] },
+  { key: 'voice-swap', title: 'Voice Swap', copy: 'Change ta voix en temps réel', media: TOOL_MEDIA.voice, categories: ['audio'], comingSoon: true },
+  { key: 'voice-translator', title: 'Voice Translator', copy: 'Traduis ta voix en direct', media: TOOL_MEDIA.translate, categories: ['audio'], comingSoon: true },
 ]
+
+export const COMING_SOON_TOOLS = new Set(TOOLS.filter((t) => t.comingSoon).map((t) => t.key))
 
 export const normalize = (value) =>
   value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()

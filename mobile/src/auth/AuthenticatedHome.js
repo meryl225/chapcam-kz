@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
-import { BRAND, C, CREATOR_VIDEOS, GAP, PAD, TOOL_MEDIA, asset, shadow } from '../ui/catalog'
+import { BRAND, C, COMING_SOON_TOOLS, CREATOR_VIDEOS, GAP, PAD, TOOL_MEDIA, asset, shadow } from '../ui/catalog'
 import { MediaView } from '../ui/ToolMedia'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { ChapCamBrand } from '../ui/ChapCamBrand'
@@ -20,17 +20,6 @@ import { CreateScreen } from '../screens/CreateScreen'
 import { CreationsScreen } from '../screens/CreationsScreen'
 import { ProfileScreen } from '../screens/ProfileScreen'
 import { QuickLaunchMenu } from '../ui/QuickLaunchMenu'
-import * as WebBrowser from 'expo-web-browser'
-import Constants from 'expo-constants'
-
-const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
-const TOOL_ROUTES = {
-  genjutsu: '/dashboard/genjutsu',
-  'photo-video': '/dashboard/photo-video',
-  translate: '/dashboard/video-translation',
-  voice: '/dashboard/message-vocal',
-  verify: '/dashboard/chapverify',
-}
 
 const INK_DEEP = '#0B1233'
 
@@ -116,18 +105,12 @@ function HomeShell({ user }) {
   const onRefresh = () => { setRefreshing(true); loadAccount() }
 
   const onOpenTool = (key) => {
+    if (COMING_SOON_TOOLS.has(key)) return
     if (NATIVE_TOOLS.has(key)) setOpenTool(key)
     else setTab('explore')
   }
 
-  const onQuickLaunch = (key) => {
-    if (NATIVE_TOOLS.has(key)) {
-      setOpenTool(key)
-      return
-    }
-    const route = TOOL_ROUTES[key]
-    if (route) WebBrowser.openBrowserAsync(`${WEB_URL}${route}`, { presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET }).catch(() => {})
-  }
+  const onQuickLaunch = onOpenTool
 
   if (openTool === 'live') {
     return <LiveSwapScreen onBack={() => setOpenTool(null)} topInset={insets.top} bottomInset={insets.bottom} subscription={loading ? undefined : subscription} />
