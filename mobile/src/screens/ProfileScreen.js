@@ -179,14 +179,6 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </View>
           {metaName ? <Text style={styles.name} numberOfLines={1}>{metaName}</Text> : null}
           <Text style={metaName ? styles.emailSub : styles.name} numberOfLines={1}>{email}</Text>
-          <View style={styles.rawAccountDebug}>
-            <Text style={styles.rawAccountDebugText}>accountSummary.subscription: {JSON.stringify(account.summary?.subscription)}</Text>
-            <Text style={styles.rawAccountDebugText}>plan: {JSON.stringify(account.summary?.subscription?.plan)}</Text>
-            <Text style={styles.rawAccountDebugText}>points: {JSON.stringify(account.summary?.subscription?.points)}</Text>
-            <Text style={styles.rawAccountDebugText}>status: {JSON.stringify(account.summary?.subscription?.status)}</Text>
-            <Text style={styles.rawAccountDebugText}>is_active: {JSON.stringify(account.summary?.subscription?.is_active)}</Text>
-            <Text style={styles.rawAccountDebugText}>live_swap_minutes: {JSON.stringify(account.summary?.live_swap_minutes)}</Text>
-          </View>
           {subscriptionLoading ? (
             <ChapCamLoader size="small" style={styles.heroLoader} />
           ) : (
@@ -375,8 +367,6 @@ const styles = StyleSheet.create({
   avatarPhoto: { ...StyleSheet.absoluteFillObject, borderRadius: 40 },
   name: { color: C.ink, fontSize: 18, fontWeight: '800', letterSpacing: -0.3, maxWidth: '100%' },
   emailSub: { color: C.muted, fontSize: 13, fontWeight: '600', marginTop: 2, maxWidth: '100%' },
-  rawAccountDebug: { width: '100%', marginTop: 8, padding: 8, backgroundColor: '#F4F6FA', borderRadius: 8 },
-  rawAccountDebugText: { color: C.muted, fontSize: 10, fontFamily: 'monospace', lineHeight: 14 },
   heroLoader: { marginTop: 12 },
   heroChips: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 12 },
   planChip: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 28, paddingHorizontal: 11, borderRadius: 14, backgroundColor: '#F1ECFF' },
