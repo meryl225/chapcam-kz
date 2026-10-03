@@ -107,7 +107,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   // Live Swap + plan come from the same Supabase `subscriptions` row the website dashboard reads
   // (loaded by AuthenticatedHome under the user's session / RLS). Jetons live in the Neon
   // `jetons_wallets` table and can only be read server-side through /api/mobile/account-summary.
-  const accountSubscription = subscription ?? account.summary?.subscription ?? null
+  const accountSubscription = account.summary?.subscription ?? subscription ?? null
   const subscriptionLoading = account.loading || Boolean(loading && !account.summary)
   const jetonsLoading = account.loading
   const jetonsError = account.error
@@ -125,10 +125,10 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const isActive = Boolean(accountSubscription && planKey && planKey !== 'free' && (accountSubscription.is_active === true || accountSubscription.status === 'active') && !expired)
   const planLabel = isActive ? PLAN_LABELS[planKey] || planKey : null
   const endDate = isActive ? formatDate(accountSubscription?.end_date) : null
-  const livePoints = typeof subscription?.points_remaining === 'number'
-    ? subscription.points_remaining
-    : typeof subscription?.points === 'number'
-      ? subscription.points
+  const livePoints = typeof accountSubscription?.points_remaining === 'number'
+    ? accountSubscription.points_remaining
+    : typeof accountSubscription?.points === 'number'
+      ? accountSubscription.points
       : typeof account.summary?.live_swap?.points === 'number'
         ? account.summary.live_swap.points
         : null
