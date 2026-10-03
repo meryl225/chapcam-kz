@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { VideoHistorySection } from "@/components/video-history-section"
 import { downloadVideo } from "@/lib/download-video"
+import { translationJetons } from "@/lib/tool-costs"
 
 type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 
@@ -49,8 +50,11 @@ export default function VideoTranslationPage() {
   // Force le rafraîchissement de la section "Mes vidéos" à chaque traduction terminée.
   const [historyRefresh, setHistoryRefresh] = useState(0)
 
+  const [fileSeconds, setFileSeconds] = useState<number | null>(null)
   const busy = status === "uploading" || status === "processing"
-  const cost = mode === "precision" ? 2 : 1
+  const cost = translationJetons(fileSeconds ?? MAX_SECONDS, mode === "precision")
+  const perSecond = (precision: boolean) =>
+    (translationJetons(MAX_SECONDS, precision) / MAX_SECONDS).toLocaleString("fr-FR", { maximumFractionDigits: 1 })
 
   useEffect(() => {
     async function init() {
@@ -105,6 +109,7 @@ export default function VideoTranslationPage() {
         return
       }
       setFile(f)
+      setFileSeconds(Number.isFinite(dur) && dur > 0 ? dur : null)
       setPreviewUrl(url)
       setVideoUrl(null)
       setStatus("idle")
@@ -141,7 +146,7 @@ export default function VideoTranslationPage() {
           }
           toast({
             title: "Échec de la traduction",
-            description: `${json.error || "La vidéo n'a pas pu être traduite."}${json.refunded ? " Ton crédit a été remboursé." : ""}`,
+            description: `${json.error || "La vidéo n'a pas pu être traduite."}${json.refunded ? " Tes Jetons ont été remboursés." : ""}`,
             variant: "destructive",
           })
         }
@@ -162,8 +167,8 @@ export default function VideoTranslationPage() {
     }
     if (credits !== null && credits < cost) {
       toast({
-        title: "Crédits insuffisants",
-        description: `Cette traduction coûte ${cost} crédit${cost > 1 ? "s" : ""}. Achète un pack ou passe à un forfait Premium/VIP.`,
+        title: "Solde insuffisant",
+        description: `Cette traduction coûte ${cost.toLocaleString("fr-FR")} Jetons. Recharge tes Jetons.`,
         variant: "destructive",
       })
       return
@@ -183,8 +188,8 @@ export default function VideoTranslationPage() {
       if (!res.ok) {
         setStatus("idle")
         if (res.status === 402) {
-          if (json.code === "quota_exhausted" || json.code === "no_plan") setCredits(0)
-          toast({ title: "Crédits insuffisants", description: json.error, variant: "destructive" })
+          if (typeof json.remaining === "number") setCredits(json.remaining)
+          toast({ title: "Solde insuffisant", description: json.error, variant: "destructive" })
         } else {
           toast({ title: "Erreur", description: json.error || "Impossible de lancer la traduction.", variant: "destructive" })
         }
@@ -202,6 +207,7 @@ export default function VideoTranslationPage() {
 
   const clearFile = () => {
     setFile(null)
+    setFileSeconds(null)
     setPreviewUrl(null)
     setVideoUrl(null)
     setStatus("idle")
@@ -242,7 +248,7 @@ export default function VideoTranslationPage() {
         </div>
         <div className="flex items-center gap-2 rounded-xl border border-hairline bg-card px-3 py-2">
           <Languages className="h-4 w-4 text-primary" />
-          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Crédits</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Jetons</span>
           <span className={`text-sm font-bold ${credits !== null && credits <= 0 ? "text-destructive" : "text-primary"}`}>
             {credits === null ? "…" : credits}
           </span>
@@ -338,8 +344,8 @@ export default function VideoTranslationPage() {
             </label>
             <div className="grid grid-cols-2 gap-2">
               {([
-                { value: "speed", label: "Rapide", sub: "1 crédit · plus vite" },
-                { value: "precision", label: "Précision", sub: "2 crédits · meilleure synchro" },
+                { value: "speed", label: "Rapide", sub: `${perSecond(false)} Jetons/s · plus vite` },
+                { value: "precision", label: "Précision", sub: `${perSecond(true)} Jetons/s · meilleure synchro` },
               ] as const).map((m) => {
                 const active = mode === m.value
                 return (
@@ -391,7 +397,7 @@ export default function VideoTranslationPage() {
               </>
             ) : (
               <>
-                <Sparkles className="h-4 w-4" /> Traduire ({cost} crédit{cost > 1 ? "s" : ""})
+                <Sparkles className="h-4 w-4" /> Traduire ({cost.toLocaleString("fr-FR")} Jetons{fileSeconds === null ? " max" : ""})
               </>
             )}
           </button>

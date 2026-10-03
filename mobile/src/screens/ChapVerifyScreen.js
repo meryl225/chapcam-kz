@@ -13,7 +13,9 @@ import { friendlyError } from '../lib/api'
 
 const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 // Mirrors app/dashboard/chapverify/page.tsx COST and MAX_MB.
-const COST = { image: 1, audio: 1, video: 2 }
+// Jetons (lib/tool-costs.ts chapVerifyJetons, Resemble Flex x 2,5) ; audio/vidéo = plafond 8 s.
+const COST = { image: 6, audio: 42, video: 84 }
+const costLabel = (m) => `${COST[m]} Jetons${m === 'image' ? '' : ' max'}`
 const MAX_MB = { image: 12, audio: 25, video: 60 }
 const POLL_MS = 4000
 const MEDIA_META = {
@@ -121,7 +123,7 @@ export function ChapVerifyScreen({ onBack, topInset = 0 }) {
           clearInterval(pollRef.current); pollRef.current = null
           setStatus('error')
           if (typeof json.remaining === 'number') setCredits(json.remaining)
-          setError(`${json.error || "Le fichier n'a pas pu être analysé."}${json.refunded ? ' Ton crédit a été remboursé.' : ''}`)
+          setError(`${json.error || "Le fichier n'a pas pu être analysé."}${json.refunded ? ' Tes Jetons ont été remboursés.' : ''}`)
           refreshHistory()
         }
       } catch {}
@@ -187,7 +189,7 @@ export function ChapVerifyScreen({ onBack, topInset = 0 }) {
               {Object.keys(COST).map((m) => (
                 <View key={m} style={styles.chip}>
                   <Ionicons name={MEDIA_META[m].icon} size={13} color={C.muted} />
-                  <Text style={styles.chipText}>{`${MEDIA_META[m].label} · ${COST[m]} crédit${COST[m] > 1 ? 's' : ''} · ${MAX_MB[m]} Mo max`}</Text>
+                  <Text style={styles.chipText}>{`${MEDIA_META[m].label} · ${costLabel(m)} · ${MAX_MB[m]} Mo max`}</Text>
                 </View>
               ))}
             </View>
@@ -228,7 +230,7 @@ export function ChapVerifyScreen({ onBack, topInset = 0 }) {
               <View style={styles.fileIcon}><Ionicons name={MEDIA_META[file.media].icon} size={18} color={C.violet} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.fileName} numberOfLines={1}>{file.name}</Text>
-                <Text style={styles.fileMeta}>{`${MEDIA_META[file.media].label} · ${cost} crédit${cost > 1 ? 's' : ''}`}</Text>
+                <Text style={styles.fileMeta}>{`${MEDIA_META[file.media].label} · ${costLabel(file.media)}`}</Text>
               </View>
             </View>
             {error ? <View style={styles.error}><Text style={styles.errorText}>{error}</Text></View> : null}

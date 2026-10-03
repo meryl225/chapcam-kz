@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { ImageStudio } from "@/components/motion/image-studio"
 import { downloadVideo } from "@/lib/download-video"
+import { genjutsuJetons, MOTION_CONTROL_MAX_SECONDS } from "@/lib/tool-costs"
 
 // Onglets du studio : deux modes image (Higgsfield Soul) + le Motion Control video.
 const TABS = ["Texte → Image", "Édition d'image", "Motion Control"] as const
@@ -101,7 +102,10 @@ export default function MotionPage() {
   const hasProcessing = history.some((j) => j.status === "processing")
   const MAX_PROMPT = 500
   // Duree max d'un clip = duree de la video de reference (borne le cout fal).
-  const MOTION_MAX_SECONDS = 10
+  const MOTION_MAX_SECONDS = MOTION_CONTROL_MAX_SECONDS
+  const [refDuration, setRefDuration] = useState<number | null>(null)
+  const billedSeconds = Math.min(MOTION_MAX_SECONDS, Math.max(1, Math.ceil(refDuration ?? MOTION_MAX_SECONDS)))
+  const motionControlCost = genjutsuJetons(billedSeconds)
   const activeModel = MODELS.find((m) => m.value === model) ?? MODELS[0]
 
   useEffect(() => {
@@ -181,6 +185,7 @@ export default function MotionPage() {
       }
       setRefVideo(f)
       setRefVideoUrl(url)
+      setRefDuration(Number.isFinite(dur) && dur > 0 ? dur : null)
     }
     probe.onerror = () => {
       URL.revokeObjectURL(url)
@@ -214,7 +219,7 @@ export default function MotionPage() {
           title: moderated ? "Génération refusée" : "Échec de la génération",
           description:
             (json.error || "La vidéo n'a pas pu être générée.") +
-            (json.refunded ? " Ton crédit Motion a été remboursé." : ""),
+            (json.refunded ? " Tes Jetons ont été remboursés." : ""),
           variant: "destructive",
         })
       }
@@ -270,6 +275,7 @@ export default function MotionPage() {
         fd.append("referenceVideo", refVideo)
         fd.append("prompt", finalPrompt || "natural full-body motion transfer")
         fd.append("model", "kling3")
+        fd.append("durationSeconds", String(billedSeconds))
         fd.append("quality", quality)
         fd.append("enhance", String(enhance))
         if (selectedMotions.length > 0) fd.append("motions", JSON.stringify(selectedMotions))
@@ -373,6 +379,7 @@ export default function MotionPage() {
   }
   const clearRef = () => {
     setRefVideo(null)
+    setRefDuration(null)
     setRefVideoUrl(null)
   }
 
@@ -633,7 +640,7 @@ className={`group relative min-h-28 overflow-hidden rounded-2xl border p-4 text-
                     <p className="mt-1 text-[11px] leading-snug text-white/45">{m.desc}</p>
                     <div className="mt-2.5 flex items-end justify-between gap-2">
                       <span className="text-xs font-semibold text-white/55">Tarif unique</span>
-                      <span className="text-right text-[10px] font-bold leading-tight text-[#c6f542]/80">86 Jetons<br /><span className="font-medium text-white/35">pour 10s max</span></span>
+                      <span className="text-right text-[10px] font-bold leading-tight text-[#c6f542]/80">{motionControlCost.toLocaleString("fr-FR")} Jetons<br /><span className="font-medium text-white/35">{refDuration !== null ? `pour ${billedSeconds}s` : `pour ${MOTION_MAX_SECONDS}s max`}</span></span>
                     </div>
                     {m.pro && active && (
                       <span className="absolute bottom-2.5 right-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#c6f542] text-black">
@@ -683,7 +690,7 @@ className={`flex min-h-12 items-center justify-center gap-2 rounded-xl py-3 text
             {busy ? (
               <><Loader2 className="h-5 w-5 animate-spin" /> Génération...</>
             ) : (
-              <>Générer <Sparkles className="h-4 w-4" /> 86 Jetons</>
+              <>Générer <Sparkles className="h-4 w-4" /> {motionControlCost.toLocaleString("fr-FR")} Jetons</>
             )}
           </button>
         </div>

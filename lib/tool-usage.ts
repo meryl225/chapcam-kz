@@ -1,6 +1,6 @@
 import 'server-only'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
-import { estimateToolCostUsd, type ToolName } from './tool-costs'
+import { estimateToolCostUsd, type ChapVerifyMediaKind, type ToolName } from './tool-costs'
 import { reserveJetons } from './jetons'
 
 export type { ToolName } from './tool-costs'
@@ -67,6 +67,7 @@ export async function logToolUsage(params: {
     const costUsd = estimateToolCostUsd(params.tool, {
       durationSeconds: params.durationSeconds,
       precision: params.precision,
+      media: params.meta?.media as ChapVerifyMediaKind | undefined,
     })
     const duration = params.durationSeconds ?? null
     const meta = params.meta ? JSON.stringify(params.meta) : null

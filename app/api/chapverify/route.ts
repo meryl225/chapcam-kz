@@ -1,21 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { motionQuotaForPlan } from '@/lib/plans'
-import { getMotionBalance, addMotionCredits, deductMotionCredit } from '@/lib/motion-quota'
-import {
-  submitDetection,
-  getDetection,
-  mediaTypeFromMime,
-  chapVerifyCost,
-  type ChapVerifyMedia,
-} from '@/lib/resemble'
+import { submitDetection, getDetection, mediaTypeFromMime, type ChapVerifyMedia } from '@/lib/resemble'
 import { createJob, getJob, listJobs, markCompleted, markFailed } from '@/lib/chapverify-jobs'
 import { logToolUsage } from '@/lib/tool-usage'
+import { creditJetons, getJetonsBalance, reserveJetons } from '@/lib/jetons'
+import { readMediaDurationSeconds } from '@/lib/media-duration'
+import { estimateChapVerifyPriceUsd, PROVIDER_MARGIN_MULTIPLIER } from '@/lib/tool-costs'
 
 // ChapVerify — detection de deepfake (image / audio / video) via Resemble.
-// Facturation : reutilise le solde de credits Motion. Image 1, Audio 1, Video 2.
-// Le credit est deduit apres une soumission reussie, et rembourse UNE SEULE
-// fois si la detection echoue.
+// Facturation en Jetons : tarif Resemble Flex x 2,5 (image a l'unite, audio et
+// video a la seconde analysee, 8 s max). Debit avant la soumission, rendu UNE
+// SEULE fois si la soumission ou la detection echoue.
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
@@ -24,34 +19,6 @@ const MAX_BY_MEDIA: Record<ChapVerifyMedia, number> = {
   image: 12 * 1024 * 1024, // 12 Mo
   audio: 25 * 1024 * 1024, // 25 Mo
   video: 60 * 1024 * 1024, // 60 Mo
-}
-
-// Attribue le quota Motion du forfait a la premiere utilisation d'un abonne actif.
-async function ensureCreditsForActiveSub(userId: string, planId: string): Promise<number> {
-  const { balance, exists } = await getMotionBalance(userId)
-  if (exists) return balance
-  const quota = motionQuotaForPlan(planId)
-  if (quota <= 0) return 0
-  return addMotionCredits(userId, quota)
-}
-
-async function resolveBalance(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-): Promise<{ balance: number; subActive: boolean }> {
-  const { data: sub } = await supabase
-    .from('subscriptions')
-    .select('plan, end_date, expires_at, is_active')
-    .eq('user_id', userId)
-    .eq('is_active', true)
-    .limit(1)
-    .maybeSingle()
-  const subEnd = sub?.end_date ?? sub?.expires_at ?? null
-  const subActive = !!sub && !!subEnd && new Date(subEnd).getTime() > Date.now()
-  const balance = subActive
-    ? await ensureCreditsForActiveSub(userId, sub!.plan)
-    : (await getMotionBalance(userId)).balance
-  return { balance, subActive }
 }
 
 // GET : ?info=quota (solde) | ?info=history (historique) | ?uuid=... (statut)
@@ -69,7 +36,7 @@ export async function GET(request: NextRequest) {
   const info = params.get('info')
 
   if (info === 'quota') {
-    const { balance } = await resolveBalance(supabase, user.id)
+    const { balance } = await getJetonsBalance(user.id)
     return NextResponse.json({ success: true, credits: balance })
   }
 
@@ -116,7 +83,7 @@ export async function GET(request: NextRequest) {
       const transitioned = await markFailed(user.id, uuid)
       let remaining: number | undefined
       if (transitioned) {
-        remaining = await addMotionCredits(user.id, job.cost)
+        remaining = (await creditJetons(user.id, job.cost, { reason: 'chapverify_failed_refund', uuid })).balance
       }
       return NextResponse.json({
         success: true,
@@ -169,43 +136,47 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Fichier trop volumineux (max ${mb} Mo).` }, { status: 400 })
   }
 
-  const cost = chapVerifyCost(media)
+  // Duree lue dans le fichier (MP4/MOV/M4A) ; sinon facture au plafond analyse (8 s).
+  const parsedSeconds = media === 'image' ? null : readMediaDurationSeconds(new Uint8Array(await file.arrayBuffer()))
+  const pricing = estimateChapVerifyPriceUsd(media, parsedSeconds ?? undefined)
 
-  // Verifie le solde AVANT de soumettre a Resemble.
-  const { balance, subActive } = await resolveBalance(supabase, user.id)
-  if (balance < cost) {
+  const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, 'chapverify', {
+    provider: 'resemble',
+    media,
+    durationSeconds: pricing.durationSeconds,
+    providerCostUsd: pricing.providerCostUsd,
+    marginMultiplier: PROVIDER_MARGIN_MULTIPLIER,
+  })
+  if (!wallet.ok) {
     return NextResponse.json(
       {
-        error: !subActive
-          ? 'Aucun forfait actif. Choisis un forfait pour obtenir des credits ChapVerify.'
-          : balance > 0
-            ? `Cette verification coute ${cost} credits et il t'en reste ${balance}. Recharge tes credits.`
-            : 'Credits epuises. Recharge pour continuer a verifier.',
-        code: !subActive ? 'no_plan' : 'quota_exhausted',
-        remaining: Math.max(0, balance),
-        required: cost,
+        error: `Cette vérification coûte ${wallet.required} Jetons et il t'en reste ${wallet.balance}. Recharge tes Jetons.`,
+        code: 'quota_exhausted',
+        remaining: Math.max(0, wallet.balance),
+        required: wallet.required,
       },
       { status: 402 },
     )
   }
+  const cost = wallet.charged
 
-  // Soumission a Resemble.
   let uuid: string
   try {
     uuid = await submitDetection(file, media)
   } catch (e) {
+    await creditJetons(user.id, cost, { reason: 'chapverify_submit_failed' }).catch(() => {})
     const msg = e instanceof Error ? e.message : 'Soumission a Resemble echouee.'
     return NextResponse.json({ error: msg }, { status: 502 })
   }
 
-  // Deduction du credit UNIQUEMENT apres une soumission reussie.
-  const remaining = await deductMotionCredit(user.id, cost)
+  const remaining = wallet.balance
   await createJob(user.id, uuid, media, cost, file.name || `upload-${media}`)
   await logToolUsage({
     userId: user.id,
     tool: 'chapverify',
     credits: cost,
-    meta: { media, provider: 'resemble' },
+    durationSeconds: pricing.durationSeconds || undefined,
+    meta: { media, provider: 'resemble', walletAlreadyCharged: true },
   }).catch(() => {})
 
   return NextResponse.json({

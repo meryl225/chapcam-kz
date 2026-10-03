@@ -6,7 +6,7 @@ import {
   findUserByProviderRef,
   failGenerationAndGetRefund,
 } from "@/lib/video-history"
-import { refundTranslationCredits } from "@/lib/translation-quota"
+import { creditJetons } from "@/lib/jetons"
 
 // ============================================================
 // Webhook HeyGen : notification serveur-a-serveur quand une generation se
@@ -192,8 +192,7 @@ export async function POST(request: NextRequest) {
           // atomique processing->failed cote lib).
           const refund = await failGenerationAndGetRefund(userId, "translation", translateId)
           if (refund > 0) {
-            await refundTranslationCredits(userId, refund)
-            console.log(`[HeyGen Webhook] Traduction echouee -> ${refund} credit(s) rembourse(s) a ${userId}`)
+            await creditJetons(userId, refund, { reason: "translation_failed_refund", request_id: translateId })
           }
         }
       }
