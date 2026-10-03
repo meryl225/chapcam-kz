@@ -1,12 +1,12 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { after, type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { listVideoHistory, deleteVideoHistory, type VideoTool } from '@/lib/video-history'
+import { listVideoHistory, deleteVideoHistory, isAutoRepairable, type VideoTool } from '@/lib/video-history'
 import { repairVideoRow } from '@/lib/video-history-repair'
 import { getSignedStreamUrls } from '@/lib/cloudflare-stream'
 import { isVideoKey, signedPlaybackUrl } from '@/lib/r2'
 
-// L'auto-reparation peut re-heberger plusieurs videos (fetch HeyGen + upload
-// Blob) : on laisse de la marge pour eviter un timeout serverless.
+// La reparation de fond (after()) s'execute dans la duree de vie de la fonction :
+// on garde la marge pour qu'elle aboutisse, sans impact sur le temps de reponse.
 export const maxDuration = 120
 
 // Liste l'historique des videos generees par l'utilisateur courant.
@@ -39,37 +39,28 @@ export async function GET(request: NextRequest) {
     //     si la generation est reellement terminee (sinon no-op sur une vraie
     //     video encore en cours). Tant que la source fournisseur est valide
     //     (HeyGen ~7j, Kling ~30j) la video est recuperee et rendue permanente.
-    // Borne a quelques reparations par requete pour ne pas ralentir la page ;
-    // le reste sera repare aux prochains "Actualiser".
+    // NON BLOQUANT : la reparation (appel fournisseur + telechargement MP4 +
+    // upload) tourne via after(), APRES l'envoi de la reponse. La liste est
+    // renvoyee immediatement avec ce qui est deja disponible ; une video reparee
+    // apparaitra au prochain chargement / "Actualiser".
+    // Eligibilite (isAutoRepairable) : < 7 jours ET < 6 tentatives. Au-dela,
+    // plus aucune tentative automatique (les lignes ne sont jamais supprimees).
     const MAX_REPAIRS = 4
-    const STALE_PROCESSING_MS = 3 * 60 * 1000 // 3 min : au-dela, on reconcilie
-    const now = Date.now()
-    const repairable = items.filter((v) => {
-      if (!v.provider_ref) return false
-      if (v.status === 'completed' && !v.blob_pathname) return true
-      if (v.status === 'processing') {
-        const age = now - new Date(v.created_at).getTime()
-        return age > STALE_PROCESSING_MS
-      }
-      return false
-    })
-    const healed = new Map<string, string>()
-    if (repairable.length > 0) {
-      const batch = repairable.slice(0, MAX_REPAIRS)
-      const results = await Promise.all(
-        batch.map((v) =>
-          repairVideoRow({
-            userId: user.id,
-            id: v.id,
-            tool: v.tool,
-            providerRef: v.provider_ref as string,
-            title: v.title,
-          }).catch(() => null),
-        ),
-      )
-      batch.forEach((v, i) => {
-        const p = results[i]
-        if (p) healed.set(v.id, p)
+    const userId = user.id
+    const batch = items.filter((v) => isAutoRepairable(v)).slice(0, MAX_REPAIRS)
+    if (batch.length > 0) {
+      after(async () => {
+        await Promise.all(
+          batch.map((v) =>
+            repairVideoRow({
+              userId,
+              id: v.id,
+              tool: v.tool,
+              providerRef: v.provider_ref as string,
+              title: v.title,
+            }).catch((e) => console.error('[videos/history] Reparation de fond echouee:', e)),
+          ),
+        )
       })
     }
 
@@ -80,9 +71,8 @@ export async function GET(request: NextRequest) {
     //    (master original) et comme repli de lecture si Stream absent.
     const videos = await Promise.all(
       items.map(async (v) => {
-        const pathname = v.blob_pathname || healed.get(v.id) || null
-        // Une ligne "processing" qui vient d'etre reparee est en realite terminee.
-        const status = healed.has(v.id) ? 'completed' : v.status
+        const pathname = v.blob_pathname || null
+        const status = v.status
         // SOURCE DE LECTURE.
         // Priorite : URL R2 SIGNEE DIRECTE (inline, ~1h). On NE passe PLUS par la
         // redirection 302 de /api/videos/file : le lecteur <video> d'iOS Safari

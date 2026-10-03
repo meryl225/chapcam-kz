@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { getAvatarCount, getCurrentUser, getRequestSupabase, getSubscription } from '@/lib/supabase/session'
 import { ToolsGrid } from '@/components/dashboard/hub/tools-grid'
 import { PremiumHeader } from '@/components/dashboard/premium-header'
 import { ConsentCard } from '@/components/dashboard/consent-card'
@@ -27,45 +27,33 @@ function fmtMinutes(points: number) {
 }
 
 export default async function DashboardHubPage() {
-  const supabase = await createClient()
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Meme utilisateur / abonnement / avatars que le layout : React cache les
+  // partage sur la requete, donc aucun appel Supabase en double.
+  const [user, supabase] = await Promise.all([getCurrentUser(), getRequestSupabase()])
+  const userId = user?.id ?? ''
 
   const startOfToday = new Date()
   startOfToday.setHours(0, 0, 0, 0)
 
-  const [
-    { data: subscription },
-    { count: avatarCount },
-    { data: todaySessions },
-  ] = await Promise.all([
-    supabase
-      .from('subscriptions')
-      .select('plan, points, max_points, is_active')
-      .eq('user_id', user?.id ?? '')
-      .maybeSingle(),
-    supabase
-      .from('user_avatars')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user?.id ?? ''),
+  const [subscription, avatarCount, { data: todaySessions }, entitlement] = await Promise.all([
+    getSubscription(userId),
+    getAvatarCount(userId),
     supabase
       .from('swap_sessions')
       .select('duration_seconds')
-      .eq('user_id', user?.id ?? '')
+      .eq('user_id', userId)
       .gte('started_at', startOfToday.toISOString()),
+    userId ? resolveWatermarkForUser(userId) : Promise.resolve(null),
   ])
 
   const swapsToday = todaySessions?.length ?? 0
   const secondsToday = (todaySessions ?? []).reduce(
-    (acc, s) => acc + (s.duration_seconds ?? 0),
+    (acc: number, s: { duration_seconds: number | null }) => acc + (s.duration_seconds ?? 0),
     0,
   )
   const minutesToday = Math.floor(secondsToday / 60)
 
   const points = subscription?.points ?? 0
-  const entitlement = user?.id ? await resolveWatermarkForUser(user.id) : null
   const plan = subscription?.plan || entitlement?.plan || 'free'
   const isPro = plan !== 'free' && (subscription?.is_active === true || entitlement?.plan !== '')
   const displayName =
