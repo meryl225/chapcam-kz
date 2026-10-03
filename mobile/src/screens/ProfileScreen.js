@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
 import { supabase } from '../lib/supabase'
+import { apiJson } from '../lib/api'
 import { BRAND, C, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 
@@ -106,6 +107,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const account = useAccountSummary()
   console.log('[v0] ProfileScreen accountSummary', { summary: account.summary })
   const [avatarFailed, setAvatarFailed] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   // Live Swap + plan come from the same Supabase `subscriptions` row the website dashboard reads
   // (loaded by AuthenticatedHome under the user's session / RLS). Jetons live in the Neon
@@ -151,6 +153,34 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
       { text: 'Annuler', style: 'cancel' },
       { text: 'Se déconnecter', style: 'destructive', onPress: () => supabase.auth.signOut() },
     ])
+
+  const deleteAccount = async () => {
+    setDeleting(true)
+    try {
+      const { response, body } = await apiJson('/api/mobile/account/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: true }),
+      })
+      if (!response.ok || body?.deleted !== true) {
+        throw new Error(body?.error || `Erreur HTTP ${response.status}`)
+      }
+      await supabase.auth.signOut({ scope: 'local' })
+    } catch (error) {
+      setDeleting(false)
+      Alert.alert('Suppression impossible', error?.message || String(error))
+    }
+  }
+
+  const confirmDeleteAccount = () =>
+    Alert.alert(
+      'Supprimer définitivement votre compte ?',
+      'Cette action supprimera votre compte ChapCam et les données personnelles associées. Cette action est irréversible.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { text: 'Supprimer définitivement', style: 'destructive', onPress: deleteAccount },
+      ],
+    )
 
   return (
     <ScrollView
@@ -316,6 +346,21 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
         <Text style={styles.signOutText}>Se déconnecter</Text>
       </Pressable>
 
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ disabled: deleting, busy: deleting }}
+        disabled={deleting}
+        onPress={confirmDeleteAccount}
+        style={({ pressed }) => [styles.deleteAccount, (pressed || deleting) && styles.pressed]}
+      >
+        {deleting ? (
+          <ActivityIndicator size="small" color={DANGER} />
+        ) : (
+          <Ionicons name="trash-outline" size={18} color={DANGER} />
+        )}
+        <Text style={styles.signOutText}>{deleting ? 'Suppression en cours…' : 'Supprimer mon compte'}</Text>
+      </Pressable>
+
       <View style={styles.appInfo}>
         <Text style={styles.appName}>ChapCam</Text>
         {appVersion ? (
@@ -418,6 +463,7 @@ const styles = StyleSheet.create({
 
   signOut: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, marginTop: 24, borderRadius: 16, backgroundColor: '#FFF1F1', borderWidth: 1, borderColor: '#FFDADB' },
   signOutText: { color: DANGER, fontSize: 15, fontWeight: '800' },
+  deleteAccount: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 52, marginTop: 12, borderRadius: 16, borderWidth: 1, borderColor: '#FFDADB' },
 
   appInfo: { alignItems: 'center', gap: 2, marginTop: 18 },
   appName: { color: '#5D6785', fontSize: 13, fontWeight: '800' },
