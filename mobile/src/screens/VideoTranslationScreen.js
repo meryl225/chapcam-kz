@@ -7,6 +7,7 @@ import { supabase } from '../lib/supabase'
 import { C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { API_URL } from '../lib/api'
+import { AiBadge, ReportAbuseButton, RightsConsent } from '../ui/Safety'
 
 const MAX_SECONDS = 60
 const MAX_BYTES = 60 * 1024 * 1024
@@ -28,6 +29,7 @@ export function VideoTranslationScreen({ onBack }) {
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const pollRef = useRef(null)
+  const [rightsOk, setRightsOk] = useState(false)
   const busy = status === 'uploading' || status === 'processing'
   const cost = mode === 'precision' ? 2 : 1
 
@@ -70,7 +72,7 @@ export function VideoTranslationScreen({ onBack }) {
   }
 
   const translate = async () => {
-    if (!video?.uri || !language || busy) return
+    if (!video?.uri || !language || busy || !rightsOk) return
     if (credits !== null && credits < cost) {
       return Alert.alert('Crédits insuffisants', `Cette traduction coûte ${cost} crédit${cost > 1 ? 's' : ''}. Achète un pack ou passe à un forfait Premium/VIP.`)
     }
@@ -128,8 +130,9 @@ export function VideoTranslationScreen({ onBack }) {
         <Pressable onPress={() => setCaption(!caption)} style={styles.optionRow}><Ionicons name={caption ? 'checkbox' : 'square-outline'} size={22} color={caption ? C.blue : C.muted} /><View><Text style={styles.optionTitle}>Sous-titres</Text><Text style={styles.muted}>Ajouter des sous-titres à la vidéo traduite</Text></View></Pressable>
         <View style={styles.cost}><Text style={styles.costLabel}>Coût : <Text style={styles.costStrong}>{cost} crédit{cost > 1 ? 's' : ''}</Text></Text>{credits !== null ? <Text style={styles.muted}>{credits} crédit{credits > 1 ? 's' : ''} disponible{credits > 1 ? 's' : ''}</Text> : null}</View>
         {error ? <View style={styles.error}><Text style={styles.errorText}>{error}</Text></View> : null}
-        {busy ? <View style={styles.loading}><ChapCamLoader size="small" /><Text style={styles.loadingText}>Traduction en cours</Text></View> : <Pressable disabled={!video?.uri || !language || busy} onPress={translate} style={[styles.cta, (!video?.uri || !language || busy) && styles.ctaDisabled]}><Ionicons name="language" size={20} color={C.white} /><Text style={styles.ctaText}>Traduire la vidéo</Text></Pressable>}
-        {result ? <View style={styles.result}><Text style={styles.section}>Vidéo traduite</Text><Preview uri={result} result /></View> : null}
+        <RightsConsent checked={rightsOk} onChange={setRightsOk} disabled={busy} />
+        {busy ? <View style={styles.loading}><ChapCamLoader size="small" /><Text style={styles.loadingText}>Traduction en cours</Text></View> : <Pressable disabled={!video?.uri || !language || busy || !rightsOk} onPress={translate} style={[styles.cta, (!video?.uri || !language || busy || !rightsOk) && styles.ctaDisabled]} accessibilityRole="button"><Ionicons name="language" size={20} color={C.white} /><Text style={styles.ctaText}>Traduire la vidéo</Text></Pressable>}
+        {result ? <View style={styles.result}><Text style={styles.section}>Vidéo traduite</Text><AiBadge /><Preview uri={result} result /><ReportAbuseButton contentUrl={result} context="Traduction de Vidéo" /></View> : null}
       </ScrollView>
     </KeyboardAvoidingView>
   )

@@ -8,6 +8,7 @@ import { C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { useJetonsBalance } from '../lib/useJetonsBalance'
 import { API_URL } from '../lib/api'
+import { AiBadge, ReportAbuseButton, RightsConsent } from '../ui/Safety'
 
 
 // Same rules and options as app/dashboard/motion/page.tsx (Motion Control tab).
@@ -310,6 +311,8 @@ export function MotionControlScreen({ onBack, onOpenCreations, topInset = 0 }) {
     }
   }, [image, reference, prompt, selectedMotions, sceneActive, balance.jetons, composePrompt, quality, enhance, model, reloadBalance])
 
+  const [rightsOk, setRightsOk] = useState(false)
+
   return (
     <KeyboardAvoidingView style={[styles.root, { paddingTop: topInset }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.topbar}>
@@ -464,9 +467,13 @@ export function MotionControlScreen({ onBack, onOpenCreations, topInset = 0 }) {
 
           {resultUrl ? (
             <View style={styles.result}>
+              <AiBadge />
               <LoopVideo uri={resultUrl} style={styles.resultVideo} controls />
+              <ReportAbuseButton contentUrl={resultUrl} context="Motion Control" />
             </View>
           ) : null}
+
+          <RightsConsent checked={rightsOk} onChange={setRightsOk} disabled={busy} />
 
           {resultUrl && onOpenCreations ? (
             <Pressable onPress={onOpenCreations} style={styles.creations} accessibilityRole="button">
@@ -475,7 +482,7 @@ export function MotionControlScreen({ onBack, onOpenCreations, topInset = 0 }) {
             </Pressable>
           ) : null}
 
-          <Pressable onPress={onGenerate} disabled={!ready} style={[styles.generate, !ready && styles.generateDisabled]} accessibilityRole="button" accessibilityState={{ disabled: !ready, busy: loading }}>
+          <Pressable onPress={onGenerate} disabled={!ready || !rightsOk} style={[styles.generate, (!ready || !rightsOk) && styles.generateDisabled]} accessibilityRole="button" accessibilityState={{ disabled: !ready || !rightsOk, busy: loading }}>
             {loading ? (
               <>
                 <ChapCamLoader size="small" />

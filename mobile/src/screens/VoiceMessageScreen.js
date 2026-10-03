@@ -10,6 +10,7 @@ import { VoiceRecorder } from '../ui/VoiceRecorder'
 import { AudioClip } from '../ui/AudioClip'
 import { VoicePicker } from '../ui/VoicePicker'
 import { API_URL as WEB_URL } from '../lib/api'
+import { AiBadge, RightsConsent } from '../ui/Safety'
 
 // Mirrors lib/plans.ts VOICE_MESSAGE_MAX_CHARS / VOICE_MESSAGE_MAX_SECONDS.
 const MAX_CHARS = 240
@@ -183,7 +184,7 @@ function TextTab({ voices, selected, onSelect, locked, onConsumed }) {
           <Ionicons name="sparkles" size={19} color={C.white} /><Text style={styles.ctaText}>Générer le message vocal</Text>
         </Pressable>
       )}
-      {result ? <><Step n={3} title="Écoute ton message" /><AudioClip uri={result} label={`Audio · ${selected?.name ?? ''}`} accent={C.violet} /></> : null}
+      {result ? <><Step n={3} title="Écoute ton message" /><AiBadge /><AudioClip uri={result} label={`Audio · ${selected?.name ?? ''}`} accent={C.violet} /></> : null}
     </View>
   )
 }
@@ -199,7 +200,8 @@ function RecordTab({ voices, selected, onSelect, locked, onConsumed }) {
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
 
-  const canTransform = !!source && !!selected && !busy && !locked
+  const [rightsOk, setRightsOk] = useState(false)
+  const canTransform = !!source && !!selected && !busy && !locked && rightsOk
 
   const transform = async () => {
     if (!canTransform) return
@@ -245,6 +247,7 @@ function RecordTab({ voices, selected, onSelect, locked, onConsumed }) {
         <View style={styles.switchRow}><Text style={styles.switchLabel}>Réduction de bruit</Text><Switch value={removeNoise} onValueChange={setRemoveNoise} trackColor={{ true: C.blue }} /></View>
       </Advanced>
       {error ? <Text style={styles.error}>{error}</Text> : null}
+      <RightsConsent checked={rightsOk} onChange={setRightsOk} disabled={busy} />
       {busy ? <Busy label="Transformation de ta voix…" /> : (
         <Pressable onPress={transform} disabled={!canTransform} style={[styles.cta, { backgroundColor: C.blue }, !canTransform && styles.ctaOff]} accessibilityRole="button">
           <Ionicons name="sparkles" size={19} color={C.white} /><Text style={styles.ctaText}>Transformer ma voix</Text>
@@ -255,6 +258,7 @@ function RecordTab({ voices, selected, onSelect, locked, onConsumed }) {
         <View style={styles.gap}>
           <Step n={3} title="Compare le résultat" />
           <AudioClip uri={source} label="Voix originale" accent={C.muted} />
+          <AiBadge />
           <AudioClip uri={result} label={`Voix transformée · ${selected?.name ?? ''}`} accent={C.blue} />
         </View>
       ) : null}

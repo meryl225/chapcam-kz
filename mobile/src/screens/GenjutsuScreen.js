@@ -8,6 +8,7 @@ import { C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { useJetonsBalance } from '../lib/useJetonsBalance'
 import { API_URL } from '../lib/api'
+import { RightsConsent } from '../ui/Safety'
 
 
 // Same rules and options as app/dashboard/genjutsu/page.tsx + lib/tool-costs.ts.
@@ -261,6 +262,8 @@ export function GenjutsuScreen({ onBack, onOpenCreations, topInset = 0 }) {
     }
   }, [image, reference, prompt, quality, duration, enhance, selectedMotions, balance.jetons, cost, reloadBalance])
 
+  const [rightsOk, setRightsOk] = useState(false)
+
   return (
     <KeyboardAvoidingView style={[styles.root, { paddingTop: topInset }]} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.topbar}>
@@ -387,7 +390,9 @@ export function GenjutsuScreen({ onBack, onOpenCreations, topInset = 0 }) {
             </Pressable>
           ) : null}
 
-          <Pressable onPress={onGenerate} disabled={!ready} style={[styles.generate, !ready && styles.generateDisabled]} accessibilityRole="button" accessibilityState={{ disabled: !ready, busy: loading }}>
+          <RightsConsent checked={rightsOk} onChange={setRightsOk} disabled={busy} />
+
+          <Pressable onPress={onGenerate} disabled={!ready || !rightsOk} style={[styles.generate, (!ready || !rightsOk) && styles.generateDisabled]} accessibilityRole="button" accessibilityState={{ disabled: !ready || !rightsOk, busy: loading }}>
             {loading ? (
               <>
                 <ChapCamLoader size="small" />

@@ -11,6 +11,7 @@ import { VoicePicker } from '../ui/VoicePicker'
 import { VoiceRecorder } from '../ui/VoiceRecorder'
 import { AudioClip } from '../ui/AudioClip'
 import { API_URL } from '../lib/api'
+import { AiBadge, ReportAbuseButton, RightsConsent } from '../ui/Safety'
 
 const MAX_SCRIPT_CHARS = 420
 const CHARS_PER_SECOND = 14
@@ -156,8 +157,10 @@ export function PhotoVideoScreen({ onBack }) {
     }
   }
 
+  const [rightsOk, setRightsOk] = useState(false)
+
   const generate = async () => {
-    if (!canGenerate) return
+    if (!canGenerate || !rightsOk) return
     setBusy(true); setError(''); setResult(null)
     try {
       const token = await getToken()
@@ -250,11 +253,18 @@ export function PhotoVideoScreen({ onBack }) {
           <Segment options={SPEEDS} value={speed} onChange={(v) => { setSpeed(v); setPreviewUri(null) }} />
         </View>
 
-        {result ? <View style={styles.resultCard}><Text style={styles.resultLabel}>VIDÉO GÉNÉRÉE</Text><ResultVideo uri={result} /></View> : null}
+        {result ? (
+          <View style={styles.resultCard}>
+            <View style={styles.resultHead}><Text style={styles.resultLabel}>VIDÉO GÉNÉRÉE</Text><AiBadge /></View>
+            <ResultVideo uri={result} />
+            <ReportAbuseButton contentUrl={result} context="Photos en Vidéo" />
+          </View>
+        ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}
         <View style={styles.footer}>
+          <RightsConsent checked={rightsOk} onChange={setRightsOk} disabled={busy} />
           <Text style={styles.cost}>{prompt.trim() ? <>Coût : <Text style={styles.costStrong}>{cost} Jetons</Text></> : 'Le coût sera calculé selon ton texte'}</Text>
-          <Pressable onPress={generate} disabled={!canGenerate} style={[styles.generate, !canGenerate && styles.off]} accessibilityRole="button">
+          <Pressable onPress={generate} disabled={!canGenerate || !rightsOk} style={[styles.generate, (!canGenerate || !rightsOk) && styles.off]} accessibilityRole="button" accessibilityState={{ disabled: !canGenerate || !rightsOk }}>
             {busy ? <ChapCamLoader size="small" tone="light" /> : <><Text style={styles.generateText}>Générer la vidéo</Text><Ionicons name="arrow-forward" size={19} color={C.white} /></>}
           </Pressable>
         </View>
@@ -300,6 +310,7 @@ const styles = StyleSheet.create({
   settings: { gap: 10, padding: 16, borderRadius: 20, backgroundColor: C.white, borderWidth: 1, borderColor: '#E2E6F1' },
   settingLabel: { color: C.ink, fontSize: 14, fontWeight: '800' },
   resultCard: { backgroundColor: C.white, borderRadius: 24, padding: 12, gap: 10 },
+  resultHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   resultLabel: { color: C.muted, fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   resultVideo: { width: '100%', aspectRatio: 9 / 16, borderRadius: 16, backgroundColor: '#000' },
   error: { color: '#DC2626', fontSize: 13, lineHeight: 18 },

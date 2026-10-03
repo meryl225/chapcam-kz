@@ -10,6 +10,7 @@ import { BRAND, C, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { supabase } from '../lib/supabase'
 import { loadDecart, mediaDevices, newSessionId, RTCView } from '../lib/realtime'
+import { AiBadge, RightsConsent } from '../ui/Safety'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const PLANS_URL = `${WEB_URL}/dashboard/plans`
@@ -206,9 +207,12 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
     )
   }
 
+  const [rightsOk, setRightsOk] = useState(false)
+
   const start = async () => {
     if (!granted) return askCamera()
     if (!face) return pickFace()
+    if (!rightsOk) return setNotice({ tone: 'error', text: 'Confirme disposer des droits sur ce visage pour démarrer.' })
     if (!localRef.current) return setNotice({ tone: 'error', text: 'La caméra démarre encore. Réessaie.' })
 
     setNotice(null)
@@ -304,6 +308,7 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
                 <Text style={styles.liveText}>EN DIRECT</Text>
                 <Text style={styles.liveClock}>{formatClock(elapsed)}</Text>
               </View>
+              <AiBadge tone="dark" />
             </View>
           ) : null}
 
@@ -360,6 +365,8 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
             <Ionicons name="chevron-forward" size={18} color={C.muted} />
           </Pressable>
         )}
+
+        {face && !inSession ? <RightsConsent checked={rightsOk} onChange={setRightsOk} /> : null}
 
         {granted && facing === 'front' && !inSession ? (
           <>

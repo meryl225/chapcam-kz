@@ -24,6 +24,7 @@ import { supabase } from '../lib/supabase'
 import { BRAND, C, GAP, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { API_URL } from '../lib/api'
+import { AiBadge, ReportAbuseSheet } from '../ui/Safety'
 
 // Native modules are optional so an older dev build without them still runs:
 // the affected action falls back instead of crashing.
@@ -456,7 +457,7 @@ const CreationCard = React.memo(function CreationCard({ item, width, busy, onPre
         <LinearGradient colors={['rgba(14,21,48,0)', 'rgba(14,21,48,0.55)']} style={styles.thumbShade} pointerEvents="none" />
         <View style={styles.kindBadge}>
           <Ionicons name="videocam" size={11} color={C.white} />
-          <Text style={styles.kindBadgeText}>Vidéo</Text>
+          <Text style={styles.kindBadgeText}>Vidéo · IA</Text>
         </View>
         {item.status === 'processing' ? (
           <View style={[styles.overlay, styles.center]}>
@@ -525,6 +526,7 @@ function ToolFilterSheet({ visible, tools, value, onClose, onChange }) {
 function Viewer({ item, busy, onClose, onDownload, onShare, onDelete }) {
   const insets = useSafeAreaInsets()
   const [duration, setDuration] = useState(0)
+  const [reporting, setReporting] = useState(false)
   useEffect(() => setDuration(0), [item?.id])
   if (!item) return null
   const meta = metaFor(item)
@@ -542,6 +544,7 @@ function Viewer({ item, busy, onClose, onDownload, onShare, onDelete }) {
             <Text style={styles.viewerTitle} numberOfLines={1}>{title}</Text>
             <Text style={styles.viewerSub} numberOfLines={1}>{[meta.label, date, durationLabel].filter(Boolean).join(' · ')}</Text>
           </View>
+          <AiBadge tone="dark" />
         </View>
 
         <View style={styles.viewerStage}>
@@ -556,7 +559,9 @@ function Viewer({ item, busy, onClose, onDownload, onShare, onDelete }) {
           <ViewerAction icon="arrow-down-circle-outline" label="Télécharger" loading={busy === 'download'} disabled={!!busy} onPress={() => onDownload(item)} />
           <ViewerAction icon="share-outline" label="Partager" loading={busy === 'share'} disabled={!!busy} onPress={() => onShare(item)} />
           <ViewerAction icon="trash-outline" label="Supprimer" danger loading={busy === 'delete'} disabled={!!busy} onPress={() => onDelete(item)} />
+          <ViewerAction icon="flag-outline" label="Signaler" disabled={!!busy} onPress={() => setReporting(true)} />
         </View>
+        <ReportAbuseSheet visible={reporting} onClose={() => setReporting(false)} contentUrl={item.playback_url} context={`Mes créations · ${meta.label}`} />
       </View>
     </Modal>
   )
