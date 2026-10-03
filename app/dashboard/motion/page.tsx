@@ -114,7 +114,7 @@ export default function MotionPage() {
       try {
         const [mRes, hRes] = await Promise.all([
           fetch("/api/motion?info=motions"),
-          fetch("/api/motion?info=history"),
+          fetch("/api/motion/control?info=history"),
         ])
         const mJson = await mRes.json()
         if (mRes.ok && Array.isArray(mJson.motions)) setMotions(mJson.motions)
