@@ -1,9 +1,8 @@
 // ============================================================
 // Tarifs fournisseur ESTIMES (en USD) pour les outils IA ChapCam.
-// Ces constantes servent uniquement au suivi/rapprochement cote admin : elles
-// estiment ce que CHAQUE generation coute chez le fournisseur (HeyGen, fal.ai),
-// afin de rapprocher la facture reelle et de voir quel utilisateur consomme quoi.
-// Elles n'ont AUCUN impact sur les credits factures aux utilisateurs.
+// Elles estiment ce que CHAQUE generation coute chez le fournisseur et servent
+// au rapprochement admin. Photo en Video et Genjutsu sont factures aux
+// utilisateurs a ce cout x PROVIDER_MARGIN_MULTIPLIER.
 //
 // Ajuste ces valeurs si les tarifs fournisseur changent :
 //   - HeyGen Avatar IV (photo -> video) : ~0,05 $/seconde de video produite.
@@ -14,7 +13,22 @@
 
 export type ToolName = 'photo_video' | 'motion' | 'translation' | 'chapverify' | 'voice_message'
 
-export const GENJUTSU_MARGIN_MULTIPLIER = 2
+// Prix client = cout fournisseur (HeyGen, Higgsfield, Resemble) x 2,5, facture a la duree.
+export const PROVIDER_MARGIN_MULTIPLIER = 2.5
+// Doit rester egal a JETONS_PER_USD de lib/jetons.ts (server-only), utilise pour l'affichage.
+export const DISPLAY_JETONS_PER_USD = 60
+
+const round4 = (value: number) => Math.round(value * 10000) / 10000
+
+export function applyProviderMargin(providerCostUsd: number) {
+  return round4(round4(providerCostUsd) * PROVIDER_MARGIN_MULTIPLIER)
+}
+
+export function usdToDisplayJetons(customerPriceUsd: number) {
+  return Math.max(1, Math.ceil(Math.max(0, customerPriceUsd) * DISPLAY_JETONS_PER_USD))
+}
+
+export const GENJUTSU_MARGIN_MULTIPLIER = PROVIDER_MARGIN_MULTIPLIER
 export const GENJUTSU_MAX_DURATION_SECONDS = 30
 // 10 secondes = 3250 FCFA, soit 325 FCFA par seconde.
 export const GENJUTSU_PROVIDER_COST_PER_SECOND_USD = 0.2708333333
@@ -24,9 +38,22 @@ export type GenjutsuQuality = '720p' | '1080p'
 
 export function estimateGenjutsuPriceUsd(model: string, quality: GenjutsuQuality, durationSeconds = GENJUTSU_MAX_DURATION_SECONDS) {
   const duration = Math.min(GENJUTSU_MAX_DURATION_SECONDS, Math.max(1, Math.floor(durationSeconds)))
-  const providerCostUsd = Math.round(GENJUTSU_PROVIDER_COST_PER_SECOND_USD * duration * 10000) / 10000
-  const customerPriceUsd = Math.round(providerCostUsd * GENJUTSU_MARGIN_MULTIPLIER * 10000) / 10000
+  const providerCostUsd = round4(GENJUTSU_PROVIDER_COST_PER_SECOND_USD * duration)
+  const customerPriceUsd = applyProviderMargin(providerCostUsd)
   return { providerCostUsd, customerPriceUsd, durationSeconds: duration, quality, model }
+}
+
+export function genjutsuJetons(durationSeconds: number) {
+  return usdToDisplayJetons(estimateGenjutsuPriceUsd('genjutsu', '720p', durationSeconds).customerPriceUsd)
+}
+
+export function estimatePhotoVideoPriceUsd(durationSeconds: number) {
+  const providerCostUsd = round4(durationSeconds * TOOL_PROVIDER_COST.photo_video.perSecondUsd)
+  return { providerCostUsd, customerPriceUsd: applyProviderMargin(providerCostUsd) }
+}
+
+export function photoVideoJetons(durationSeconds: number) {
+  return usdToDisplayJetons(estimatePhotoVideoPriceUsd(durationSeconds).customerPriceUsd)
 }
 
 export const TOOL_LABELS: Record<ToolName, string> = {

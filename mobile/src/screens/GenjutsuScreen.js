@@ -20,7 +20,7 @@ const DURATIONS = [5, 10, 15, 20, 25, 30]
 const QUALITIES = ['720p']
 const DEFAULT_PROMPT = 'Un mouvement de caméra lent vers le visage, sourire naturel et cheveux animés par une légère brise.'
 const GENJUTSU_PROVIDER_COST_PER_SECOND_USD = 0.2708333333
-const GENJUTSU_MARGIN_MULTIPLIER = 2
+const GENJUTSU_MARGIN_MULTIPLIER = 2.5
 const JETONS_PER_USD = 60
 const FCFA_PER_JETON = 10
 // Same rounding steps as lib/tool-costs.ts estimateGenjutsuPriceUsd + lib/jetons.ts providerCostToJetons.

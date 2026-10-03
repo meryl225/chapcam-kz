@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, getMotionJobModel, listMotionJobs } from "@/lib/motion-jobs"
 import { saveVideoHistory, finalizeCompletedVideo, failGenerationAndGetRefund, listProcessingGenerations } from "@/lib/video-history"
 import { creditJetons, reserveJetons } from "@/lib/jetons"
-import { estimateGenjutsuPriceUsd, GENJUTSU_MAX_DURATION_SECONDS } from "@/lib/tool-costs"
+import { estimateGenjutsuPriceUsd, GENJUTSU_MARGIN_MULTIPLIER, GENJUTSU_MAX_DURATION_SECONDS } from "@/lib/tool-costs"
 
 // --- Motion Control (Higgsfield image -> video) ---
 // L'API Higgsfield ne fait PAS de video-a-video. Elle anime une IMAGE fixe en
@@ -487,7 +487,7 @@ export async function POST(request: NextRequest) {
           duration: durationSeconds,
         }
     if (modelKey !== "genjutsu" && motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
-    const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, "motion", { model: modelKey, quality, providerCostUsd: pricing.providerCostUsd, marginMultiplier: 2 })
+    const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, "motion", { model: modelKey, quality, providerCostUsd: pricing.providerCostUsd, marginMultiplier: GENJUTSU_MARGIN_MULTIPLIER })
     if (!wallet.ok) {
       await admin.storage.from(STORAGE_BUCKET).remove([path, ...(referencePath ? [referencePath] : [])]).catch(() => {})
       return NextResponse.json({ error: `Solde insuffisant. Cette génération coûte ${wallet.required} Jetons.`, required: wallet.required, balance: wallet.balance }, { status: 402 })

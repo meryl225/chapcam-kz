@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { createClient } from "@/lib/supabase/client"
 import { VideoHistorySection } from "@/components/video-history-section"
 import { downloadVideo } from "@/lib/download-video"
+import { photoVideoJetons } from "@/lib/tool-costs"
 
 interface Voice {
   voice_id: string
@@ -167,7 +168,9 @@ export default function PhotoVideoPage() {
   const CHARS_PER_SECOND = 14
   const VIDEO_SECONDS = 30
   const MAX_SCRIPT_CHARS = VIDEO_SECONDS * CHARS_PER_SECOND
-  const VIDEO_COST_JETONS = 90
+  // Meme estimation que app/api/heygen/photo-video/route.ts (estimateSeconds).
+  const estimatedSeconds = Math.min(VIDEO_SECONDS, Math.max(2, Math.ceil(prompt.trim().length / CHARS_PER_SECOND)))
+  const VIDEO_COST_JETONS = photoVideoJetons(estimatedSeconds)
 
   // Auth + points + voices
   useEffect(() => {
@@ -530,8 +533,8 @@ export default function PhotoVideoPage() {
             <Clapperboard className="h-5 w-5 text-primary" />
           </div>
           <div className="flex flex-col leading-tight">
-<span className="text-xs font-medium text-muted-foreground">Tarif d&apos;une génération HeyGen · 30s max</span>
-  <span className="text-xl font-bold text-foreground">90 Jetons / vidéo</span>
+<span className="text-xs font-medium text-muted-foreground">Tarif à la durée · 30s max ({photoVideoJetons(VIDEO_SECONDS)} Jetons)</span>
+  <span className="text-xl font-bold text-foreground">{(photoVideoJetons(VIDEO_SECONDS) / VIDEO_SECONDS).toLocaleString("fr-FR")} Jetons / seconde</span>
           </div>
           <button
             type="button"

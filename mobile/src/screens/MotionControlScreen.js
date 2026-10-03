@@ -42,7 +42,7 @@ const SCENES = [
 // durationSeconds, so the server bills its default duration (30 s).
 const BILLED_DURATION_SECONDS = 30
 const PROVIDER_COST_PER_SECOND_USD = 0.2708333333
-const MARGIN_MULTIPLIER = 2
+const MARGIN_MULTIPLIER = 2.5
 const JETONS_PER_USD = 60
 const FCFA_PER_JETON = 10
 const motionCostJetons = () => {

@@ -15,9 +15,13 @@ import { AiBadge, ReportAbuseButton, RightsConsent } from '../ui/Safety'
 
 const MAX_SCRIPT_CHARS = 420
 const CHARS_PER_SECOND = 14
-// Mirrors lib/jetons.ts + lib/tool-costs.ts: reserveJetons(estimatedSeconds * 0.05).
+// Mirrors lib/tool-costs.ts estimatePhotoVideoPriceUsd + lib/jetons.ts providerCostToJetons.
 const JETONS_PER_USD = 60
 const PER_SECOND_USD = 0.05
+const PROVIDER_MARGIN_MULTIPLIER = 2.5
+const round4 = (value) => Math.round(value * 10000) / 10000
+const photoVideoCost = (seconds) =>
+  Math.max(1, Math.ceil(round4(round4(seconds * PER_SECOND_USD) * PROVIDER_MARGIN_MULTIPLIER) * JETONS_PER_USD))
 
 // Same option lists as app/dashboard/photo-video/page.tsx.
 const GESTURES = [
@@ -117,7 +121,7 @@ export function PhotoVideoScreen({ onBack }) {
   })), [rawVoices])
 
   const seconds = estimateSeconds(prompt)
-  const cost = Math.ceil(seconds * PER_SECOND_USD * JETONS_PER_USD)
+  const cost = photoVideoCost(seconds)
   const scriptOk = prompt.trim().length > 0 && prompt.trim().length <= MAX_SCRIPT_CHARS
   const voiceOk = voiceMode === 'clone' ? !!voiceSample : !!voiceId
   const canGenerate = !!photo?.uri && scriptOk && voiceOk && !busy
