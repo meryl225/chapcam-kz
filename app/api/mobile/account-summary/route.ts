@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getJetonsBalance } from '@/lib/jetons'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { resolveWatermarkForUser } from '@/lib/watermark'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,24 +27,32 @@ export async function GET(request: NextRequest) {
     // Authenticate with the mobile bearer token, then read the same production
     // tables as the website with service-role scope (RLS otherwise hides them).
     const accountDb = createAdminClient()
-    const [{ data: subscription, error: subscriptionError }, jetons, entitlement] = await Promise.all([
+    const [{ data: subscription, error: subscriptionError }, jetons] = await Promise.all([
       accountDb
         .from('subscriptions')
-        .select('plan,expires_at,is_active,points,max_points')
+        .select('plan,status,is_active,points,points_remaining,expires_at,end_date')
         .eq('user_id', user.id)
+        .order('updated_at', { ascending: false, nullsFirst: false })
+        .limit(1)
         .maybeSingle(),
       getJetonsBalance(user.id),
-      resolveWatermarkForUser(user.id),
     ])
 
     if (subscriptionError) throw subscriptionError
 
-    // Match the website dashboard: subscription is maybeSingle(), the plan
-    // falls back to the same entitlement resolver, and entitlement access keeps
-    // the account active exactly as the web UI does.
-    const plan = subscription?.plan || entitlement.plan || 'free'
-    const active = subscription?.is_active === true || entitlement.plan !== ''
-    const remainingPoints = subscription?.points
+    const plan = subscription?.plan || null
+    const expiration = subscription?.expires_at || subscription?.end_date || null
+    const expirationTime = expiration ? new Date(expiration).getTime() : null
+    const active = Boolean(
+      subscription &&
+      plan &&
+      plan !== 'free' &&
+      (subscription.is_active === true || subscription.status === 'active') &&
+      (expirationTime === null || Number.isNaN(expirationTime) || expirationTime >= Date.now()),
+    )
+    const remainingPoints = typeof subscription?.points_remaining === 'number'
+      ? subscription.points_remaining
+      : subscription?.points
 
     if (!jetons || typeof jetons.balance !== 'number') {
       throw new Error('Solde Jetons indisponible')
@@ -54,9 +61,10 @@ export async function GET(request: NextRequest) {
     const returnedSubscription = active
       ? {
           plan,
-          status: subscription?.is_active === true ? 'active' : null,
+          status: subscription?.status || (subscription?.is_active === true ? 'active' : 'inactive'),
           is_active: true,
-          end_date: subscription?.expires_at || null,
+          expires_at: subscription?.expires_at || null,
+          end_date: subscription?.end_date || null,
         }
       : null
 

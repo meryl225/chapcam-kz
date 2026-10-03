@@ -125,7 +125,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const isActive = Boolean(accountSubscription && planKey && planKey !== 'free' && (accountSubscription.is_active === true || accountSubscription.status === 'active') && !expired)
   const planLabel = isActive ? PLAN_LABELS[planKey] || planKey : null
   const endDate = isActive ? formatDate(accountSubscription?.end_date) : null
-  const livePoints = isActive && typeof account.summary?.live_swap?.points === 'number'
+  const livePoints = typeof account.summary?.live_swap?.points === 'number'
     ? account.summary.live_swap.points
     : null
   const livePointsPerSecond = account.summary?.live_swap?.points_per_second || POINTS_PER_SECOND
