@@ -30,9 +30,9 @@ export async function GET(request: NextRequest) {
     const [{ data: subscription, error: subscriptionError }, jetons] = await Promise.all([
       accountDb
         .from('subscriptions')
-        .select('plan,status,points,points_remaining,end_date,is_active')
+        .select('plan,status,is_active,points,points_remaining,expires_at,end_date')
         .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
+        .order('updated_at', { ascending: false, nullsFirst: false })
         .limit(1)
         .maybeSingle(),
       getJetonsBalance(user.id),
@@ -40,33 +40,43 @@ export async function GET(request: NextRequest) {
 
     if (subscriptionError) throw subscriptionError
 
-    const endTime = subscription?.end_date ? new Date(subscription.end_date).getTime() : null
+    const plan = subscription?.plan || null
+    const expiration = subscription?.expires_at || subscription?.end_date || null
+    const expirationTime = expiration ? new Date(expiration).getTime() : null
     const active = Boolean(
       subscription &&
-      subscription.plan &&
-      subscription.plan !== 'free' &&
-      subscription.is_active === true &&
-      (endTime === null || Number.isNaN(endTime) || endTime >= Date.now()),
+      plan &&
+      plan !== 'free' &&
+      (subscription.is_active === true || subscription.status === 'active') &&
+      (expirationTime === null || Number.isNaN(expirationTime) || expirationTime >= Date.now()),
     )
+    const remainingPoints = typeof subscription?.points_remaining === 'number'
+      ? subscription.points_remaining
+      : subscription?.points
 
     if (!jetons || typeof jetons.balance !== 'number') {
       throw new Error('Solde Jetons indisponible')
     }
 
+    const returnedSubscription = subscription
+      ? {
+          plan,
+          status: subscription.status || (subscription.is_active === true ? 'active' : 'inactive'),
+          is_active: subscription.is_active === true,
+          points: subscription.points ?? null,
+          points_remaining: subscription.points_remaining ?? null,
+          expires_at: subscription.expires_at || null,
+          end_date: subscription.end_date || null,
+        }
+      : null
+
     return NextResponse.json({
       jetons: jetons.balance,
       live_swap: {
-        points: active && typeof subscription?.points === 'number' ? subscription.points : null,
-        points_per_second: active ? 2 : null,
+        points: typeof remainingPoints === 'number' ? remainingPoints : null,
+        points_per_second: typeof remainingPoints === 'number' ? 2 : null,
       },
-      subscription: active
-        ? {
-            plan: subscription.plan,
-            status: subscription.status || null,
-            is_active: true,
-            end_date: subscription.end_date || null,
-          }
-        : null,
+      subscription: returnedSubscription,
     }, { headers: NO_STORE })
   } catch (error) {
     console.error('[mobile/account-summary] Erreur:', error)

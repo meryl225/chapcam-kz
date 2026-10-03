@@ -100,6 +100,7 @@ export async function GET(request: Request) {
   //   2. L'en-tete Origin de la requete (souvent absent sur un GET same-origin).
   //   3. Le host de forwarding derriere le proxy Vercel.
   const hdrs = request.headers
+  const isNativeClient = (hdrs.get('authorization') || '').startsWith('Bearer ')
   const url = new URL(request.url)
   const clientOriginParam = url.searchParams.get('origin')
   // Identifiant de session genere par le client AVANT connect() : c'est la meme
@@ -160,7 +161,9 @@ export async function GET(request: Request) {
         const decartPayload = {
           expiresIn: 300,
           allowedModels: ['lucy-2.5', 'lucy-2.1'],
-          allowedOrigins: Array.from(allowedOrigins),
+          // The iOS app authenticates with a bearer token and its native
+          // WebSocket has no web origin, so the origin lock only applies to browsers.
+          ...(isNativeClient ? {} : { allowedOrigins: Array.from(allowedOrigins) }),
           metadata: {
             userId: user.id,
             userEmail: user.email,
