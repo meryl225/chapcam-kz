@@ -20,10 +20,10 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { requireOptionalNativeModule } from 'expo-modules-core'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import Constants from 'expo-constants'
 import { supabase } from '../lib/supabase'
 import { BRAND, C, GAP, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
+import { API_URL } from '../lib/api'
 
 // Native modules are optional so an older dev build without them still runs:
 // the affected action falls back instead of crashing.

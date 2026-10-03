@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
-import Constants from 'expo-constants'
 import { File, Paths } from 'expo-file-system'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { supabase } from '../lib/supabase'
@@ -11,8 +10,8 @@ import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { VoicePicker } from '../ui/VoicePicker'
 import { VoiceRecorder } from '../ui/VoiceRecorder'
 import { AudioClip } from '../ui/AudioClip'
+import { API_URL } from '../lib/api'
 
-const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const MAX_SCRIPT_CHARS = 420
 const CHARS_PER_SECOND = 14
 // Mirrors lib/jetons.ts + lib/tool-costs.ts: reserveJetons(estimatedSeconds * 0.05).

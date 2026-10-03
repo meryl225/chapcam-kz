@@ -2,14 +2,13 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
-import Constants from 'expo-constants'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { supabase } from '../lib/supabase'
 import { C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { useJetonsBalance } from '../lib/useJetonsBalance'
+import { API_URL } from '../lib/api'
 
-const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 
 // Same rules and options as app/dashboard/motion/page.tsx (Motion Control tab).
 const MAX_PROMPT = 500

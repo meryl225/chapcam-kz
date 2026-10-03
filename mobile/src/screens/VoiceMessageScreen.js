@@ -9,8 +9,8 @@ import { ValueSlider } from '../ui/ValueSlider'
 import { VoiceRecorder } from '../ui/VoiceRecorder'
 import { AudioClip } from '../ui/AudioClip'
 import { VoicePicker } from '../ui/VoicePicker'
+import { API_URL as WEB_URL, authHeaders } from '../lib/api'
 
-const WEB_URL = 'https://chapcam.com'
 // Mirrors lib/plans.ts VOICE_MESSAGE_MAX_CHARS / VOICE_MESSAGE_MAX_SECONDS.
 const MAX_CHARS = 240
 const MAX_SECONDS = 15
