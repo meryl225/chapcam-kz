@@ -23,7 +23,12 @@ const GENJUTSU_PROVIDER_COST_PER_SECOND_USD = 0.2708333333
 const GENJUTSU_MARGIN_MULTIPLIER = 2
 const JETONS_PER_USD = 60
 const FCFA_PER_JETON = 10
-const genjutsuCost = (seconds) => Math.ceil(GENJUTSU_PROVIDER_COST_PER_SECOND_USD * GENJUTSU_MARGIN_MULTIPLIER * JETONS_PER_USD * seconds)
+// Same rounding steps as lib/tool-costs.ts estimateGenjutsuPriceUsd + lib/jetons.ts providerCostToJetons.
+const genjutsuCost = (seconds) => {
+  const providerUsd = Math.round(GENJUTSU_PROVIDER_COST_PER_SECOND_USD * seconds * 10000) / 10000
+  const customerUsd = Math.round(providerUsd * GENJUTSU_MARGIN_MULTIPLIER * 10000) / 10000
+  return Math.max(1, Math.ceil(customerUsd * JETONS_PER_USD))
+}
 
 async function authHeaders() {
   const { data } = await supabase.auth.getSession()
