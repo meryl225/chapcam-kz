@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator'
 import * as WebBrowser from 'expo-web-browser'
 import Constants from 'expo-constants'
 import { BRAND, C, PAD, shadow } from '../ui/catalog'
@@ -19,6 +20,7 @@ const RATE = 2
 const HEARTBEAT_SECONDS = 5
 const RESOLUTION = '720p'
 const MODEL = 'lucy-2.5'
+const FACE_SIZE = 768
 const ERROR = '#E5484D'
 
 const formatPlan = (plan) => (plan ? plan.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : null)
@@ -46,6 +48,15 @@ const tokenErrorMessage = ({ status, body }) => {
   if (status === 409) return 'Un swap est déjà en cours sur ce compte. Ferme-le puis réessaie dans une minute.'
   if (status === 429) return body.error || 'Limite quotidienne atteinte. Réessaie demain.'
   return 'Le service Live Swap est indisponible. Réessaie dans un instant.'
+}
+
+const connectErrorMessage = (error) => {
+  const code = error?.code
+  if (code === 'INVALID_API_KEY') return 'Session Live Swap expirée. Relance la session.'
+  if (code === 'REACT_NATIVE_SETUP_REQUIRED' || code === 'UNSUPPORTED_PLATFORM_FEATURE') return 'Live Swap n’est pas pris en charge par cette version de l’app. Mets-la à jour.'
+  if (code === 'WEBRTC_ICE_ERROR' || code === 'WEBRTC_WEBSOCKET_ERROR') return 'Réseau incompatible avec le temps réel. Essaie en Wi-Fi ou en 4G/5G.'
+  if (code === 'WEBRTC_TIMEOUT_ERROR') return 'Le moteur temps réel n’a pas répondu. Réessaie dans un instant.'
+  return `Connexion impossible${code ? ` (${code})` : ''}. Réessaie dans un instant.`
 }
 
 export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) {
@@ -232,11 +243,23 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
 
       setPhase('connecting')
       const { createDecartClient, models } = loadDecart()
-      const client = await createDecartClient({ apiKey: res.body.token }).realtime.connect(localRef.current, {
+      const decart = createDecartClient({ apiKey: res.body.token })
+      // Same as the web: upload the face once and send only its reference over the realtime channel.
+      let image = face.base64
+      try {
+        const uploaded = await decart.files.upload({ uri: face.uri, name: 'face.jpg', type: 'image/jpeg' })
+        if (uploaded?.id) image = uploaded.id
+      } catch (uploadError) {
+        console.warn('[LiveSwap] face upload failed, sending inline image', uploadError?.code, uploadError?.message)
+      }
+      if (sessionRef.current !== session) return
+
+      const client = await decart.realtime.connect(localRef.current, {
         model: models.realtime(MODEL),
         mirror: false,
         resolution: RESOLUTION,
-        initialState: { image: face.base64 },
+        retries: 1,
+        initialState: { image },
         onRemoteStream: (stream) => setRemoteStream(stream),
       })
       if (sessionRef.current !== session) return client.disconnect()
@@ -247,20 +270,28 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
         if (state === 'disconnected' && sessionRef.current === session) stop({ tone: 'error', text: 'Connexion perdue.' })
       })
       client.on('sessionEnded', () => stop({ tone: 'info', text: 'Session terminée par le serveur.' }))
-      client.on('error', () => {
-        if (!session.liveAt) stop({ tone: 'error', text: 'Connexion impossible. Réessaie dans un instant.' })
+      client.on('error', (error) => {
+        console.warn('[LiveSwap] realtime error', error?.code, error?.message)
+        if (!session.liveAt) stop({ tone: 'error', text: connectErrorMessage(error) })
       })
       if (client.getConnectionState() === 'generating') goLive()
-    } catch {
-      stop({ tone: 'error', text: 'Connexion impossible. Réessaie dans un instant.' })
+    } catch (error) {
+      console.warn('[LiveSwap] connect failed', error?.code, error?.message)
+      stop({ tone: 'error', text: connectErrorMessage(error) })
     }
   }
 
   const pickFace = async () => {
     try {
-      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8, base64: true })
+      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 1 })
       const asset = res.assets?.[0]
-      if (!res.canceled && asset?.uri && asset.base64) setFace({ uri: asset.uri, base64: asset.base64 })
+      if (res.canceled || !asset?.uri) return
+      // A full-resolution iPhone photo is several MB of base64, too large for Decart's realtime signaling.
+      const context = ImageManipulator.manipulate(asset.uri)
+      context.resize({ width: FACE_SIZE })
+      const rendered = await context.renderAsync()
+      const small = await rendered.saveAsync({ compress: 0.85, format: SaveFormat.JPEG, base64: true })
+      if (small?.uri && small.base64) setFace({ uri: small.uri, base64: small.base64 })
     } catch {
       Alert.alert('Visage', "Impossible d'ouvrir tes photos. Vérifie l'accès dans Réglages.")
     }
