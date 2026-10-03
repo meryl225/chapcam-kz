@@ -23,7 +23,7 @@ export default function IconPreviewPage() {
             {apps.map((app) => (
               <div key={app.name} className="flex min-w-0 flex-col items-center gap-2">
                 <div className="aspect-square w-full overflow-hidden rounded-[24%] bg-slate-700 shadow-lg shadow-black/20">
-                  {app.image ? <img src={iconUrl} alt="Icône ChapCam avec contour bleu électrique et symbole infini multicolore" className="h-full w-full object-cover" /> : <div className="h-full w-full bg-gradient-to-br from-slate-500 to-slate-800" aria-hidden="true" />}
+                  {app.image ? <div className="h-full w-full overflow-hidden"><img src={iconUrl} alt="Icône ChapCam avec contour bleu électrique et symbole infini multicolore" className="h-full w-full scale-[1.18] object-cover" /></div> : <div className="h-full w-full bg-gradient-to-br from-slate-500 to-slate-800" aria-hidden="true" />}
                 </div>
                 <span className="truncate text-xs text-white/90">{app.name}</span>
               </div>
