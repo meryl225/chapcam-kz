@@ -4,6 +4,7 @@
     "slug": "chapcam",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "scheme": "chapcam",
     "ios": {
@@ -11,6 +12,7 @@
       "bundleIdentifier": "com.chapcam.app",
       "buildNumber": "1",
       "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "ChapCam utilise la caméra pour afficher et transformer votre image en temps réel dans Live Swap.",
         "NSMicrophoneUsageDescription": "ChapCam utilise le microphone pour enregistrer votre voix dans les outils vocaux et vidéo.",
         "NSPhotoLibraryUsageDescription": "ChapCam accède à vos photos et vidéos afin de vous permettre de les importer dans vos créations.",
@@ -24,6 +26,15 @@
       "bundler": "metro"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/chapcam-symbol.png",
+          "imageWidth": 160,
+          "resizeMode": "contain",
+          "backgroundColor": "#000000"
+        }
+      ],
       "expo-web-browser",
       "expo-video",
       [
