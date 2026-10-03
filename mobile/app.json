@@ -11,9 +11,10 @@
       "bundleIdentifier": "com.chapcam.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSCameraUsageDescription": "ChapCam utilise la caméra pour le Live Swap.",
-        "NSMicrophoneUsageDescription": "ChapCam utilise le microphone pour les fonctions vidéo et vocales.",
-        "NSPhotoLibraryUsageDescription": "ChapCam permet de sélectionner des images et vidéos pour les créations."
+        "NSCameraUsageDescription": "ChapCam utilise la caméra pour afficher et transformer votre image en temps réel dans Live Swap.",
+        "NSMicrophoneUsageDescription": "ChapCam utilise le microphone pour enregistrer votre voix dans les outils vocaux et vidéo.",
+        "NSPhotoLibraryUsageDescription": "ChapCam accède à vos photos et vidéos afin de vous permettre de les importer dans vos créations.",
+        "NSPhotoLibraryAddUsageDescription": "ChapCam enregistre vos créations dans votre photothèque lorsque vous choisissez de les télécharger."
       }
     },
     "android": {
@@ -28,8 +29,8 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "ChapCam accède à tes photos pour enregistrer tes créations.",
-          "savePhotosPermission": "ChapCam enregistre tes créations dans ta galerie Photos.",
+          "photosPermission": "ChapCam accède à vos photos et vidéos afin de vous permettre de les importer dans vos créations.",
+          "savePhotosPermission": "ChapCam enregistre vos créations dans votre photothèque lorsque vous choisissez de les télécharger.",
           "isAccessMediaLocationEnabled": false
         }
       ],
@@ -37,22 +38,25 @@
       [
         "@config-plugins/react-native-webrtc",
         {
-          "cameraPermission": "ChapCam utilise la caméra pour le Live Swap.",
-          "microphonePermission": "ChapCam utilise le microphone pour les fonctions vidéo et vocales."
+          "cameraPermission": "ChapCam utilise la caméra pour afficher et transformer votre image en temps réel dans Live Swap.",
+          "microphonePermission": "ChapCam utilise le microphone pour enregistrer votre voix dans les outils vocaux et vidéo."
         }
       ],
       [
         "expo-camera",
         {
-          "cameraPermission": "ChapCam utilise la caméra pour ton aperçu Live Swap.",
-          "microphonePermission": false,
-          "recordAudioAndroid": false
+          "cameraPermission": "ChapCam utilise la caméra pour afficher et transformer votre image en temps réel dans Live Swap.",
+          "microphonePermission": "ChapCam utilise le microphone pour enregistrer votre voix dans les outils vocaux et vidéo.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": false
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "ChapCam accède à tes photos pour choisir un visage source."
+          "photosPermission": "ChapCam accède à vos photos et vidéos afin de vous permettre de les importer dans vos créations.",
+          "cameraPermission": "ChapCam utilise la caméra pour afficher et transformer votre image en temps réel dans Live Swap.",
+          "microphonePermission": "ChapCam utilise le microphone pour enregistrer votre voix dans les outils vocaux et vidéo."
         }
       ]
     ],
