@@ -27,31 +27,41 @@ export async function GET(request: NextRequest) {
     // Authenticate with the mobile bearer token, then read the same production
     // tables as the website with service-role scope (RLS otherwise hides them).
     const accountDb = createAdminClient()
-    const [{ data: subscription, error: subscriptionError }, jetons] = await Promise.all([
+    const [{ data: subscriptionRows, error: subscriptionError }, jetons] = await Promise.all([
       accountDb
         .from('subscriptions')
-        .select('plan,status,points,points_remaining,end_date,expires_at,is_active,updated_at')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false, nullsFirst: false })
-        .limit(1)
-        .maybeSingle(),
+        .select('plan,status,points,points_remaining,end_date,expires_at,is_active')
+        .eq('user_id', user.id),
       getJetonsBalance(user.id),
     ])
 
     if (subscriptionError) throw subscriptionError
 
+    console.log('[mobile/account-summary] subscriptions lookup', {
+      userId: user.id,
+      rowCount: subscriptionRows?.length ?? 0,
+      rows: (subscriptionRows ?? []).map((row) => ({
+        plan: row.plan,
+        status: row.status,
+        is_active: row.is_active,
+        points: row.points,
+        points_remaining: row.points_remaining,
+        end_date: row.end_date,
+      })),
+    })
+
+    // The website uses `.single()` for this user-scoped subscription. Preserve
+    // that exact contract: select the row only when the account has one row;
+    // never guess by updated_at, status, or is_active when duplicates exist.
+    const subscription = subscriptionRows?.length === 1 ? subscriptionRows[0] : null
     const expiration = subscription?.expires_at || subscription?.end_date || null
     const endTime = expiration ? new Date(expiration).getTime() : null
     const active = Boolean(
       subscription &&
-      subscription.plan &&
-      subscription.plan !== 'free' &&
-      (subscription.is_active === true || subscription.status === 'active') &&
+      subscription.is_active === true &&
       (endTime === null || Number.isNaN(endTime) || endTime >= Date.now()),
     )
-    const remainingPoints = typeof subscription?.points_remaining === 'number'
-      ? subscription.points_remaining
-      : subscription?.points
+    const remainingPoints = subscription?.points
 
     if (!jetons || typeof jetons.balance !== 'number') {
       throw new Error('Solde Jetons indisponible')
