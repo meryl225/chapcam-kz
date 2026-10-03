@@ -115,7 +115,12 @@ function HomeShell({ user }) {
   const onQuickLaunch = onOpenTool
 
   if (openTool === 'live') {
-    return <LiveSwapScreen onBack={() => setOpenTool(null)} topInset={insets.top} bottomInset={insets.bottom} subscription={loading ? undefined : subscription} />
+    // The Live Swap debits subscriptions.points: refetch so Home and Profile show the new balance.
+    const closeLiveSwap = () => {
+      setOpenTool(null)
+      loadAccount()
+    }
+    return <LiveSwapScreen onBack={closeLiveSwap} topInset={insets.top} bottomInset={insets.bottom} subscription={loading ? undefined : subscription} />
   }
   if (openTool === 'photo-video') {
     return <PhotoVideoScreen onBack={() => setOpenTool(null)} />
