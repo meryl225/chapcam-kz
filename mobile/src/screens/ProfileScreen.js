@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
 import { supabase } from '../lib/supabase'
 import { apiJson, friendlyError } from '../lib/api'
+import { AccountSummaryError, accountSummaryMessage, fetchAccountSummary } from '../lib/accountSummary'
 import { BRAND, C, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 
@@ -54,34 +55,18 @@ const open = async (url) => {
   }
 }
 
-async function fetchAccountSummary() {
-  let { data } = await supabase.auth.getSession()
-  let token = data?.session?.access_token
-  const url = `${WEB_URL}/api/mobile/account-summary`
-  if (!token) return null
-  let res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-  if (res.status === 401) {
-    const refreshed = await supabase.auth.refreshSession()
-    token = refreshed.data?.session?.access_token
-    if (!token) throw new Error('Chargement impossible')
-    res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
-  }
-  if (!res.ok) throw new Error('Chargement impossible')
-  return res.json()
-}
-
 function useAccountSummary() {
   const [summary, setSummary] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState(null)
   const load = useCallback(async () => {
     setLoading(true)
-    setError(false)
+    setError(null)
     try {
       setSummary(await fetchAccountSummary())
-    } catch {
+    } catch (e) {
       setSummary(null)
-      setError(true)
+      setError(e instanceof AccountSummaryError ? e : new AccountSummaryError('server', e?.message))
     } finally {
       setLoading(false)
     }
@@ -214,10 +199,20 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
 
       <Text style={styles.groupLabel}>Mes soldes</Text>
       {jetonsError ? (
-        <Pressable onPress={account.reload} style={styles.retry} accessibilityRole="button">
-          <Ionicons name="refresh" size={14} color={C.blue} />
-          <Text style={styles.retryText}>Réessayer</Text>
-        </Pressable>
+        <View style={styles.summaryError}>
+          <Text style={styles.summaryErrorText}>{accountSummaryMessage(jetonsError)}</Text>
+          {jetonsError.kind === 'session' ? (
+            <Pressable onPress={() => supabase.auth.signOut()} style={styles.retry} accessibilityRole="button">
+              <Ionicons name="log-in-outline" size={14} color={C.blue} />
+              <Text style={styles.retryText}>Se reconnecter</Text>
+            </Pressable>
+          ) : (
+            <Pressable onPress={account.reload} style={styles.retry} accessibilityRole="button">
+              <Ionicons name="refresh" size={14} color={C.blue} />
+              <Text style={styles.retryText}>Réessayer</Text>
+            </Pressable>
+          )}
+        </View>
       ) : null}
       <View style={styles.balances}>
         <Pressable
@@ -417,6 +412,8 @@ const styles = StyleSheet.create({
   balanceError: { color: '#B42318', fontSize: 17, fontWeight: '800' },
   balanceEmpty: { color: C.muted, fontSize: 17, fontWeight: '800' },
   balanceLoader: { alignSelf: 'flex-start', height: 30 },
+  summaryError: { gap: 4, marginHorizontal: 4, marginBottom: 8 },
+  summaryErrorText: { color: '#5D6785', fontSize: 14, lineHeight: 20 },
   retry: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, marginHorizontal: 4, marginBottom: 8 },
   retryText: { color: C.blue, fontSize: 13, fontWeight: '800' },
   balanceHint: { color: C.muted, fontSize: 12, fontWeight: '600', lineHeight: 16 },
