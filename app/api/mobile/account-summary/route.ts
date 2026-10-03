@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getJetonsBalance } from '@/lib/jetons'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { resolveWatermarkForUser } from '@/lib/watermark'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,41 +28,23 @@ export async function GET(request: NextRequest) {
     // Authenticate with the mobile bearer token, then read the same production
     // tables as the website with service-role scope (RLS otherwise hides them).
     const accountDb = createAdminClient()
-    const [{ data: subscriptionRows, error: subscriptionError }, jetons] = await Promise.all([
+    const [{ data: subscription, error: subscriptionError }, jetons, entitlement] = await Promise.all([
       accountDb
         .from('subscriptions')
-        .select('plan,status,points,points_remaining,end_date,expires_at,is_active')
-        .eq('user_id', user.id),
+        .select('plan,expires_at,is_active,points,max_points')
+        .eq('user_id', user.id)
+        .maybeSingle(),
       getJetonsBalance(user.id),
+      resolveWatermarkForUser(user.id),
     ])
 
     if (subscriptionError) throw subscriptionError
 
-    console.log('[mobile/account-summary] subscriptions lookup', {
-      userId: user.id,
-      rowCount: subscriptionRows?.length ?? 0,
-      rows: (subscriptionRows ?? []).map((row) => ({
-        plan: row.plan,
-        status: row.status,
-        is_active: row.is_active,
-        points: row.points,
-        points_remaining: row.points_remaining,
-        expires_at: row.expires_at,
-        end_date: row.end_date,
-      })),
-    })
-
-    // The website uses `.single()` for this user-scoped subscription. Preserve
-    // that exact contract: select the row only when the account has one row;
-    // never guess by updated_at, status, or is_active when duplicates exist.
-    const subscription = subscriptionRows?.length === 1 ? subscriptionRows[0] : null
-    const expiration = subscription?.expires_at || subscription?.end_date || null
-    const endTime = expiration ? new Date(expiration).getTime() : null
-    const active = Boolean(
-      subscription &&
-      subscription.is_active === true &&
-      (endTime === null || Number.isNaN(endTime) || endTime >= Date.now()),
-    )
+    // Match the website dashboard: subscription is maybeSingle(), the plan
+    // falls back to the same entitlement resolver, and entitlement access keeps
+    // the account active exactly as the web UI does.
+    const plan = subscription?.plan || entitlement.plan || 'free'
+    const active = subscription?.is_active === true || entitlement.plan !== ''
     const remainingPoints = subscription?.points
 
     if (!jetons || typeof jetons.balance !== 'number') {
@@ -70,16 +53,12 @@ export async function GET(request: NextRequest) {
 
     const returnedSubscription = active
       ? {
-          plan: subscription.plan,
-          status: subscription.status || null,
+          plan,
+          status: subscription?.is_active === true ? 'active' : null,
           is_active: true,
-          end_date: subscription.end_date || null,
+          end_date: subscription?.expires_at || null,
         }
       : null
-    console.log('[mobile/account-summary] final subscription', {
-      userId: user.id,
-      subscription: returnedSubscription,
-    })
 
     return NextResponse.json({
       jetons: jetons.balance,
