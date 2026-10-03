@@ -31,7 +31,6 @@ const video = requireOptionalNativeModule('ExpoVideo') ? require('expo-video') :
 const fileSystem = requireOptionalNativeModule('FileSystem') ? require('expo-file-system') : null
 const mediaLibrary = requireOptionalNativeModule('ExpoMediaLibrary') ? require('expo-media-library') : null
 
-const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 
 // Exact production tools stored in video_history (lib/video-history.ts VideoTool).
 const TOOL_META = {

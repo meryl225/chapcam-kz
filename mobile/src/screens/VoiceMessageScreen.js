@@ -9,7 +9,7 @@ import { ValueSlider } from '../ui/ValueSlider'
 import { VoiceRecorder } from '../ui/VoiceRecorder'
 import { AudioClip } from '../ui/AudioClip'
 import { VoicePicker } from '../ui/VoicePicker'
-import { API_URL as WEB_URL, authHeaders } from '../lib/api'
+import { API_URL as WEB_URL } from '../lib/api'
 
 // Mirrors lib/plans.ts VOICE_MESSAGE_MAX_CHARS / VOICE_MESSAGE_MAX_SECONDS.
 const MAX_CHARS = 240
