@@ -180,7 +180,7 @@ function AuthContent() {
                 <Pressable
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked: acceptedTerms }}
-                  accessibilityLabel="J’accepte les Conditions Générales d’Utilisation et la Politique de confidentialité de ChapCam"
+                  accessibilityLabel="J’accepte les Conditions Générales d’Utilisation et la Politique de confidentialité"
                   accessibilityHint="Obligatoire pour créer un compte"
                   hitSlop={8}
                   onPress={() => {
@@ -201,7 +201,7 @@ function AuthContent() {
                     <Text accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(PRIVACY_URL)}>
                       Politique de confidentialité
                     </Text>
-                    {' de ChapCam.'}
+                    {'.'}
                   </Text>
                   {!acceptedTerms ? <Text style={styles.termsRequired}>Obligatoire pour créer un compte</Text> : null}
                 </View>
