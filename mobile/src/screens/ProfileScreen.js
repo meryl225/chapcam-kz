@@ -77,7 +77,9 @@ async function fetchAccountSummary() {
     await logAccountSummaryResponse('account-summary after refresh', url, res)
   }
   if (!res.ok) throw new Error('Chargement impossible')
-  return res.json()
+  const json = await res.json()
+  console.log('[v0] account-summary JSON', { jetons: json?.jetons, live_swap: json?.live_swap, subscription: json?.subscription })
+  return json
 }
 
 function useAccountSummary() {
@@ -102,6 +104,7 @@ function useAccountSummary() {
 
 export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh }) {
   const account = useAccountSummary()
+  console.log('[v0] ProfileScreen accountSummary', { summary: account.summary })
   const [avatarFailed, setAvatarFailed] = useState(false)
 
   // Live Swap + plan come from the same Supabase `subscriptions` row the website dashboard reads

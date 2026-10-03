@@ -58,21 +58,23 @@ export async function GET(request: NextRequest) {
       throw new Error('Solde Jetons indisponible')
     }
 
-    const returnedSubscription = active
+    const returnedSubscription = subscription
       ? {
           plan,
-          status: subscription?.status || (subscription?.is_active === true ? 'active' : 'inactive'),
-          is_active: true,
-          expires_at: subscription?.expires_at || null,
-          end_date: subscription?.end_date || null,
+          status: subscription.status || (subscription.is_active === true ? 'active' : 'inactive'),
+          is_active: subscription.is_active === true,
+          points: subscription.points ?? null,
+          points_remaining: subscription.points_remaining ?? null,
+          expires_at: subscription.expires_at || null,
+          end_date: subscription.end_date || null,
         }
       : null
 
     return NextResponse.json({
       jetons: jetons.balance,
       live_swap: {
-        points: active && typeof remainingPoints === 'number' ? remainingPoints : null,
-        points_per_second: active ? 2 : null,
+        points: typeof remainingPoints === 'number' ? remainingPoints : null,
+        points_per_second: typeof remainingPoints === 'number' ? 2 : null,
       },
       subscription: returnedSubscription,
     }, { headers: NO_STORE })
