@@ -277,8 +277,8 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
   const busyText = phase === 'preparing' ? 'Préparation de la session���' : phase === 'connecting' ? 'Connexion au moteur temps réel…' : 'Arrêt de la session…'
 
   return (
-    <View style={[styles.root, { paddingTop: topInset }]}>
-      <View style={styles.header}>
+    <View style={[styles.root, inSession ? styles.fullscreenRoot : { paddingTop: topInset }]}> 
+      {!inSession ? <View style={styles.header}>
         <Pressable onPress={onBack} disabled={inSession} accessibilityRole="button" accessibilityLabel="Retour" hitSlop={10} style={[styles.headerBtn, inSession && styles.dim]}>
           <Ionicons name="chevron-back" size={24} color={C.ink} />
         </Pressable>
@@ -292,7 +292,6 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
       </View>
 
       <ScrollView style={styles.flex} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} scrollEnabled={!live}>
-        <View style={styles.preview}>
           {granted && shownStream ? (
             <RTCView streamURL={shownStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" mirror={mirrored} zOrder={0} />
           ) : granted ? (
@@ -339,9 +338,9 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
           ) : null}
         </View>
 
-        <Notice notice={notice} onDismiss={() => setNotice(null)} />
+        {!inSession ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
 
-        <Text style={styles.sectionTitle}>Choisir un visage</Text>
+        {!inSession ? <Text style={styles.sectionTitle}>Choisir un visage</Text> : null}
         {face ? (
           <View style={styles.faceRow}>
             <View style={[styles.face, styles.faceActive]}>
