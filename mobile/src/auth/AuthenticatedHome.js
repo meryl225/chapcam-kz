@@ -89,9 +89,9 @@ function HomeShell({ user }) {
   const loadAccount = useCallback(async () => {
     const { data } = await supabase
       .from('subscriptions')
-      .select('plan,status,points,points_remaining,end_date,is_active')
+      .select('plan,status,points,expires_at,end_date,is_active')
       .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
+      .order('updated_at', { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle()
     setSubscription(data || null)
@@ -101,7 +101,9 @@ function HomeShell({ user }) {
 
   useEffect(() => { loadAccount() }, [loadAccount])
 
-  const credits = subscription?.points_remaining ?? subscription?.points ?? 0
+  const subscriptionEnd = subscription?.expires_at || subscription?.end_date
+  const subscriptionExpired = Boolean(subscriptionEnd) && new Date(subscriptionEnd).getTime() < Date.now()
+  const credits = subscriptionExpired ? 0 : Math.max(0, Number(subscription?.points) || 0)
   const onRefresh = () => { setRefreshing(true); loadAccount() }
 
   const onOpenTool = (key) => {
