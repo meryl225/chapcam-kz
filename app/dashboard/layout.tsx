@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { after } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getAvatarCount, getCurrentUser, getRequestSupabase, getSubscription } from '@/lib/supabase/session'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getRequestGeo } from '@/lib/geo'
 import { DashboardSidebar, PlanGuardBanner } from '@/components/dashboard/sidebar'
@@ -36,23 +36,33 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
-  const supabase = await createClient()
+  // Auth protection (getUser partage avec la page via React cache : 1 seul appel)
+  const user = await getCurrentUser()
 
-  // Auth protection
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser()
-
-  if (userError || !user) {
+  if (!user) {
     redirect('/auth/login')
   }
+
+  const supabase = await getRequestSupabase()
+  const userId = user.id
+
+  // Toutes les lectures independantes partent EN MEME TEMPS (avant : 3 requetes
+  // Supabase l'une apres l'autre). Abonnement + avatars sont partages avec la page.
+  const [geo, subscription, avatarCount, { data: voiceSub }, entitlement] = await Promise.all([
+    getRequestGeo(),
+    getSubscription(userId),
+    getAvatarCount(userId),
+    supabase
+      .from('voice_subscriptions')
+      .select('seconds_remaining, expires_at')
+      .eq('user_id', userId)
+      .maybeSingle(),
+    resolveWatermarkForUser(userId),
+  ])
 
   // Localisation approximative (pays/ville) fournie par l'edge Vercel.
   // On lit les en-tetes pendant la requete, puis on enregistre APRES la reponse
   // via after() pour ne PAS ralentir l'affichage du dashboard.
-  const geo = await getRequestGeo()
-  const userId = user.id
   after(async () => {
     if (!geo.country) return // pas de donnee (local/preview) -> on n'ecrit rien
     try {
@@ -74,30 +84,10 @@ export default async function DashboardLayout({
     }
   })
 
-  // Fetch subscription data avec points
-  const { data: subscription } = await supabase
-    .from('subscriptions')
-    .select('plan, expires_at, is_active, points, max_points')
-    .eq('user_id', user.id)
-    .single()
-
-  // Fetch avatar count
-  const { count: avatarCount } = await supabase
-    .from('user_avatars')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', user.id)
-
-  // Fetch solde de minutes Voice Swap (ChapVoice) — produit distinct des points
-  const { data: voiceSub } = await supabase
-    .from('voice_subscriptions')
-    .select('seconds_remaining, expires_at')
-    .eq('user_id', user.id)
-    .maybeSingle()
-
+  // Solde de minutes Voice Swap (ChapVoice) — produit distinct des points
   const voiceExpired = voiceSub?.expires_at ? new Date(voiceSub.expires_at) < new Date() : false
   const voiceSecondsRemaining = voiceExpired ? 0 : voiceSub?.seconds_remaining ?? 0
 
-  const entitlement = await resolveWatermarkForUser(user.id)
   const plan = subscription?.plan || entitlement.plan || 'free'
   const expiresAt = subscription?.expires_at ?? null
   const isActive = subscription?.is_active === true || entitlement.plan !== ''

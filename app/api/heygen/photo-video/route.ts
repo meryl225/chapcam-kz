@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { reserveJetons, creditJetons } from "@/lib/jetons"
-import { TOOL_PROVIDER_COST } from "@/lib/tool-costs"
+import { estimatePhotoVideoPriceUsd, PROVIDER_MARGIN_MULTIPLIER } from "@/lib/tool-costs"
 import { logToolUsage } from "@/lib/tool-usage"
 import { saveVideoHistory, finalizeCompletedVideo, listProcessingGenerations } from "@/lib/video-history"
 
@@ -148,13 +148,15 @@ export async function POST(request: NextRequest) {
 
     const estimatedSeconds = estimateSeconds(script)
 
-    const estimatedCostUsd = estimatedSeconds * TOOL_PROVIDER_COST.photo_video.perSecondUsd
+    const pricing = estimatePhotoVideoPriceUsd(estimatedSeconds)
 
     // Debit AVANT tout appel HeyGen : sinon un compte sans solde suffisant
     // declenchait quand meme un rendu HeyGen (paye par ChapCam) sans etre facture.
-    const wallet = await reserveJetons(user.id, estimatedCostUsd, "photo_video", {
+    const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, "photo_video", {
       provider: "heygen",
       durationSeconds: estimatedSeconds,
+      providerCostUsd: pricing.providerCostUsd,
+      marginMultiplier: PROVIDER_MARGIN_MULTIPLIER,
     })
     if (!wallet.ok) {
       return NextResponse.json({ error: `Solde insuffisant. Cette vidéo coûte ${wallet.required} Jetons.`, code: "insufficient_tokens", required: wallet.required, balance: wallet.balance }, { status: 402 })

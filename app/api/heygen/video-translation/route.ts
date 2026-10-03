@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { translationQuotaForPlan, TRANSLATION_MAX_SECONDS } from "@/lib/plans"
-import {
-  getTranslationBalance,
-  addTranslationCredits,
-  deductTranslationCredits,
-  refundTranslationCredits,
-} from "@/lib/translation-quota"
+import { TRANSLATION_MAX_SECONDS } from "@/lib/plans"
+import { creditJetons, getJetonsBalance, reserveJetons } from "@/lib/jetons"
+import { readMediaDurationSeconds } from "@/lib/media-duration"
+import { estimateTranslationPriceUsd, PROVIDER_MARGIN_MULTIPLIER, usdToDisplayJetons } from "@/lib/tool-costs"
 import { logToolUsage } from "@/lib/tool-usage"
 import {
   saveVideoHistory,
@@ -16,9 +13,9 @@ import {
 
 // === Traduction Video (HeyGen video-translation v3) ===
 // Flux : upload video -> asset_id, puis POST /v3/video-translations (1 langue),
-// puis polling GET /v3/video-translations/{id}. Facturation en credits :
-// mode Rapide = 1 credit, mode Precision = 2 credits. La video source est
-// plafonnee a 60s cote client pour borner le cout HeyGen.
+// puis polling GET /v3/video-translations/{id}. Facturation en Jetons a la
+// duree de la video source : tarif HeyGen (Rapide / Precision) x 2,5.
+// La video source est plafonnee a 60 s pour borner le cout HeyGen.
 
 // Le re-hebergement Blob (telechargement de la video finale + upload) peut etre
 // long : on laisse une large marge pour ne pas couper la finalisation.
@@ -30,41 +27,6 @@ const MAX_VIDEO = 60 * 1024 * 1024 // 60 Mo (une video <=60s en 720p reste leger
 
 function getApiKey(): string | null {
   return process.env.HEYGEN_API_KEY || null
-}
-
-// Cout en credits selon le mode de traduction.
-function creditCost(mode: string): number {
-  return mode === "precision" ? 2 : 1
-}
-
-// Seed unique : un abonne actif recoit le quota Traduction de son forfait la
-// premiere fois qu'il utilise la fonctionnalite (comme Motion / photo-video).
-async function ensureCreditsForActiveSub(userId: string, planId: string): Promise<number> {
-  const { balance, exists } = await getTranslationBalance(userId)
-  if (exists) return balance
-  const quota = translationQuotaForPlan(planId)
-  if (quota <= 0) return 0
-  return addTranslationCredits(userId, quota)
-}
-
-// Recupere l'abonnement actif + le solde effectif (avec seed si besoin).
-async function resolveBalance(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-): Promise<{ balance: number; subActive: boolean; plan: string | null }> {
-  const { data: sub } = await supabase
-    .from("subscriptions")
-    .select("plan, end_date, expires_at, is_active")
-    .eq("user_id", userId)
-    .eq("is_active", true)
-    .limit(1)
-    .maybeSingle()
-  const subEnd = sub?.end_date ?? sub?.expires_at ?? null
-  const subActive = !!sub && !!subEnd && new Date(subEnd).getTime() > Date.now()
-  const balance = subActive
-    ? await ensureCreditsForActiveSub(userId, sub!.plan)
-    : (await getTranslationBalance(userId)).balance
-  return { balance, subActive, plan: subActive ? sub!.plan : null }
 }
 
 // GET : langues (?info=languages), solde (?info=quota) ou statut (?id=...).
@@ -96,10 +58,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Solde de credits Traduction.
+  // Solde de Jetons.
   if (params.get("info") === "quota") {
-    const { balance, plan } = await resolveBalance(supabase, user.id)
-    return NextResponse.json({ success: true, plan, remaining: Math.max(0, balance) })
+    const { balance } = await getJetonsBalance(user.id)
+    return NextResponse.json({ success: true, remaining: Math.max(0, balance) })
   }
 
   // Statut d'une traduction.
@@ -137,8 +99,7 @@ export async function GET(request: NextRequest) {
       try {
         const refund = await failGenerationAndGetRefund(user.id, "translation", id)
         if (refund > 0) {
-          await refundTranslationCredits(user.id, refund)
-          console.log(`[Translation] Echec HeyGen -> ${refund} credit(s) rembourse(s) a ${user.id}`)
+          await creditJetons(user.id, refund, { reason: "translation_failed_refund", request_id: id })
         }
       } catch (e) {
         console.error("[Translation] Remboursement sur echec impossible:", e)
@@ -219,26 +180,30 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Choisis une langue cible." }, { status: 400 })
     }
 
-    const cost = creditCost(mode)
+    // Duree lue dans le fichier (MP4/MOV) ; format illisible -> facture au plafond.
+    const bytes = Buffer.from(await file.arrayBuffer())
+    const parsedSeconds = readMediaDurationSeconds(bytes)
+    if (parsedSeconds !== null && parsedSeconds > TRANSLATION_MAX_SECONDS + 1) {
+      return NextResponse.json({ error: `La vidéo doit durer ${TRANSLATION_MAX_SECONDS} secondes maximum.` }, { status: 400 })
+    }
+    const pricing = estimateTranslationPriceUsd(parsedSeconds ?? TRANSLATION_MAX_SECONDS, mode === "precision")
 
     // Verifier le SOLDE avant tout appel HeyGen (protege la marge).
-    const { balance, subActive } = await resolveBalance(supabase, user.id)
-    if (balance < cost) {
+    const { balance } = await getJetonsBalance(user.id)
+    const needed = usdToDisplayJetons(pricing.customerPriceUsd)
+    if (balance < needed) {
       return NextResponse.json(
         {
-          error: subActive
-            ? `Crédits Traduction insuffisants (il en faut ${cost}). Achète un pack ou passe à un forfait supérieur.`
-            : "Aucun crédit Traduction. Choisis un forfait Premium/VIP ou achète un pack.",
-          code: subActive ? "quota_exhausted" : "no_plan",
+          error: `Solde insuffisant : cette traduction coûte ${needed} Jetons. Recharge tes Jetons.`,
+          code: "quota_exhausted",
           remaining: Math.max(0, balance),
-          needed: cost,
+          needed,
         },
         { status: 402 },
       )
     }
 
     // 1) Upload de la video vers HeyGen -> asset_id.
-    const bytes = Buffer.from(await file.arrayBuffer())
     const contentType = file.type || "video/mp4"
     const uploadRes = await fetch(HEYGEN_UPLOAD, {
       method: "POST",
@@ -263,22 +228,49 @@ export async function POST(request: NextRequest) {
       enable_caption: caption,
       enable_speech_enhancement: true,
     }
-    const subRes = await fetch(`${HEYGEN_API}/v3/video-translations`, {
-      method: "POST",
-      headers: { "X-Api-Key": apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+    // 2a) Debit AVANT le lancement (rendu paye par ChapCam), rendu si HeyGen refuse.
+    const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, "translation", {
+      provider: "heygen",
+      mode,
+      durationSeconds: pricing.durationSeconds,
+      providerCostUsd: pricing.providerCostUsd,
+      marginMultiplier: PROVIDER_MARGIN_MULTIPLIER,
     })
-    const subJson = await subRes.json().catch(() => null)
+    if (!wallet.ok) {
+      return NextResponse.json(
+        {
+          error: `Solde insuffisant : cette traduction coûte ${wallet.required} Jetons. Recharge tes Jetons.`,
+          code: "quota_exhausted",
+          remaining: Math.max(0, wallet.balance),
+          needed: wallet.required,
+        },
+        { status: 402 },
+      )
+    }
+    const cost = wallet.charged
+
+    let subJson: { data?: { video_translation_ids?: string[] }; error?: { message?: string } } | null = null
+    let subOk = false
+    try {
+      const subRes = await fetch(`${HEYGEN_API}/v3/video-translations`, {
+        method: "POST",
+        headers: { "X-Api-Key": apiKey, "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+      subOk = subRes.ok
+      subJson = await subRes.json().catch(() => null)
+    } catch {
+      subOk = false
+    }
     const translateId = subJson?.data?.video_translation_ids?.[0]
-    if (!subRes.ok || !translateId) {
+    if (!subOk || !translateId) {
+      await creditJetons(user.id, cost, { reason: "translation_submit_failed" }).catch(() => {})
       return NextResponse.json(
         { error: subJson?.error?.message || "Echec du lancement de la traduction." },
         { status: 502 },
       )
     }
-
-    // 3) Deduire les credits UNIQUEMENT apres soumission reussie.
-    const remaining = await deductTranslationCredits(user.id, cost)
+    const remaining = wallet.balance
 
     // 3b) Enregistrer le job en cours AVEC son cout : si HeyGen echoue plus tard
     //     (ex: aucune voix detectee, mauvaise langue), le handler de statut
@@ -302,8 +294,9 @@ export async function POST(request: NextRequest) {
       userId: user.id,
       tool: 'translation',
       credits: cost,
+      durationSeconds: pricing.durationSeconds,
       precision: mode === 'precision',
-      meta: { language, mode },
+      meta: { language, mode, walletAlreadyCharged: true },
     })
 
     return NextResponse.json({

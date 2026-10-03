@@ -17,6 +17,7 @@ import {
   Zap,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { chapVerifyJetons } from "@/lib/tool-costs"
 
 type Media = "image" | "audio" | "video"
 type Status = "idle" | "uploading" | "processing" | "done" | "error"
@@ -33,7 +34,13 @@ interface HistoryJob {
   created_at: string
 }
 
-const COST: Record<Media, number> = { image: 1, audio: 1, video: 2 }
+// Prix plafond (8 s analysees) ; un fichier audio/video plus court coute moins.
+const COST: Record<Media, number> = {
+  image: chapVerifyJetons("image"),
+  audio: chapVerifyJetons("audio"),
+  video: chapVerifyJetons("video"),
+}
+const costLabel = (m: Media) => `${COST[m]} Jetons${m === "image" ? "" : " max"}`
 
 const MAX_MB: Record<Media, number> = { image: 12, audio: 25, video: 60 }
 
@@ -154,7 +161,7 @@ export default function ChapVerifyPage() {
               title: "Analyse échouée",
               description:
                 (json.error || "Le fichier n'a pas pu être analysé.") +
-                (json.refunded ? " Ton crédit a été remboursé." : ""),
+                (json.refunded ? " Tes Jetons ont été remboursés." : ""),
               variant: "destructive",
             })
             refreshHistory()
@@ -226,7 +233,7 @@ export default function ChapVerifyPage() {
           </h1>
           <p className="mx-auto mt-3 max-w-xl text-pretty text-sm leading-relaxed text-white/60 md:text-base">
             Vérifie si une image, une voix ou une vidéo est un deepfake généré par IA. Analyse
-            professionnelle propulsée par la détection ChapVerify.
+            professionnelle propuls��e par la détection ChapVerify.
           </p>
           <div className="mt-4 flex items-center justify-center gap-2 text-xs font-semibold text-white/50">
             <Zap className="h-3.5 w-3.5 text-red-400" />
@@ -234,7 +241,7 @@ export default function ChapVerifyPage() {
               <span className="h-3 w-24 animate-pulse rounded bg-white/10" />
             ) : (
               <span>
-                <span className="text-red-300">{credits}</span> crédits disponibles
+                <span className="text-red-300">{credits.toLocaleString("fr-FR")}</span> Jetons disponibles
               </span>
             )}
           </div>
@@ -284,13 +291,13 @@ export default function ChapVerifyPage() {
                   </span>
                   <span className="flex flex-wrap items-center justify-center gap-2 text-[11px] font-medium text-white/40">
                     <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1">
-                      <ImageIcon className="h-3 w-3" /> Image · 1 crédit
+                      <ImageIcon className="h-3 w-3" /> Image · {costLabel("image")}
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1">
-                      <AudioLines className="h-3 w-3" /> Audio · 1 crédit
+                      <AudioLines className="h-3 w-3" /> Audio · {costLabel("audio")}
                     </span>
                     <span className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1">
-                      <Video className="h-3 w-3" /> Vidéo · 2 crédits
+                      <Video className="h-3 w-3" /> Vidéo · {costLabel("video")}
                     </span>
                   </span>
                 </button>
@@ -333,7 +340,7 @@ export default function ChapVerifyPage() {
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">{file.name}</p>
                         <p className="text-xs text-white/40">
-                          {MEDIA_META[media!].label} · {COST[media!]} crédit{COST[media!] > 1 ? "s" : ""}
+                          {MEDIA_META[media!].label} · {costLabel(media!)}
                         </p>
                       </div>
                     </div>

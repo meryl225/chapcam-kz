@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+import { after, NextRequest, NextResponse } from "next/server"
 import { uploadObject, signedObjectUrl, deleteObject } from "@/lib/r2"
 import { createClient } from "@/lib/supabase/server"
 import { creditJetons, reserveJetons } from "@/lib/jetons"
@@ -12,7 +12,14 @@ import {
   clearMotionJobInputPaths,
 } from "@/lib/motion-jobs"
 import { logToolUsage } from "@/lib/tool-usage"
-import { finalizeCompletedVideo, getBlobPathnamesByRef, saveVideoHistory } from "@/lib/video-history"
+import {
+  AUTO_REPAIR_MAX_AGE_MS,
+  MAX_REHOST_ATTEMPTS,
+  finalizeCompletedVideo,
+  getBlobPathnamesByRef,
+  listVideoHistory,
+  saveVideoHistory,
+} from "@/lib/video-history"
 import { repairVideoRow } from "@/lib/video-history-repair"
 import {
   submitMotionControl,
@@ -138,41 +145,58 @@ export async function GET(request: NextRequest) {
         }
         return false
       })
-      if (repairable.length > 0) {
-        const batch = repairable.slice(0, MAX_REPAIRS)
-        const results = await Promise.all(
-          batch.map(async (j) => {
-            // 1) Re-hebergement direct de l'URL fournisseur deja connue.
-            if (hasStoredProviderUrl(j)) {
-              const fin = await finalizeCompletedVideo({
-                userId: user.id,
-                tool: "motion",
-                providerRef: j.request_id,
-                providerUrl: j.video_url as string,
-                title: "Motion Control",
-              }).catch(() => null)
-              if (fin && fin.state === "ready" && fin.url.startsWith(FILE_PREFIX)) {
-                return decodeURIComponent(fin.url.slice(FILE_PREFIX.length))
+      // NON BLOQUANT (meme regle que /api/videos/history) : la reparation tourne
+      // via after(), APRES l'envoi de la reponse. L'historique est renvoye
+      // immediatement ; un clip repare apparaitra au prochain chargement.
+      // Eligibilite : < 7 jours ET < 6 tentatives de re-hebergement. Au-dela,
+      // plus aucune tentative automatique (rien n'est supprime).
+      const userId = user.id
+      const candidates = repairable
+        .filter((j) => nowMs - new Date(j.created_at).getTime() <= AUTO_REPAIR_MAX_AGE_MS)
+        .slice(0, MAX_REPAIRS * 3)
+      if (candidates.length > 0) {
+        after(async () => {
+          // Compteur de tentatives : porte par la ligne video_history du clip.
+          const attemptsByRef = new Map(
+            (await listVideoHistory(userId, "motion", 100).catch(() => [])).map((v) => [
+              v.provider_ref,
+              v.rehost_attempts ?? 0,
+            ]),
+          )
+          const batch = candidates
+            .filter((j) => (attemptsByRef.get(j.request_id) ?? 0) < MAX_REHOST_ATTEMPTS)
+            .slice(0, MAX_REPAIRS)
+          await Promise.all(
+            batch.map(async (j) => {
+              try {
+                // 1) Re-hebergement direct de l'URL fournisseur deja connue.
+                if (hasStoredProviderUrl(j)) {
+                  const fin = await finalizeCompletedVideo({
+                    userId,
+                    tool: "motion",
+                    providerRef: j.request_id,
+                    providerUrl: j.video_url as string,
+                    title: "Motion Control",
+                  }).catch(() => null)
+                  if (fin && fin.state === "ready") return
+                }
+                // 2) Secours : redemander une URL fraiche au fournisseur (Kling ou
+                //    Higgsfield), puis re-hebergement permanent.
+                if (REFETCHABLE.has(j.provider)) {
+                  await repairVideoRow({
+                    userId,
+                    id: j.id,
+                    tool: "motion",
+                    providerRef: j.request_id,
+                    title: "Motion Control",
+                    provider: j.provider,
+                  })
+                }
+              } catch (e) {
+                console.error("[motion/control] Reparation de fond echouee:", e)
               }
-            }
-            // 2) Secours : redemander une URL fraiche au fournisseur (Kling ou
-            //    Higgsfield), puis re-hebergement permanent.
-            if (REFETCHABLE.has(j.provider)) {
-              return repairVideoRow({
-                userId: user.id,
-                id: j.id,
-                tool: "motion",
-                providerRef: j.request_id,
-                title: "Motion Control",
-                provider: j.provider,
-              }).catch(() => null)
-            }
-            return null
-          }),
-        )
-        batch.forEach((j, i) => {
-          const pathname = results[i]
-          if (pathname) blobByRef[j.request_id] = pathname
+            }),
+          )
         })
       }
 

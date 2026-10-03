@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import Constants from 'expo-constants'
-import { supabase } from './supabase'
-
-const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
+import { fetchAccountSummary } from './accountSummary'
 
 // Reads the real Jetons balance from the same endpoint as the native Profile.
 // Returns null (never 0) when the balance cannot be loaded.
@@ -15,13 +12,7 @@ export function useJetonsBalance() {
     setLoading(true)
     setError(false)
     try {
-      const { data } = await supabase.auth.getSession()
-      const token = data?.session?.access_token
-      if (!token) throw new Error('no-session')
-      const res = await fetch(`${API_URL}/api/mobile/account-summary`, { headers: { Authorization: `Bearer ${token}` } })
-      if (!res.ok) throw new Error('unavailable')
-      const json = await res.json()
-      if (typeof json?.jetons !== 'number') throw new Error('unavailable')
+      const json = await fetchAccountSummary()
       setJetons(json.jetons)
     } catch {
       setJetons(null)

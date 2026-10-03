@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -19,7 +20,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { requireOptionalNativeModule } from 'expo-modules-core'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { initialWindowMetrics, SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
 import { BRAND, C, GAP, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
@@ -30,7 +31,9 @@ import { AiBadge, ReportAbuseSheet } from '../ui/Safety'
 // the affected action falls back instead of crashing.
 const video = requireOptionalNativeModule('ExpoVideo') ? require('expo-video') : null
 const fileSystem = requireOptionalNativeModule('FileSystem') ? require('expo-file-system') : null
-const mediaLibrary = requireOptionalNativeModule('ExpoMediaLibrary') ? require('expo-media-library') : null
+// SDK 57: the root `expo-media-library` export of saveToLibraryAsync is a stub
+// that always throws; the working implementation lives in `/legacy`.
+const mediaLibrary = requireOptionalNativeModule('ExpoMediaLibrary') ? require('expo-media-library/legacy') : null
 
 
 // Exact production tools stored in video_history (lib/video-history.ts VideoTool).
@@ -89,34 +92,51 @@ async function deleteCreation(id) {
   if (!res.ok) throw new Error('delete')
 }
 
-// `playback_url` is a fresh, ownership-scoped signed R2 URL returned by the
-// bearer-authenticated mobile creations endpoint. Refresh the list once when
-// an older signed URL has expired, then download the actual MP4 locally.
+const errorText = (e) => (e?.message === 'unsupported' ? 'Mets à jour l’application pour utiliser cette action.' : e?.message || String(e))
+
+// The player streams `item.playback_url`: a signed R2 MP4 URL (1 h) from
+// /api/mobile/creations. The list may be older than that, so a freshly signed
+// URL for the same creation is requested first; the stored one is the fallback.
 async function downloadToCache(item) {
   if (!fileSystem) throw new Error('unsupported')
   const { File, Paths } = fileSystem
-  const target = new File(Paths.cache, `chapcam-${item.tool}-${String(item.id).slice(0, 8)}.mp4`)
-  if (target.exists) target.delete()
 
-  const candidates = [item.playback_url]
+  const candidates = []
   try {
     const fresh = (await fetchCreations()).find((creation) => creation.id === item.id)
-    if (fresh?.playback_url && fresh.playback_url !== item.playback_url) candidates.push(fresh.playback_url)
+    if (fresh?.playback_url) candidates.push(fresh.playback_url)
   } catch {
-    // Keep the original URL; the caller will show an error only if the real download fails.
+    // Offline refresh: fall back to the URL the player is already using.
   }
+  if (item.playback_url && !candidates.includes(item.playback_url)) candidates.push(item.playback_url)
+  if (candidates.length === 0) throw new Error('Aucune URL vidéo pour cette création.')
 
   let lastError = null
-  for (const url of candidates.filter(Boolean)) {
+  for (const url of candidates) {
+    if (/\.m3u8(\?|$)/i.test(url)) {
+      lastError = new Error('Vidéo disponible uniquement en streaming (HLS) : aucun fichier MP4 à télécharger.')
+      continue
+    }
+    const target = new File(Paths.cache, `chapcam-${item.tool}-${String(item.id).slice(0, 8)}.mp4`)
+    if (target.exists) target.delete()
     try {
-      const file = await File.downloadFileAsync(url, target)
-      if (file?.exists && (file.size ?? 0) >= 1024) return file.uri
-      lastError = new Error('download')
+      const file = await File.downloadFileAsync(url, target, { idempotent: true })
+      const size = file?.size ?? 0
+      if (file?.exists && size >= 1024) return file.uri
+      lastError = new Error(`Fichier reçu invalide (${size} octets).`)
     } catch (error) {
       lastError = error
     }
   }
-  throw lastError || new Error('download')
+  throw lastError
+}
+
+async function saveVideoToPhotos(uri) {
+  let perm = await mediaLibrary.getPermissionsAsync(true)
+  if (!perm.granted && perm.canAskAgain !== false) perm = await mediaLibrary.requestPermissionsAsync(true)
+  if (!perm.granted) return false
+  await mediaLibrary.saveToLibraryAsync(uri)
+  return true
 }
 
 export function CreationsScreen({ onCreate }) {
@@ -182,22 +202,29 @@ export function CreationsScreen({ onCreate }) {
 
   const runDownload = async (item) => {
     setBusy({ id: item.id, action: 'download' })
+    let uri
     try {
-      const uri = await downloadToCache(item)
-      if (mediaLibrary) {
-        const perm = await mediaLibrary.requestPermissionsAsync(true)
-        if (perm.granted) {
-          await mediaLibrary.saveToLibraryAsync(uri)
-          Alert.alert('Vidéo enregistrée', 'Ta création est dans ta galerie Photos.')
-          return
-        }
-      }
-      await Share.share({ url: uri })
+      uri = await downloadToCache(item)
     } catch (e) {
-      Alert.alert(
-        'Téléchargement impossible',
-        e?.message === 'unsupported' ? 'Mets à jour l’application pour télécharger tes créations.' : 'Le fichier n’est pas encore disponible. Réessaie dans un instant.',
-      )
+      Alert.alert('Téléchargement impossible', errorText(e))
+      setBusy(null)
+      return
+    }
+    try {
+      if (!mediaLibrary) {
+        await Share.share({ url: uri })
+        return
+      }
+      if (await saveVideoToPhotos(uri)) {
+        Alert.alert('Vidéo enregistrée dans Photos')
+      } else {
+        Alert.alert('Accès à Photos refusé', 'Autorise ChapCam à ajouter des vidéos dans Réglages > ChapCam > Photos.', [
+          { text: 'Annuler', style: 'cancel' },
+          { text: 'Réglages', onPress: () => Linking.openSettings() },
+        ])
+      }
+    } catch (e) {
+      Alert.alert('Enregistrement dans Photos impossible', errorText(e))
     } finally {
       setBusy(null)
     }
@@ -209,10 +236,7 @@ export function CreationsScreen({ onCreate }) {
       const uri = await downloadToCache(item)
       await Share.share({ url: uri })
     } catch (e) {
-      Alert.alert(
-        'Partage impossible',
-        e?.message === 'unsupported' ? 'Mets à jour l’application pour partager tes créations.' : 'Le fichier n’est pas encore disponible. Réessaie dans un instant.',
-      )
+      Alert.alert('Partage impossible', errorText(e))
     } finally {
       setBusy(null)
     }
@@ -510,22 +534,34 @@ function ToolFilterSheet({ visible, tools, value, onClose, onChange }) {
   )
 }
 
-function Viewer({ item, busy, onClose, onDownload, onShare, onDelete }) {
+// App.js wraps the tree in RN's SafeAreaView, so the app-level provider measures
+// zero insets. A full-screen Modal is a separate iOS window: it needs its own
+// provider, otherwise the close button lands under the status bar / Dynamic
+// Island where touches never reach it.
+function Viewer({ item, ...props }) {
+  if (!item) return null
+  return (
+    <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={props.onClose} statusBarTranslucent>
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <ViewerContent key={item.id} item={item} {...props} />
+      </SafeAreaProvider>
+    </Modal>
+  )
+}
+
+function ViewerContent({ item, busy, onClose, onDownload, onShare, onDelete }) {
   const insets = useSafeAreaInsets()
   const [duration, setDuration] = useState(0)
   const [reporting, setReporting] = useState(false)
-  useEffect(() => setDuration(0), [item?.id])
-  if (!item) return null
   const meta = metaFor(item)
   const title = item.title?.trim() || meta.label
   const date = formatDate(item.created_at)
   const durationLabel = formatDuration(duration)
   return (
-    <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose} onDismiss={onClose} statusBarTranslucent>
       <View style={styles.viewer}>
         <View style={[styles.viewerTop, { paddingTop: insets.top + 8 }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Fermer" hitSlop={10} onPress={onClose} style={styles.viewerClose}>
-            <Ionicons name="chevron-down" size={22} color={C.white} />
+          <Pressable accessibilityRole="button" accessibilityLabel="Fermer le lecteur" hitSlop={12} onPress={onClose} style={({ pressed }) => [styles.viewerClose, pressed && styles.dim]}>
+            <Ionicons name="chevron-back" size={22} color={C.white} />
           </Pressable>
           <View style={styles.viewerHead}>
             <Text style={styles.viewerTitle} numberOfLines={1}>{title}</Text>
@@ -550,7 +586,6 @@ function Viewer({ item, busy, onClose, onDownload, onShare, onDelete }) {
         </View>
         <ReportAbuseSheet visible={reporting} onClose={() => setReporting(false)} contentUrl={item.playback_url} context={`Mes créations · ${meta.label}`} />
       </View>
-    </Modal>
   )
 }
 
@@ -690,7 +725,7 @@ const styles = StyleSheet.create({
   sheetLabel: { flex: 1, color: C.ink, fontSize: 16, fontWeight: '600' },
   sheetLabelActive: { fontWeight: '800' },
   viewer: { flex: 1, backgroundColor: VIEWER_BG },
-  viewerTop: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: PAD, paddingBottom: 10 },
+  viewerTop: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: PAD, paddingBottom: 10, zIndex: 2, elevation: 2 },
   viewerClose: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
   viewerHead: { flex: 1 },
   viewerTitle: { color: C.white, fontSize: 16, fontWeight: '800' },

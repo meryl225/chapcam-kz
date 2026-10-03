@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, getMotionJobModel, listMotionJobs } from "@/lib/motion-jobs"
 import { saveVideoHistory, finalizeCompletedVideo, failGenerationAndGetRefund, listProcessingGenerations } from "@/lib/video-history"
 import { creditJetons, reserveJetons } from "@/lib/jetons"
-import { estimateGenjutsuPriceUsd, GENJUTSU_MAX_DURATION_SECONDS } from "@/lib/tool-costs"
+import { estimateGenjutsuPriceUsd, GENJUTSU_MARGIN_MULTIPLIER, GENJUTSU_MAX_DURATION_SECONDS, MOTION_CONTROL_MAX_SECONDS } from "@/lib/tool-costs"
 
 // --- Motion Control (Higgsfield image -> video) ---
 // L'API Higgsfield ne fait PAS de video-a-video. Elle anime une IMAGE fixe en
@@ -366,8 +366,11 @@ export async function POST(request: NextRequest) {
     const qualityValue = typeof qualityFormValue === "string" ? qualityFormValue.trim() : ""
     const quality = qualityValue === "1080p" ? "1080p" : qualityValue === "720p" ? "720p" : ""
     const durationValue = form.get("durationSeconds")
-    const parsedDuration = typeof durationValue === "string" && durationValue.trim() ? Number(durationValue) : GENJUTSU_MAX_DURATION_SECONDS
-    const durationSeconds = Number.isFinite(parsedDuration) ? Math.floor(parsedDuration) : 0
+    // Motion Control (kling3) : clip de la duree de la reference, 10 s max ; facture a cette duree.
+    const isMotionControl = modelKey === "kling3"
+    const maxClipSeconds = isMotionControl ? MOTION_CONTROL_MAX_SECONDS : GENJUTSU_MAX_DURATION_SECONDS
+    const parsedDuration = typeof durationValue === "string" && durationValue.trim() ? Number(durationValue) : maxClipSeconds
+    const durationSeconds = Number.isFinite(parsedDuration) ? Math.min(maxClipSeconds, Math.ceil(parsedDuration)) : 0
     const enhance = form.get("enhance") === "true"
     let motionIds: string[] = []
     try {
@@ -386,8 +389,8 @@ export async function POST(request: NextRequest) {
     if (!quality) {
       return NextResponse.json({ error: "Résolution invalide. Choisissez 720p ou 1080p." }, { status: 400 })
     }
-    if (durationSeconds < 1 || durationSeconds > GENJUTSU_MAX_DURATION_SECONDS) {
-      return NextResponse.json({ error: `La durée doit être comprise entre 1 et ${GENJUTSU_MAX_DURATION_SECONDS} secondes.` }, { status: 400 })
+    if (durationSeconds < 1) {
+      return NextResponse.json({ error: `La durée doit être comprise entre 1 et ${maxClipSeconds} secondes.` }, { status: 400 })
     }
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       return NextResponse.json({ error: "Format invalide (JPG, PNG ou WebP)." }, { status: 400 })
@@ -487,7 +490,7 @@ export async function POST(request: NextRequest) {
           duration: durationSeconds,
         }
     if (modelKey !== "genjutsu" && motionIds.length > 0) payload.motions = motionIds.map((id) => ({ id }))
-    const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, "motion", { model: modelKey, quality, providerCostUsd: pricing.providerCostUsd, marginMultiplier: 2 })
+    const wallet = await reserveJetons(user.id, pricing.customerPriceUsd, "motion", { model: modelKey, quality, providerCostUsd: pricing.providerCostUsd, marginMultiplier: GENJUTSU_MARGIN_MULTIPLIER })
     if (!wallet.ok) {
       await admin.storage.from(STORAGE_BUCKET).remove([path, ...(referencePath ? [referencePath] : [])]).catch(() => {})
       return NextResponse.json({ error: `Solde insuffisant. Cette génération coûte ${wallet.required} Jetons.`, required: wallet.required, balance: wallet.balance }, { status: 402 })

@@ -48,6 +48,8 @@ export interface VideoHistoryItem {
   title: string
   status: 'processing' | 'completed' | 'failed'
   created_at: string
+  // Nombre de re-hebergements deja tentes (borne la reparation automatique).
+  rehost_attempts: number
 }
 
 let _client: NeonQueryFunction<false, false> | null = null
@@ -253,7 +255,24 @@ function fileUrl(pathname: string): string {
 // Nombre max de tentatives de re-hebergement avant de servir, EN DERNIER
 // RECOURS, l'URL fournisseur (encore valide un temps) pour ne pas laisser
 // l'utilisateur bloque sur un spinner si le Blob refuse obstinement.
-const MAX_REHOST_ATTEMPTS = 6
+export const MAX_REHOST_ATTEMPTS = 6
+
+// Reparation AUTOMATIQUE (a l'ouverture de "Mes creations") : uniquement les
+// videos recentes qui n'ont pas encore epuise leurs tentatives. Au-dela de 7
+// jours, la source fournisseur (HeyGen ~7j) est en pratique perdue et chaque
+// tentative retelechargeait le MP4 pour rien a chaque chargement de page.
+export const AUTO_REPAIR_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
+const AUTO_REPAIR_STALE_PROCESSING_MS = 3 * 60 * 1000
+
+export function isAutoRepairable(v: VideoHistoryItem, now = Date.now()): boolean {
+  if (!v.provider_ref) return false
+  if ((v.rehost_attempts ?? 0) >= MAX_REHOST_ATTEMPTS) return false
+  const age = now - new Date(v.created_at).getTime()
+  if (!(age <= AUTO_REPAIR_MAX_AGE_MS)) return false
+  if (v.status === 'completed') return !v.blob_pathname
+  if (v.status === 'processing') return age > AUTO_REPAIR_STALE_PROCESSING_MS
+  return false
+}
 
 /**
  * Resultat de finalisation d'une video terminee cote fournisseur :
@@ -686,18 +705,18 @@ export async function listVideoHistory(
   await ensureTable()
   const rows = tool
     ? ((await sql`
-        SELECT id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, stream_uid, stream_customer_code, provider_url, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, stream_uid, stream_customer_code, provider_url, title, status, created_at, rehost_attempts
         FROM video_history
         WHERE user_id = ${userId} AND tool = ${tool}
         ORDER BY created_at DESC
         LIMIT ${limit}
       `) as VideoHistoryItem[])
     : ((await sql`
-        SELECT id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, stream_uid, stream_customer_code, provider_url, title, status, created_at
+        SELECT id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, stream_uid, stream_customer_code, provider_url, title, status, created_at, rehost_attempts
         FROM video_history
         WHERE user_id = ${userId}
         ORDER BY created_at DESC
         LIMIT ${limit}
       `) as VideoHistoryItem[])
-  return rows.map((r) => ({ ...r, id: String(r.id) }))
+  return rows.map((r) => ({ ...r, id: String(r.id), rehost_attempts: Number(r.rehost_attempts ?? 0) }))
 }

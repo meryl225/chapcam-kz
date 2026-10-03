@@ -44,13 +44,43 @@ function AuthContent() {
   const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   const isSignIn = mode === 'signIn'
-  const signUpBlocked = !isSignIn && !acceptedTerms
+  const isReset = mode === 'reset'
+  const signUpBlocked = mode === 'signUp' && !acceptedTerms
+
+  // Same endpoint as the web login page: Supabase emails a recovery link that
+  // opens chapcam.com/auth/reset-password, which works from any device.
+  async function sendResetLink(normalizedEmail) {
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      setMessage('Entre l’adresse e-mail de ton compte.')
+      return
+    }
+    setLoading(true)
+    try {
+      const response = await fetch(`${API_URL}/api/email/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail }),
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok || !data?.success) throw new Error(data?.error || `HTTP ${response.status}`)
+      setMessageTone('success')
+      setMessage('Si un compte existe avec cette adresse, tu vas recevoir un e-mail avec un lien pour choisir un nouveau mot de passe. Pense à vérifier tes spams.')
+    } catch {
+      setMessage('Impossible d’envoyer l’e-mail pour le moment. Vérifie ta connexion et réessaie.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   async function submit() {
     if (loading) return
     setMessage('')
     setMessageTone('error')
     const normalizedEmail = email.trim().toLowerCase()
+    if (isReset) {
+      await sendResetLink(normalizedEmail)
+      return
+    }
     if (!normalizedEmail || password.length < 6) {
       setMessage('Entre un e-mail valide et un mot de passe de 6 caractères minimum.')
       return
@@ -76,10 +106,22 @@ function AuthContent() {
     }
   }
 
-  function toggleMode() {
-    setMode(isSignIn ? 'signUp' : 'signIn')
+  function switchMode(next) {
+    setMode(next)
     setMessage('')
   }
+
+  function toggleMode() {
+    switchMode(isSignIn ? 'signUp' : 'signIn')
+  }
+
+  const title = isReset ? 'Mot de passe oublié' : isSignIn ? 'Bienvenue' : 'Crée ton compte'
+  const subtitle = isReset
+    ? 'Entre ton e-mail : on t’envoie un lien pour choisir un nouveau mot de passe.'
+    : isSignIn
+      ? 'Connecte-toi à ton compte ChapCam.'
+      : 'Un seul compte pour tes outils IA, tes crédits et ton abonnement.'
+  const submitLabel = isReset ? 'Envoyer le lien' : isSignIn ? 'Se connecter' : 'Créer le compte'
 
   return (
     <View style={styles.root}>
@@ -95,14 +137,8 @@ function AuthContent() {
           <ChapCamBrand />
 
           <View style={styles.header}>
-            <Text style={styles.title} accessibilityRole="header">
-              {isSignIn ? 'Bienvenue' : 'Crée ton compte'}
-            </Text>
-            <Text style={styles.subtitle}>
-              {isSignIn
-                ? 'Connecte-toi à ton compte ChapCam.'
-                : 'Un seul compte pour tes outils IA, tes crédits et ton abonnement.'}
-            </Text>
+            <Text style={styles.title} accessibilityRole="header">{title}</Text>
+            <Text style={styles.subtitle}>{subtitle}</Text>
           </View>
 
           <View style={styles.card}>
@@ -117,18 +153,33 @@ function AuthContent() {
                 keyboardType="email-address"
                 placeholder="nom@exemple.com"
                 placeholderTextColor="#A6AEC4"
-                returnKeyType="next"
+                returnKeyType={isReset ? 'send' : 'next'}
                 textContentType="emailAddress"
                 value={email}
                 onChangeText={setEmail}
                 onFocus={() => setFocused('email')}
                 onBlur={() => setFocused(null)}
-                onSubmitEditing={() => passwordRef.current?.focus()}
+                onSubmitEditing={() => (isReset ? submit() : passwordRef.current?.focus())}
                 style={styles.input}
               />
             </View>
 
-            <Text style={[styles.label, styles.labelSpaced]}>Mot de passe</Text>
+            {!isReset ? (
+            <>
+            <View style={[styles.labelRow, styles.labelSpaced]}>
+              <Text style={[styles.label, styles.labelInRow]}>Mot de passe</Text>
+              {isSignIn ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Mot de passe oublié"
+                  hitSlop={12}
+                  onPress={() => switchMode('reset')}
+                  style={({ pressed }) => pressed && styles.linkPressed}
+                >
+                  <Text style={styles.forgotText}>Mot de passe oublié ?</Text>
+                </Pressable>
+              ) : null}
+            </View>
             <View style={[styles.field, focused === 'password' && styles.fieldFocused]}>
               <Ionicons name="lock-closed-outline" size={18} color={focused === 'password' ? C.blue : C.muted} />
               <TextInput
@@ -158,6 +209,8 @@ function AuthContent() {
                 <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={C.muted} />
               </Pressable>
             </View>
+            </>
+            ) : null}
 
             {message ? (
               <View
@@ -175,7 +228,7 @@ function AuthContent() {
               </View>
             ) : null}
 
-            {!isSignIn ? (
+            {mode === 'signUp' ? (
               <View style={styles.termsRow}>
                 <Pressable
                   accessibilityRole="checkbox"
@@ -219,18 +272,27 @@ function AuthContent() {
                 {loading ? (
                   <ChapCamLoader size="small" tone="light" />
                 ) : (
-                  <Text style={styles.primaryText}>{isSignIn ? 'Se connecter' : 'Créer le compte'}</Text>
+                  <Text style={styles.primaryText}>{submitLabel}</Text>
                 )}
               </LinearGradient>
             </Pressable>
           </View>
 
-          <View style={styles.switchRow}>
-            <Text style={styles.switchHint}>{isSignIn ? 'Nouveau sur ChapCam ?' : 'Déjà un compte ?'}</Text>
-            <Pressable accessibilityRole="button" hitSlop={8} onPress={toggleMode}>
-              <Text style={styles.switchText}>{isSignIn ? 'Créer un compte' : 'Se connecter'}</Text>
-            </Pressable>
-          </View>
+          {isReset ? (
+            <View style={styles.switchRow}>
+              <Pressable accessibilityRole="button" hitSlop={8} onPress={() => switchMode('signIn')} style={styles.backRow}>
+                <Ionicons name="arrow-back" size={16} color={C.blue} />
+                <Text style={styles.switchText}>Retour à la connexion</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.switchRow}>
+              <Text style={styles.switchHint}>{isSignIn ? 'Nouveau sur ChapCam ?' : 'Déjà un compte ?'}</Text>
+              <Pressable accessibilityRole="button" hitSlop={8} onPress={toggleMode}>
+                <Text style={styles.switchText}>{isSignIn ? 'Créer un compte' : 'Se connecter'}</Text>
+              </Pressable>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -257,6 +319,11 @@ const styles = StyleSheet.create({
   },
   label: { color: C.ink, fontSize: 14, fontWeight: '700', marginBottom: 8 },
   labelSpaced: { marginTop: 16 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  labelInRow: { marginBottom: 0 },
+  forgotText: { color: C.blue, fontSize: 14, fontWeight: '700' },
+  linkPressed: { opacity: 0.6 },
+  backRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   field: {
     flexDirection: 'row',
     alignItems: 'center',

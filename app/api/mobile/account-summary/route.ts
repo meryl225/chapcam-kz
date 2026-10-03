@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const [{ data: subscription, error: subscriptionError }, jetons] = await Promise.all([
       accountDb
         .from('subscriptions')
-        .select('plan,status,is_active,points,points_remaining,expires_at,end_date')
+        .select('plan,status,is_active,points,expires_at,end_date')
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false, nullsFirst: false })
         .limit(1)
@@ -50,9 +50,14 @@ export async function GET(request: NextRequest) {
       (subscription.is_active === true || subscription.status === 'active') &&
       (expirationTime === null || Number.isNaN(expirationTime) || expirationTime >= Date.now()),
     )
-    const remainingPoints = typeof subscription?.points_remaining === 'number'
-      ? subscription.points_remaining
-      : subscription?.points
+    // `points` is the Live Swap balance credited by purchases/admin and debited
+    // by /api/points. `points_remaining` is a legacy column (default 0, only
+    // written by the old faceswap routes) and must never be shown as balance.
+    // Expired => 0, same rule as GET /api/points.
+    const expired = expirationTime !== null && !Number.isNaN(expirationTime) && expirationTime < Date.now()
+    const remainingPoints = subscription
+      ? expired ? 0 : Math.max(0, Number(subscription.points) || 0)
+      : null
 
     if (!jetons || typeof jetons.balance !== 'number') {
       throw new Error('Solde Jetons indisponible')
@@ -63,8 +68,9 @@ export async function GET(request: NextRequest) {
           plan,
           status: subscription.status || (subscription.is_active === true ? 'active' : 'inactive'),
           is_active: subscription.is_active === true,
-          points: subscription.points ?? null,
-          points_remaining: subscription.points_remaining ?? null,
+          points: remainingPoints,
+          // Installed app builds read points_remaining first: mirror the real balance.
+          points_remaining: remainingPoints,
           expires_at: subscription.expires_at || null,
           end_date: subscription.end_date || null,
         }

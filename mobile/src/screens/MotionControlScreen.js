@@ -38,19 +38,20 @@ const SCENES = [
 ]
 
 // Server-side billing of POST /api/motion (lib/tool-costs.ts estimateGenjutsuPriceUsd
-// + lib/jetons.ts providerCostToJetons). The web Motion Control request sends no
-// durationSeconds, so the server bills its default duration (30 s).
-const BILLED_DURATION_SECONDS = 30
+// + lib/jetons.ts providerCostToJetons). Motion Control sends the reference
+// duration (10 s max); image animation keeps the server default (30 s).
+const ANIMATION_BILLED_SECONDS = 30
 const PROVIDER_COST_PER_SECOND_USD = 0.2708333333
-const MARGIN_MULTIPLIER = 2
+const MARGIN_MULTIPLIER = 2.5
 const JETONS_PER_USD = 60
 const FCFA_PER_JETON = 10
-const motionCostJetons = () => {
-  const providerUsd = Math.round(PROVIDER_COST_PER_SECOND_USD * BILLED_DURATION_SECONDS * 10000) / 10000
+const motionCostJetons = (seconds) => {
+  const providerUsd = Math.round(PROVIDER_COST_PER_SECOND_USD * seconds * 10000) / 10000
   const customerUsd = Math.round(providerUsd * MARGIN_MULTIPLIER * 10000) / 10000
   return Math.max(1, Math.ceil(customerUsd * JETONS_PER_USD))
 }
-const COST = motionCostJetons()
+const billedReferenceSeconds = (seconds) =>
+  Math.min(MOTION_MAX_SECONDS, Math.max(1, Math.ceil(seconds ?? MOTION_MAX_SECONDS)))
 
 async function authHeaders() {
   const { data } = await supabase.auth.getSession()
@@ -144,6 +145,8 @@ export function MotionControlScreen({ onBack, onOpenCreations, topInset = 0 }) {
   const busy = loading || !!pendingRequestId
   const sceneActive = scene === 'custom' ? !!customScene.trim() : scene !== 'keep'
   const referenceDuration = assetSeconds(reference)
+  const referenceBilledSeconds = billedReferenceSeconds(referenceDuration)
+  const COST = motionCostJetons(reference?.uri ? referenceBilledSeconds : ANIMATION_BILLED_SECONDS)
   const ready = !!image?.uri && (!!reference?.uri || !!prompt.trim() || selectedMotions.length > 0 || sceneActive) && !busy
 
   useEffect(() => {
@@ -282,6 +285,7 @@ export function MotionControlScreen({ onBack, onOpenCreations, topInset = 0 }) {
         form.append('referenceVideoUrl', upload.publicUrl)
         form.append('prompt', finalPrompt || 'natural full-body motion transfer')
         form.append('model', 'kling3')
+        form.append('durationSeconds', String(referenceBilledSeconds))
       } else {
         form.append('prompt', finalPrompt || 'subtle natural motion, cinematic')
         form.append('model', model === 'pro' ? 'standard' : model)
