@@ -367,15 +367,6 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           <Ionicons name="chevron-forward" size={20} color={C.white} />
         </Pressable>
 
-        {!subscriptionLoading && !isActive ? (
-          <View style={styles.perks}>
-            <Perk icon="flash" label="Plus de jetons" />
-            <Perk icon="infinite" label="Live Swap inclus" />
-            <Perk text="HD" label="Qualité maximale" />
-            <Perk icon="ribbon" label="Accès prioritaire" />
-          </View>
-        ) : null}
-
         {!subscriptionLoading ? (
           <Pressable
             accessibilityRole="link"
@@ -444,16 +435,6 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   )
 }
 
-function Perk({ icon, text, label }) {
-  return (
-    <View style={styles.perk}>
-      <View style={styles.perkIcon}>
-        {text ? <Text style={styles.perkIconText}>{text}</Text> : <Ionicons name={icon} size={13} color={C.white} />}
-      </View>
-      <Text style={styles.perkLabel} numberOfLines={2}>{label}</Text>
-    </View>
-  )
-}
 
 const TINT_BG = { [C.blue]: '#EAF1FF', [C.violet]: '#F1ECFF' }
 
@@ -562,11 +543,6 @@ const styles = StyleSheet.create({
   subEyebrow: { color: MUTED_ON_DARK, fontSize: 11, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
   subPlan: { color: C.white, fontSize: 22, fontWeight: '900', letterSpacing: -0.4, marginTop: 2 },
   subDesc: { color: '#DCE2F5', fontSize: 13, fontWeight: '500', lineHeight: 19, marginTop: 4 },
-  perks: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 10, columnGap: 8 },
-  perk: { flexDirection: 'row', alignItems: 'center', gap: 6, flexBasis: '47%', flexGrow: 1 },
-  perkIcon: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(123, 77, 255, 0.35)' },
-  perkIconText: { color: C.white, fontSize: 10, fontWeight: '900' },
-  perkLabel: { flexShrink: 1, color: '#DCE2F5', fontSize: 12, fontWeight: '600' },
   subCta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, height: 54, borderRadius: 27 },
   subCtaText: { color: C.white, fontSize: 16, fontWeight: '800' },
 
