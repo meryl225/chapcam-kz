@@ -184,7 +184,7 @@ function TextTab({ voices, selected, onSelect, locked, onConsumed }) {
           <Ionicons name="sparkles" size={19} color={C.white} /><Text style={styles.ctaText}>Générer le message vocal</Text>
         </Pressable>
       )}
-      {result ? <><Step n={3} title="Écoute ton message" /><AiBadge /><AudioClip uri={result} label={`Audio · ${selected?.name ?? ''}`} accent={C.violet} /></> : null}
+      {result ? <><Step n={3} title="Écoute ton message" /><AiBadge /><AudioClip uri={result} label={`Audio · ${selected?.name ?? ''}`} accent={C.violet} downloadName={`message-vocal-${selected?.name ?? ''}`} /></> : null}
     </View>
   )
 }
@@ -259,7 +259,7 @@ function RecordTab({ voices, selected, onSelect, locked, onConsumed }) {
           <Step n={3} title="Compare le résultat" />
           <AudioClip uri={source} label="Voix originale" accent={C.muted} />
           <AiBadge />
-          <AudioClip uri={result} label={`Voix transformée · ${selected?.name ?? ''}`} accent={C.blue} />
+          <AudioClip uri={result} label={`Voix transformée · ${selected?.name ?? ''}`} accent={C.blue} downloadName={`voix-transformee-${selected?.name ?? ''}`} />
         </View>
       ) : null}
     </View>
