@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react'
 import {
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -15,6 +16,11 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import { supabase } from '../lib/supabase'
 import { BRAND, C, shadow } from '../ui/catalog'
 import { ChapCamBrand } from '../ui/ChapCamBrand'
+import { ChapCamLoader } from '../ui/ChapCamLoader'
+import { API_URL } from '../lib/api'
+
+const TERMS_URL = `${API_URL}/conditions`
+const PRIVACY_URL = `${API_URL}/confidentialite`
 
 export function AuthScreen() {
   return (
@@ -35,8 +41,10 @@ function AuthContent() {
   const [message, setMessage] = useState('')
   const [messageTone, setMessageTone] = useState('error')
   const [loading, setLoading] = useState(false)
+  const [acceptedTerms, setAcceptedTerms] = useState(false)
 
   const isSignIn = mode === 'signIn'
+  const signUpBlocked = !isSignIn && !acceptedTerms
 
   async function submit() {
     if (loading) return
@@ -45,6 +53,10 @@ function AuthContent() {
     const normalizedEmail = email.trim().toLowerCase()
     if (!normalizedEmail || password.length < 6) {
       setMessage('Entre un e-mail valide et un mot de passe de 6 caractères minimum.')
+      return
+    }
+    if (mode === 'signUp' && !acceptedTerms) {
+      setMessage('Tu dois accepter les Conditions Générales d’Utilisation et la Politique de confidentialité pour créer un compte.')
       return
     }
     setLoading(true)
@@ -163,12 +175,45 @@ function AuthContent() {
               </View>
             ) : null}
 
+            {!isSignIn ? (
+              <View style={styles.termsRow}>
+                <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: acceptedTerms }}
+                  accessibilityLabel="J’accepte les Conditions Générales d’Utilisation et la Politique de confidentialité de ChapCam"
+                  accessibilityHint="Obligatoire pour créer un compte"
+                  hitSlop={8}
+                  onPress={() => {
+                    setAcceptedTerms((value) => !value)
+                    setMessage('')
+                  }}
+                  style={[styles.checkbox, acceptedTerms && styles.checkboxChecked]}
+                >
+                  {acceptedTerms ? <Ionicons name="checkmark" size={16} color={C.white} /> : null}
+                </Pressable>
+                <View style={styles.termsTextWrap}>
+                  <Text style={styles.termsText} onPress={() => setAcceptedTerms((value) => !value)}>
+                    {'J’accepte les '}
+                    <Text accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(TERMS_URL)}>
+                      Conditions Générales d’Utilisation
+                    </Text>
+                    {' et la '}
+                    <Text accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(PRIVACY_URL)}>
+                      Politique de confidentialité
+                    </Text>
+                    {' de ChapCam.'}
+                  </Text>
+                  {!acceptedTerms ? <Text style={styles.termsRequired}>Obligatoire pour créer un compte</Text> : null}
+                </View>
+              </View>
+            ) : null}
+
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: loading, busy: loading }}
-              disabled={loading}
+              accessibilityState={{ disabled: loading || signUpBlocked, busy: loading }}
+              disabled={loading || signUpBlocked}
               onPress={submit}
-              style={({ pressed }) => [styles.primaryWrap, pressed && styles.pressed]}
+              style={({ pressed }) => [styles.primaryWrap, signUpBlocked && styles.primaryDisabled, pressed && styles.pressed]}
             >
               <LinearGradient colors={BRAND} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={styles.primary}>
                 {loading ? (
@@ -231,7 +276,25 @@ const styles = StyleSheet.create({
   messageText: { flex: 1, fontSize: 14, lineHeight: 20 },
   messageTextError: { color: '#B42338' },
   messageTextSuccess: { color: C.ink },
+  termsRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 18 },
+  checkbox: {
+    width: 22,
+    height: 22,
+    marginTop: 1,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: C.muted,
+    backgroundColor: C.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkboxChecked: { backgroundColor: C.blue, borderColor: C.blue },
+  termsTextWrap: { flex: 1, gap: 4 },
+  termsText: { color: C.ink, fontSize: 14, lineHeight: 20 },
+  termsLink: { color: C.blue, fontWeight: '700', textDecorationLine: 'underline' },
+  termsRequired: { color: C.muted, fontSize: 12, lineHeight: 16 },
   primaryWrap: { marginTop: 20, borderRadius: 16, overflow: 'hidden' },
+  primaryDisabled: { opacity: 0.5 },
   pressed: { opacity: 0.9, transform: [{ scale: 0.99 }] },
   primary: { minHeight: 54, alignItems: 'center', justifyContent: 'center', borderRadius: 16 },
   primaryText: { color: C.white, fontSize: 17, fontWeight: '700', letterSpacing: 0.1 },
