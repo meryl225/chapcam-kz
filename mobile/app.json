@@ -11,6 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.chapcam.app",
       "buildNumber": "1",
+      "icon": "./assets/icon.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "ChapCam utilise la caméra pour afficher et transformer votre image en temps réel dans Live Swap.",
