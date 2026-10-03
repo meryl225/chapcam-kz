@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
         is_active: row.is_active,
         points: row.points,
         points_remaining: row.points_remaining,
+        expires_at: row.expires_at,
         end_date: row.end_date,
       })),
     })
@@ -67,20 +68,26 @@ export async function GET(request: NextRequest) {
       throw new Error('Solde Jetons indisponible')
     }
 
+    const returnedSubscription = active
+      ? {
+          plan: subscription.plan,
+          status: subscription.status || null,
+          is_active: true,
+          end_date: subscription.end_date || null,
+        }
+      : null
+    console.log('[mobile/account-summary] final subscription', {
+      userId: user.id,
+      subscription: returnedSubscription,
+    })
+
     return NextResponse.json({
       jetons: jetons.balance,
       live_swap: {
         points: active && typeof remainingPoints === 'number' ? remainingPoints : null,
         points_per_second: active ? 2 : null,
       },
-      subscription: active
-        ? {
-            plan: subscription.plan,
-            status: subscription.status || null,
-            is_active: true,
-            end_date: subscription.end_date || null,
-          }
-        : null,
+      subscription: returnedSubscription,
     }, { headers: NO_STORE })
   } catch (error) {
     console.error('[mobile/account-summary] Erreur:', error)
