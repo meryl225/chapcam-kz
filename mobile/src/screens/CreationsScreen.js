@@ -132,11 +132,25 @@ async function downloadToCache(item) {
 }
 
 async function saveVideoToPhotos(uri) {
+  if (!mediaLibrary) throw new Error('unsupported')
   let perm = await mediaLibrary.getPermissionsAsync(true)
   if (!perm.granted && perm.canAskAgain !== false) perm = await mediaLibrary.requestPermissionsAsync(true)
   if (!perm.granted) return false
-  await mediaLibrary.saveToLibraryAsync(uri)
-  return true
+
+  // iOS can reject saveToLibraryAsync for downloaded MP4s with an opaque
+  // native error. createAssetAsync uses the Photos import path and correctly
+  // registers video assets in the library.
+  try {
+    await mediaLibrary.createAssetAsync(uri)
+    return true
+  } catch (assetError) {
+    try {
+      await mediaLibrary.saveToLibraryAsync(uri)
+      return true
+    } catch {
+      throw assetError
+    }
+  }
 }
 
 export function CreationsScreen({ onCreate }) {
