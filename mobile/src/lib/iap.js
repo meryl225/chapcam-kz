@@ -1,6 +1,6 @@
 import { apiJson } from './api'
 
-// Product IDs App Store Connect, alignes sur lib/apple-iap.ts cote serveur.
+// Product IDs App Store Connect, alignes sur lib/apple-iap.ts et lib/revenuecat.ts.
 export const IOS_PRODUCT_IDS = [
   'com.chapcam.app.subscription.testeur.weekly',
   'com.chapcam.app.subscription.starter.monthly',
@@ -9,44 +9,32 @@ export const IOS_PRODUCT_IDS = [
   'com.chapcam.app.subscription.vipdebout.yearly',
 ]
 
-// Statuts pour lesquels le serveur a tranche definitivement : la transaction
-// peut etre terminee aupres d'Apple. Sinon on la garde pour la re-verifier.
-const SETTLED = new Set(['activated', 'already', 'expired', 'revoked'])
-export const isSettled = (status) => SETTLED.has(status)
+export const TOKEN_PRODUCT_IDS = [
+  'com.chapcam.app.tokens.100',
+  'com.chapcam.app.tokens.250',
+  'com.chapcam.app.tokens.500',
+  'com.chapcam.app.tokens.1000',
+]
 
-export async function fetchIosPlans() {
+// Contenu des forfaits et packs (sans prix : ils viennent d'Apple via RevenueCat).
+export async function fetchIosCatalog() {
   const { response, body } = await apiJson('/api/mobile/iap/plans')
-  if (!response.ok || !Array.isArray(body?.plans)) throw new Error('Forfaits indisponibles')
-  return body.plans
-}
-
-// Envoie au serveur les transactions StoreKit 2 signees par Apple (JWS).
-// Seul le serveur decide si l'abonnement est actif.
-export async function verifyPurchases(purchases, source = 'purchase') {
-  const transactions = purchases.map((p) => p?.purchaseToken).filter(Boolean)
-  if (transactions.length === 0) return { results: [], active: false }
-  const { response, body } = await apiJson('/api/mobile/iap/verify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ transactions, source }),
-  })
-  if (!response.ok || !Array.isArray(body?.results)) {
-    throw new Error(body?.error || `Erreur HTTP ${response.status}`)
-  }
-  return body
+  if (!response.ok || !Array.isArray(body?.plans)) throw new Error('Catalogue indisponible')
+  return { plans: body.plans, tokenPacks: Array.isArray(body.tokenPacks) ? body.tokenPacks : [] }
 }
 
 const PERIOD_LABELS = {
-  day: ['jour', 'jours'],
-  week: ['semaine', 'semaines'],
-  month: ['mois', 'mois'],
-  year: ['an', 'ans'],
+  D: ['jour', 'jours'],
+  W: ['semaine', 'semaines'],
+  M: ['mois', 'mois'],
+  Y: ['an', 'ans'],
 }
 
+// RevenueCat expose la periode au format ISO 8601 (P1W, P1M, P3M, P1Y).
 export function periodLabel(product) {
-  const unit = String(product?.subscriptionPeriodUnitIOS || '').toLowerCase()
-  const count = Number(product?.subscriptionPeriodNumberIOS) || 1
-  const labels = PERIOD_LABELS[unit]
-  if (!labels) return null
+  const match = /^P(\d+)([DWMY])$/.exec(String(product?.subscriptionPeriod || ''))
+  if (!match) return null
+  const count = Number(match[1]) || 1
+  const labels = PERIOD_LABELS[match[2]]
   return count === 1 ? `par ${labels[0]}` : `tous les ${count} ${labels[1]}`
 }

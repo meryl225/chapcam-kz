@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { APPLE_PRODUCTS, planForAppleProduct } from '@/lib/apple-iap'
+import { REVENUECAT_OFFERING, TOKEN_PACKS } from '@/lib/revenuecat'
 
 // Contenu des 5 forfaits iOS (avantages, jetons, minutes). Les prix ne sont
 // volontairement PAS renvoyes : sur iOS ils viennent uniquement de StoreKit.
@@ -20,5 +21,5 @@ export async function GET() {
       features: plan.features.filter((f) => !WATERMARK_PATTERN.test(f)),
     }
   })
-  return NextResponse.json({ plans }, { headers: { 'Cache-Control': 'public, max-age=300' } })
+  return NextResponse.json({ plans, tokenPacks: TOKEN_PACKS, offering: REVENUECAT_OFFERING }, { headers: { 'Cache-Control': 'public, max-age=300' } })
 }

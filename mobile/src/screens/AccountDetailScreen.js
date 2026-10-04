@@ -2,6 +2,7 @@ import React from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { C, PAD } from '../ui/catalog'
+import { useJetonsBalance } from '../lib/useJetonsBalance'
 
 const NAVY = '#0B1230'
 const BG = '#F5F7FF'
@@ -42,10 +43,11 @@ function ActivityEmpty() {
   return <View style={styles.empty}><Ionicons name="sparkles-outline" size={30} color={C.violet} /><Text style={styles.emptyTitle}>Ton activité apparaîtra ici</Text><Text style={styles.emptyText}>Tes créations et consommations seront regroupées dans un historique simple à consulter.</Text></View>
 }
 
-function Purchases({ subscription, jetons }) {
+function Purchases({ subscription }) {
+  const { jetons } = useJetonsBalance()
   const plan = subscription?.plan || 'Aucun forfait actif'
   return <>
-    <View style={styles.card}><Row icon="diamond-outline" label="Abonnement" value={plan} /><Row icon="wallet-outline" label="Solde actuel" value={`${Number(jetons || subscription?.points || 0).toLocaleString('fr-FR')} Jetons`} /><Row icon="calendar-outline" label="Prochain renouvellement" value={subscription?.expires_at || subscription?.end_date ? new Date(subscription.expires_at || subscription.end_date).toLocaleDateString('fr-FR') : '—'} /></View>
+    <View style={styles.card}><Row icon="diamond-outline" label="Abonnement" value={plan} /><Row icon="wallet-outline" label="Solde actuel" value={`${jetons == null ? '—' : Number(jetons).toLocaleString('fr-FR')}${jetons == null ? '' : ' Jetons'}`} /><Row icon="calendar-outline" label="Prochain renouvellement" value={subscription?.expires_at || subscription?.end_date ? new Date(subscription.expires_at || subscription.end_date).toLocaleDateString('fr-FR') : '—'} /></View>
     <Text style={styles.note}>Les factures détaillées seront disponibles ici après chaque achat.</Text>
   </>
 }

@@ -94,7 +94,7 @@ export interface AppleApplyResult {
   reason?: string
 }
 
-async function emailFor(admin: Admin, userId: string, fallback?: string | null) {
+export async function emailFor(admin: Admin, userId: string, fallback?: string | null) {
   if (fallback) return fallback
   try {
     const { data } = await admin.auth.admin.getUserById(userId)
@@ -105,7 +105,7 @@ async function emailFor(admin: Admin, userId: string, fallback?: string | null) 
 }
 
 // Retire l'acces quand Apple rembourse/revoque la periode qui l'a ouvert.
-async function deactivateAppleSubscription(admin: Admin, userId: string, plan: PlanConfig, expiresAt: number | null) {
+export async function deactivateAppleSubscription(admin: Admin, userId: string, plan: PlanConfig, expiresAt: number | null) {
   const { data: existing } = await admin
     .from('subscriptions')
     .select('id, plan, end_date, is_active')

@@ -93,7 +93,7 @@ function useAccountSummary() {
   return { summary, loading, error, reload: load }
 }
 
-export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh, onOpenAccountDetail, onOpenPlans }) {
+export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh, onOpenAccountDetail, onOpenPlans, onOpenTokens }) {
   const account = useAccountSummary()
   const insets = useSafeAreaInsets()
   const [avatarFailed, setAvatarFailed] = useState(false)
@@ -288,7 +288,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           <Pressable
             accessibilityRole="link"
             accessibilityLabel={`Acheter des jetons. Solde actuel : ${jetonsBalance ?? 'indisponible'}`}
-            onPress={() => onOpenAccountDetail?.('purchases')}
+            onPress={onOpenTokens}
             style={({ pressed }) => [pressed && styles.pressed]}
           >
             <LinearGradient colors={[C.blue, '#4B5BFF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.balanceCta}>

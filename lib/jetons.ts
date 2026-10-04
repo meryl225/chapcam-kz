@@ -58,6 +58,48 @@ export async function creditJetons(userId: string, amount: number, meta?: Record
   return getJetonsBalance(userId)
 }
 
+let iapTableReady = false
+
+/**
+ * Credite un achat (pack de jetons) une seule fois par transaction.
+ * La reservation, le credit et l'ecriture du journal tiennent dans une seule
+ * requete : deux synchronisations simultanees ne peuvent pas crediter deux fois.
+ */
+export async function creditJetonsOnce(userId: string, transactionId: string, amount: number, meta?: Record<string, unknown>) {
+  const value = Math.max(0, Math.floor(amount))
+  if (!iapTableReady) {
+    await sql`
+      CREATE TABLE IF NOT EXISTS jetons_iap_credits (
+        transaction_id text PRIMARY KEY,
+        user_id text NOT NULL,
+        jetons integer NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `
+    iapTableReady = true
+  }
+  await ensureWallet(userId)
+  const metaJson = JSON.stringify({ ...meta, transactionId })
+  const rows = await sql`
+    WITH claim AS (
+      INSERT INTO jetons_iap_credits (transaction_id, user_id, jetons)
+      VALUES (${transactionId}, ${userId}, ${value})
+      ON CONFLICT (transaction_id) DO NOTHING
+      RETURNING user_id, jetons
+    ), wallet AS (
+      UPDATE jetons_wallets w
+      SET balance = w.balance + c.jetons, total_credited = w.total_credited + c.jetons, updated_at = now()
+      FROM claim c WHERE w.user_id = c.user_id
+      RETURNING w.user_id, w.balance, c.jetons
+    )
+    INSERT INTO jetons_ledger (user_id, amount, balance_after, kind, meta)
+    SELECT user_id, jetons, balance, 'credit', ${metaJson} FROM wallet
+    RETURNING balance_after
+  ` as Array<{ balance_after: number }>
+  if (rows[0]) return { credited: true as const, balance: Number(rows[0].balance_after) }
+  return { credited: false as const, balance: (await getJetonsBalance(userId)).balance }
+}
+
 export async function reserveJetons(userId: string, providerCostUsd: number, tool: string, meta?: Record<string, unknown>) {
   return debitJetons(userId, providerCostToJetons(providerCostUsd), providerCostUsd, tool, meta)
 }

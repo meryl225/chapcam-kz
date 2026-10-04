@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, AppState, Image, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
+import { AccessibilityInfo, Alert, Animated, AppState, Image, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
-import * as WebBrowser from 'expo-web-browser'
 import Constants from 'expo-constants'
 import { BRAND, C, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
@@ -13,13 +13,15 @@ import { loadDecart, mediaDevices, newSessionId, RTCView } from '../lib/realtime
 import { AiBadge, RightsConsent } from '../ui/Safety'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
-const PLANS_URL = `${WEB_URL}/dashboard/plans`
 
 const RATE = 2
 const HEARTBEAT_SECONDS = 5
 const RESOLUTION = '720p'
 const MODEL = 'lucy-2.5'
 const ERROR = '#E5484D'
+const STAGE = '#050816'
+const CONTROLS_IDLE_MS = 2500
+const FADE_MS = 220
 
 const formatPlan = (plan) => (plan ? plan.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : null)
 const formatClock = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
@@ -42,13 +44,13 @@ async function authedFetch(path, init = {}) {
 
 const tokenErrorMessage = ({ status, body }) => {
   if (status === 401) return 'Session expirée. Reconnecte-toi.'
-  if (status === 402) return body.error || 'Forfait inactif ou points insuffisants.'
+  if (status === 402) return body.error || 'Forfait inactif ou minutes insuffisantes. Ouvre « Forfaits » pour t\'abonner.'
   if (status === 409) return 'Un swap est déjà en cours sur ce compte. Ferme-le puis réessaie dans une minute.'
   if (status === 429) return body.error || 'Limite quotidienne atteinte. Réessaie demain.'
   return 'Le service Live Swap est indisponible. Réessaie dans un instant.'
 }
 
-export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) {
+export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, subscription }) {
   const [permission, requestPermission] = useCameraPermissions()
   const [facing, setFacing] = useState('front')
   const [mirror, setMirror] = useState(true)
@@ -226,6 +228,12 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
         sessionRef.current = null
         setPhase('idle')
         setNotice({ tone: 'error', text: tokenErrorMessage(res) })
+        if (res.status === 402 && onOpenPlans) {
+          Alert.alert('Forfait requis', 'Ton forfait est inactif ou tes minutes Live Swap sont épuisées.', [
+            { text: 'Plus tard', style: 'cancel' },
+            { text: 'Voir les forfaits', onPress: onOpenPlans },
+          ])
+        }
         return
       }
       if (sessionRef.current !== session) return
@@ -271,15 +279,34 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
   const showHelp = () =>
     Alert.alert('Live Swap', 'Choisis un visage, cadre-toi bien dans la lumière puis lance la session. Chaque seconde en direct coûte 2 points.')
 
-  const shownStream = live && remoteStream ? remoteStream : localStream
-  const mirrored = shownStream === localStream && facing === 'front' && mirror
-  const busy = phase === 'preparing' || phase === 'connecting' || phase === 'stopping'
-  const busyText = phase === 'preparing' ? 'Préparation de la session���' : phase === 'connecting' ? 'Connexion au moteur temps réel…' : 'Arrêt de la session…'
+  const exitSession = async () => {
+    await stop(null)
+    onBack()
+  }
+
+  if (inSession) {
+    const sessionStream = live && remoteStream ? remoteStream : localStream
+    return (
+      <ImmersiveSession
+        stream={sessionStream}
+        mirrored={sessionStream === localStream && facing === 'front' && mirror}
+        phase={phase}
+        elapsed={elapsed}
+        face={face}
+        planLabel={subscription !== undefined ? (planActive && planName ? `ChapCam ${planName}` : null) : null}
+        remaining={points !== null ? formatRemaining(points) : null}
+        topInset={topInset}
+        bottomInset={bottomInset}
+        onStop={() => stop(null)}
+        onBack={exitSession}
+      />
+    )
+  }
 
   return (
-    <View style={[styles.root, inSession ? styles.fullscreenRoot : { paddingTop: topInset }]}> 
-      {!inSession ? <View style={styles.header}>
-        <Pressable onPress={onBack} disabled={inSession} accessibilityRole="button" accessibilityLabel="Retour" hitSlop={10} style={[styles.headerBtn, inSession && styles.dim]}>
+    <View style={[styles.root, { paddingTop: topInset }]}>
+      <View style={styles.header}>
+        <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel="Retour" hitSlop={10} style={styles.headerBtn}>
           <Ionicons name="chevron-back" size={24} color={C.ink} />
         </Pressable>
         <View style={styles.flex}>
@@ -289,30 +316,19 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
         <Pressable onPress={showHelp} accessibilityRole="button" accessibilityLabel="Aide" hitSlop={10} style={styles.headerBtn}>
           <Ionicons name="information-circle-outline" size={24} color={C.ink} />
         </Pressable>
-        </View> : null}
+      </View>
 
-      <ScrollView style={styles.flex} contentContainerStyle={[styles.content, inSession && styles.fullscreenContent]} showsVerticalScrollIndicator={false} scrollEnabled={!live}>
-        <View style={inSession ? styles.fullscreenPreview : styles.preview}>
-          {granted && shownStream ? (
-            <RTCView streamURL={shownStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" mirror={mirrored} zOrder={0} />
+      <ScrollView style={styles.flex} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.preview}>
+          {granted && localStream ? (
+            <RTCView streamURL={localStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" mirror={facing === 'front' && mirror} zOrder={0} />
           ) : granted ? (
             <View style={styles.permission}><ChapCamLoader size="large" /></View>
           ) : (
             <PermissionState loading={!permission} canAskAgain={canAskAgain} onPress={askCamera} />
           )}
 
-          {live ? (
-            <View style={styles.liveBar}>
-              <View style={styles.livePill} accessibilityLabel={`En direct, ${formatClock(elapsed)}`}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>EN DIRECT</Text>
-                <Text style={styles.liveClock}>{formatClock(elapsed)}</Text>
-              </View>
-              <AiBadge tone="dark" />
-            </View>
-          ) : null}
-
-          {granted && !inSession ? (
+          {granted ? (
             <View style={styles.sideControls}>
               <Pressable
                 onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))}
@@ -330,18 +346,11 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
               <Image source={{ uri: face.uri }} style={StyleSheet.absoluteFill} />
             </View>
           ) : null}
-
-          {busy ? (
-            <View style={styles.overlay} accessibilityLiveRegion="polite">
-              <ChapCamLoader size="large" />
-              <Text style={styles.overlayText}>{busyText}</Text>
-            </View>
-          ) : null}
         </View>
 
-        {!inSession ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
+        <Notice notice={notice} onDismiss={() => setNotice(null)} />
 
-        {!inSession ? <Text style={styles.sectionTitle}>Choisir un visage</Text> : null}
+        <Text style={styles.sectionTitle}>Choisir un visage</Text>
         {face ? (
           <View style={styles.faceRow}>
             <View style={[styles.face, styles.faceActive]}>
@@ -351,7 +360,7 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
               <Text style={styles.faceTitle}>Visage prêt</Text>
               <Text style={styles.faceCopy}>Photo nette, de face, bien éclairée.</Text>
             </View>
-            <Pressable onPress={pickFace} disabled={inSession} accessibilityRole="button" hitSlop={8} style={[styles.textBtn, inSession && styles.dim]}>
+            <Pressable onPress={pickFace} accessibilityRole="button" hitSlop={8} style={styles.textBtn}>
               <Text style={styles.textBtnLabel}>Changer</Text>
             </Pressable>
           </View>
@@ -366,9 +375,9 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
           </Pressable>
         )}
 
-        {face && !inSession ? <RightsConsent checked={rightsOk} onChange={setRightsOk} /> : null}
+        {face ? <RightsConsent checked={rightsOk} onChange={setRightsOk} /> : null}
 
-        {granted && facing === 'front' && !inSession ? (
+        {granted && facing === 'front' ? (
           <>
             <Text style={styles.sectionTitle}>Réglages</Text>
             <View style={styles.card}>
@@ -385,8 +394,8 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
         ) : null}
       </ScrollView>
 
-      <View style={[styles.footer, inSession && styles.fullscreenFooter, { paddingBottom: Math.max(bottomInset, 16) }]}>
-        {subscription !== undefined && !inSession ? (
+      <View style={[styles.footer, { paddingBottom: Math.max(bottomInset, 16) }]}>
+        {subscription !== undefined ? (
           <View style={styles.account}>
             <Ionicons name={planActive ? 'shield-checkmark' : 'shield-outline'} size={16} color={planActive ? C.blue : C.muted} />
             <Text style={styles.accountText} numberOfLines={1}>
@@ -394,32 +403,148 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
             </Text>
             {points !== null ? <Text style={styles.points}>{formatRemaining(points)}</Text> : null}
             {!planActive ? (
-              <Pressable onPress={() => WebBrowser.openBrowserAsync(PLANS_URL)} accessibilityRole="link" hitSlop={8}>
+              <Pressable onPress={onOpenPlans} accessibilityRole="button" hitSlop={8}>
                 <Text style={styles.textBtnLabel}>Forfaits</Text>
               </Pressable>
             ) : null}
           </View>
         ) : null}
-        {inSession ? (
-          <Pressable
-            onPress={() => stop(null)}
-            disabled={phase === 'stopping'}
-            accessibilityRole="button"
-            accessibilityLabel="Arrêter Live Swap"
-            style={({ pressed }) => [styles.stop, pressed && styles.pressed, phase === 'stopping' && styles.dim]}
-          >
-            <Ionicons name="stop" size={18} color={C.white} />
-            <Text style={styles.ctaText}>{phase === 'live' ? 'Arrêter' : 'Annuler'}</Text>
-          </Pressable>
-        ) : (
-          <Pressable onPress={start} accessibilityRole="button" style={({ pressed }) => [pressed && styles.pressed]}>
-            <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
-              <Ionicons name={!granted ? 'camera-outline' : face ? 'videocam' : 'person-add-outline'} size={20} color={C.white} />
-              <Text style={styles.ctaText}>{!granted ? 'Autoriser la caméra' : face ? 'Démarrer Live Swap' : 'Choisir un visage'}</Text>
-            </LinearGradient>
-          </Pressable>
-        )}
+        <Pressable onPress={start} accessibilityRole="button" style={({ pressed }) => [pressed && styles.pressed]}>
+          <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
+            <Ionicons name={!granted ? 'camera-outline' : face ? 'videocam' : 'person-add-outline'} size={20} color={C.white} />
+            <Text style={styles.ctaText}>{!granted ? 'Autoriser la caméra' : face ? 'Démarrer Live Swap' : 'Choisir un visage'}</Text>
+          </LinearGradient>
+        </Pressable>
       </View>
+    </View>
+  )
+}
+
+function ImmersiveSession({ stream, mirrored, phase, elapsed, face, planLabel, remaining, topInset, bottomInset, onStop, onBack }) {
+  const [visible, setVisible] = useState(false)
+  const [pinned, setPinned] = useState(false)
+  const opacity = useRef(new Animated.Value(0)).current
+  const hideTimer = useRef(null)
+
+  const live = phase === 'live'
+  const stopping = phase === 'stopping'
+  const busyText = phase === 'preparing' ? 'Préparation…' : phase === 'connecting' ? 'Connexion…' : stopping ? 'Arrêt…' : null
+
+  // VoiceOver users cannot discover controls hidden behind a tap, so keep them on screen.
+  useEffect(() => {
+    let mounted = true
+    AccessibilityInfo.isScreenReaderEnabled().then((on) => mounted && setPinned(on))
+    const sub = AccessibilityInfo.addEventListener('screenReaderChanged', setPinned)
+    return () => {
+      mounted = false
+      sub.remove()
+    }
+  }, [])
+
+  const shown = visible || pinned
+
+  useEffect(() => {
+    Animated.timing(opacity, { toValue: shown ? 1 : 0, duration: FADE_MS, useNativeDriver: true }).start()
+  }, [shown, opacity])
+
+  const scheduleHide = useCallback(() => {
+    clearTimeout(hideTimer.current)
+    hideTimer.current = setTimeout(() => setVisible(false), CONTROLS_IDLE_MS)
+  }, [])
+
+  useEffect(() => () => clearTimeout(hideTimer.current), [])
+
+  const reveal = () => {
+    setVisible(true)
+    scheduleHide()
+  }
+
+  const toggle = () => {
+    if (visible) {
+      clearTimeout(hideTimer.current)
+      setVisible(false)
+    } else {
+      reveal()
+    }
+  }
+
+  return (
+    <View style={styles.stage}>
+      <StatusBar hidden={!shown} animated style="light" />
+
+      <Pressable style={StyleSheet.absoluteFill} onPress={toggle} accessible={false}>
+        {stream ? (
+          <RTCView streamURL={stream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" mirror={mirrored} zOrder={0} />
+        ) : null}
+      </Pressable>
+
+      {busyText ? (
+        <View style={styles.busy} pointerEvents="none" accessibilityLiveRegion="polite">
+          <ChapCamLoader size="large" />
+          <Text style={styles.busyText}>{busyText}</Text>
+        </View>
+      ) : null}
+
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity }]} pointerEvents={shown ? 'box-none' : 'none'}>
+        <LinearGradient colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0)']} style={[styles.scrimTop, { height: topInset + 120 }]} pointerEvents="none" />
+        <LinearGradient colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']} style={[styles.scrimBottom, { height: bottomInset + 200 }]} pointerEvents="none" />
+
+        <View style={[styles.topBar, { paddingTop: topInset + 8 }]} pointerEvents="box-none">
+          <Pressable
+            onPress={onBack}
+            onPressIn={scheduleHide}
+            disabled={stopping}
+            accessibilityRole="button"
+            accessibilityLabel="Quitter Live Swap"
+            hitSlop={8}
+            style={({ pressed }) => [styles.glassBtn, pressed && styles.pressed]}
+          >
+            <Ionicons name="chevron-back" size={22} color={C.white} />
+          </Pressable>
+          <View style={styles.flex} />
+          {live ? (
+            <View style={styles.livePill} accessibilityLabel={`En direct, ${formatClock(elapsed)}`}>
+              <View style={styles.liveDot} />
+              <Text style={styles.liveText}>EN DIRECT</Text>
+              <Text style={styles.liveClock}>{formatClock(elapsed)}</Text>
+            </View>
+          ) : null}
+          <AiBadge tone="dark" />
+        </View>
+
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(bottomInset, 16) + 12 }]} pointerEvents="box-none">
+          {planLabel || remaining ? (
+            <Text style={styles.meta} numberOfLines={1}>
+              {[planLabel, remaining].filter(Boolean).join('  ·  ')}
+            </Text>
+          ) : null}
+          <View style={styles.bottomRow} pointerEvents="box-none">
+            <View style={styles.sideSlot} />
+            <Pressable
+              onPress={onStop}
+              onPressIn={scheduleHide}
+              disabled={stopping}
+              accessibilityRole="button"
+              accessibilityLabel={live ? 'Arrêter Live Swap' : 'Annuler Live Swap'}
+              style={({ pressed }) => [styles.stopWrap, pressed && styles.pressed, stopping && styles.dim]}
+            >
+              <View style={styles.stopRing}>
+                <View style={styles.stopCore}>
+                  <View style={styles.stopSquare} />
+                </View>
+              </View>
+              <Text style={styles.stopLabel}>{live ? 'Arrêter' : 'Annuler'}</Text>
+            </Pressable>
+            <View style={styles.sideSlot}>
+              {face ? (
+                <View style={styles.sessionPip} accessibilityLabel="Visage source">
+                  <Image source={{ uri: face.uri }} style={StyleSheet.absoluteFill} />
+                </View>
+              ) : null}
+            </View>
+          </View>
+        </View>
+      </Animated.View>
     </View>
   )
 }
@@ -461,10 +586,7 @@ function Notice({ notice, onDismiss }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
-  fullscreenRoot: { backgroundColor: '#050816' },
   flex: { flex: 1 },
-  fullscreenContent: { flexGrow: 1, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 },
-  fullscreenPreview: { flex: 1, width: '100%', height: '100%', borderRadius: 0, overflow: 'hidden', backgroundColor: '#050816' },
   pressed: { opacity: 0.88, transform: [{ scale: 0.98 }] },
   dim: { opacity: 0.5 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: PAD - 6, height: 56 },
@@ -477,13 +599,28 @@ const styles = StyleSheet.create({
   sideControls: { position: 'absolute', top: 14, right: 14, gap: 10 },
   control: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(14,21,48,0.55)', alignItems: 'center', justifyContent: 'center' },
   pip: { position: 'absolute', right: 14, bottom: 14, width: '26%', aspectRatio: 1, borderRadius: 18, overflow: 'hidden', borderWidth: 2, borderColor: C.white, backgroundColor: '#11173A' },
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(14,21,48,0.6)', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  overlayText: { color: C.white, fontSize: 14, fontWeight: '600' },
-  liveBar: { position: 'absolute', top: 14, left: 14, right: 14, flexDirection: 'row' },
-  livePill: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(14,21,48,0.6)', borderRadius: 999, paddingHorizontal: 12, height: 32 },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: ERROR },
-  liveText: { color: C.white, fontSize: 12, fontWeight: '800', letterSpacing: 0.6 },
-  liveClock: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
+
+  stage: { flex: 1, backgroundColor: STAGE },
+  busy: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: 'rgba(5,8,22,0.45)' },
+  busyText: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600', letterSpacing: 0.2 },
+  scrimTop: { position: 'absolute', top: 0, left: 0, right: 0 },
+  scrimBottom: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+  topBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16 },
+  glassBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
+  livePill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 999, paddingHorizontal: 10, height: 28 },
+  liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ERROR },
+  liveText: { color: C.white, fontSize: 11, fontWeight: '800', letterSpacing: 0.8 },
+  liveClock: { color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  bottomBar: { position: 'absolute', left: 0, right: 0, bottom: 0, alignItems: 'center', gap: 14, paddingHorizontal: 20 },
+  meta: { color: 'rgba(255,255,255,0.72)', fontSize: 12, fontWeight: '600', letterSpacing: 0.2 },
+  bottomRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', alignSelf: 'stretch' },
+  sideSlot: { width: 64, alignItems: 'flex-end' },
+  sessionPip: { width: 56, height: 56, borderRadius: 16, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.85)', backgroundColor: '#11173A' },
+  stopWrap: { alignItems: 'center', gap: 8 },
+  stopRing: { width: 76, height: 76, borderRadius: 38, borderWidth: 3, borderColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
+  stopCore: { width: 62, height: 62, borderRadius: 31, backgroundColor: ERROR, alignItems: 'center', justifyContent: 'center' },
+  stopSquare: { width: 20, height: 20, borderRadius: 5, backgroundColor: C.white },
+  stopLabel: { color: C.white, fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
 
   permission: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28, gap: 8 },
   permissionIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', marginBottom: 6 },
@@ -515,11 +652,9 @@ const styles = StyleSheet.create({
   settingHint: { color: C.muted, fontSize: 12, marginTop: 1 },
 
   footer: { paddingHorizontal: PAD, paddingTop: 12, gap: 10, backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.line },
-  fullscreenFooter: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 10, backgroundColor: 'transparent', borderTopWidth: 0 },
   account: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 2 },
   accountText: { flex: 1, color: C.ink, fontSize: 13, fontWeight: '600' },
   points: { color: C.muted, fontSize: 13, fontWeight: '600' },
   cta: { height: 56, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
-  stop: { height: 56, borderRadius: 18, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, backgroundColor: C.ink },
   ctaText: { color: C.white, fontSize: 16, fontWeight: '800' },
 })
