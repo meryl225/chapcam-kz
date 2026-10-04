@@ -93,7 +93,7 @@ function useAccountSummary() {
   return { summary, loading, error, reload: load }
 }
 
-export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh }) {
+export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh, onOpenAccountDetail }) {
   const account = useAccountSummary()
   const insets = useSafeAreaInsets()
   const [avatarFailed, setAvatarFailed] = useState(false)
@@ -282,7 +282,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           <Pressable
             accessibilityRole="link"
             accessibilityLabel={`Acheter des jetons. Solde actuel : ${jetonsBalance ?? 'indisponible'}`}
-            onPress={() => open(LINKS.jetons)}
+            onPress={() => onOpenAccountDetail?.('purchases')}
             style={({ pressed }) => [pressed && styles.pressed]}
           >
             <LinearGradient colors={[C.blue, '#4B5BFF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.balanceCta}>
@@ -371,8 +371,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           <Pressable
             accessibilityRole="link"
             accessibilityHint="Ouvre la page des forfaits ChapCam"
-            onPress={() => open(LINKS.plans)}
-            style={({ pressed }) => [pressed && styles.pressed]}
+onPress={() => onOpenAccountDetail?.('subscription')}
+              style={({ pressed }) => [pressed && styles.pressed]}
           >
             <LinearGradient colors={[C.blue, C.violet]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.subCta}>
               <Text style={styles.subCtaText}>{isActive ? 'Gérer mon abonnement' : 'Découvrir les forfaits'}</Text>
@@ -386,7 +386,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
       <View style={styles.rows}>
         <Row icon="person-outline" tint={C.blue} label="Informations personnelles" onPress={() => open(LINKS.settings)} />
         <Row icon="shield-half-outline" tint={C.violet} label="Sécurité et confidentialité" onPress={() => open(LINKS.settings)} />
-        <Row icon="wallet-outline" tint={C.blue} label="Achats et factures" onPress={() => open(LINKS.jetons)} />
+        <Row icon="pulse-outline" tint={C.violet} label="Activité récente" onPress={() => onOpenAccountDetail?.('activity')} />
+        <Row icon="wallet-outline" tint={C.blue} label="Achats et factures" onPress={() => onOpenAccountDetail?.('purchases')} />
         <Row icon="notifications-outline" tint={WARM} label="Notifications" onPress={openNotificationSettings} />
       </View>
 
