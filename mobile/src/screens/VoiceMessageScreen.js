@@ -87,7 +87,7 @@ export function VoiceMessageScreen({ onBack }) {
         <View style={styles.quota}>
           <Ionicons name="chatbubble-ellipses-outline" size={18} color={C.blue} />
           <Text style={styles.quotaText}>{quota ? `${quota.remaining} message${quota.remaining > 1 ? 's' : ''} vocal${quota.remaining > 1 ? 'aux' : ''} restant${quota.remaining > 1 ? 's' : ''}` : 'Chargement du solde…'}</Text>
-          <Text style={styles.quotaCost}>{`1 message = ${JETONS_PER_MESSAGE} Jetons · ${(JETONS_PER_MESSAGE * FCFA_PER_JETON).toLocaleString('fr-FR')} FCFA`}</Text>
+          <Text style={styles.quotaCost}>{`${JETONS_PER_MESSAGE} Jetons par tranche de 15 s · ${(JETONS_PER_MESSAGE * FCFA_PER_JETON).toLocaleString('fr-FR')} FCFA`}</Text>
         </View>
         {quota && quota.remaining < 1 ? (
           <Text style={styles.warn}>{quota.subActive ? 'Tu as utilisé tous tes messages vocaux inclus.' : 'Les messages vocaux sont inclus avec un abonnement ChapCam.'}</Text>
