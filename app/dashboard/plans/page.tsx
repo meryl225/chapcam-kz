@@ -295,7 +295,8 @@ function PlansContent() {
         })()}
 
         <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-          {PLANS.map((plan, index) => {
+          {/* Le Forfait Testeur a deja son bandeau dedie (pack "anniv_5") au-dessus. */}
+          {PLANS.filter((plan) => plan.id !== 'testeur').map((plan, index) => {
             const loading = pendingKey === plan.id
             // Couleur d'accent des forfaits mis en avant (sans logo)
             const accent =
