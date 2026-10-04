@@ -277,7 +277,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           ) : (
             <Text style={styles.balanceValue} numberOfLines={1} adjustsFontSizeToFit>{jetonsBalance.toLocaleString('fr-FR')}</Text>
           )}
-          <Text style={styles.balanceHint}>Pour tous les outils ChapCam, sauf Live Swap.</Text>
+          <Text style={styles.balanceHint}>Disponible pour tous les outils, hors Live Swap.</Text>
           <View style={styles.flexFill} />
           <Pressable
             accessibilityRole="link"
@@ -286,7 +286,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             style={({ pressed }) => [pressed && styles.pressed]}
           >
             <LinearGradient colors={[C.blue, '#4B5BFF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.balanceCta}>
-              <Text style={styles.balanceCtaText} numberOfLines={1}>Acheter des jetons</Text>
+              <Text style={styles.balanceCtaText} numberOfLines={1}>Acheter des Jetons</Text>
               <View style={styles.balanceCtaPlus}>
                 <Ionicons name="add" size={16} color={C.blue} />
               </View>
@@ -322,7 +322,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             <Text style={styles.balanceEmpty}>Aucun forfait</Text>
           )}
           <Text style={styles.balanceHint}>
-            {livePoints !== null ? 'Inclus dans votre forfait Live Swap.' : 'Aucun forfait Live Swap'}
+            {livePoints !== null ? 'Temps restant dans votre forfait.' : 'Aucun forfait Live Swap'}
           </Text>
           <View style={styles.flexFill} />
           <Pressable
@@ -331,7 +331,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             onPress={() => open(LINKS.plans)}
             style={({ pressed }) => [styles.balanceCtaLight, pressed && styles.pressed]}
           >
-            <Text style={styles.balanceCtaLightText} numberOfLines={1}>Voir les options</Text>
+              <Text style={styles.balanceCtaLightText} numberOfLines={1}>Gérer Live Swap</Text>
             <Ionicons name="arrow-forward" size={16} color={C.violet} />
           </Pressable>
         </LinearGradient>
@@ -386,7 +386,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
       <View style={styles.rows}>
         <Row icon="person-outline" tint={C.blue} label="Informations personnelles" onPress={() => open(LINKS.settings)} />
         <Row icon="shield-half-outline" tint={C.violet} label="Sécurité et confidentialité" onPress={() => open(LINKS.settings)} />
-        <Row icon="wallet-outline" tint={C.blue} label="Historique des achats" onPress={() => open(LINKS.jetons)} />
+        <Row icon="wallet-outline" tint={C.blue} label="Achats et factures" onPress={() => open(LINKS.jetons)} />
         <Row icon="notifications-outline" tint={WARM} label="Notifications" onPress={openNotificationSettings} />
       </View>
 
