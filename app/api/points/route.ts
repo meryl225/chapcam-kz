@@ -61,7 +61,11 @@ export async function POST(request: NextRequest) {
         if (subscription) {
           await admin
             .from('subscriptions')
-            .update({ points: (subscription.points || 0) + refund, updated_at: new Date().toISOString() })
+            .update({
+              points: (subscription.points || 0) + refund,
+              points_remaining: (subscription.points || 0) + refund,
+              updated_at: new Date().toISOString(),
+            })
             .eq('id', subscription.id)
         }
         await admin
@@ -245,6 +249,9 @@ export async function POST(request: NextRequest) {
       .from('subscriptions')
       .update({ 
         points: newPoints,
+        // Les builds iOS deja installes affichent points_remaining : on le garde
+        // synchronise avec le vrai solde pour que la deduction y soit visible.
+        points_remaining: newPoints,
         updated_at: new Date().toISOString()
       })
       .eq('id', subscription.id)

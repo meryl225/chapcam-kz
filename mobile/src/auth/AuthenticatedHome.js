@@ -19,6 +19,7 @@ import { ChapVerifyScreen } from '../screens/ChapVerifyScreen'
 import { CreateScreen } from '../screens/CreateScreen'
 import { CreationsScreen } from '../screens/CreationsScreen'
 import { ProfileScreen } from '../screens/ProfileScreen'
+import { AccountDetailScreen } from '../screens/AccountDetailScreen'
 import { QuickLaunchMenu } from '../ui/QuickLaunchMenu'
 
 const INK_DEEP = '#0B1233'
@@ -85,6 +86,7 @@ function HomeShell({ user }) {
   const [refreshing, setRefreshing] = useState(false)
   const [openTool, setOpenTool] = useState(null)
   const [quickOpen, setQuickOpen] = useState(false)
+  const [accountDetail, setAccountDetail] = useState(null)
 
   const loadAccount = useCallback(async () => {
     const { data } = await supabase
@@ -114,8 +116,17 @@ function HomeShell({ user }) {
 
   const onQuickLaunch = onOpenTool
 
+  if (accountDetail) {
+    return <AccountDetailScreen type={accountDetail} onBack={() => setAccountDetail(null)} subscription={subscription} />
+  }
+
   if (openTool === 'live') {
-    return <LiveSwapScreen onBack={() => setOpenTool(null)} topInset={insets.top} bottomInset={insets.bottom} subscription={loading ? undefined : subscription} />
+    // The Live Swap debits subscriptions.points: refetch so Home and Profile show the new balance.
+    const closeLiveSwap = () => {
+      setOpenTool(null)
+      loadAccount()
+    }
+    return <LiveSwapScreen onBack={closeLiveSwap} topInset={insets.top} bottomInset={insets.bottom} subscription={loading ? undefined : subscription} />
   }
   if (openTool === 'photo-video') {
     return <PhotoVideoScreen onBack={() => setOpenTool(null)} />
@@ -155,7 +166,7 @@ function HomeShell({ user }) {
       ) : tab === 'creations' ? (
         <CreationsScreen onCreate={() => setQuickOpen(true)} />
       ) : tab === 'profile' ? (
-        <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} />
+        <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} />
       ) : (
         <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />
       )}

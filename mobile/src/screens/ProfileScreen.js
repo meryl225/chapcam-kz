@@ -93,7 +93,7 @@ function useAccountSummary() {
   return { summary, loading, error, reload: load }
 }
 
-export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh }) {
+export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh, onOpenAccountDetail }) {
   const account = useAccountSummary()
   const insets = useSafeAreaInsets()
   const [avatarFailed, setAvatarFailed] = useState(false)
@@ -212,7 +212,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </LinearGradient>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Modifier le profil"
+            accessibilityLabel="Modifier les informations du profil"
+            accessibilityHint="La photo de profil sera bientôt disponible"
             onPress={() => open(LINKS.settings)}
             hitSlop={6}
             style={styles.avatarEdit}
@@ -221,8 +222,13 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </Pressable>
         </View>
         <View style={styles.heroInfo}>
+          <View style={styles.identityEyebrow}>
+            <Text style={styles.identityEyebrowText}>COMPTE CHAPCAM</Text>
+            <View style={styles.identityLine} />
+          </View>
           {metaName ? <Text style={styles.heroName} numberOfLines={1}>{metaName}</Text> : null}
           <Text style={metaName ? styles.heroEmailSub : styles.heroName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{email}</Text>
+          <Text style={styles.avatarHint} numberOfLines={1}>Initiale personnalisée</Text>
           {subscriptionLoading ? (
             <ChapCamLoader size="small" tone="light" style={styles.heroLoader} />
           ) : (
@@ -277,16 +283,16 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           ) : (
             <Text style={styles.balanceValue} numberOfLines={1} adjustsFontSizeToFit>{jetonsBalance.toLocaleString('fr-FR')}</Text>
           )}
-          <Text style={styles.balanceHint}>Pour tous les outils ChapCam, sauf Live Swap.</Text>
+          <Text style={styles.balanceHint}>Disponible pour tous les outils, hors Live Swap.</Text>
           <View style={styles.flexFill} />
           <Pressable
             accessibilityRole="link"
             accessibilityLabel={`Acheter des jetons. Solde actuel : ${jetonsBalance ?? 'indisponible'}`}
-            onPress={() => open(LINKS.jetons)}
+            onPress={() => onOpenAccountDetail?.('purchases')}
             style={({ pressed }) => [pressed && styles.pressed]}
           >
             <LinearGradient colors={[C.blue, '#4B5BFF']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.balanceCta}>
-              <Text style={styles.balanceCtaText} numberOfLines={1}>Acheter des jetons</Text>
+              <Text style={styles.balanceCtaText} numberOfLines={1}>Acheter des Jetons</Text>
               <View style={styles.balanceCtaPlus}>
                 <Ionicons name="add" size={16} color={C.blue} />
               </View>
@@ -322,7 +328,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             <Text style={styles.balanceEmpty}>Aucun forfait</Text>
           )}
           <Text style={styles.balanceHint}>
-            {livePoints !== null ? 'Inclus dans votre forfait Live Swap.' : 'Aucun forfait Live Swap'}
+            {livePoints !== null ? 'Temps restant dans votre forfait.' : 'Aucun forfait Live Swap'}
           </Text>
           <View style={styles.flexFill} />
           <Pressable
@@ -331,7 +337,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             onPress={() => open(LINKS.plans)}
             style={({ pressed }) => [styles.balanceCtaLight, pressed && styles.pressed]}
           >
-            <Text style={styles.balanceCtaLightText} numberOfLines={1}>Voir les options</Text>
+              <Text style={styles.balanceCtaLightText} numberOfLines={1}>Gérer Live Swap</Text>
             <Ionicons name="arrow-forward" size={16} color={C.violet} />
           </Pressable>
         </LinearGradient>
@@ -371,11 +377,11 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           <Pressable
             accessibilityRole="link"
             accessibilityHint="Ouvre la page des forfaits ChapCam"
-            onPress={() => open(LINKS.plans)}
-            style={({ pressed }) => [pressed && styles.pressed]}
-          >
-            <LinearGradient colors={[C.blue, C.violet]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.subCta}>
-              <Text style={styles.subCtaText}>{isActive ? 'Gérer mon abonnement' : 'Découvrir les forfaits'}</Text>
+onPress={() => open(LINKS.plans)}
+  style={({ pressed }) => [pressed && styles.pressed]}
+  >
+  <LinearGradient colors={[C.blue, C.violet]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.subCta}>
+  <Text style={styles.subCtaText}>{isActive ? 'Gérer mon abonnement' : 'Découvrir les forfaits'}</Text>
               <Ionicons name="arrow-forward" size={18} color={C.white} />
             </LinearGradient>
           </Pressable>
@@ -386,7 +392,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
       <View style={styles.rows}>
         <Row icon="person-outline" tint={C.blue} label="Informations personnelles" onPress={() => open(LINKS.settings)} />
         <Row icon="shield-half-outline" tint={C.violet} label="Sécurité et confidentialité" onPress={() => open(LINKS.settings)} />
-        <Row icon="wallet-outline" tint={C.blue} label="Historique des achats" onPress={() => open(LINKS.jetons)} />
+        <Row icon="pulse-outline" tint={C.violet} label="Activité récente" onPress={() => onOpenAccountDetail?.('activity')} />
+        <Row icon="wallet-outline" tint={C.blue} label="Achats et factures" onPress={() => onOpenAccountDetail?.('purchases')} />
         <Row icon="notifications-outline" tint={WARM} label="Notifications" onPress={openNotificationSettings} />
       </View>
 
@@ -502,9 +509,13 @@ const styles = StyleSheet.create({
   avatarText: { color: C.white, fontSize: 34, fontWeight: '900' },
   avatarPhoto: { ...StyleSheet.absoluteFillObject, borderRadius: 41 },
   avatarEdit: { position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, backgroundColor: NAVY, borderWidth: 2, borderColor: C.white, alignItems: 'center', justifyContent: 'center' },
-  heroInfo: { flex: 1, gap: 8 },
+  heroInfo: { flex: 1, gap: 6, minWidth: 0 },
+  identityEyebrow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 1 },
+  identityEyebrowText: { color: '#AEB8DA', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
+  identityLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.18)' },
   heroName: { color: C.white, fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
   heroEmailSub: { color: '#DCE2F5', fontSize: 14, fontWeight: '600' },
+  avatarHint: { color: 'rgba(220,226,245,0.72)', fontSize: 11, fontWeight: '600' },
   heroLoader: { alignSelf: 'flex-start', height: 28 },
   heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 30, paddingHorizontal: 12, borderRadius: 15 },

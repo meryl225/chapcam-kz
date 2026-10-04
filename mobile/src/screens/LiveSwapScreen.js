@@ -277,8 +277,8 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
   const busyText = phase === 'preparing' ? 'Préparation de la session���' : phase === 'connecting' ? 'Connexion au moteur temps réel…' : 'Arrêt de la session…'
 
   return (
-    <View style={[styles.root, { paddingTop: topInset }]}>
-      <View style={styles.header}>
+    <View style={[styles.root, inSession ? styles.fullscreenRoot : { paddingTop: topInset }]}> 
+      {!inSession ? <View style={styles.header}>
         <Pressable onPress={onBack} disabled={inSession} accessibilityRole="button" accessibilityLabel="Retour" hitSlop={10} style={[styles.headerBtn, inSession && styles.dim]}>
           <Ionicons name="chevron-back" size={24} color={C.ink} />
         </Pressable>
@@ -289,10 +289,10 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
         <Pressable onPress={showHelp} accessibilityRole="button" accessibilityLabel="Aide" hitSlop={10} style={styles.headerBtn}>
           <Ionicons name="information-circle-outline" size={24} color={C.ink} />
         </Pressable>
-      </View>
+        </View> : null}
 
-      <ScrollView style={styles.flex} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} scrollEnabled={!live}>
-        <View style={styles.preview}>
+      <ScrollView style={styles.flex} contentContainerStyle={[styles.content, inSession && styles.fullscreenContent]} showsVerticalScrollIndicator={false} scrollEnabled={!live}>
+        <View style={inSession ? styles.fullscreenPreview : styles.preview}>
           {granted && shownStream ? (
             <RTCView streamURL={shownStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" mirror={mirrored} zOrder={0} />
           ) : granted ? (
@@ -339,9 +339,9 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
           ) : null}
         </View>
 
-        <Notice notice={notice} onDismiss={() => setNotice(null)} />
+        {!inSession ? <Notice notice={notice} onDismiss={() => setNotice(null)} /> : null}
 
-        <Text style={styles.sectionTitle}>Choisir un visage</Text>
+        {!inSession ? <Text style={styles.sectionTitle}>Choisir un visage</Text> : null}
         {face ? (
           <View style={styles.faceRow}>
             <View style={[styles.face, styles.faceActive]}>
@@ -385,8 +385,8 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
         ) : null}
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: Math.max(bottomInset, 16) }]}>
-        {subscription !== undefined ? (
+      <View style={[styles.footer, inSession && styles.fullscreenFooter, { paddingBottom: Math.max(bottomInset, 16) }]}>
+        {subscription !== undefined && !inSession ? (
           <View style={styles.account}>
             <Ionicons name={planActive ? 'shield-checkmark' : 'shield-outline'} size={16} color={planActive ? C.blue : C.muted} />
             <Text style={styles.accountText} numberOfLines={1}>
@@ -461,7 +461,10 @@ function Notice({ notice, onDismiss }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
+  fullscreenRoot: { backgroundColor: '#050816' },
   flex: { flex: 1 },
+  fullscreenContent: { flexGrow: 1, paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 },
+  fullscreenPreview: { flex: 1, width: '100%', height: '100%', borderRadius: 0, overflow: 'hidden', backgroundColor: '#050816' },
   pressed: { opacity: 0.88, transform: [{ scale: 0.98 }] },
   dim: { opacity: 0.5 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: PAD - 6, height: 56 },
@@ -512,6 +515,7 @@ const styles = StyleSheet.create({
   settingHint: { color: C.muted, fontSize: 12, marginTop: 1 },
 
   footer: { paddingHorizontal: PAD, paddingTop: 12, gap: 10, backgroundColor: C.bg, borderTopWidth: 1, borderTopColor: C.line },
+  fullscreenFooter: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingTop: 10, backgroundColor: 'transparent', borderTopWidth: 0 },
   account: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 2 },
   accountText: { flex: 1, color: C.ink, fontSize: 13, fontWeight: '600' },
   points: { color: C.muted, fontSize: 13, fontWeight: '600' },
