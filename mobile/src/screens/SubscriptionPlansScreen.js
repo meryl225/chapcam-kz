@@ -4,20 +4,17 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { IOS_PRODUCT_IDS, fetchIosCatalog, periodLabel } from '../lib/iap'
 import {
-  ErrorCode,
-  deepLinkToSubscriptions,
-  endConnection,
-  fetchProducts,
-  finishTransaction,
-  getAvailablePurchases,
-  initConnection,
-  purchaseErrorListener,
-  purchaseUpdatedListener,
-  requestPurchase,
-  restorePurchases,
-} from 'expo-iap'
-import { IOS_PRODUCT_IDS, fetchIosPlans, isSettled, periodLabel, verifyPurchases } from '../lib/iap'
+  ensureRevenueCat,
+  isCancelled,
+  loadStoreProducts,
+  openManageSubscriptions,
+  purchaseErrorMessage,
+  purchaseStoreItem,
+  restoreRevenueCat,
+  syncPurchases,
+} from '../lib/revenuecat'
 import { BRAND, C, PAD } from '../ui/catalog'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
@@ -32,8 +29,6 @@ const NAVY = '#0B1230'
 const NAVY_2 = '#18205A'
 const MUTED_ON_DARK = '#AEB8DA'
 
-const ours = (purchase) => IOS_PRODUCT_IDS.includes(purchase?.productId)
-
 const openUrl = async (url) => {
   try {
     await Linking.openURL(url)
@@ -42,17 +37,7 @@ const openUrl = async (url) => {
   }
 }
 
-const purchaseErrorMessage = (error) => {
-  switch (error?.code) {
-    case ErrorCode.NetworkError:
-      return "Connexion à l'App Store impossible. Vérifie ta connexion et réessaie."
-    case ErrorCode.ItemUnavailable:
-    case ErrorCode.SkuNotFound:
-      return "Ce forfait n'est pas disponible sur l'App Store pour le moment."
-    default:
-      return "Le paiement Apple n'a pas abouti. Aucun montant n'a été débité si l'achat n'a pas été confirmé."
-  }
-}
+const isActivated = (item) => item.status === 'activated' || item.status === 'already'
 
 export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
   const insets = useSafeAreaInsets()
@@ -63,87 +48,59 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
   onPurchasedRef.current = onPurchased
 
   const load = useCallback(async () => {
+    if (Platform.OS !== 'ios') {
+      setState({ status: 'unsupported', plans: [], products: {} })
+      return
+    }
     setState((s) => ({ ...s, status: 'loading' }))
     try {
-      await initConnection()
-      const [products, plans] = await Promise.all([
-        fetchProducts({ skus: IOS_PRODUCT_IDS, type: 'subs' }),
-        fetchIosPlans(),
+      await ensureRevenueCat(user.id)
+      const [products, catalog] = await Promise.all([
+        loadStoreProducts(IOS_PRODUCT_IDS, 'subs'),
+        fetchIosCatalog(),
       ])
-      const byId = {}
-      for (const product of products || []) byId[product.id] = product
-      const anyAvailable = plans.some((plan) => byId[plan.productId])
-      setState({ status: anyAvailable ? 'ready' : 'unavailable', plans, products: byId })
+      const anyAvailable = catalog.plans.some((plan) => products[plan.productId])
+      setState({ status: anyAvailable ? 'ready' : 'unavailable', plans: catalog.plans, products })
     } catch (error) {
       console.warn('[iap] Chargement des forfaits impossible:', error?.message)
       setState({ status: 'error', plans: [], products: {} })
     }
-  }, [])
+  }, [user.id])
 
-  // Apple confirme l'achat ici (y compris les transactions en attente au lancement).
-  // L'abonnement n'est actif qu'une fois la transaction signee validee par le serveur.
-  const handlePurchase = useCallback(async (purchase) => {
-    if (!ours(purchase)) return
+  useEffect(() => { load() }, [load])
+
+  // L'abonnement n'est actif qu'une fois l'achat Apple relu et valide par le serveur.
+  const subscribe = async (productId) => {
+    const item = state.products[productId]
+    if (!item || busySku || restoring) return
+    setBusySku(productId)
     try {
-      const { results } = await verifyPurchases([purchase], 'purchase')
-      const result = results[0]
-      if (result && isSettled(result.status)) {
-        await finishTransaction({ purchase, isConsumable: false })
-      }
-      if (result?.status === 'activated' || result?.status === 'already') {
+      await purchaseStoreItem(item)
+    } catch (error) {
+      setBusySku(null)
+      if (isCancelled(error)) return
+      Alert.alert('Paiement non effectué', purchaseErrorMessage(error))
+      return
+    }
+    try {
+      const result = await syncPurchases('purchase', (body) => body.items.some((i) => i.productId === productId && isActivated(i)))
+      const mine = result.items.filter((i) => i.productId === productId)
+      if (mine.some(isActivated)) {
         onPurchasedRef.current?.()
         Alert.alert('Abonnement activé', 'Merci ! Ton forfait ChapCam est actif et ton profil est à jour.')
-      } else if (result?.status === 'rejected') {
-        Alert.alert('Achat non validé', result.reason || "Apple n'a pas pu confirmer cet achat. Contacte contact@chapcam.com.")
-      } else if (result?.status === 'expired') {
-        Alert.alert('Abonnement expiré', 'Cet abonnement a expiré. Tu peux en souscrire un nouveau.')
-      } else if (result?.status === 'revoked') {
+      } else if (mine.some((i) => i.status === 'revoked')) {
         Alert.alert('Abonnement annulé', 'Cet achat a été remboursé ou annulé par Apple.')
+      } else {
+        Alert.alert('Vérification en cours', "Ton paiement Apple est enregistré. Ton forfait sera activé dans quelques instants, ou via « Restaurer les achats ».")
       }
     } catch (error) {
-      // Transaction conservee (non terminee) : elle sera re-verifiee au prochain lancement.
       console.warn('[iap] Verification serveur impossible:', error?.message)
       Alert.alert(
         'Vérification en attente',
-        "Ton paiement Apple est enregistré, mais nous n'avons pas pu le vérifier. Il sera validé automatiquement à la prochaine ouverture, ou via « Restaurer les achats ».",
+        "Ton paiement Apple est enregistré, mais nous n'avons pas pu le vérifier. Il sera validé automatiquement, ou via « Restaurer les achats ».",
       )
     } finally {
       setBusySku(null)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (Platform.OS !== 'ios') {
-      setState({ status: 'unsupported', plans: [], products: {} })
-      return undefined
-    }
-    const updated = purchaseUpdatedListener(handlePurchase)
-    const failed = purchaseErrorListener((error) => {
-      setBusySku(null)
-      if (error?.code === ErrorCode.UserCancelled) return
-      Alert.alert('Paiement non effectué', purchaseErrorMessage(error))
-    })
-    load()
-    return () => {
-      updated?.remove?.()
-      failed?.remove?.()
-      endConnection().catch(() => {})
-    }
-  }, [handlePurchase, load])
-
-  const subscribe = async (productId) => {
-    if (!state.products[productId] || busySku || restoring) return
-    setBusySku(productId)
-    try {
-      await requestPurchase({
-        // Lie la transaction Apple au compte ChapCam : le serveur refuse tout autre compte.
-        request: { apple: { sku: productId, appAccountToken: user.id } },
-        type: 'subs',
-      })
-    } catch (error) {
-      setBusySku(null)
-      if (error?.code === ErrorCode.UserCancelled) return
-      Alert.alert('Paiement non effectué', purchaseErrorMessage(error))
     }
   }
 
@@ -151,29 +108,20 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
     if (restoring || busySku) return
     setRestoring(true)
     try {
-      await restorePurchases()
-      const purchases = (await getAvailablePurchases({ onlyIncludeActiveItemsIOS: true })).filter(ours)
-      if (purchases.length === 0) {
-        Alert.alert('Aucun achat à restaurer', "Aucun abonnement ChapCam actif n'est associé à ce compte Apple.")
-        return
-      }
-      const { results, active } = await verifyPurchases(purchases, 'restore')
-      await Promise.all(
-        results.map((result) => (isSettled(result.status) && purchases[result.jws]
-          ? finishTransaction({ purchase: purchases[result.jws], isConsumable: false }).catch(() => {})
-          : null)),
-      )
-      if (active) {
-        onPurchasedRef.current?.()
+      await ensureRevenueCat(user.id)
+      await restoreRevenueCat()
+      const result = await syncPurchases('restore')
+      onPurchasedRef.current?.()
+      if (result.subscriptionActive) {
         Alert.alert('Achats restaurés', 'Ton abonnement ChapCam est de nouveau actif.')
-      } else if (results.some((r) => r.status === 'rejected')) {
-        Alert.alert('Restauration impossible', 'Ces achats sont liés à un autre compte ChapCam.')
+      } else if (result.items.length === 0) {
+        Alert.alert('Aucun achat à restaurer', "Aucun achat ChapCam n'est associé à ce compte Apple.")
       } else {
-        Alert.alert('Aucun abonnement actif', 'Tes abonnements ChapCam ont expiré ou ont été annulés.')
+        Alert.alert('Aucun abonnement actif', 'Tes abonnements ChapCam ont expiré ou ont été annulés. Tes jetons achetés sont bien conservés.')
       }
     } catch (error) {
-      if (error?.code === ErrorCode.UserCancelled) return
-      Alert.alert('Restauration impossible', "Impossible de restaurer les achats pour le moment. Réessaie dans quelques instants.")
+      if (isCancelled(error)) return
+      Alert.alert('Restauration impossible', 'Impossible de restaurer les achats pour le moment. Réessaie dans quelques instants.')
     } finally {
       setRestoring(false)
     }
@@ -181,7 +129,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
 
   const manage = async () => {
     try {
-      await deepLinkToSubscriptions()
+      await openManageSubscriptions()
     } catch {
       openUrl(LINKS.appleSubscriptions)
     }
@@ -212,7 +160,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
             <PlanCard
               key={plan.productId}
               plan={plan}
-              product={state.products[plan.productId]}
+              product={state.products[plan.productId]?.product}
               busy={busySku === plan.productId}
               disabled={Boolean(busySku) || restoring}
               onSubscribe={() => subscribe(plan.productId)}
@@ -267,7 +215,7 @@ function PlanCard({ plan, product, busy, disabled, onSubscribe }) {
 
       {product ? (
         <View style={styles.priceRow}>
-          <Text style={styles.price}>{product.displayPrice}</Text>
+          <Text style={styles.price}>{product.priceString}</Text>
           {period ? <Text style={styles.period}>{period}</Text> : null}
         </View>
       ) : (
@@ -290,7 +238,7 @@ function PlanCard({ plan, product, busy, disabled, onSubscribe }) {
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={product ? `S'abonner à ${plan.name}, ${product.displayPrice}` : `${plan.name} indisponible`}
+        accessibilityLabel={product ? `S'abonner à ${plan.name}, ${product.priceString}` : `${plan.name} indisponible`}
         accessibilityState={{ disabled: !product || disabled, busy }}
         disabled={!product || disabled}
         onPress={onSubscribe}

@@ -5,7 +5,6 @@ import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
-import * as WebBrowser from 'expo-web-browser'
 import Constants from 'expo-constants'
 import { BRAND, C, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
@@ -14,7 +13,6 @@ import { loadDecart, mediaDevices, newSessionId, RTCView } from '../lib/realtime
 import { AiBadge, RightsConsent } from '../ui/Safety'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
-const PLANS_URL = `${WEB_URL}/dashboard/plans`
 
 const RATE = 2
 const HEARTBEAT_SECONDS = 5
@@ -46,13 +44,13 @@ async function authedFetch(path, init = {}) {
 
 const tokenErrorMessage = ({ status, body }) => {
   if (status === 401) return 'Session expirée. Reconnecte-toi.'
-  if (status === 402) return body.error || 'Forfait inactif ou points insuffisants.'
+  if (status === 402) return body.error || 'Forfait inactif ou minutes insuffisantes. Ouvre « Forfaits » pour t\'abonner.'
   if (status === 409) return 'Un swap est déjà en cours sur ce compte. Ferme-le puis réessaie dans une minute.'
   if (status === 429) return body.error || 'Limite quotidienne atteinte. Réessaie demain.'
   return 'Le service Live Swap est indisponible. Réessaie dans un instant.'
 }
 
-export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) {
+export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, subscription }) {
   const [permission, requestPermission] = useCameraPermissions()
   const [facing, setFacing] = useState('front')
   const [mirror, setMirror] = useState(true)
@@ -230,6 +228,12 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
         sessionRef.current = null
         setPhase('idle')
         setNotice({ tone: 'error', text: tokenErrorMessage(res) })
+        if (res.status === 402 && onOpenPlans) {
+          Alert.alert('Forfait requis', 'Ton forfait est inactif ou tes minutes Live Swap sont épuisées.', [
+            { text: 'Plus tard', style: 'cancel' },
+            { text: 'Voir les forfaits', onPress: onOpenPlans },
+          ])
+        }
         return
       }
       if (sessionRef.current !== session) return
@@ -399,7 +403,7 @@ export function LiveSwapScreen({ onBack, topInset, bottomInset, subscription }) 
             </Text>
             {points !== null ? <Text style={styles.points}>{formatRemaining(points)}</Text> : null}
             {!planActive ? (
-              <Pressable onPress={() => WebBrowser.openBrowserAsync(PLANS_URL)} accessibilityRole="link" hitSlop={8}>
+              <Pressable onPress={onOpenPlans} accessibilityRole="button" hitSlop={8}>
                 <Text style={styles.textBtnLabel}>Forfaits</Text>
               </Pressable>
             ) : null}
