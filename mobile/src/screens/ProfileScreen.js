@@ -377,11 +377,11 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           <Pressable
             accessibilityRole="link"
             accessibilityHint="Ouvre la page des forfaits ChapCam"
-onPress={() => onOpenAccountDetail?.('subscription')}
-              style={({ pressed }) => [pressed && styles.pressed]}
-          >
-            <LinearGradient colors={[C.blue, C.violet]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.subCta}>
-              <Text style={styles.subCtaText}>{isActive ? 'Gérer mon abonnement' : 'Découvrir les forfaits'}</Text>
+onPress={() => open(LINKS.plans)}
+  style={({ pressed }) => [pressed && styles.pressed]}
+  >
+  <LinearGradient colors={[C.blue, C.violet]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.subCta}>
+  <Text style={styles.subCtaText}>{isActive ? 'Gérer mon abonnement' : 'Découvrir les forfaits'}</Text>
               <Ionicons name="arrow-forward" size={18} color={C.white} />
             </LinearGradient>
           </Pressable>
