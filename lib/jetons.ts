@@ -59,7 +59,16 @@ export async function creditJetons(userId: string, amount: number, meta?: Record
 }
 
 export async function reserveJetons(userId: string, providerCostUsd: number, tool: string, meta?: Record<string, unknown>) {
-  const amount = providerCostToJetons(providerCostUsd)
+  return debitJetons(userId, providerCostToJetons(providerCostUsd), providerCostUsd, tool, meta)
+}
+
+/** Debite un nombre EXACT de jetons (prix fixe), sans conversion depuis un cout USD. */
+export async function reserveFixedJetons(userId: string, jetons: number, tool: string, meta?: Record<string, unknown>) {
+  const amount = Math.max(1, Math.floor(jetons))
+  return debitJetons(userId, amount, Math.round((amount / JETONS_PER_USD) * 10000) / 10000, tool, meta)
+}
+
+async function debitJetons(userId: string, amount: number, providerCostUsd: number, tool: string, meta?: Record<string, unknown>) {
   await ensureWallet(userId)
   const rows = await sql`
     UPDATE jetons_wallets SET balance = balance - ${amount}, total_spent = total_spent + ${amount}, updated_at = now()

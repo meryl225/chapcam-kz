@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { VOICE_MESSAGE_MAX_CHARS } from '@/lib/plans'
 import { resolveVoiceMessageBalance } from '@/lib/voice-message-access'
-import { deductVoiceMessageCredits } from '@/lib/voice-message-quota'
+import { deductVoiceMessageCredits, VOICE_MESSAGE_COST_JETONS } from '@/lib/voice-message-quota'
 import { logToolUsage } from '@/lib/tool-usage'
 
 export const dynamic = 'force-dynamic'
@@ -72,7 +72,7 @@ export async function POST(request: Request) {
   // Acces reserve aux abonnes : verifier le solde de messages vocaux (pool
   // partage avec le changement de voix) AVANT tout appel ElevenLabs.
   const { balance, subActive } = await resolveVoiceMessageBalance(supabase, user.id)
-  if (balance < 1) {
+  if (balance < VOICE_MESSAGE_COST_JETONS) {
     return NextResponse.json(
       {
         error: subActive
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
     // Deduire 1 credit UNIQUEMENT apres une generation reussie (aucun debit si
     // ElevenLabs echoue). Le solde restant est renvoye via un en-tete lisible.
     const remainingJetons = await deductVoiceMessageCredits(user.id, 1)
-  const remaining = Math.max(0, Math.floor(remainingJetons / 10))
+    const remaining = Math.max(0, Math.floor(remainingJetons / VOICE_MESSAGE_COST_JETONS))
     await logToolUsage({
       userId: user.id,
       tool: 'voice_message',
