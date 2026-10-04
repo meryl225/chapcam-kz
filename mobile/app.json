@@ -37,6 +37,7 @@
         }
       ],
       "expo-web-browser",
+      "expo-iap",
       "expo-video",
       [
         "expo-media-library",

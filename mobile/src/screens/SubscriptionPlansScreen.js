@@ -1,0 +1,381 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { LinearGradient } from 'expo-linear-gradient'
+import { Ionicons } from '@expo/vector-icons'
+import Constants from 'expo-constants'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import {
+  ErrorCode,
+  deepLinkToSubscriptions,
+  endConnection,
+  fetchProducts,
+  finishTransaction,
+  getAvailablePurchases,
+  initConnection,
+  purchaseErrorListener,
+  purchaseUpdatedListener,
+  requestPurchase,
+  restorePurchases,
+} from 'expo-iap'
+import { IOS_PRODUCT_IDS, fetchIosPlans, isSettled, periodLabel, verifyPurchases } from '../lib/iap'
+import { BRAND, C, PAD } from '../ui/catalog'
+
+const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
+const LINKS = {
+  terms: `${WEB_URL}/conditions`,
+  privacy: `${WEB_URL}/confidentialite`,
+  appleSubscriptions: 'https://apps.apple.com/account/subscriptions',
+}
+
+const BG = '#F5F7FF'
+const NAVY = '#0B1230'
+const NAVY_2 = '#18205A'
+const MUTED_ON_DARK = '#AEB8DA'
+
+const ours = (purchase) => IOS_PRODUCT_IDS.includes(purchase?.productId)
+
+const openUrl = async (url) => {
+  try {
+    await Linking.openURL(url)
+  } catch {
+    Alert.alert('Lien indisponible', "Impossible d'ouvrir ce lien sur cet appareil.")
+  }
+}
+
+const purchaseErrorMessage = (error) => {
+  switch (error?.code) {
+    case ErrorCode.NetworkError:
+      return "Connexion à l'App Store impossible. Vérifie ta connexion et réessaie."
+    case ErrorCode.ItemUnavailable:
+    case ErrorCode.SkuNotFound:
+      return "Ce forfait n'est pas disponible sur l'App Store pour le moment."
+    default:
+      return "Le paiement Apple n'a pas abouti. Aucun montant n'a été débité si l'achat n'a pas été confirmé."
+  }
+}
+
+export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
+  const insets = useSafeAreaInsets()
+  const [state, setState] = useState({ status: 'loading', plans: [], products: {} })
+  const [busySku, setBusySku] = useState(null)
+  const [restoring, setRestoring] = useState(false)
+  const onPurchasedRef = useRef(onPurchased)
+  onPurchasedRef.current = onPurchased
+
+  const load = useCallback(async () => {
+    setState((s) => ({ ...s, status: 'loading' }))
+    try {
+      await initConnection()
+      const [products, plans] = await Promise.all([
+        fetchProducts({ skus: IOS_PRODUCT_IDS, type: 'subs' }),
+        fetchIosPlans(),
+      ])
+      const byId = {}
+      for (const product of products || []) byId[product.id] = product
+      const anyAvailable = plans.some((plan) => byId[plan.productId])
+      setState({ status: anyAvailable ? 'ready' : 'unavailable', plans, products: byId })
+    } catch (error) {
+      console.warn('[iap] Chargement des forfaits impossible:', error?.message)
+      setState({ status: 'error', plans: [], products: {} })
+    }
+  }, [])
+
+  // Apple confirme l'achat ici (y compris les transactions en attente au lancement).
+  // L'abonnement n'est actif qu'une fois la transaction signee validee par le serveur.
+  const handlePurchase = useCallback(async (purchase) => {
+    if (!ours(purchase)) return
+    try {
+      const { results } = await verifyPurchases([purchase], 'purchase')
+      const result = results[0]
+      if (result && isSettled(result.status)) {
+        await finishTransaction({ purchase, isConsumable: false })
+      }
+      if (result?.status === 'activated' || result?.status === 'already') {
+        onPurchasedRef.current?.()
+        Alert.alert('Abonnement activé', 'Merci ! Ton forfait ChapCam est actif et ton profil est à jour.')
+      } else if (result?.status === 'rejected') {
+        Alert.alert('Achat non validé', result.reason || "Apple n'a pas pu confirmer cet achat. Contacte contact@chapcam.com.")
+      } else if (result?.status === 'expired') {
+        Alert.alert('Abonnement expiré', 'Cet abonnement a expiré. Tu peux en souscrire un nouveau.')
+      } else if (result?.status === 'revoked') {
+        Alert.alert('Abonnement annulé', 'Cet achat a été remboursé ou annulé par Apple.')
+      }
+    } catch (error) {
+      // Transaction conservee (non terminee) : elle sera re-verifiee au prochain lancement.
+      console.warn('[iap] Verification serveur impossible:', error?.message)
+      Alert.alert(
+        'Vérification en attente',
+        "Ton paiement Apple est enregistré, mais nous n'avons pas pu le vérifier. Il sera validé automatiquement à la prochaine ouverture, ou via « Restaurer les achats ».",
+      )
+    } finally {
+      setBusySku(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') {
+      setState({ status: 'unsupported', plans: [], products: {} })
+      return undefined
+    }
+    const updated = purchaseUpdatedListener(handlePurchase)
+    const failed = purchaseErrorListener((error) => {
+      setBusySku(null)
+      if (error?.code === ErrorCode.UserCancelled) return
+      Alert.alert('Paiement non effectué', purchaseErrorMessage(error))
+    })
+    load()
+    return () => {
+      updated?.remove?.()
+      failed?.remove?.()
+      endConnection().catch(() => {})
+    }
+  }, [handlePurchase, load])
+
+  const subscribe = async (productId) => {
+    if (!state.products[productId] || busySku || restoring) return
+    setBusySku(productId)
+    try {
+      await requestPurchase({
+        // Lie la transaction Apple au compte ChapCam : le serveur refuse tout autre compte.
+        request: { apple: { sku: productId, appAccountToken: user.id } },
+        type: 'subs',
+      })
+    } catch (error) {
+      setBusySku(null)
+      if (error?.code === ErrorCode.UserCancelled) return
+      Alert.alert('Paiement non effectué', purchaseErrorMessage(error))
+    }
+  }
+
+  const restore = async () => {
+    if (restoring || busySku) return
+    setRestoring(true)
+    try {
+      await restorePurchases()
+      const purchases = (await getAvailablePurchases({ onlyIncludeActiveItemsIOS: true })).filter(ours)
+      if (purchases.length === 0) {
+        Alert.alert('Aucun achat à restaurer', "Aucun abonnement ChapCam actif n'est associé à ce compte Apple.")
+        return
+      }
+      const { results, active } = await verifyPurchases(purchases, 'restore')
+      await Promise.all(
+        results.map((result) => (isSettled(result.status) && purchases[result.jws]
+          ? finishTransaction({ purchase: purchases[result.jws], isConsumable: false }).catch(() => {})
+          : null)),
+      )
+      if (active) {
+        onPurchasedRef.current?.()
+        Alert.alert('Achats restaurés', 'Ton abonnement ChapCam est de nouveau actif.')
+      } else if (results.some((r) => r.status === 'rejected')) {
+        Alert.alert('Restauration impossible', 'Ces achats sont liés à un autre compte ChapCam.')
+      } else {
+        Alert.alert('Aucun abonnement actif', 'Tes abonnements ChapCam ont expiré ou ont été annulés.')
+      }
+    } catch (error) {
+      if (error?.code === ErrorCode.UserCancelled) return
+      Alert.alert('Restauration impossible', "Impossible de restaurer les achats pour le moment. Réessaie dans quelques instants.")
+    } finally {
+      setRestoring(false)
+    }
+  }
+
+  const manage = async () => {
+    try {
+      await deepLinkToSubscriptions()
+    } catch {
+      openUrl(LINKS.appleSubscriptions)
+    }
+  }
+
+  return (
+    <View style={[styles.root, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Retour" onPress={onBack} hitSlop={12} style={styles.back}>
+          <Ionicons name="chevron-back" size={22} color={C.ink} />
+        </Pressable>
+        <Text style={styles.headerTitle} accessibilityRole="header">Forfaits ChapCam</Text>
+        <View style={styles.back} />
+      </View>
+
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
+        <Text style={styles.lead}>
+          Choisis le forfait adapté à ta création. Paiement sécurisé par Apple, résiliable à tout moment.
+        </Text>
+
+        {state.status === 'loading' ? (
+          <View style={styles.centered}>
+            <ActivityIndicator color={C.blue} />
+            <Text style={styles.muted}>Chargement des forfaits App Store…</Text>
+          </View>
+        ) : state.status === 'ready' ? (
+          state.plans.map((plan) => (
+            <PlanCard
+              key={plan.productId}
+              plan={plan}
+              product={state.products[plan.productId]}
+              busy={busySku === plan.productId}
+              disabled={Boolean(busySku) || restoring}
+              onSubscribe={() => subscribe(plan.productId)}
+            />
+          ))
+        ) : (
+          <View style={styles.errorCard} accessibilityRole="alert">
+            <Ionicons name="alert-circle-outline" size={28} color={C.violet} />
+            <Text style={styles.errorTitle}>Forfaits indisponibles</Text>
+            <Text style={styles.errorText}>
+              {state.status === 'unsupported'
+                ? "Les abonnements sont disponibles dans l'app ChapCam sur iPhone."
+                : "Impossible de récupérer les forfaits depuis l'App Store pour le moment. Vérifie ta connexion et réessaie."}
+            </Text>
+            {state.status !== 'unsupported' ? (
+              <Pressable accessibilityRole="button" onPress={load} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
+                <Text style={styles.retryText}>Réessayer</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        )}
+
+        <Text style={styles.legal}>
+          Le paiement est débité sur ton compte Apple à la confirmation de l'achat. L'abonnement se renouvelle automatiquement
+          sauf s'il est résilié au moins 24 heures avant la fin de la période en cours, depuis les réglages de ton compte App Store.
+        </Text>
+
+        <View style={styles.actions}>
+          <SecondaryAction icon="refresh" label="Restaurer les achats" busy={restoring} onPress={restore} />
+          <SecondaryAction icon="card-outline" label="Gérer mon abonnement" onPress={manage} />
+          <SecondaryAction icon="document-text-outline" label="Conditions d'utilisation" onPress={() => openUrl(LINKS.terms)} />
+          <SecondaryAction icon="lock-closed-outline" label="Politique de confidentialité" onPress={() => openUrl(LINKS.privacy)} last />
+        </View>
+      </ScrollView>
+    </View>
+  )
+}
+
+function PlanCard({ plan, product, busy, disabled, onSubscribe }) {
+  const featured = plan.bestOffer || plan.highlight
+  const period = product ? periodLabel(product) : null
+  return (
+    <LinearGradient colors={featured ? [NAVY, NAVY_2] : [NAVY, NAVY]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.card, plan.bestOffer && styles.cardBest]}>
+      <View style={styles.cardTop}>
+        <Text style={styles.planName}>{plan.name}</Text>
+        {plan.bestOffer ? (
+          <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.badge}>
+            <Text style={styles.badgeText}>Meilleure offre</Text>
+          </LinearGradient>
+        ) : null}
+      </View>
+
+      {product ? (
+        <View style={styles.priceRow}>
+          <Text style={styles.price}>{product.displayPrice}</Text>
+          {period ? <Text style={styles.period}>{period}</Text> : null}
+        </View>
+      ) : (
+        <Text style={styles.unavailable}>Indisponible sur l'App Store pour le moment</Text>
+      )}
+
+      <View style={styles.stats}>
+        <Stat icon="videocam" label={`${plan.minutes} Live Swap`} />
+        {plan.jetons > 0 ? <Stat icon="sparkles" label={`${plan.jetons} jetons`} /> : null}
+      </View>
+
+      <View style={styles.features}>
+        {plan.features.map((feature) => (
+          <View key={feature} style={styles.feature}>
+            <Ionicons name="checkmark-circle" size={16} color="#7FA6FF" />
+            <Text style={styles.featureText}>{feature}</Text>
+          </View>
+        ))}
+      </View>
+
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={product ? `S'abonner à ${plan.name}, ${product.displayPrice}` : `${plan.name} indisponible`}
+        accessibilityState={{ disabled: !product || disabled, busy }}
+        disabled={!product || disabled}
+        onPress={onSubscribe}
+        style={({ pressed }) => [pressed && styles.pressed, (!product || (disabled && !busy)) && styles.dimmed]}
+      >
+        <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
+          {busy ? <ActivityIndicator color={C.white} /> : <Text style={styles.ctaText}>S'abonner</Text>}
+        </LinearGradient>
+      </Pressable>
+    </LinearGradient>
+  )
+}
+
+function Stat({ icon, label }) {
+  return (
+    <View style={styles.stat}>
+      <Ionicons name={icon} size={14} color={C.white} />
+      <Text style={styles.statText}>{label}</Text>
+    </View>
+  )
+}
+
+function SecondaryAction({ icon, label, onPress, busy, last }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ busy: Boolean(busy) }}
+      disabled={busy}
+      onPress={onPress}
+      style={({ pressed }) => [styles.action, !last && styles.actionDivider, pressed && styles.actionPressed]}
+    >
+      <Ionicons name={icon} size={18} color={C.blue} />
+      <Text style={styles.actionText}>{label}</Text>
+      {busy ? <ActivityIndicator size="small" color={C.blue} /> : <Ionicons name="chevron-forward" size={16} color="#A8B1C8" />}
+    </Pressable>
+  )
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: BG },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD - 6, paddingVertical: 8 },
+  back: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: C.ink },
+  content: { paddingHorizontal: PAD, paddingTop: 4, gap: 14 },
+  lead: { fontSize: 15, lineHeight: 22, color: C.muted },
+  centered: { alignItems: 'center', gap: 10, paddingVertical: 48 },
+  muted: { fontSize: 14, color: C.muted },
+  card: {
+    borderRadius: 24,
+    padding: 20,
+    gap: 14,
+    shadowColor: '#1B2A6B',
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 5,
+  },
+  cardBest: { borderWidth: 1.5, borderColor: C.violet },
+  cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  planName: { flexShrink: 1, fontSize: 20, fontWeight: '900', color: C.white },
+  badge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 5 },
+  badgeText: { fontSize: 11, fontWeight: '800', color: C.white, textTransform: 'uppercase', letterSpacing: 0.6 },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap', gap: 6 },
+  price: { fontSize: 30, fontWeight: '900', color: C.white },
+  period: { fontSize: 14, color: MUTED_ON_DARK },
+  unavailable: { fontSize: 14, fontWeight: '700', color: MUTED_ON_DARK },
+  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  stat: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 10, paddingVertical: 6 },
+  statText: { fontSize: 13, fontWeight: '700', color: C.white },
+  features: { gap: 8 },
+  feature: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  featureText: { flex: 1, fontSize: 14, lineHeight: 20, color: '#DCE3FA' },
+  cta: { height: 52, borderRadius: 999, alignItems: 'center', justifyContent: 'center' },
+  ctaText: { fontSize: 16, fontWeight: '800', color: C.white },
+  dimmed: { opacity: 0.45 },
+  pressed: { opacity: 0.85 },
+  errorCard: { alignItems: 'center', gap: 8, borderRadius: 24, backgroundColor: C.white, padding: 24, borderWidth: 1, borderColor: C.line },
+  errorTitle: { fontSize: 17, fontWeight: '800', color: C.ink },
+  errorText: { fontSize: 14, lineHeight: 21, color: C.muted, textAlign: 'center' },
+  retry: { marginTop: 6, borderRadius: 999, backgroundColor: C.softBlue, paddingHorizontal: 20, paddingVertical: 10 },
+  retryText: { fontSize: 15, fontWeight: '800', color: C.blue },
+  legal: { fontSize: 12, lineHeight: 18, color: C.muted, textAlign: 'center' },
+  actions: { borderRadius: 20, backgroundColor: C.white, borderWidth: 1, borderColor: C.line, overflow: 'hidden' },
+  action: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 15 },
+  actionDivider: { borderBottomWidth: 1, borderBottomColor: C.line },
+  actionPressed: { backgroundColor: '#F2F5FD' },
+  actionText: { flex: 1, fontSize: 15, fontWeight: '700', color: C.ink },
+})

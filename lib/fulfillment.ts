@@ -107,6 +107,9 @@ export async function activateSubscription(
   userId: string,
   email: string,
   plan: { id: string; price: number; points: number; jetons: number; durationDays: number },
+  // endDate : echeance imposee par le magasin (Apple). Elle remplace la duree du
+  // forfait, sans jamais raccourcir une periode deja payee plus longue.
+  opts?: { endDate?: Date },
 ): Promise<{ now: Date; end: Date }> {
   const now = new Date()
   const durationMs = plan.durationDays * 24 * 60 * 60 * 1000
@@ -125,7 +128,9 @@ export async function activateSubscription(
   const prevPoints = prevActive ? Number(existing?.points ?? 0) : 0
   const prevMax = prevActive ? Number(existing?.max_points ?? 0) : 0
   const base = prevActive && existing?.end_date ? new Date(existing.end_date) : now
-  const end = new Date(base.getTime() + durationMs)
+  const end = opts?.endDate
+    ? new Date(Math.max(opts.endDate.getTime(), prevActive ? base.getTime() : 0))
+    : new Date(base.getTime() + durationMs)
 
   const subPayload = {
     user_id: userId,
