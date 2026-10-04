@@ -212,7 +212,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </LinearGradient>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Modifier le profil"
+            accessibilityLabel="Modifier les informations du profil"
+            accessibilityHint="La photo de profil sera bientôt disponible"
             onPress={() => open(LINKS.settings)}
             hitSlop={6}
             style={styles.avatarEdit}
@@ -221,8 +222,13 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </Pressable>
         </View>
         <View style={styles.heroInfo}>
+          <View style={styles.identityEyebrow}>
+            <Text style={styles.identityEyebrowText}>COMPTE CHAPCAM</Text>
+            <View style={styles.identityLine} />
+          </View>
           {metaName ? <Text style={styles.heroName} numberOfLines={1}>{metaName}</Text> : null}
           <Text style={metaName ? styles.heroEmailSub : styles.heroName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{email}</Text>
+          <Text style={styles.avatarHint} numberOfLines={1}>Initiale personnalisée</Text>
           {subscriptionLoading ? (
             <ChapCamLoader size="small" tone="light" style={styles.heroLoader} />
           ) : (
@@ -503,9 +509,13 @@ const styles = StyleSheet.create({
   avatarText: { color: C.white, fontSize: 34, fontWeight: '900' },
   avatarPhoto: { ...StyleSheet.absoluteFillObject, borderRadius: 41 },
   avatarEdit: { position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, backgroundColor: NAVY, borderWidth: 2, borderColor: C.white, alignItems: 'center', justifyContent: 'center' },
-  heroInfo: { flex: 1, gap: 8 },
+  heroInfo: { flex: 1, gap: 6, minWidth: 0 },
+  identityEyebrow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 1 },
+  identityEyebrowText: { color: '#AEB8DA', fontSize: 9, fontWeight: '900', letterSpacing: 1.5 },
+  identityLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.18)' },
   heroName: { color: C.white, fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
   heroEmailSub: { color: '#DCE2F5', fontSize: 14, fontWeight: '600' },
+  avatarHint: { color: 'rgba(220,226,245,0.72)', fontSize: 11, fontWeight: '600' },
   heroLoader: { alignSelf: 'flex-start', height: 28 },
   heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   status: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 30, paddingHorizontal: 12, borderRadius: 15 },
