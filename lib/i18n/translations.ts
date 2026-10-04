@@ -163,9 +163,12 @@ export const translations: Record<string, string> = {
   "Compatible avec tout type de PC": "Works with any type of PC",
   "Changement de la couleur de peau": "Skin color change",
   "1 JOUR": "1 DAY",
+  "1 MOIS": "1 MONTH",
   "90 JOURS": "90 DAYS",
   "365 JOURS": "365 DAYS",
   "Valable 24 heures": "Valid for 24 hours",
+  "Valable 7 jours": "Valid for 7 days",
+  "Valable 1 mois": "Valid for 1 month",
   "Valable 3 mois": "Valid for 3 months",
   "Valable 1 an": "Valid for 1 year",
   "Transformation du visage et corps entier": "Full face and body transformation",
@@ -259,8 +262,8 @@ export const translations: Record<string, string> = {
   "Oui ! ChapCam fonctionne avec toutes les applications de visioconference : WhatsApp, Telegram, Zoom, Microsoft Teams, Google Meet, Discord, Skype, TikTok Live, et bien d'autres. Plus d'infos sur chapcam.com.":
     "Yes! ChapCam works with all video conferencing apps: WhatsApp, Telegram, Zoom, Microsoft Teams, Google Meet, Discord, Skype, TikTok Live, and many more. More info on chapcam.com.",
   "Quels sont les tarifs disponibles ?": "What pricing plans are available?",
-  "ChapCam propose plusieurs formules adaptees a vos besoins : Starter (10 000 FCFA pour 1 jour), Premium (50 000 FCFA pour 90 jours), VIP PRO (85 000 FCFA pour 365 jours) et VIP DEBOUT (150 000 FCFA, 1 h 10 min). Consultez tous les details sur chapcam.com.":
-    "ChapCam offers several plans to fit your needs: Starter (10,000 FCFA for 1 day), Premium (50,000 FCFA for 90 days), VIP PRO (85,000 FCFA for 365 days) and VIP DEBOUT (150,000 FCFA, 1 h 10 min). See all details on chapcam.com.",
+  "ChapCam propose plusieurs formules adaptees a vos besoins : Starter (10 000 FCFA pour 1 mois), Premium (50 000 FCFA pour 90 jours), VIP PRO (85 000 FCFA pour 365 jours) et VIP DEBOUT (150 000 FCFA, 1 h 10 min). Consultez tous les details sur chapcam.com.":
+    "ChapCam offers several plans to fit your needs: Starter (10,000 FCFA for 1 month), Premium (50,000 FCFA for 90 days), VIP PRO (85,000 FCFA for 365 days) and VIP DEBOUT (150,000 FCFA, 1 h 10 min). See all details on chapcam.com.",
   "Comment fonctionnent les points ?": "How do points work?",
   "2 points = 1 seconde de transformation. Le plan Starter offre 720 points (6 min), Premium offre 3 600 points (30 min), VIP PRO offre 5 400 points (45 min) et VIP DEBOUT offre 8 400 points (1 h 10 min).":
     "2 points = 1 second of transformation. The Starter plan offers 720 points (6 min), Premium offers 3,600 points (30 min), VIP PRO offers 5,400 points (45 min) and VIP DEBOUT offers 8,400 points (1 h 10 min).",
@@ -485,6 +488,8 @@ export const translations: Record<string, string> = {
     "Accepted cryptocurrencies: Bitcoin, Ethereum, USDT, TON, BNB",
   // Durees des forfaits
   "1 Jour": "1 Day",
+  "7 Jours": "7 Days",
+  "1 Mois": "1 Month",
   "90 Jours": "90 Days",
   "365 Jours": "365 Days",
   // Caracteristiques des forfaits

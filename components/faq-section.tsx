@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     question: "Quels sont les tarifs disponibles ?",
-    answer: "ChapCam propose plusieurs formules adaptees a vos besoins : Starter (10 000 FCFA pour 1 jour), Premium (50 000 FCFA pour 90 jours), VIP PRO (85 000 FCFA pour 365 jours) et VIP DEBOUT (150 000 FCFA, 1 h 10 min). Consultez tous les details sur chapcam.com."
+    answer: "ChapCam propose plusieurs formules adaptees a vos besoins : Starter (10 000 FCFA pour 1 mois), Premium (50 000 FCFA pour 90 jours), VIP PRO (85 000 FCFA pour 365 jours) et VIP DEBOUT (150 000 FCFA, 1 h 10 min). Consultez tous les details sur chapcam.com."
   },
   {
     question: "Comment fonctionnent les points ?",
