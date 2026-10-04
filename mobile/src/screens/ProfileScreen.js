@@ -93,7 +93,7 @@ function useAccountSummary() {
   return { summary, loading, error, reload: load }
 }
 
-export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh, onOpenAccountDetail }) {
+export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh, onOpenAccountDetail, onOpenPlans }) {
   const account = useAccountSummary()
   const insets = useSafeAreaInsets()
   const [avatarFailed, setAvatarFailed] = useState(false)
@@ -334,7 +334,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           <Pressable
             accessibilityRole="link"
             accessibilityLabel="Voir les options Live Swap"
-            onPress={() => open(LINKS.plans)}
+            onPress={onOpenPlans}
             style={({ pressed }) => [styles.balanceCtaLight, pressed && styles.pressed]}
           >
               <Text style={styles.balanceCtaLightText} numberOfLines={1}>Gérer Live Swap</Text>
@@ -347,7 +347,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
         <Pressable
           accessibilityRole="link"
           accessibilityLabel={`Mon abonnement : ${planLabel || 'Aucun forfait'}`}
-          onPress={() => open(LINKS.plans)}
+          onPress={onOpenPlans}
           style={styles.subTop}
         >
           <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.subIcon}>
@@ -376,8 +376,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
         {!subscriptionLoading ? (
           <Pressable
             accessibilityRole="link"
-            accessibilityHint="Ouvre la page des forfaits ChapCam"
-onPress={() => open(LINKS.plans)}
+            accessibilityHint="Ouvre les forfaits ChapCam avec paiement Apple"
+onPress={onOpenPlans}
   style={({ pressed }) => [pressed && styles.pressed]}
   >
   <LinearGradient colors={[C.blue, C.violet]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.subCta}>

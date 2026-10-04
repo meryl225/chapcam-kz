@@ -20,6 +20,7 @@ import { CreateScreen } from '../screens/CreateScreen'
 import { CreationsScreen } from '../screens/CreationsScreen'
 import { ProfileScreen } from '../screens/ProfileScreen'
 import { AccountDetailScreen } from '../screens/AccountDetailScreen'
+import { SubscriptionPlansScreen } from '../screens/SubscriptionPlansScreen'
 import { QuickLaunchMenu } from '../ui/QuickLaunchMenu'
 
 const INK_DEEP = '#0B1233'
@@ -87,6 +88,7 @@ function HomeShell({ user }) {
   const [openTool, setOpenTool] = useState(null)
   const [quickOpen, setQuickOpen] = useState(false)
   const [accountDetail, setAccountDetail] = useState(null)
+  const [plansOpen, setPlansOpen] = useState(false)
 
   const loadAccount = useCallback(async () => {
     const { data } = await supabase
@@ -115,6 +117,14 @@ function HomeShell({ user }) {
   }
 
   const onQuickLaunch = onOpenTool
+
+  if (plansOpen) {
+    const closePlans = () => {
+      setPlansOpen(false)
+      loadAccount()
+    }
+    return <SubscriptionPlansScreen user={user} onBack={closePlans} onPurchased={loadAccount} />
+  }
 
   if (accountDetail) {
     return <AccountDetailScreen type={accountDetail} onBack={() => setAccountDetail(null)} subscription={subscription} />
@@ -166,7 +176,7 @@ function HomeShell({ user }) {
       ) : tab === 'creations' ? (
         <CreationsScreen onCreate={() => setQuickOpen(true)} />
       ) : tab === 'profile' ? (
-        <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} />
+        <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} onOpenPlans={() => setPlansOpen(true)} />
       ) : (
         <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />
       )}

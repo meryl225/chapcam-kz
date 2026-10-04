@@ -18,6 +18,7 @@
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
+    "@apple/app-store-server-library": "3.1.0",
     "@aws-sdk/client-s3": "^3.1125.0",
     "@aws-sdk/s3-request-presigner": "^3.1125.0",
     "@decartai/sdk": "0.1.14",
