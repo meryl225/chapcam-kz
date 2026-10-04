@@ -38,7 +38,7 @@ function getApiKey(): string | null {
 // signature binaire pour renvoyer le bon type. Le client convertit deja tout
 // echantillon en WAV, mais on gere aussi MP3/M4A par securite.
 function detectAudioContentType(buf: Buffer): string {
-  // WAV : "RIFF" .... "WAVE"
+  // WAV : "RIFF" .... "WAVE";
   if (buf.length >= 12 && buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WAVE") {
     return "audio/x-wav"
   }
@@ -60,6 +60,17 @@ function detectAudioContentType(buf: Buffer): string {
   }
   // Defaut : le client normalise en WAV, on suppose donc du WAV.
   return "audio/x-wav"
+}
+
+function getWavDurationSeconds(buf: Buffer): number | null {
+  if (buf.length < 44 || buf.toString("ascii", 0, 4) !== "RIFF" || buf.toString("ascii", 8, 12) !== "WAVE") {
+    return null
+  }
+  const byteRate = buf.readUInt32LE(28)
+  const dataOffset = buf.indexOf(Buffer.from("data"), 12, "ascii")
+  if (!byteRate || dataOffset < 0 || dataOffset + 8 > buf.length) return null
+  const dataSize = Math.min(buf.readUInt32LE(dataOffset + 4), buf.length - dataOffset - 8)
+  return dataSize / byteRate
 }
 
 // POST : cree une video a partir d'une photo + un prompt (script parle).
@@ -198,6 +209,14 @@ export async function POST(request: NextRequest) {
       // (ex: "audio/wav" != "audio/x-wav"). On deduit donc le type reel a partir
       // de la signature binaire plutot que de se fier au type du navigateur.
       const audioType = detectAudioContentType(audioBytes)
+      const audioDuration = getWavDurationSeconds(audioBytes)
+      if (audioType === "audio/x-wav" && audioDuration !== null && (audioDuration < 10 || audioDuration > 30)) {
+        await refundReservation("voice_sample_duration_invalid")
+        return NextResponse.json(
+          { error: "L'extrait vocal doit durer entre 10 et 30 secondes.", code: "invalid_voice_sample_duration" },
+          { status: 400 },
+        )
+      }
       const audioUpload = await fetch(HEYGEN_UPLOAD, {
         method: "POST",
         headers: { "X-Api-Key": apiKey, "Content-Type": audioType },
@@ -219,9 +238,8 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           audio: { type: "asset_id", asset_id: audioAssetId },
           voice_name: `chapcam_${user.id.slice(0, 8)}_${Date.now()}`,
-          // Indice de langue : ameliore la fidelite du clone pour une voix FR.
-          language: "fr",
-          remove_background_noise: true,
+          // HeyGen déduit la langue depuis l'échantillon. Le payload ne contient
+          // que les champs acceptés par l'endpoint officiel de clonage.
         }),
       })
       const cloneJson = await cloneRes.json().catch(() => null)
