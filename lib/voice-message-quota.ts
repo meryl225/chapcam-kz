@@ -71,6 +71,37 @@ export async function addVoiceMessageCredits(userId: string, amount: number): Pr
 /** Prix fixe affiche au client : 1 message vocal = 10 jetons. */
 export const VOICE_MESSAGE_COST_JETONS = 10
 
+/** Duree couverte par VOICE_MESSAGE_COST_JETONS : chaque tranche de 15 s commencee est facturee. */
+export const VOICE_MESSAGE_BLOCK_SECONDS = 15
+
+/** Sortie ElevenLabs mp3_44100_128 : debit constant de 128 kbit/s = 16 000 octets par seconde. */
+const MP3_128_BYTES_PER_SECOND = 16_000
+
+export function mp3DurationSeconds(byteLength: number): number {
+  return byteLength / MP3_128_BYTES_PER_SECOND
+}
+
+/** Cout en jetons selon la duree reelle : 10 jetons par tranche de 15 s commencee (minimum 10). */
+export function voiceMessageCostForDuration(seconds: number): number {
+  const blocks = Math.max(1, Math.ceil(Math.max(0, seconds - 0.25) / VOICE_MESSAGE_BLOCK_SECONDS))
+  return blocks * VOICE_MESSAGE_COST_JETONS
+}
+
+/** Debite un montant exact de jetons pour un message vocal. Retourne le solde restant, ou -1 si insuffisant. */
+export async function deductVoiceMessageJetons(
+  userId: string,
+  jetons: number,
+  meta: Record<string, unknown> = {},
+): Promise<number> {
+  const amount = Math.max(VOICE_MESSAGE_COST_JETONS, Math.ceil(jetons))
+  const wallet = await reserveFixedJetons(userId, amount, 'voice_message', {
+    ...meta,
+    blockSeconds: VOICE_MESSAGE_BLOCK_SECONDS,
+    blockCostJetons: VOICE_MESSAGE_COST_JETONS,
+  })
+  return wallet.ok ? wallet.balance : -1
+}
+
 /** Deduit N messages vocaux (10 jetons chacun). Retourne le solde restant, ou -1 si insuffisant. */
 export async function deductVoiceMessageCredits(userId: string, messages = 1): Promise<number> {
   const count = Math.max(1, Math.floor(messages))

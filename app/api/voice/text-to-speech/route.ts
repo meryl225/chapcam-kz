@@ -2,7 +2,12 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { VOICE_MESSAGE_MAX_CHARS } from '@/lib/plans'
 import { resolveVoiceMessageBalance } from '@/lib/voice-message-access'
-import { deductVoiceMessageCredits, VOICE_MESSAGE_COST_JETONS } from '@/lib/voice-message-quota'
+import {
+  deductVoiceMessageJetons,
+  mp3DurationSeconds,
+  voiceMessageCostForDuration,
+  VOICE_MESSAGE_COST_JETONS,
+} from '@/lib/voice-message-quota'
 import { logToolUsage } from '@/lib/tool-usage'
 
 export const dynamic = 'force-dynamic'
@@ -125,24 +130,43 @@ export async function POST(request: Request) {
       )
     }
 
-    // Deduire 1 credit UNIQUEMENT apres une generation reussie (aucun debit si
-    // ElevenLabs echoue). Le solde restant est renvoye via un en-tete lisible.
-    const remainingJetons = await deductVoiceMessageCredits(user.id, 1)
+    // Facturation a la duree reelle de l'audio genere, UNIQUEMENT apres succes.
+    const audioBuffer = await res.arrayBuffer()
+    const seconds = mp3DurationSeconds(audioBuffer.byteLength)
+    const costJetons = voiceMessageCostForDuration(seconds)
+    const remainingJetons = await deductVoiceMessageJetons(user.id, costJetons, {
+      mode: 'tts',
+      chars: text.length,
+      durationSeconds: Math.round(seconds * 10) / 10,
+    })
+    if (remainingJetons < 0) {
+      return NextResponse.json(
+        {
+          error: `Ce message dure ${Math.ceil(seconds)} s et coûte ${costJetons} jetons. Votre solde est insuffisant.`,
+          code: 'insufficient_jetons',
+          requiredJetons: costJetons,
+        },
+        { status: 402 },
+      )
+    }
     const remaining = Math.max(0, Math.floor(remainingJetons / VOICE_MESSAGE_COST_JETONS))
     await logToolUsage({
       userId: user.id,
       tool: 'voice_message',
-      credits: 1,
-      durationSeconds: 15,
-      meta: { mode: 'tts', chars: text.length, walletAlreadyCharged: true },
+      credits: costJetons / VOICE_MESSAGE_COST_JETONS,
+      durationSeconds: Math.ceil(seconds),
+      meta: { mode: 'tts', chars: text.length, costJetons, walletAlreadyCharged: true },
     })
 
-    return new NextResponse(res.body, {
+    return new NextResponse(audioBuffer, {
       status: 200,
       headers: {
         'Content-Type': 'audio/mpeg',
         'Cache-Control': 'no-store',
-        'X-Remaining-Credits': String(Math.max(0, remaining)),
+        'X-Remaining-Credits': String(remaining),
+        'X-Remaining-Jetons': String(Math.max(0, remainingJetons)),
+        'X-Charged-Jetons': String(costJetons),
+        'X-Audio-Duration': String(Math.round(seconds * 10) / 10),
       },
     })
   } catch (e) {
