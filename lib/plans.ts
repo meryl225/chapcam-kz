@@ -36,8 +36,8 @@ export const PLANS: PlanConfig[] = [
   {
     id: 'testeur',
     name: 'Forfait Testeur',
-    duration: '30 Jours',
-    durationDays: 30,
+    duration: '7 Jours',
+    durationDays: 7,
     price: 5000,
     oldPrice: 5000,
     discount: 0,
@@ -54,8 +54,8 @@ export const PLANS: PlanConfig[] = [
   {
     id: 'starter',
     name: 'Starter',
-    duration: '1 Jour',
-    durationDays: 1,
+    duration: '1 Mois',
+    durationDays: 30,
     price: 10000,
     oldPrice: 12000,
     discount: 17,
