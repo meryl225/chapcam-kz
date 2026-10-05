@@ -15,12 +15,12 @@ const diagLog = []
 const diag = (label, value) => {
   const text = typeof value === 'string' ? value : JSON.stringify(value)
   diagLog.push(`${label}: ${text}`)
-  if (diagLog.length > 30) diagLog.shift()
+  if (diagLog.length > 60) diagLog.shift()
   console.error(`[RC-DIAG] ${label}:`, text)
 }
 
 // TEMPORAIRE : diagnostic affiché à l'écran sous l'erreur (lisible sans Mac).
-export const getRevenueCatDiagnostics = () => diagLog.slice(-24).join('\n')
+export const getRevenueCatDiagnostics = () => diagLog.slice(-60).join('\n')
 export const resetRevenueCatDiagnostics = () => {
   diagLog.length = 0
 }
@@ -112,6 +112,27 @@ async function probeEachProduct(productIds, byId) {
       diag(`[${id}] source=${source} getProducts([id])`, found.length ? found : 'VIDE (Apple ne renvoie pas ce produit)')
     } catch (error) {
       diag(`[${id}] source=${source} getProducts([id]) erreur`, describeError(error))
+    }
+  }
+}
+
+// TEMPORAIRE (diagnostic) : getProducts() direct, un abonnement à la fois.
+// Lecture seule : n'alimente ni l'offering ni la sélection utilisée à l'achat.
+export async function probeSubscriptionProducts(productIds) {
+  for (const id of productIds) {
+    try {
+      const products = await Purchases.getProducts([id], PRODUCT_CATEGORY.SUBSCRIPTION)
+      const product = (products ?? []).find((p) => p?.identifier === id) ?? products?.[0]
+      if (!product) {
+        diag(`[SUB ${id}]`, 'ABSENT (getProducts a renvoye une liste vide)')
+        continue
+      }
+      diag(
+        `[SUB ${id}]`,
+        `FOUND prix=${product.priceString ?? '?'} productIdentifier=${product.identifier} type=${product.productType ?? product.productCategory ?? '?'}`,
+      )
+    } catch (error) {
+      diag(`[SUB ${id}] ABSENT erreur`, describeError(error))
     }
   }
 }

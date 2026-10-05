@@ -3,9 +3,10 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, 
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { TOKEN_PRODUCT_IDS, fetchIosCatalog } from '../lib/iap'
+import { IOS_PRODUCT_IDS, TOKEN_PRODUCT_IDS, fetchIosCatalog } from '../lib/iap'
 import {
   ensureRevenueCat,
+  probeSubscriptionProducts,
   isCancelled,
   loadStoreProducts,
   getRevenueCatDiagnostics,
@@ -42,6 +43,7 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
     resetRevenueCatDiagnostics()
     try {
       await ensureRevenueCat(user.id)
+      await probeSubscriptionProducts(IOS_PRODUCT_IDS)
       const [products, catalog] = await Promise.all([
         loadStoreProducts(TOKEN_PRODUCT_IDS, 'consumable'),
         fetchIosCatalog(),
