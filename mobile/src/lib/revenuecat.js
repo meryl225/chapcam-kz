@@ -9,14 +9,32 @@ const API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? Constants.expo
 
 let configuredFor = null
 
+// TEMPORAIRE (diagnostic TestFlight) : console.error car console.log/warn ne
+// sont pas transmis aux logs natifs iOS en build release.
+const diag = (label, value) => console.error(`[RC-DIAG] ${label}:`, typeof value === 'string' ? value : JSON.stringify(value))
+
+const describeError = (error) => ({
+  message: error?.message,
+  code: error?.code,
+  readableErrorCode: error?.readableErrorCode,
+  underlyingErrorMessage: error?.underlyingErrorMessage,
+})
+
 // RevenueCat est identifie par l'id Supabase : le serveur relit les achats de
 // ce meme identifiant, donc un achat ne peut etre credite qu'a ce compte.
 export async function ensureRevenueCat(userId) {
   if (Platform.OS !== 'ios') throw new Error('unsupported')
-  if (!API_KEY) throw new Error('Clé RevenueCat iOS manquante (EXPO_PUBLIC_REVENUECAT_IOS_API_KEY)')
+  diag('API key prefix', API_KEY ? `${API_KEY.slice(0, 5)}... (len ${API_KEY.length})` : 'ABSENTE')
+  diag('Bundle ID', Constants.expoConfig?.ios?.bundleIdentifier ?? 'inconnu')
+  if (!API_KEY) {
+    diag('RevenueCat configured', false)
+    throw new Error('Clé RevenueCat iOS manquante (EXPO_PUBLIC_REVENUECAT_IOS_API_KEY)')
+  }
   if (configuredFor === userId) return
   if (configuredFor === null) {
+    Purchases.setLogLevel(Purchases.LOG_LEVEL.DEBUG)
     Purchases.configure({ apiKey: API_KEY, appUserID: userId })
+    diag('RevenueCat configured', await Purchases.isConfigured().catch(() => 'inconnu'))
   } else {
     await Purchases.logIn(userId)
   }
@@ -40,20 +58,32 @@ export async function loadStoreProducts(productIds, category) {
   try {
     const offerings = await Purchases.getOfferings()
     const offering = offerings?.all?.[OFFERING_ID] ?? offerings?.current
+    diag('offerings disponibles', Object.keys(offerings?.all ?? {}))
+    diag('offering courante (dashboard)', offerings?.current?.identifier ?? 'aucune')
+    diag('offering utilisee', offering?.identifier ?? 'aucune')
+    diag('nombre de packages', offering?.availablePackages?.length ?? 0)
+    diag('Product IDs recus', (offering?.availablePackages ?? []).map((p) => p?.product?.identifier))
     for (const pkg of offering?.availablePackages ?? []) {
       const id = pkg?.product?.identifier
       if (productIds.includes(id)) byId[id] = { product: pkg.product, pkg }
     }
   } catch (error) {
-    console.warn('[revenuecat] Offering indisponible:', error?.message)
+    diag('getOfferings() erreur', describeError(error))
   }
   const missing = productIds.filter((id) => !byId[id])
   if (missing.length > 0) {
-    const products = await Purchases.getProducts(
-      missing,
-      category === 'subs' ? PRODUCT_CATEGORY.SUBSCRIPTION : PRODUCT_CATEGORY.NON_SUBSCRIPTION,
-    )
-    for (const product of products ?? []) byId[product.identifier] = { product, pkg: null }
+    diag('Product IDs absents de l offering', missing)
+    try {
+      const products = await Purchases.getProducts(
+        missing,
+        category === 'subs' ? PRODUCT_CATEGORY.SUBSCRIPTION : PRODUCT_CATEGORY.NON_SUBSCRIPTION,
+      )
+      diag('getProducts() recus', (products ?? []).map((p) => p.identifier))
+      for (const product of products ?? []) byId[product.identifier] = { product, pkg: null }
+    } catch (error) {
+      diag('getProducts() erreur', describeError(error))
+      throw error
+    }
   }
   return byId
 }
