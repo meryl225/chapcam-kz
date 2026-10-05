@@ -11,7 +11,19 @@ let configuredFor = null
 
 // TEMPORAIRE (diagnostic TestFlight) : console.error car console.log/warn ne
 // sont pas transmis aux logs natifs iOS en build release.
-const diag = (label, value) => console.error(`[RC-DIAG] ${label}:`, typeof value === 'string' ? value : JSON.stringify(value))
+const diagLog = []
+const diag = (label, value) => {
+  const text = typeof value === 'string' ? value : JSON.stringify(value)
+  diagLog.push(`${label}: ${text}`)
+  if (diagLog.length > 30) diagLog.shift()
+  console.error(`[RC-DIAG] ${label}:`, text)
+}
+
+// TEMPORAIRE : diagnostic affiché à l'écran sous l'erreur (lisible sans Mac).
+export const getRevenueCatDiagnostics = () => diagLog.slice(-14).join('\n')
+export const resetRevenueCatDiagnostics = () => {
+  diagLog.length = 0
+}
 
 const describeError = (error) => ({
   message: error?.message,

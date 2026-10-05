@@ -9,6 +9,8 @@ import {
   ensureRevenueCat,
   isCancelled,
   loadStoreProducts,
+  getRevenueCatDiagnostics,
+  resetRevenueCatDiagnostics,
   openManageSubscriptions,
   purchaseErrorMessage,
   purchaseStoreItem,
@@ -53,6 +55,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
       return
     }
     setState((s) => ({ ...s, status: 'loading' }))
+    resetRevenueCatDiagnostics()
     try {
       await ensureRevenueCat(user.id)
       const [products, catalog] = await Promise.all([
@@ -63,7 +66,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
       setState({ status: anyAvailable ? 'ready' : 'unavailable', plans: catalog.plans, products })
     } catch (error) {
       console.warn('[iap] Chargement des forfaits impossible:', error?.message)
-      setState({ status: 'error', plans: [], products: {} })
+      setState({ status: 'error', plans: [], products: {}, errorMessage: `${error?.code ?? ''} ${error?.message ?? String(error)}`.trim() })
     }
   }, [user.id])
 
@@ -175,6 +178,11 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
                 ? "Les abonnements sont disponibles dans l'app ChapCam sur iPhone."
                 : "Impossible de récupérer les forfaits depuis l'App Store pour le moment. Vérifie ta connexion et réessaie."}
             </Text>
+            {state.status !== 'unsupported' ? (
+              <Text selectable style={styles.diagText}>
+                {`[diagnostic] statut: ${state.status}${state.errorMessage ? `\nerreur: ${state.errorMessage}` : ''}\n${getRevenueCatDiagnostics()}`}
+              </Text>
+            ) : null}
             {state.status !== 'unsupported' ? (
               <Pressable accessibilityRole="button" onPress={load} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
                 <Text style={styles.retryText}>Réessayer</Text>
@@ -318,6 +326,7 @@ const styles = StyleSheet.create({
   errorCard: { alignItems: 'center', gap: 8, borderRadius: 24, backgroundColor: C.white, padding: 24, borderWidth: 1, borderColor: C.line },
   errorTitle: { fontSize: 17, fontWeight: '800', color: C.ink },
   errorText: { fontSize: 14, lineHeight: 21, color: C.muted, textAlign: 'center' },
+  diagText: { fontSize: 11, lineHeight: 16, color: C.muted, textAlign: 'left', alignSelf: 'stretch', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   retry: { marginTop: 6, borderRadius: 999, backgroundColor: C.softBlue, paddingHorizontal: 20, paddingVertical: 10 },
   retryText: { fontSize: 15, fontWeight: '800', color: C.blue },
   legal: { fontSize: 12, lineHeight: 18, color: C.muted, textAlign: 'center' },
