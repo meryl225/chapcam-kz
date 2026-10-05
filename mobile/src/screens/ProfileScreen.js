@@ -422,11 +422,11 @@ onPress={onOpenPlans}
         style={({ pressed }) => [styles.deleteAccount, (pressed || deleting) && styles.pressed]}
       >
         {deleting ? (
-          <ActivityIndicator size="small" color={DANGER} />
+          <ActivityIndicator size="small" color="#C98A8E" />
         ) : (
-          <Ionicons name="trash-outline" size={18} color={DANGER} />
+          <Ionicons name="trash-outline" size={15} color="#C98A8E" />
         )}
-        <Text style={styles.signOutText}>{deleting ? 'Suppression en cours…' : 'Supprimer mon compte'}</Text>
+        <Text style={styles.deleteAccountText}>{deleting ? 'Suppression en cours…' : 'Supprimer mon compte'}</Text>
       </Pressable>
 
       <View style={styles.appInfo}>
@@ -567,7 +567,8 @@ const styles = StyleSheet.create({
 
   signOut: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, marginTop: 10, borderRadius: 20, backgroundColor: '#FFF1F1', borderWidth: 1, borderColor: '#FFDADB' },
   signOutText: { color: DANGER, fontSize: 15, fontWeight: '800' },
-  deleteAccount: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, borderRadius: 20, borderWidth: 1, borderColor: '#FFDADB' },
+  deleteAccount: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 36, marginTop: 2, borderRadius: 14 },
+  deleteAccountText: { color: '#C98A8E', fontSize: 13, fontWeight: '600' },
 
   appInfo: { alignItems: 'center', gap: 2, marginTop: 4 },
   appName: { color: '#5D6785', fontSize: 13, fontWeight: '800' },
