@@ -168,7 +168,7 @@ export default function AdminCampaignPage() {
               <div className="flex-1">
                 <h3 className="text-xl font-bold text-white mb-1">Campagne ChapCam 3.0 - Nouvelle version</h3>
                 <p className="text-gray-400 text-sm">
-                  Annonce a tous les inscrits la sortie de <strong className="text-white">ChapCam 3.0</strong> (17 juillet) :
+                  Annonce a tous les inscrits la sortie de <strong className="text-white">ChapCam 3.0</strong> (septembre) :
                   fonctionne desormais sur <strong className="text-[#00ff88]">tout type de PC</strong> (plus besoin de PC Gamer),
                   transformation du visage, du corps et de la <strong className="text-white">couleur de peau</strong>.
                   L&apos;email contient un bouton <strong className="text-white">Tester (recharges)</strong> et un bouton

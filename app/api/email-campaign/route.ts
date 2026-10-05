@@ -325,7 +325,7 @@ function getSupportEmail(userName: string) {
 
 // Template email pour la campagne "ChapCam 3.0" (nouveau moteur IA, base sur
 // Decart AI 2.5). Message cle : plus besoin de PC gamer / GPU dedie, ca tourne
-// sur tout type de PC. Sorti le 17 juillet. CTA vers les recharges + WhatsApp.
+// sur tout type de PC. Sorti en septembre. CTA vers les recharges + WhatsApp.
 function getChapCam2Email(userName: string) {
   const subject = 'ChapCam 3.0 est disponible - fonctionne desormais sur TOUT type de PC'
   const WHATSAPP_URL =
@@ -348,7 +348,7 @@ function getChapCam2Email(userName: string) {
           <!-- Header -->
           <tr>
             <td style="background: linear-gradient(90deg, #7c3aed, #2563eb, #00ff88); padding: 22px; text-align: center;">
-              <p style="margin: 0 0 4px; color: rgba(255,255,255,0.85); font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">Nouvelle version - 17 juillet</p>
+              <p style="margin: 0 0 4px; color: rgba(255,255,255,0.85); font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 2px;">Nouvelle version - Septembre</p>
               <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 800;">ChapCam 3.0 est la</h1>
             </td>
           </tr>
