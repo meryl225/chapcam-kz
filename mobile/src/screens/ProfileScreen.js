@@ -93,7 +93,7 @@ function useAccountSummary() {
   return { summary, loading, error, reload: load }
 }
 
-export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh, onOpenAccountDetail, onOpenPlans, onOpenTokens }) {
+export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh, onOpenAccountDetail, onOpenPlans, onOpenTokens, onOpenPlansPreview }) {
   const account = useAccountSummary()
   const insets = useSafeAreaInsets()
   const [avatarFailed, setAvatarFailed] = useState(false)
@@ -403,6 +403,9 @@ onPress={onOpenPlans}
         <Row icon="document-text-outline" tint={C.violet} label="Conditions d'utilisation" onPress={() => open(LINKS.terms)} />
         <Row icon="lock-closed-outline" tint={C.blue} label="Politique de confidentialité" onPress={() => open(LINKS.privacy)} />
         <Row icon="language-outline" tint={C.violet} label="Langue" value="Français" />
+        {onOpenPlansPreview ? (
+          <Row icon="pricetags-outline" tint={C.blue} label="Forfaits ChapCam (aperçu)" onPress={onOpenPlansPreview} />
+        ) : null}
       </View>
 
       <Pressable

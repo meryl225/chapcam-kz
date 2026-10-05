@@ -22,6 +22,7 @@ import { ProfileScreen } from '../screens/ProfileScreen'
 import { AccountDetailScreen } from '../screens/AccountDetailScreen'
 import { SubscriptionPlansScreen } from '../screens/SubscriptionPlansScreen'
 import { TokenPacksScreen } from '../screens/TokenPacksScreen'
+import { PlansPreviewScreen } from '../screens/PlansPreviewScreen'
 import { QuickLaunchMenu } from '../ui/QuickLaunchMenu'
 
 const INK_DEEP = '#0B1233'
@@ -91,6 +92,7 @@ function HomeShell({ user }) {
   const [accountDetail, setAccountDetail] = useState(null)
   const [plansOpen, setPlansOpen] = useState(false)
   const [tokensOpen, setTokensOpen] = useState(false)
+  const [plansPreviewOpen, setPlansPreviewOpen] = useState(false)
 
   const loadAccount = useCallback(async () => {
     const { data } = await supabase
@@ -126,6 +128,10 @@ function HomeShell({ user }) {
       loadAccount()
     }
     return <SubscriptionPlansScreen user={user} onBack={closePlans} onPurchased={loadAccount} />
+  }
+
+  if (plansPreviewOpen) {
+    return <PlansPreviewScreen onBack={() => setPlansPreviewOpen(false)} />
   }
 
   if (tokensOpen) {
@@ -190,7 +196,7 @@ function HomeShell({ user }) {
       ) : tab === 'creations' ? (
         <CreationsScreen onCreate={() => setQuickOpen(true)} />
       ) : tab === 'profile' ? (
-        <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} onOpenPlans={() => setPlansOpen(true)} onOpenTokens={() => setTokensOpen(true)} />
+        <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} onOpenPlans={() => setPlansOpen(true)} onOpenTokens={() => setTokensOpen(true)} onOpenPlansPreview={() => setPlansPreviewOpen(true)} />
       ) : (
         <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />
       )}
