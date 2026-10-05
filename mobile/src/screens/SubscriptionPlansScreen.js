@@ -9,6 +9,7 @@ import {
   ensureRevenueCat,
   isCancelled,
   loadStoreProducts,
+  probeSubscriptionProducts,
   getRevenueCatDiagnostics,
   resetRevenueCatDiagnostics,
   openManageSubscriptions,
@@ -58,6 +59,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
     resetRevenueCatDiagnostics()
     try {
       await ensureRevenueCat(user.id)
+      await probeSubscriptionProducts(IOS_PRODUCT_IDS)
       const [products, catalog] = await Promise.all([
         loadStoreProducts(IOS_PRODUCT_IDS, 'subs'),
         fetchIosCatalog(),
@@ -168,7 +170,16 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
               disabled={Boolean(busySku) || restoring}
               onSubscribe={() => subscribe(plan.productId)}
             />
-          ))
+          )).concat(
+            <View key="diagnostic" style={styles.errorCard}>
+              <Text selectable style={styles.diagText}>
+                {`[diagnostic] statut: ${state.status}\nforfaits catalogue serveur: ${state.plans.map((p) => p.productId).join(', ') || '(aucun)'}\n${getRevenueCatDiagnostics()}`}
+              </Text>
+              <Pressable accessibilityRole="button" onPress={load} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
+                <Text style={styles.retryText}>Relancer le diagnostic</Text>
+              </Pressable>
+            </View>
+          )
         ) : (
           <View style={styles.errorCard} accessibilityRole="alert">
             <Ionicons name="alert-circle-outline" size={28} color={C.violet} />

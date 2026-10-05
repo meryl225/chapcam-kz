@@ -179,6 +179,14 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
                 </Pressable>
               )
             })}
+            <View style={[styles.errorCard, { width: '100%' }]}>
+              <Text selectable style={styles.diagText}>
+                {`[diagnostic] statut: ${state.status}\n${getRevenueCatDiagnostics()}`}
+              </Text>
+              <Pressable accessibilityRole="button" onPress={load} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
+                <Text style={styles.retryText}>Relancer le diagnostic</Text>
+              </Pressable>
+            </View>
           </View>
         ) : (
           <View style={styles.errorCard} accessibilityRole="alert">
