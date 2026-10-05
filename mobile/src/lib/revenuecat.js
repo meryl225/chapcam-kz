@@ -20,7 +20,7 @@ const diag = (label, value) => {
 }
 
 // TEMPORAIRE : diagnostic affiché à l'écran sous l'erreur (lisible sans Mac).
-export const getRevenueCatDiagnostics = () => diagLog.slice(-14).join('\n')
+export const getRevenueCatDiagnostics = () => diagLog.slice(-24).join('\n')
 export const resetRevenueCatDiagnostics = () => {
   diagLog.length = 0
 }
@@ -97,7 +97,23 @@ export async function loadStoreProducts(productIds, category) {
       throw error
     }
   }
+  if (category !== 'subs') await probeEachProduct(productIds, byId)
   return byId
+}
+
+// TEMPORAIRE (diagnostic) : interroge StoreKit produit par produit pour isoler
+// ceux qu'Apple ne renvoie pas, sans modifier la sélection utilisée à l'achat.
+async function probeEachProduct(productIds, byId) {
+  for (const id of productIds) {
+    const source = byId[id] ? (byId[id].pkg ? 'offering' : 'getProducts') : 'ABSENT'
+    try {
+      const single = await Purchases.getProducts([id], PRODUCT_CATEGORY.NON_SUBSCRIPTION)
+      const found = (single ?? []).map((p) => `${p.identifier} ${p.priceString} (${p.productCategory ?? p.productType ?? '?'})`)
+      diag(`[${id}] source=${source} getProducts([id])`, found.length ? found : 'VIDE (Apple ne renvoie pas ce produit)')
+    } catch (error) {
+      diag(`[${id}] source=${source} getProducts([id]) erreur`, describeError(error))
+    }
+  }
 }
 
 export async function purchaseStoreItem(item) {
