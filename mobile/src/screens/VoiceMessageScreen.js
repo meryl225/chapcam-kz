@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { File, Paths } from 'expo-file-system'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { C } from '../ui/catalog'
@@ -44,6 +45,7 @@ async function readError(res) {
 }
 
 export function VoiceMessageScreen({ onBack }) {
+  const insets = useSafeAreaInsets()
   const [tab, setTab] = useState('text')
   const [voices, setVoices] = useState([])
   const [selected, setSelected] = useState(null)
@@ -79,11 +81,11 @@ export function VoiceMessageScreen({ onBack }) {
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.top}>
+      <View style={[styles.top, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={onBack} style={styles.back} accessibilityRole="button" accessibilityLabel="Retour"><Ionicons name="chevron-back" size={24} color={C.ink} /></Pressable>
         <View style={styles.flex}><Text style={styles.title}>Message Vocal</Text><Text style={styles.subtitle}>Écris ou enregistre, ChapCam fait parler la voix choisie</Text></View>
       </View>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 48 + insets.bottom }]} keyboardShouldPersistTaps="handled">
         <View style={styles.quota}>
           <Ionicons name="chatbubble-ellipses-outline" size={18} color={C.blue} />
           <Text style={styles.quotaText}>{quota ? `${quota.remaining} message${quota.remaining > 1 ? 's' : ''} vocal${quota.remaining > 1 ? 'aux' : ''} restant${quota.remaining > 1 ? 's' : ''}` : 'Chargement du solde…'}</Text>

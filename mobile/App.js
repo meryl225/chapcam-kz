@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { SafeAreaView, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context'
 import { ChapCamLoader } from './src/ui/ChapCamLoader'
 import { StatusBar } from 'expo-status-bar'
 import { supabase } from './src/lib/supabase'
@@ -29,10 +30,12 @@ export default function App() {
   }, [])
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar style="light" />
-      {loading ? <View style={styles.loading}><ChapCamLoader size="large" /></View> : session?.user ? <AuthenticatedHome user={session.user} /> : <AuthScreen />}
-    </SafeAreaView>
+    <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+      <View style={styles.safe}>
+        <StatusBar style="dark" />
+        {loading ? <View style={styles.loading}><ChapCamLoader size="large" /></View> : session?.user ? <AuthenticatedHome user={session.user} /> : <AuthScreen />}
+      </View>
+    </SafeAreaProvider>
   )
 }
 

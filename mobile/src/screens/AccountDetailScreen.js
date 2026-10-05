@@ -1,6 +1,7 @@
 import React from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { C, PAD } from '../ui/catalog'
 import { useJetonsBalance } from '../lib/useJetonsBalance'
 
@@ -16,8 +17,9 @@ const CONFIG = {
 
 export function AccountDetailScreen({ type, onBack, subscription, jetons }) {
   const config = CONFIG[type] || CONFIG.activity
+  const insets = useSafeAreaInsets()
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <Pressable accessibilityRole="button" accessibilityLabel="Retour au profil" onPress={onBack} style={styles.back}>
           <Ionicons name="arrow-back" size={22} color={NAVY} />
@@ -25,7 +27,7 @@ export function AccountDetailScreen({ type, onBack, subscription, jetons }) {
         <Text style={styles.headerTitle}>{config.title}</Text>
         <View style={styles.headerSpacer} />
       </View>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         <View style={styles.hero}>
           <View style={styles.heroIcon}><Ionicons name={config.icon} size={25} color={C.blue} /></View>
           <Text style={styles.title}>{config.title}</Text>

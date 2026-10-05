@@ -18,6 +18,7 @@ import {
   View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { requireOptionalNativeModule } from 'expo-modules-core'
 import { initialWindowMetrics, SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -548,15 +549,15 @@ function ToolFilterSheet({ visible, tools, value, onClose, onChange }) {
   )
 }
 
-// App.js wraps the tree in RN's SafeAreaView, so the app-level provider measures
-// zero insets. A full-screen Modal is a separate iOS window: it needs its own
-// provider, otherwise the close button lands under the status bar / Dynamic
-// Island where touches never reach it.
+// A full-screen Modal is a separate iOS window: it needs its own provider,
+// otherwise the close button lands under the status bar / Dynamic Island where
+// touches never reach it.
 function Viewer({ item, ...props }) {
   if (!item) return null
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={props.onClose} statusBarTranslucent>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <StatusBar style="light" />
         <ViewerContent key={item.id} item={item} {...props} />
       </SafeAreaProvider>
     </Modal>
