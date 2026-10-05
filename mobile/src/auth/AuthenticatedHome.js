@@ -3,7 +3,9 @@ import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWind
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
+import * as Notifications from 'expo-notifications'
 import { supabase } from '../lib/supabase'
+import { creationIdFromResponse, registerForPushNotifications, unregisterPushToken } from '../lib/pushNotifications'
 import { BRAND, C, COMING_SOON_TOOLS, CREATOR_VIDEOS, GAP, PAD, TOOL_MEDIA, asset, shadow } from '../ui/catalog'
 import { MediaView } from '../ui/ToolMedia'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
@@ -93,6 +95,29 @@ function HomeShell({ user }) {
   const [plansOpen, setPlansOpen] = useState(false)
   const [tokensOpen, setTokensOpen] = useState(false)
   const [plansPreviewOpen, setPlansPreviewOpen] = useState(false)
+  const [notifiedCreationId, setNotifiedCreationId] = useState(null)
+  const notificationResponse = Notifications.useLastNotificationResponse()
+
+  useEffect(() => {
+    registerForPushNotifications().catch(() => {})
+  }, [user.id])
+
+  // Covers taps while running, in background, and the cold start after a tap.
+  useEffect(() => {
+    const creationId = creationIdFromResponse(notificationResponse)
+    if (!creationId) return
+    setOpenTool(null)
+    setPlansOpen(false)
+    setTokensOpen(false)
+    setPlansPreviewOpen(false)
+    setAccountDetail(null)
+    setQuickOpen(false)
+    setTab('creations')
+    setNotifiedCreationId(creationId)
+    Notifications.clearLastNotificationResponseAsync().catch(() => {})
+  }, [notificationResponse])
+
+  const clearNotifiedCreation = useCallback(() => setNotifiedCreationId(null), [])
 
   const loadAccount = useCallback(async () => {
     const { data } = await supabase
@@ -194,7 +219,7 @@ function HomeShell({ user }) {
       ) : tab === 'create' ? (
         <CreateScreen onOpenTool={onOpenTool} />
       ) : tab === 'creations' ? (
-        <CreationsScreen onCreate={() => setQuickOpen(true)} />
+        <CreationsScreen onCreate={() => setQuickOpen(true)} openCreationId={notifiedCreationId} onOpenedCreation={clearNotifiedCreation} />
       ) : tab === 'profile' ? (
         <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} onOpenPlans={() => setPlansOpen(true)} onOpenTokens={() => setTokensOpen(true)} onOpenPlansPreview={() => setPlansPreviewOpen(true)} />
       ) : (
@@ -443,7 +468,7 @@ function PendingScreen({ tab, user, credits, plan, loading }) {
           ) : (
             <Text style={styles.profileMeta}>{`${planName || 'Aucun forfait actif'} · ${credits} crédits`}</Text>
           )}
-          <Pressable accessibilityRole="button" onPress={() => supabase.auth.signOut()} style={styles.signOut}>
+          <Pressable accessibilityRole="button" onPress={async () => { await unregisterPushToken(); supabase.auth.signOut() }} style={styles.signOut}>
             <Ionicons name="log-out-outline" size={18} color="#E5484D" />
             <Text style={styles.signOutText}>Se déconnecter</Text>
           </Pressable>

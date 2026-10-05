@@ -6,6 +6,7 @@ import Constants from 'expo-constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
 import { apiJson, friendlyError } from '../lib/api'
+import { unregisterPushToken } from '../lib/pushNotifications'
 import { AccountSummaryError, accountSummaryMessage, fetchAccountSummary } from '../lib/accountSummary'
 import { BRAND, C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
@@ -140,7 +141,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const confirmSignOut = () =>
     Alert.alert('Se déconnecter ?', 'Tu devras te reconnecter pour accéder à ton studio.', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Se déconnecter', style: 'destructive', onPress: () => supabase.auth.signOut() },
+      { text: 'Se déconnecter', style: 'destructive', onPress: async () => { await unregisterPushToken(); supabase.auth.signOut() } },
     ])
 
   const deleteAccount = async () => {

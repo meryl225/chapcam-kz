@@ -2,6 +2,7 @@ import 'server-only'
 import { neon, type NeonQueryFunction } from '@neondatabase/serverless'
 import { put, del } from '@vercel/blob'
 import { isR2Configured, uploadVideoBuffer, headVideo, deleteVideo as deleteR2Video } from '@/lib/r2'
+import { notifyVideoReady } from '@/lib/push-notifications'
 
 // Cles dont la copie R2 vient d'etre VERIFIEE (HEAD) dans ce processus : permet
 // a saveVideoHistory d'enregistrer `r2_key` sans refaire un aller-retour R2.
@@ -223,7 +224,9 @@ export async function saveVideoHistory(input: {
   // avant : une video n'entre jamais dans "Mes videos" avec une cle R2 fantome.
   const r2Key = input.blobPathname && r2KeysReady.has(input.blobPathname) ? input.blobPathname : null
   if (r2Key) r2KeysReady.delete(r2Key)
-  await sql`
+  const status = input.status ?? 'completed'
+  const wasCompleted = status === 'completed' ? await isAlreadyCompleted(input.userId, input.tool, input.providerRef) : true
+  const rows = (await sql`
     INSERT INTO video_history (user_id, tool, provider_ref, blob_pathname, r2_key, thumbnail_url, title, status, credits_cost)
     VALUES (
       ${input.userId}, ${input.tool}, ${input.providerRef},
@@ -238,7 +241,22 @@ export async function saveVideoHistory(input: {
       title = COALESCE(NULLIF(EXCLUDED.title, ''), video_history.title),
       credits_cost = COALESCE(video_history.credits_cost, EXCLUDED.credits_cost),
       status = EXCLUDED.status
-  `
+    RETURNING id, status
+  `) as { id: string; status: string }[]
+  if (!wasCompleted && rows[0]?.status === 'completed') {
+    notifyVideoReady({ generationId: String(rows[0].id), userId: input.userId, tool: input.tool })
+  }
+}
+
+// Notifications fire only on a real processing -> completed transition, never
+// when an already-finished video is re-saved (repairs, R2 migration, polls).
+async function isAlreadyCompleted(userId: string, tool: VideoTool, providerRef: string): Promise<boolean> {
+  const rows = (await sql`
+    SELECT status FROM video_history
+    WHERE user_id = ${userId} AND tool = ${tool} AND provider_ref = ${providerRef}
+    LIMIT 1
+  `) as { status: string }[]
+  return rows[0]?.status === 'completed'
 }
 
 /** Enregistre la cle R2 d'une ligne (apres copie verifiee, ex : migration). */
@@ -363,7 +381,8 @@ async function markCompletedWithProviderUrl(
   creditsCost?: number | null,
 ): Promise<void> {
   await ensureTable()
-  await sql`
+  const wasCompleted = await isAlreadyCompleted(userId, tool, providerRef)
+  const rows = (await sql`
     INSERT INTO video_history (user_id, tool, provider_ref, provider_url, title, status, credits_cost)
     VALUES (${userId}, ${tool}, ${providerRef}, ${providerUrl}, ${title}, 'completed', ${creditsCost ?? null})
     ON CONFLICT (user_id, tool, provider_ref)
@@ -372,7 +391,11 @@ async function markCompletedWithProviderUrl(
       title = COALESCE(NULLIF(EXCLUDED.title, ''), video_history.title),
       -- On ne repasse en 'completed' que si la ligne n'a pas deja abouti a mieux.
       status = CASE WHEN video_history.blob_pathname IS NULL THEN 'completed' ELSE video_history.status END
-  `
+    RETURNING id, status
+  `) as { id: string; status: string }[]
+  if (!wasCompleted && rows[0]?.status === 'completed') {
+    notifyVideoReady({ generationId: String(rows[0].id), userId, tool })
+  }
 }
 
 export async function finalizeCompletedVideo(input: {

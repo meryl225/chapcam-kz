@@ -154,7 +154,7 @@ async function saveVideoToPhotos(uri) {
   }
 }
 
-export function CreationsScreen({ onCreate }) {
+export function CreationsScreen({ onCreate, openCreationId, onOpenedCreation }) {
   const { width } = useWindowDimensions()
   const cardW = (width - PAD * 2 - GAP) / 2
   const [items, setItems] = useState(null)
@@ -180,6 +180,23 @@ export function CreationsScreen({ onCreate }) {
   useEffect(() => {
     load()
   }, [load])
+
+  // Opened from a push: the list may predate the completion, so refetch once
+  // before giving up on finding the notified creation.
+  const refetchedForId = useRef(null)
+  useEffect(() => {
+    if (!openCreationId || !items) return
+    const target = items.find((i) => String(i.id) === openCreationId)
+    if (target?.status === 'completed' && target.playback_url) {
+      setViewing(target)
+      onOpenedCreation?.()
+    } else if (refetchedForId.current !== openCreationId) {
+      refetchedForId.current = openCreationId
+      load()
+    } else {
+      onOpenedCreation?.()
+    }
+  }, [openCreationId, items, load, onOpenedCreation])
 
   const hasProcessing = !!items?.some((i) => i.status === 'processing')
   useEffect(() => {

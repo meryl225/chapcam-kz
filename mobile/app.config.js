@@ -23,9 +23,14 @@ module.exports = ({ config }) => ({
         enableBackgroundPlayback: false,
       },
     ],
+    'expo-notifications',
   ],
   extra: {
     ...config.extra,
+    // getExpoPushTokenAsync needs the EAS project id; EAS Build injects it.
+    ...(process.env.EAS_BUILD_PROJECT_ID || config.extra?.eas?.projectId
+      ? { eas: { ...config.extra?.eas, projectId: process.env.EAS_BUILD_PROJECT_ID || config.extra?.eas?.projectId } }
+      : {}),
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     apiUrl: process.env.EXPO_PUBLIC_API_URL || 'https://chapcam.com',
