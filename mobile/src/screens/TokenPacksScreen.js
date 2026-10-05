@@ -9,8 +9,6 @@ import {
   probeSubscriptionProducts,
   isCancelled,
   loadStoreProducts,
-  getRevenueCatDiagnostics,
-  resetRevenueCatDiagnostics,
   purchaseErrorMessage,
   purchaseStoreItem,
   restoreRevenueCat,
@@ -40,7 +38,6 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
       return
     }
     setState((s) => ({ ...s, status: 'loading' }))
-    resetRevenueCatDiagnostics()
     try {
       await ensureRevenueCat(user.id)
       await probeSubscriptionProducts(IOS_PRODUCT_IDS)
@@ -179,14 +176,6 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
                 </Pressable>
               )
             })}
-            <View style={[styles.errorCard, { width: '100%' }]}>
-              <Text selectable style={styles.diagText}>
-                {`[diagnostic] statut: ${state.status}\n${getRevenueCatDiagnostics()}`}
-              </Text>
-              <Pressable accessibilityRole="button" onPress={load} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
-                <Text style={styles.retryText}>Relancer le diagnostic</Text>
-              </Pressable>
-            </View>
           </View>
         ) : (
           <View style={styles.errorCard} accessibilityRole="alert">
@@ -197,11 +186,6 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
                 ? "L'achat de jetons est disponible dans l'app ChapCam sur iPhone."
                 : "Impossible de récupérer les packs depuis l'App Store pour le moment. Vérifie ta connexion et réessaie."}
             </Text>
-            {state.status !== 'unsupported' ? (
-              <Text selectable style={styles.diagText}>
-                {`[diagnostic] statut: ${state.status}${state.errorMessage ? `\nerreur: ${state.errorMessage}` : ''}\n${getRevenueCatDiagnostics()}`}
-              </Text>
-            ) : null}
             {state.status !== 'unsupported' ? (
               <Pressable accessibilityRole="button" onPress={load} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
                 <Text style={styles.retryText}>Réessayer</Text>
@@ -263,7 +247,6 @@ const styles = StyleSheet.create({
   errorCard: { alignItems: 'center', gap: 8, borderRadius: 24, backgroundColor: C.white, padding: 24, borderWidth: 1, borderColor: C.line },
   errorTitle: { fontSize: 17, fontWeight: '800', color: C.ink },
   errorText: { fontSize: 14, lineHeight: 21, color: C.muted, textAlign: 'center' },
-  diagText: { fontSize: 11, lineHeight: 16, color: C.muted, textAlign: 'left', alignSelf: 'stretch', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
   retry: { marginTop: 6, borderRadius: 999, backgroundColor: C.softBlue, paddingHorizontal: 20, paddingVertical: 10 },
   retryText: { fontSize: 15, fontWeight: '800', color: C.blue },
   legal: { fontSize: 12, lineHeight: 18, color: C.muted, textAlign: 'center' },
