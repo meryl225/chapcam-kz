@@ -206,7 +206,7 @@ function PlansContent() {
             </div>
             <div className="flex-1">
               <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
-                {t('Nouveau · Sorti le 17 juillet')}
+                {t('Nouveau · Sorti en septembre')}
               </div>
               <h3 className="text-xl font-bold text-foreground md:text-2xl">
                 {t('Ces recharges alimentent ChapCam 3.0')}
