@@ -206,6 +206,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             <Image
               source={avatarSource}
               style={styles.avatarPhoto}
+              resizeMode="contain"
               onError={() => setAvatarFailed(true)}
               accessibilityLabel="Photo de profil"
             />
