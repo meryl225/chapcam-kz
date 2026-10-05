@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { supabase } from '../lib/supabase'
@@ -31,6 +32,7 @@ function Preview({ uri, result = false }) {
 }
 
 export function VideoTranslationScreen({ onBack }) {
+  const insets = useSafeAreaInsets()
   const [video, setVideo] = useState(null)
   const [languages, setLanguages] = useState([])
   const [language, setLanguage] = useState('')
@@ -131,8 +133,8 @@ export function VideoTranslationScreen({ onBack }) {
   const visibleLanguages = languages.filter((item) => item.toLowerCase().includes(search.trim().toLowerCase()))
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.topBar}><Pressable onPress={onBack} style={styles.back} accessibilityLabel="Retour"><Ionicons name="chevron-back" size={24} color={C.ink} /></Pressable><View style={styles.heading}><Text style={styles.title}>Traduction de Vidéo</Text><Text style={styles.subtitle}>Traduis une vidéo dans une autre langue</Text></View></View>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <View style={[styles.topBar, { paddingTop: insets.top + 12 }]}><Pressable onPress={onBack} style={styles.back} accessibilityLabel="Retour"><Ionicons name="chevron-back" size={24} color={C.ink} /></Pressable><View style={styles.heading}><Text style={styles.title}>Traduction de Vidéo</Text><Text style={styles.subtitle}>Traduis une vidéo dans une autre langue</Text></View></View>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} keyboardShouldPersistTaps="handled">
         <Text style={styles.section}>Vidéo source</Text>
         {video ? <View style={styles.previewCard}><Preview uri={video.uri} /><View style={styles.fileRow}><View style={{ flex: 1 }}><Text style={styles.fileName} numberOfLines={1}>{video.fileName || 'Vidéo sélectionnée'}</Text>{video.duration ? <Text style={styles.muted}>{Math.round(video.duration / 1000)} s</Text> : null}</View><Pressable onPress={chooseVideo} style={styles.smallButton}><Text style={styles.smallButtonText}>Remplacer</Text></Pressable><Pressable onPress={() => setVideo(null)} accessibilityLabel="Supprimer la vidéo"><Ionicons name="trash-outline" size={20} color={C.muted} /></Pressable></View></View> : <Pressable onPress={chooseVideo} style={styles.upload}><Ionicons name="cloud-upload-outline" size={30} color={C.blue} /><Text style={styles.uploadTitle}>Choisir une vidéo</Text><Text style={styles.muted}>MP4, MOV ou WebM · 60 secondes maximum</Text></Pressable>}
         <Text style={styles.section}>Langue cible</Text>

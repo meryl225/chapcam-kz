@@ -3,7 +3,10 @@ import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWind
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
+import * as Notifications from 'expo-notifications'
 import { supabase } from '../lib/supabase'
+import { creationIdFromResponse, registerForPushNotifications, unregisterPushToken } from '../lib/pushNotifications'
+import { getUserAvatarSource, getUserPhotoUrl } from '../lib/userAvatar'
 import { BRAND, C, COMING_SOON_TOOLS, CREATOR_VIDEOS, GAP, PAD, TOOL_MEDIA, asset, shadow } from '../ui/catalog'
 import { MediaView } from '../ui/ToolMedia'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
@@ -22,6 +25,7 @@ import { ProfileScreen } from '../screens/ProfileScreen'
 import { AccountDetailScreen } from '../screens/AccountDetailScreen'
 import { SubscriptionPlansScreen } from '../screens/SubscriptionPlansScreen'
 import { TokenPacksScreen } from '../screens/TokenPacksScreen'
+import { PlansPreviewScreen } from '../screens/PlansPreviewScreen'
 import { QuickLaunchMenu } from '../ui/QuickLaunchMenu'
 
 const INK_DEEP = '#0B1233'
@@ -91,6 +95,30 @@ function HomeShell({ user }) {
   const [accountDetail, setAccountDetail] = useState(null)
   const [plansOpen, setPlansOpen] = useState(false)
   const [tokensOpen, setTokensOpen] = useState(false)
+  const [plansPreviewOpen, setPlansPreviewOpen] = useState(false)
+  const [notifiedCreationId, setNotifiedCreationId] = useState(null)
+  const notificationResponse = Notifications.useLastNotificationResponse()
+
+  useEffect(() => {
+    registerForPushNotifications().catch(() => {})
+  }, [user.id])
+
+  // Covers taps while running, in background, and the cold start after a tap.
+  useEffect(() => {
+    const creationId = creationIdFromResponse(notificationResponse)
+    if (!creationId) return
+    setOpenTool(null)
+    setPlansOpen(false)
+    setTokensOpen(false)
+    setPlansPreviewOpen(false)
+    setAccountDetail(null)
+    setQuickOpen(false)
+    setTab('creations')
+    setNotifiedCreationId(creationId)
+    Notifications.clearLastNotificationResponseAsync().catch(() => {})
+  }, [notificationResponse])
+
+  const clearNotifiedCreation = useCallback(() => setNotifiedCreationId(null), [])
 
   const loadAccount = useCallback(async () => {
     const { data } = await supabase
@@ -126,6 +154,10 @@ function HomeShell({ user }) {
       loadAccount()
     }
     return <SubscriptionPlansScreen user={user} onBack={closePlans} onPurchased={loadAccount} />
+  }
+
+  if (plansPreviewOpen) {
+    return <PlansPreviewScreen onBack={() => setPlansPreviewOpen(false)} />
   }
 
   if (tokensOpen) {
@@ -188,7 +220,7 @@ function HomeShell({ user }) {
       ) : tab === 'create' ? (
         <CreateScreen onOpenTool={onOpenTool} />
       ) : tab === 'creations' ? (
-        <CreationsScreen onCreate={() => setQuickOpen(true)} />
+        <CreationsScreen onCreate={() => setQuickOpen(true)} openCreationId={notifiedCreationId} onOpenedCreation={clearNotifiedCreation} />
       ) : tab === 'profile' ? (
         <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} onOpenPlans={() => setPlansOpen(true)} onOpenTokens={() => setTokensOpen(true)} />
       ) : (
@@ -239,6 +271,8 @@ function HomeScreen({ user, credits, loading, refreshing, onRefresh, onOpenTool,
 
 function Header({ user, credits, loading, onOpenProfile }) {
   const initial = (user?.email?.[0] || 'C').toUpperCase()
+  const photoUrl = getUserPhotoUrl(user)
+  const [photoFailed, setPhotoFailed] = useState(false)
   return (
     <View style={styles.header}>
       <ChapCamBrand />
@@ -256,6 +290,12 @@ function Header({ user, credits, loading, onOpenProfile }) {
         <Pressable accessibilityRole="button" accessibilityLabel="Mon profil" hitSlop={8} onPress={onOpenProfile}>
           <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
+            <Image
+              source={photoUrl && !photoFailed ? { uri: photoUrl } : getUserAvatarSource(user)}
+              style={styles.avatarPhoto}
+              onError={() => setPhotoFailed(true)}
+              accessibilityIgnoresInvertColors
+            />
           </LinearGradient>
         </Pressable>
       </View>
@@ -437,7 +477,7 @@ function PendingScreen({ tab, user, credits, plan, loading }) {
           ) : (
             <Text style={styles.profileMeta}>{`${planName || 'Aucun forfait actif'} · ${credits} crédits`}</Text>
           )}
-          <Pressable accessibilityRole="button" onPress={() => supabase.auth.signOut()} style={styles.signOut}>
+          <Pressable accessibilityRole="button" onPress={async () => { await unregisterPushToken(); supabase.auth.signOut() }} style={styles.signOut}>
             <Ionicons name="log-out-outline" size={18} color="#E5484D" />
             <Text style={styles.signOutText}>Se déconnecter</Text>
           </Pressable>
@@ -503,7 +543,8 @@ const styles = StyleSheet.create({
   creditPill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingLeft: 4, paddingRight: 11, borderRadius: 16, backgroundColor: C.white, borderWidth: 1, borderColor: C.line },
   creditIcon: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   creditText: { color: C.ink, fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  avatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  avatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  avatarPhoto: { ...StyleSheet.absoluteFillObject, borderRadius: 16 },
   avatarText: { color: C.white, fontSize: 14, fontWeight: '800' },
 
   heroWrap: { marginTop: 4 },

@@ -18,6 +18,7 @@ import {
   View,
 } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { requireOptionalNativeModule } from 'expo-modules-core'
 import { initialWindowMetrics, SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -153,7 +154,7 @@ async function saveVideoToPhotos(uri) {
   }
 }
 
-export function CreationsScreen({ onCreate }) {
+export function CreationsScreen({ onCreate, openCreationId, onOpenedCreation }) {
   const { width } = useWindowDimensions()
   const cardW = (width - PAD * 2 - GAP) / 2
   const [items, setItems] = useState(null)
@@ -179,6 +180,23 @@ export function CreationsScreen({ onCreate }) {
   useEffect(() => {
     load()
   }, [load])
+
+  // Opened from a push: the list may predate the completion, so refetch once
+  // before giving up on finding the notified creation.
+  const refetchedForId = useRef(null)
+  useEffect(() => {
+    if (!openCreationId || !items) return
+    const target = items.find((i) => String(i.id) === openCreationId)
+    if (target?.status === 'completed' && target.playback_url) {
+      setViewing(target)
+      onOpenedCreation?.()
+    } else if (refetchedForId.current !== openCreationId) {
+      refetchedForId.current = openCreationId
+      load()
+    } else {
+      onOpenedCreation?.()
+    }
+  }, [openCreationId, items, load, onOpenedCreation])
 
   const hasProcessing = !!items?.some((i) => i.status === 'processing')
   useEffect(() => {
@@ -548,15 +566,15 @@ function ToolFilterSheet({ visible, tools, value, onClose, onChange }) {
   )
 }
 
-// App.js wraps the tree in RN's SafeAreaView, so the app-level provider measures
-// zero insets. A full-screen Modal is a separate iOS window: it needs its own
-// provider, otherwise the close button lands under the status bar / Dynamic
-// Island where touches never reach it.
+// A full-screen Modal is a separate iOS window: it needs its own provider,
+// otherwise the close button lands under the status bar / Dynamic Island where
+// touches never reach it.
 function Viewer({ item, ...props }) {
   if (!item) return null
   return (
     <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={props.onClose} statusBarTranslucent>
       <SafeAreaProvider initialMetrics={initialWindowMetrics}>
+        <StatusBar style="light" />
         <ViewerContent key={item.id} item={item} {...props} />
       </SafeAreaProvider>
     </Modal>

@@ -122,4 +122,35 @@ async function debitJetons(userId: string, amount: number, providerCostUsd: numb
   return { ok: true as const, charged: amount, balance }
 }
 
+export type JetonsLedgerEntry = {
+  id: string
+  amount: number
+  balanceAfter: number
+  kind: string
+  tool: string | null
+  meta: Record<string, unknown> | null
+  createdAt: string
+}
+
+/** Lecture seule du journal Jetons d'un utilisateur, du plus recent au plus ancien. */
+export async function getJetonsLedger(userId: string, limit = 50): Promise<JetonsLedgerEntry[]> {
+  const size = Math.min(100, Math.max(1, Math.floor(limit)))
+  const rows = await sql`
+    SELECT id, amount, balance_after, kind, tool, meta, created_at
+    FROM jetons_ledger
+    WHERE user_id = ${userId}
+    ORDER BY created_at DESC, id DESC
+    LIMIT ${size}
+  ` as Array<{ id: string | number; amount: number; balance_after: number; kind: string; tool: string | null; meta: Record<string, unknown> | null; created_at: string | Date }>
+  return rows.map((row) => ({
+    id: String(row.id),
+    amount: Number(row.amount) || 0,
+    balanceAfter: Number(row.balance_after) || 0,
+    kind: row.kind,
+    tool: row.tool,
+    meta: row.meta,
+    createdAt: new Date(row.created_at).toISOString(),
+  }))
+}
+
 export { providerCostToJetons, JETONS_PER_USD }

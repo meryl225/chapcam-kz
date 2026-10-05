@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { File, Paths } from 'expo-file-system'
 import { useVideoPlayer, VideoView } from 'expo-video'
@@ -79,6 +80,7 @@ function Segment({ options, value, onChange }) {
 }
 
 export function PhotoVideoScreen({ onBack }) {
+  const insets = useSafeAreaInsets()
   const [photo, setPhoto] = useState(null)
   const [prompt, setPrompt] = useState('')
   const [rawVoices, setRawVoices] = useState([])
@@ -197,11 +199,11 @@ export function PhotoVideoScreen({ onBack }) {
 
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.topbar}>
+      <View style={[styles.topbar, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={onBack} style={styles.back} accessibilityRole="button" accessibilityLabel="Retour"><Ionicons name="chevron-back" size={25} color={C.ink} /></Pressable>
         <View style={styles.titleWrap}><Text style={styles.title}>Photos en Vidéo</Text><Text style={styles.subtitle}>Fais parler une photo avec la voix de ton choix.</Text></View>
       </View>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} keyboardShouldPersistTaps="handled">
         <Text style={styles.sectionLabel}>1 · PHOTO</Text>
         <Pressable onPress={choosePhoto} style={styles.photoCard} accessibilityRole="button">
           {photo ? <Image source={{ uri: photo.uri }} style={styles.photo} resizeMode="cover" /> : <><Ionicons name="image-outline" size={32} color={C.violet} /><Text style={styles.photoTitle}>Choisir une photo</Text><Text style={styles.photoHint}>Un visage de face, net et bien éclairé</Text></>}

@@ -6,6 +6,8 @@ import Constants from 'expo-constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
 import { apiJson, friendlyError } from '../lib/api'
+import { unregisterPushToken } from '../lib/pushNotifications'
+import { getUserAvatarSource, getUserPhotoUrl } from '../lib/userAvatar'
 import { AccountSummaryError, accountSummaryMessage, fetchAccountSummary } from '../lib/accountSummary'
 import { BRAND, C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
@@ -110,8 +112,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const email = user?.email ?? ''
   const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || null
   const initial = ((metaName || email).trim().charAt(0) || 'C').toUpperCase()
-  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null
-  const showPhoto = Boolean(avatarUrl) && !avatarFailed
+  const avatarUrl = getUserPhotoUrl(user)
+  const avatarSource = avatarUrl && !avatarFailed ? { uri: avatarUrl } : getUserAvatarSource(user)
   const memberSince = formatMemberSince(user?.created_at)
 
   const planKey = accountSubscription?.plan || null
@@ -140,7 +142,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const confirmSignOut = () =>
     Alert.alert('Se déconnecter ?', 'Tu devras te reconnecter pour accéder à ton studio.', [
       { text: 'Annuler', style: 'cancel' },
-      { text: 'Se déconnecter', style: 'destructive', onPress: () => supabase.auth.signOut() },
+      { text: 'Se déconnecter', style: 'destructive', onPress: async () => { await unregisterPushToken(); supabase.auth.signOut() } },
     ])
 
   const deleteAccount = async () => {
@@ -201,14 +203,12 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
         <View style={styles.avatarRing}>
           <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
-            {showPhoto ? (
-              <Image
-                source={{ uri: avatarUrl }}
-                style={styles.avatarPhoto}
-                onError={() => setAvatarFailed(true)}
-                accessibilityLabel="Photo de profil"
-              />
-            ) : null}
+            <Image
+              source={avatarSource}
+              style={styles.avatarPhoto}
+              onError={() => setAvatarFailed(true)}
+              accessibilityLabel="Photo de profil"
+            />
           </LinearGradient>
           <Pressable
             accessibilityRole="button"
@@ -228,7 +228,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </View>
           {metaName ? <Text style={styles.heroName} numberOfLines={1}>{metaName}</Text> : null}
           <Text style={metaName ? styles.heroEmailSub : styles.heroName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{email}</Text>
-          <Text style={styles.avatarHint} numberOfLines={1}>Initiale personnalisée</Text>
+          <Text style={styles.avatarHint} numberOfLines={1}>Avatar ChapCam</Text>
           {subscriptionLoading ? (
             <ChapCamLoader size="small" tone="light" style={styles.heroLoader} />
           ) : (
@@ -422,11 +422,11 @@ onPress={onOpenPlans}
         style={({ pressed }) => [styles.deleteAccount, (pressed || deleting) && styles.pressed]}
       >
         {deleting ? (
-          <ActivityIndicator size="small" color={DANGER} />
+          <ActivityIndicator size="small" color="#C98A8E" />
         ) : (
-          <Ionicons name="trash-outline" size={18} color={DANGER} />
+          <Ionicons name="trash-outline" size={15} color="#C98A8E" />
         )}
-        <Text style={styles.signOutText}>{deleting ? 'Suppression en cours…' : 'Supprimer mon compte'}</Text>
+        <Text style={styles.deleteAccountText}>{deleting ? 'Suppression en cours…' : 'Supprimer mon compte'}</Text>
       </Pressable>
 
       <View style={styles.appInfo}>
@@ -567,7 +567,8 @@ const styles = StyleSheet.create({
 
   signOut: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, marginTop: 10, borderRadius: 20, backgroundColor: '#FFF1F1', borderWidth: 1, borderColor: '#FFDADB' },
   signOutText: { color: DANGER, fontSize: 15, fontWeight: '800' },
-  deleteAccount: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 54, borderRadius: 20, borderWidth: 1, borderColor: '#FFDADB' },
+  deleteAccount: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, height: 36, marginTop: 2, borderRadius: 14 },
+  deleteAccountText: { color: '#C98A8E', fontSize: 13, fontWeight: '600' },
 
   appInfo: { alignItems: 'center', gap: 2, marginTop: 4 },
   appName: { color: '#5D6785', fontSize: 13, fontWeight: '800' },

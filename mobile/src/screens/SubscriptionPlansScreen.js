@@ -9,6 +9,7 @@ import {
   ensureRevenueCat,
   isCancelled,
   loadStoreProducts,
+  probeSubscriptionProducts,
   openManageSubscriptions,
   purchaseErrorMessage,
   purchaseStoreItem,
@@ -55,6 +56,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
     setState((s) => ({ ...s, status: 'loading' }))
     try {
       await ensureRevenueCat(user.id)
+      await probeSubscriptionProducts(IOS_PRODUCT_IDS)
       const [products, catalog] = await Promise.all([
         loadStoreProducts(IOS_PRODUCT_IDS, 'subs'),
         fetchIosCatalog(),
@@ -63,7 +65,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
       setState({ status: anyAvailable ? 'ready' : 'unavailable', plans: catalog.plans, products })
     } catch (error) {
       console.warn('[iap] Chargement des forfaits impossible:', error?.message)
-      setState({ status: 'error', plans: [], products: {} })
+      setState({ status: 'error', plans: [], products: {}, errorMessage: `${error?.code ?? ''} ${error?.message ?? String(error)}`.trim() })
     }
   }, [user.id])
 
