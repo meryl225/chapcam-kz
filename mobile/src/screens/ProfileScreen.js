@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
 import { apiJson, friendlyError } from '../lib/api'
 import { unregisterPushToken } from '../lib/pushNotifications'
+import { getUserAvatarSource, getUserPhotoUrl } from '../lib/userAvatar'
 import { AccountSummaryError, accountSummaryMessage, fetchAccountSummary } from '../lib/accountSummary'
 import { BRAND, C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
@@ -111,8 +112,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const email = user?.email ?? ''
   const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || null
   const initial = ((metaName || email).trim().charAt(0) || 'C').toUpperCase()
-  const avatarUrl = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null
-  const showPhoto = Boolean(avatarUrl) && !avatarFailed
+  const avatarUrl = getUserPhotoUrl(user)
+  const avatarSource = avatarUrl && !avatarFailed ? { uri: avatarUrl } : getUserAvatarSource(user)
   const memberSince = formatMemberSince(user?.created_at)
 
   const planKey = accountSubscription?.plan || null
@@ -202,14 +203,12 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
         <View style={styles.avatarRing}>
           <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
-            {showPhoto ? (
-              <Image
-                source={{ uri: avatarUrl }}
-                style={styles.avatarPhoto}
-                onError={() => setAvatarFailed(true)}
-                accessibilityLabel="Photo de profil"
-              />
-            ) : null}
+            <Image
+              source={avatarSource}
+              style={styles.avatarPhoto}
+              onError={() => setAvatarFailed(true)}
+              accessibilityLabel="Photo de profil"
+            />
           </LinearGradient>
           <Pressable
             accessibilityRole="button"
@@ -229,7 +228,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </View>
           {metaName ? <Text style={styles.heroName} numberOfLines={1}>{metaName}</Text> : null}
           <Text style={metaName ? styles.heroEmailSub : styles.heroName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{email}</Text>
-          <Text style={styles.avatarHint} numberOfLines={1}>Initiale personnalisée</Text>
+          <Text style={styles.avatarHint} numberOfLines={1}>Avatar ChapCam</Text>
           {subscriptionLoading ? (
             <ChapCamLoader size="small" tone="light" style={styles.heroLoader} />
           ) : (
