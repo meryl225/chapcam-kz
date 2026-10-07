@@ -547,7 +547,7 @@ onPress={onOpenPlans}
 
       <Text style={styles.sectionTitle} accessibilityRole="header">Paramètres du compte</Text>
       <View style={styles.rows}>
-        <Row icon="person-outline" tint={C.blue} label="Informations personnelles" onPress={() => open(LINKS.settings)} />
+        <Row icon="person-outline" tint={C.blue} label="Informations personnelles" onPress={() => onOpenAccountDetail?.('personal')} />
         <Row icon="shield-half-outline" tint={C.violet} label="Sécurité et confidentialité" onPress={() => open(LINKS.settings)} />
         <Row icon="pulse-outline" tint={C.violet} label="Activité récente" onPress={() => onOpenAccountDetail?.('activity')} />
         <Row icon="wallet-outline" tint={C.blue} label="Achats et factures" onPress={() => onOpenAccountDetail?.('purchases')} />
