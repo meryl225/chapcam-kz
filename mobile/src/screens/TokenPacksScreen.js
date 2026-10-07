@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { IOS_PRODUCT_IDS, TOKEN_PRODUCT_IDS, fetchIosCatalog } from '../lib/iap'
 import {
   ensureRevenueCat,
-  probeSubscriptionProducts,
   isCancelled,
   loadStoreProducts,
   purchaseErrorMessage,
@@ -40,7 +39,6 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
     setState((s) => ({ ...s, status: 'loading' }))
     try {
       await ensureRevenueCat(user.id)
-      await probeSubscriptionProducts(IOS_PRODUCT_IDS)
       const [products, catalog] = await Promise.all([
         loadStoreProducts(TOKEN_PRODUCT_IDS, 'consumable'),
         fetchIosCatalog(),
