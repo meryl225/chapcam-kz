@@ -109,7 +109,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const [socialOpen, setSocialOpen] = useState(false)
   const socialStatus = account.summary?.social_bonus_status
   const socialPending = socialStatus === 'pending'
-  const showSocialBonus = account.summary?.social_bonus_claimed === false
+  // Hidden only once the bonus is really granted; an unreadable status must not hide it.
+  const showSocialBonus = Boolean(account.summary) && account.summary.social_bonus_claimed !== true && socialStatus !== 'approved'
   // undefined = follow the session user's metadata; string/null = result of an edit made on this screen.
   const [editedAvatarUrl, setEditedAvatarUrl] = useState(undefined)
   const [avatarBusy, setAvatarBusy] = useState(false)
