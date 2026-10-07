@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
 import { apiForm, apiJson, friendlyError, readApiError } from '../lib/api'
 import { unregisterPushToken } from '../lib/pushNotifications'
-import { getUserAvatarSource, getUserPhotoUrl } from '../lib/userAvatar'
+import { getUserAvatarSource, getUserPhotoUrl, resolveAvatarUrl } from '../lib/userAvatar'
 import { AccountSummaryError, accountSummaryMessage, fetchAccountSummary } from '../lib/accountSummary'
 import { BRAND, C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
@@ -129,9 +129,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const initial = ((metaName || email).trim().charAt(0) || 'C').toUpperCase()
   // The server value wins over the cached session so the photo survives an app relaunch.
   const serverAvatarUrl = account.summary && 'avatar_url' in account.summary ? account.summary.avatar_url : undefined
-  const avatarUrl = editedAvatarUrl !== undefined
-    ? editedAvatarUrl
-    : serverAvatarUrl !== undefined ? serverAvatarUrl || getUserPhotoUrl(user) : getUserPhotoUrl(user)
+  const avatarUrl = editedAvatarUrl !== undefined ? editedAvatarUrl : resolveAvatarUrl(serverAvatarUrl, user)
   const hasCustomAvatar = Boolean(avatarUrl && !avatarFailed)
   const avatarSource = hasCustomAvatar ? { uri: avatarUrl } : getUserAvatarSource(user)
 

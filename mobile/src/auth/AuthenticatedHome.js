@@ -7,7 +7,7 @@ import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-cont
 import * as Notifications from 'expo-notifications'
 import { supabase } from '../lib/supabase'
 import { creationIdFromResponse, registerForPushNotifications, unregisterPushToken } from '../lib/pushNotifications'
-import { getUserAvatarSource, getUserPhotoUrl } from '../lib/userAvatar'
+import { getUserAvatarSource, resolveAvatarUrl } from '../lib/userAvatar'
 import { fetchAccountSummary } from '../lib/accountSummary'
 import { BRAND, C, COMING_SOON_TOOLS, CREATOR_VIDEOS, GAP, PAD, TOOL_MEDIA, asset, shadow } from '../ui/catalog'
 import { MediaView } from '../ui/ToolMedia'
@@ -127,12 +127,12 @@ function HomeShell({ user }) {
   // A failed reload keeps the last real value instead of showing 0.
   const [jetons, setJetons] = useState(null)
   const [jetonsLoading, setJetonsLoading] = useState(true)
-  const [summaryAvatarUrl, setSummaryAvatarUrl] = useState(null)
+  const [summaryAvatarUrl, setSummaryAvatarUrl] = useState(undefined)
   const loadJetons = useCallback(async () => {
     try {
       const summary = await fetchAccountSummary()
       setJetons(summary.jetons)
-      setSummaryAvatarUrl(typeof summary.avatar_url === 'string' ? summary.avatar_url : null)
+      if ('avatar_url' in summary) setSummaryAvatarUrl(summary.avatar_url)
     } catch {
       // keep the previous balance
     } finally {
@@ -341,7 +341,7 @@ function HomeScreen({ user, jetons, jetonsLoading, avatarUrl, refreshing, onRefr
 function Header({ user, jetons, jetonsLoading, avatarUrl, onOpenProfile }) {
   const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || null
   const initial = ((metaName || user?.email || '').trim().charAt(0) || 'C').toUpperCase()
-  const photoUrl = getUserPhotoUrl(user) || avatarUrl || null
+  const photoUrl = resolveAvatarUrl(avatarUrl, user)
   const [failedUrl, setFailedUrl] = useState(null)
   const [loadedUrl, setLoadedUrl] = useState(null)
   const hasPhoto = Boolean(photoUrl && failedUrl !== photoUrl)
@@ -351,7 +351,9 @@ function Header({ user, jetons, jetonsLoading, avatarUrl, onOpenProfile }) {
       <View style={styles.headerActions}>
         {jetons !== null ? (
           <View style={styles.creditPill} accessible accessibilityLabel={`${jetons} jetons disponibles`}>
-            <Image source={JETONS_LOGO} style={styles.creditIcon} accessibilityIgnoresInvertColors />
+            <View style={styles.creditIcon}>
+              <Image source={JETONS_LOGO} style={styles.creditIconImage} resizeMode="contain" accessibilityIgnoresInvertColors />
+            </View>
             <Text style={styles.creditText}>{jetons.toLocaleString('fr-FR')}</Text>
           </View>
         ) : jetonsLoading ? (
@@ -618,10 +620,13 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD, height: 64 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   creditPill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingLeft: 4, paddingRight: 11, borderRadius: 16, backgroundColor: C.white, borderWidth: 1, borderColor: C.line },
-  creditIcon: { width: 24, height: 24, borderRadius: 12 },
+  // The coin fills ~78% of the square artwork: a light 28px render puts the whole coin edge just inside the 24px circle.
+  creditIcon: { width: 24, height: 24, borderRadius: 12, overflow: 'hidden', backgroundColor: '#0B0F5C' },
+  creditIconImage: { position: 'absolute', top: -2.5, left: -2, width: 28, height: 28 },
   creditText: { color: C.ink, fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
   avatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-  avatarPhoto: { ...StyleSheet.absoluteFillObject, borderRadius: 16 },
+  // Explicit size, same as the Profile avatar: remote images with absoluteFill stay blank on iOS.
+  avatarPhoto: { position: 'absolute', top: 0, left: 0, width: 32, height: 32, borderRadius: 16 },
   avatarText: { color: C.white, fontSize: 14, fontWeight: '800' },
 
   heroWrap: { marginTop: 4 },
