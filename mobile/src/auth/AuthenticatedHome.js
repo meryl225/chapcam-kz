@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Alert, AppState, Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { AI_CONSENT_KEY, AiDataConsentSheet, hasAiDataConsent } from '../ui/AiDataConsent'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
@@ -8,6 +8,7 @@ import * as Notifications from 'expo-notifications'
 import { supabase } from '../lib/supabase'
 import { creationIdFromResponse, registerForPushNotifications, unregisterPushToken } from '../lib/pushNotifications'
 import { getUserAvatarSource, getUserPhotoUrl } from '../lib/userAvatar'
+import { fetchAccountSummary } from '../lib/accountSummary'
 import { BRAND, C, COMING_SOON_TOOLS, CREATOR_VIDEOS, GAP, PAD, TOOL_MEDIA, asset, shadow } from '../ui/catalog'
 import { MediaView } from '../ui/ToolMedia'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
@@ -30,6 +31,7 @@ import { PlansPreviewScreen } from '../screens/PlansPreviewScreen'
 import { QuickLaunchMenu } from '../ui/QuickLaunchMenu'
 
 const INK_DEEP = '#0B1233'
+const JETONS_LOGO = require('../../assets/jetons-logo.png')
 
 const HERO_SLIDES = [
   {
@@ -121,7 +123,25 @@ function HomeShell({ user }) {
 
   const clearNotifiedCreation = useCallback(() => setNotifiedCreationId(null), [])
 
+  // Same source as the Profile balance (Neon jetons_wallets via /api/mobile/account-summary).
+  // A failed reload keeps the last real value instead of showing 0.
+  const [jetons, setJetons] = useState(null)
+  const [jetonsLoading, setJetonsLoading] = useState(true)
+  const [summaryAvatarUrl, setSummaryAvatarUrl] = useState(null)
+  const loadJetons = useCallback(async () => {
+    try {
+      const summary = await fetchAccountSummary()
+      setJetons(summary.jetons)
+      setSummaryAvatarUrl(typeof summary.avatar_url === 'string' ? summary.avatar_url : null)
+    } catch {
+      // keep the previous balance
+    } finally {
+      setJetonsLoading(false)
+    }
+  }, [])
+
   const loadAccount = useCallback(async () => {
+    loadJetons()
     const { data } = await supabase
       .from('subscriptions')
       .select('plan,status,points,expires_at,end_date,is_active')
@@ -135,6 +155,14 @@ function HomeShell({ user }) {
   }, [user.id])
 
   useEffect(() => { loadAccount() }, [loadAccount])
+
+  // Generations debit jetons inside the tool screens: refetch when coming back to Home or to the app.
+  const backOnHome = tab === 'home' && !openTool
+  useEffect(() => { if (backOnHome) loadJetons() }, [backOnHome, loadJetons])
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => { if (state === 'active') loadJetons() })
+    return () => sub.remove()
+  }, [loadJetons])
 
   const subscriptionEnd = subscription?.expires_at || subscription?.end_date
   const subscriptionExpired = Boolean(subscriptionEnd) && new Date(subscriptionEnd).getTime() < Date.now()
@@ -244,8 +272,9 @@ function HomeShell({ user }) {
         {tabPane('home', (
           <HomeScreen
             user={user}
-            credits={subscription ? credits : null}
-            loading={loading}
+            jetons={jetons}
+            jetonsLoading={jetonsLoading}
+            avatarUrl={summaryAvatarUrl}
             onNavigate={setTab}
             refreshing={refreshing}
             onRefresh={onRefresh}
@@ -272,7 +301,7 @@ function HomeShell({ user }) {
   )
 }
 
-function HomeScreen({ user, credits, loading, refreshing, onRefresh, onOpenTool, onNavigate }) {
+function HomeScreen({ user, jetons, jetonsLoading, avatarUrl, refreshing, onRefresh, onOpenTool, onNavigate }) {
   const { width } = useWindowDimensions()
   const colW = (width - PAD * 2 - GAP) / 2
   const goExplore = () => onNavigate('explore')
@@ -284,7 +313,7 @@ function HomeScreen({ user, credits, loading, refreshing, onRefresh, onOpenTool,
       showsVerticalScrollIndicator={false}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.blue} />}
     >
-      <Header user={user} credits={credits} loading={loading} onOpenProfile={() => onNavigate('profile')} />
+      <Header user={user} jetons={jetons} jetonsLoading={jetonsLoading} avatarUrl={avatarUrl} onOpenProfile={() => onNavigate('profile')} />
       <HeroCarousel width={width} onOpenTool={onOpenTool} />
       <QuickActions onOpenTool={onOpenTool} />
 
@@ -309,34 +338,40 @@ function HomeScreen({ user, credits, loading, refreshing, onRefresh, onOpenTool,
   )
 }
 
-function Header({ user, credits, loading, onOpenProfile }) {
-  const initial = (user?.email?.[0] || 'C').toUpperCase()
-  const photoUrl = getUserPhotoUrl(user)
-  const [photoFailed, setPhotoFailed] = useState(false)
+function Header({ user, jetons, jetonsLoading, avatarUrl, onOpenProfile }) {
+  const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || null
+  const initial = ((metaName || user?.email || '').trim().charAt(0) || 'C').toUpperCase()
+  const photoUrl = getUserPhotoUrl(user) || avatarUrl || null
+  const [failedUrl, setFailedUrl] = useState(null)
+  const [loadedUrl, setLoadedUrl] = useState(null)
+  const hasPhoto = Boolean(photoUrl && failedUrl !== photoUrl)
   return (
     <View style={styles.header}>
       <ChapCamBrand />
       <View style={styles.headerActions}>
-        {!loading && credits !== null ? (
-          <View style={styles.creditPill} accessible accessibilityLabel={`${credits} crédits disponibles`}>
-            <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.creditIcon}>
-              <Ionicons name="flash" size={11} color={C.white} />
-            </LinearGradient>
-            <Text style={styles.creditText}>{credits}</Text>
+        {jetons !== null ? (
+          <View style={styles.creditPill} accessible accessibilityLabel={`${jetons} jetons disponibles`}>
+            <Image source={JETONS_LOGO} style={styles.creditIcon} accessibilityIgnoresInvertColors />
+            <Text style={styles.creditText}>{jetons.toLocaleString('fr-FR')}</Text>
           </View>
-        ) : loading ? (
+        ) : jetonsLoading ? (
           <ChapCamLoader size="small" />
         ) : null}
         <Pressable accessibilityRole="button" accessibilityLabel="Mon profil" hitSlop={8} onPress={onOpenProfile}>
-          <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
+          {/* The photo sits beside the gradient (not inside it): remote images nested in the native gradient view stay blank on iOS. */}
+          <View style={styles.avatar}>
+            <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+            {hasPhoto && loadedUrl === photoUrl ? null : <Text style={styles.avatarText}>{initial}</Text>}
             <Image
-              source={photoUrl && !photoFailed ? { uri: photoUrl } : getUserAvatarSource(user)}
+              key={hasPhoto ? photoUrl : 'default'}
+              source={hasPhoto ? { uri: photoUrl } : getUserAvatarSource(user)}
               style={styles.avatarPhoto}
-              onError={() => setPhotoFailed(true)}
+              resizeMode={hasPhoto ? 'cover' : 'contain'}
+              onLoad={() => { if (hasPhoto) setLoadedUrl(photoUrl) }}
+              onError={() => { if (hasPhoto) setFailedUrl(photoUrl) }}
               accessibilityIgnoresInvertColors
             />
-          </LinearGradient>
+          </View>
         </Pressable>
       </View>
     </View>
@@ -583,7 +618,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: PAD, height: 64 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   creditPill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 32, paddingLeft: 4, paddingRight: 11, borderRadius: 16, backgroundColor: C.white, borderWidth: 1, borderColor: C.line },
-  creditIcon: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  creditIcon: { width: 24, height: 24, borderRadius: 12 },
   creditText: { color: C.ink, fontSize: 13, fontWeight: '800', fontVariant: ['tabular-nums'] },
   avatar: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarPhoto: { ...StyleSheet.absoluteFillObject, borderRadius: 16 },

@@ -64,11 +64,17 @@ async function ensureTable() {
 }
 
 export async function getSocialBonusState(userId: string): Promise<SocialBonusState> {
-  await ensureTable()
-  const rows = (await db()`
-    SELECT status FROM social_reward_claims WHERE user_id = ${userId}
-    ORDER BY (status = 'approved') DESC, created_at DESC LIMIT 1
-  `) as Array<{ status: SocialClaimStatus }>
+  // DDL can be refused by the production role even though the table exists: never let it hide the bonus.
+  await ensureTable().catch((error) => console.error('[social-claims] ensureTable:', error))
+  let rows: Array<{ status: SocialClaimStatus }> = []
+  try {
+    rows = (await db()`
+      SELECT status FROM social_reward_claims WHERE user_id = ${userId}
+      ORDER BY (status = 'approved') DESC, created_at DESC LIMIT 1
+    `) as Array<{ status: SocialClaimStatus }>
+  } catch (error) {
+    console.error('[social-claims] lecture statut:', error)
+  }
   if (rows[0]?.status === 'approved') return 'approved'
   // Accounts credited by the earlier self-declared flow stay marked as claimed.
   if (await hasClaimedSocialBonus(userId)) return 'approved'

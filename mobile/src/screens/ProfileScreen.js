@@ -109,10 +109,12 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const [socialOpen, setSocialOpen] = useState(false)
   const socialStatus = account.summary?.social_bonus_status
   const socialPending = socialStatus === 'pending'
-  const showSocialBonus = account.summary?.social_bonus_claimed === false
+  // Hidden only once the bonus is really granted; an unreadable status must not hide it.
+  const showSocialBonus = Boolean(account.summary) && account.summary.social_bonus_claimed !== true && socialStatus !== 'approved'
   // undefined = follow the session user's metadata; string/null = result of an edit made on this screen.
   const [editedAvatarUrl, setEditedAvatarUrl] = useState(undefined)
   const [avatarBusy, setAvatarBusy] = useState(false)
+  const [loadedAvatarUrl, setLoadedAvatarUrl] = useState(null)
 
   // Live Swap + plan come from the same Supabase `subscriptions` row the website dashboard reads
   // (loaded by AuthenticatedHome under the user's session / RLS). Jetons live in the Neon
@@ -315,13 +317,16 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           hitSlop={6}
           style={({ pressed }) => [styles.avatarRing, pressed && styles.pressed]}
         >
-          <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
-            <Text style={styles.avatarText}>{initial}</Text>
+          {/* The photo sits beside the gradient (not inside it): remote images nested in the native gradient view stay blank on iOS. */}
+          <View style={styles.avatar}>
+            <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+            {hasCustomAvatar && loadedAvatarUrl === avatarUrl ? null : <Text style={styles.avatarText}>{initial}</Text>}
             <Image
               key={hasCustomAvatar ? avatarUrl : 'default'}
               source={avatarSource}
               style={styles.avatarPhoto}
               resizeMode={hasCustomAvatar ? 'cover' : 'contain'}
+              onLoad={() => { if (hasCustomAvatar) setLoadedAvatarUrl(avatarUrl) }}
               onError={() => setAvatarFailed(true)}
               accessibilityIgnoresInvertColors
             />
@@ -330,7 +335,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
                 <ActivityIndicator color={C.white} />
               </View>
             ) : null}
-          </LinearGradient>
+          </View>
           <View style={styles.avatarEdit} pointerEvents="none">
             <Ionicons name={hasCustomAvatar ? 'pencil' : 'camera'} size={12} color={C.white} />
           </View>
@@ -677,7 +682,7 @@ const styles = StyleSheet.create({
   avatarRing: { padding: 3, borderRadius: 50, backgroundColor: 'rgba(255, 255, 255, 0.9)' },
   avatar: { width: 82, height: 82, borderRadius: 41, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarText: { color: C.white, fontSize: 34, fontWeight: '900' },
-  avatarPhoto: { ...StyleSheet.absoluteFillObject, borderRadius: 41 },
+  avatarPhoto: { position: 'absolute', top: 0, left: 0, width: 82, height: 82, borderRadius: 41 },
   avatarBusy: { ...StyleSheet.absoluteFillObject, borderRadius: 41, backgroundColor: 'rgba(11, 16, 48, 0.55)', alignItems: 'center', justifyContent: 'center' },
   avatarEdit: { position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, backgroundColor: NAVY, borderWidth: 2, borderColor: C.white, alignItems: 'center', justifyContent: 'center' },
   heroInfo: { flex: 1, gap: 6, minWidth: 0 },
