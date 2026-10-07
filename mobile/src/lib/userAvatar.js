@@ -26,6 +26,12 @@ export function getUserPhotoUrl(user) {
   return user?.user_metadata?.avatar_url || user?.user_metadata?.picture || null
 }
 
+// serverAvatarUrl: avatar_url from /api/mobile/account-summary (undefined = not loaded yet).
+// The server value wins over the cached session so the photo survives an app relaunch.
+export function resolveAvatarUrl(serverAvatarUrl, user) {
+  return serverAvatarUrl !== undefined ? serverAvatarUrl || getUserPhotoUrl(user) : getUserPhotoUrl(user)
+}
+
 export function getUserAvatarSource(user) {
   return getUserAvatar(user?.id || user?.email)
 }
