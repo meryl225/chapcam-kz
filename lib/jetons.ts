@@ -100,6 +100,42 @@ export async function creditJetonsOnce(userId: string, transactionId: string, am
   return { credited: false as const, balance: (await getJetonsBalance(userId)).balance }
 }
 
+export const WELCOME_BONUS_JETONS = 5
+// Only accounts created from the launch of the offer qualify: existing users
+// were never promised this bonus and must not receive it retroactively.
+const WELCOME_BONUS_START = Date.parse('2026-10-07T00:00:00Z')
+
+/**
+ * Grants the signup bonus at most once per account. The `welcome:<userId>` key
+ * goes through the same atomic claim as IAP credits, so concurrent requests or
+ * repeated logins can never credit it twice.
+ */
+export async function grantWelcomeJetonsOnce(userId: string, accountCreatedAt: string | undefined | null) {
+  const createdAt = accountCreatedAt ? Date.parse(accountCreatedAt) : Number.NaN
+  if (Number.isNaN(createdAt) || createdAt < WELCOME_BONUS_START) return { credited: false as const }
+  const result = await creditJetonsOnce(userId, `welcome:${userId}`, WELCOME_BONUS_JETONS, { source: 'welcome_bonus' })
+  return { credited: result.credited }
+}
+
+export const SOCIAL_BONUS_JETONS = 5
+export const SOCIAL_NETWORKS = ['tiktok', 'instagram', 'facebook', 'x'] as const
+
+const socialBonusKey = (userId: string) => `social:${userId}`
+
+/** Social follows cannot be verified through public APIs, so the bonus is capped at one claim per account. */
+export async function grantSocialBonusOnce(userId: string) {
+  return creditJetonsOnce(userId, socialBonusKey(userId), SOCIAL_BONUS_JETONS, { source: 'social_bonus' })
+}
+
+export async function hasClaimedSocialBonus(userId: string) {
+  try {
+    const rows = await sql`SELECT 1 FROM jetons_iap_credits WHERE transaction_id = ${socialBonusKey(userId)} LIMIT 1` as unknown[]
+    return rows.length > 0
+  } catch {
+    return false
+  }
+}
+
 export async function reserveJetons(userId: string, providerCostUsd: number, tool: string, meta?: Record<string, unknown>) {
   return debitJetons(userId, providerCostToJetons(providerCostUsd), providerCostUsd, tool, meta)
 }

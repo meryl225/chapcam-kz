@@ -141,6 +141,18 @@ function AuthContent() {
             <Text style={styles.subtitle}>{subtitle}</Text>
           </View>
 
+          {mode === 'signUp' ? (
+            <View style={styles.bonus} accessible accessibilityLabel="5 jetons offerts. Crée ton compte et reçois automatiquement 5 jetons de bienvenue.">
+              <View style={styles.bonusIcon}>
+                <Ionicons name="gift-outline" size={18} color={C.violet} />
+              </View>
+              <View style={styles.bonusText}>
+                <Text style={styles.bonusTitle}>5 jetons offerts</Text>
+                <Text style={styles.bonusCopy}>Crée ton compte et reçois automatiquement 5 jetons de bienvenue.</Text>
+              </View>
+            </View>
+          ) : null}
+
           <View style={styles.card}>
             <Text style={styles.label}>E-mail</Text>
             <View style={[styles.field, focused === 'email' && styles.fieldFocused]}>
@@ -309,10 +321,33 @@ const styles = StyleSheet.create({
   header: { marginTop: 40, marginBottom: 24, gap: 8 },
   title: { color: C.ink, fontSize: 34, fontWeight: '800', letterSpacing: -0.8 },
   subtitle: { color: C.muted, fontSize: 16, lineHeight: 23 },
+  bonus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: C.line,
+    backgroundColor: 'rgba(255,255,255,0.72)',
+  },
+  bonusIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.softBlue,
+  },
+  bonusText: { flex: 1, gap: 2 },
+  bonusTitle: { color: C.ink, fontSize: 15, fontWeight: '700', letterSpacing: -0.1 },
+  bonusCopy: { color: C.muted, fontSize: 13, lineHeight: 18 },
   card: {
     backgroundColor: C.white,
     borderRadius: 24,
-    padding: 18,
+    padding: 20,
     borderWidth: 1,
     borderColor: C.line,
     ...shadow,

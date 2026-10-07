@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getJetonsBalance } from '@/lib/jetons'
+import { getJetonsBalance, grantWelcomeJetonsOnce } from '@/lib/jetons'
+import { getSocialBonusState } from '@/lib/social-claims'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
@@ -23,11 +24,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: NO_STORE })
   }
 
+  // Granted before reading the balance so the first summary already shows it.
+  // A failure here must never block the account from loading; it is retried on
+  // the next summary call and stays idempotent.
+  const welcomeBonus = await grantWelcomeJetonsOnce(user.id, user.created_at).catch((error) => {
+    console.error('[mobile/account-summary] Bonus de bienvenue non crédité:', error)
+    return { credited: false as const }
+  })
+
   try {
     // Authenticate with the mobile bearer token, then read the same production
     // tables as the website with service-role scope (RLS otherwise hides them).
     const accountDb = createAdminClient()
-    const [{ data: subscription, error: subscriptionError }, jetons] = await Promise.all([
+    const [{ data: subscription, error: subscriptionError }, jetons, socialBonusState] = await Promise.all([
       accountDb
         .from('subscriptions')
         .select('plan,status,is_active,points,expires_at,end_date')
@@ -36,6 +45,10 @@ export async function GET(request: NextRequest) {
         .limit(1)
         .maybeSingle(),
       getJetonsBalance(user.id),
+      getSocialBonusState(user.id).catch((error) => {
+        console.error('[mobile/account-summary] Statut bonus réseaux indisponible:', error)
+        return null
+      }),
     ])
 
     if (subscriptionError) throw subscriptionError
@@ -83,6 +96,10 @@ export async function GET(request: NextRequest) {
         points_per_second: typeof remainingPoints === 'number' ? 2 : null,
       },
       subscription: returnedSubscription,
+      welcome_bonus_credited: welcomeBonus.credited,
+      // null hides the bonus UI when the status cannot be read.
+      social_bonus_claimed: socialBonusState === null ? null : socialBonusState === 'approved',
+      social_bonus_status: socialBonusState,
     }, { headers: NO_STORE })
   } catch (error) {
     console.error('[mobile/account-summary] Erreur:', error)

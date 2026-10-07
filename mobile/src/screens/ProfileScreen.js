@@ -14,6 +14,7 @@ import { BRAND, C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { ReportAbuseSheet } from '../ui/Safety'
 import { SupportSheet } from '../ui/SupportSheet'
+import { SocialBonusSheet } from '../ui/SocialBonusSheet'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const DANGER = '#E5484D'
@@ -105,6 +106,10 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const [deleting, setDeleting] = useState(false)
   const [reporting, setReporting] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
+  const [socialOpen, setSocialOpen] = useState(false)
+  const socialStatus = account.summary?.social_bonus_status
+  const socialPending = socialStatus === 'pending'
+  const showSocialBonus = account.summary?.social_bonus_claimed === false
   // undefined = follow the session user's metadata; string/null = result of an edit made on this screen.
   const [editedAvatarUrl, setEditedAvatarUrl] = useState(undefined)
   const [avatarBusy, setAvatarBusy] = useState(false)
@@ -328,7 +333,21 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             <View style={styles.identityLine} />
           </View>
           {metaName ? <Text style={styles.heroName} numberOfLines={1}>{metaName}</Text> : null}
-          <Text style={metaName ? styles.heroEmailSub : styles.heroName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{email}</Text>
+          <View style={styles.emailRow}>
+            <Text style={[metaName ? styles.heroEmailSub : styles.heroName, styles.emailText]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{email}</Text>
+            {showSocialBonus ? (
+              <Pressable
+                onPress={() => setSocialOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel="Obtenir 5 jetons offerts"
+                hitSlop={8}
+                style={({ pressed }) => [styles.bonusPill, pressed && styles.pressed]}
+              >
+                <Ionicons name="gift-outline" size={12} color="#E9D9FF" />
+                <Text style={styles.bonusPillText}>+5</Text>
+              </Pressable>
+            ) : null}
+          </View>
           <Text style={styles.avatarHint} numberOfLines={1}>{hasCustomAvatar ? 'Ma photo de profil' : 'Touchez l’avatar pour ajouter votre photo'}</Text>
           {subscriptionLoading ? (
             <ChapCamLoader size="small" tone="light" style={styles.heroLoader} />
@@ -343,6 +362,35 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           {memberSince ? <Text style={styles.memberSince}>Membre depuis {memberSince}</Text> : null}
         </View>
       </LinearGradient>
+
+      {showSocialBonus ? (
+        <Pressable
+          onPress={() => setSocialOpen(true)}
+          accessibilityRole="button"
+          accessibilityLabel="5 jetons offerts. Obtiens 5 jetons en suivant ChapCam sur TikTok, Instagram, Facebook et X."
+          style={({ pressed }) => [styles.bonusCard, pressed && styles.pressed]}
+        >
+          <View style={styles.bonusIcon}>
+            <Ionicons name="gift-outline" size={18} color={C.blue} />
+          </View>
+          <View style={styles.bonusText}>
+            <Text style={styles.bonusTitle}>5 jetons offerts</Text>
+            <Text style={styles.bonusCopy}>
+              {socialPending
+                ? 'Ta preuve est en attente de vérification.'
+                : 'Obtiens 5 jetons en suivant ChapCam sur TikTok, Instagram, Facebook et X.'}
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={C.muted} />
+        </Pressable>
+      ) : null}
+
+      <SocialBonusSheet
+        visible={socialOpen}
+        status={socialStatus}
+        onClose={() => setSocialOpen(false)}
+        onSubmitted={account.reload}
+      />
 
       {jetonsError ? (
         <View style={styles.summaryError}>
@@ -630,6 +678,15 @@ const styles = StyleSheet.create({
   identityLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.18)' },
   heroName: { color: C.white, fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
   heroEmailSub: { color: '#DCE2F5', fontSize: 14, fontWeight: '600' },
+  emailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  emailText: { flexShrink: 1 },
+  bonusPill: { flexDirection: 'row', alignItems: 'center', gap: 4, height: 24, paddingHorizontal: 9, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.55)', backgroundColor: 'rgba(123, 77, 255, 0.22)' },
+  bonusPillText: { color: C.white, fontSize: 12, fontWeight: '800', letterSpacing: 0.2 },
+  bonusCard: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 18, borderWidth: 1, borderColor: C.line, backgroundColor: C.white },
+  bonusIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: C.softBlue },
+  bonusText: { flex: 1, gap: 2 },
+  bonusTitle: { color: C.ink, fontSize: 14, fontWeight: '800' },
+  bonusCopy: { color: C.muted, fontSize: 12, lineHeight: 17 },
   avatarHint: { color: 'rgba(220,226,245,0.72)', fontSize: 11, fontWeight: '600' },
   heroLoader: { alignSelf: 'flex-start', height: 28 },
   heroChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
