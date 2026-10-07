@@ -13,6 +13,7 @@ import { AccountSummaryError, accountSummaryMessage, fetchAccountSummary } from 
 import { BRAND, C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { ReportAbuseSheet } from '../ui/Safety'
+import { SupportSheet } from '../ui/SupportSheet'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const DANGER = '#E5484D'
@@ -103,6 +104,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [reporting, setReporting] = useState(false)
+  const [supportOpen, setSupportOpen] = useState(false)
   // undefined = follow the session user's metadata; string/null = result of an edit made on this screen.
   const [editedAvatarUrl, setEditedAvatarUrl] = useState(undefined)
   const [avatarBusy, setAvatarBusy] = useState(false)
@@ -498,7 +500,11 @@ onPress={onOpenPlans}
 
       <Text style={styles.sectionTitle} accessibilityRole="header">Support</Text>
       <View style={styles.rows}>
-        <Row icon="help-buoy-outline" tint={C.blue} label="Aide & support" value="contact@chapcam.com" onPress={() => open(LINKS.support)} />
+        {Platform.OS === 'ios' ? (
+          <Row icon="headset-outline" tint={C.blue} label="Service client" onPress={() => setSupportOpen(true)} />
+        ) : (
+          <Row icon="help-buoy-outline" tint={C.blue} label="Aide & support" value="contact@chapcam.com" onPress={() => open(LINKS.support)} />
+        )}
         {Platform.OS === 'ios' ? (
           <Row icon="flag-outline" tint={C.violet} label="Signaler un contenu" onPress={() => setReporting(true)} />
         ) : null}
@@ -507,7 +513,10 @@ onPress={onOpenPlans}
         <Row icon="language-outline" tint={C.violet} label="Langue" value="Français" />
       </View>
       {Platform.OS === 'ios' ? (
-        <ReportAbuseSheet visible={reporting} onClose={() => setReporting(false)} contentUrl="" context="Profil" />
+        <>
+          <ReportAbuseSheet visible={reporting} onClose={() => setReporting(false)} contentUrl="" context="Profil" />
+          <SupportSheet visible={supportOpen} onClose={() => setSupportOpen(false)} />
+        </>
       ) : null}
 
       <Pressable
