@@ -7,10 +7,10 @@ import { C } from './catalog'
 
 // Official ChapCam accounts. Keep in sync with SOCIAL_NETWORKS in lib/jetons.ts.
 const NETWORKS = [
-  { id: 'tiktok', label: 'TikTok', handle: '@chapcam', icon: 'logo-tiktok', url: 'https://www.tiktok.com/@chapcam' },
-  { id: 'instagram', label: 'Instagram', handle: '@chapcam', icon: 'logo-instagram', url: 'https://www.instagram.com/chapcam' },
-  { id: 'facebook', label: 'Facebook', handle: 'ChapCam', icon: 'logo-facebook', url: 'https://www.facebook.com/chapcam' },
-  { id: 'x', label: 'X', handle: '@chapcam', icon: 'logo-x', url: 'https://x.com/chapcam' },
+  { id: 'tiktok', label: 'TikTok', handle: '@multivoix.ci', icon: 'logo-tiktok', url: 'https://www.tiktok.com/@multivoix.ci?_r=1&_t=ZS-9AMIH938gLp' },
+  { id: 'instagram', label: 'Instagram', handle: '@chapcam_officiel', icon: 'logo-instagram', url: 'https://www.instagram.com/chapcam_officiel?stkn=MWd2ZGV6eDM0OGZndQ%3D%3D&utm_source=qr' },
+  { id: 'facebook', label: 'Facebook', handle: 'ChapCam', icon: 'logo-facebook', url: 'https://www.facebook.com/share/18YsqwgfJr/?mibextid=wwXIfr' },
+  { id: 'x', label: 'X', handle: '@metaafrika', icon: 'logo-x', url: 'https://x.com/metaafrika?s=11' },
 ]
 
 export function SocialBonusSheet({ visible, onClose, onClaimed }) {

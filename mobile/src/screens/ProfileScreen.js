@@ -365,7 +365,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
         <Pressable
           onPress={() => setSocialOpen(true)}
           accessibilityRole="button"
-          accessibilityLabel="5 jetons offerts. Obtiens 5 jetons en suivant ChapCam sur TikTok, Facebook, X et Instagram."
+          accessibilityLabel="5 jetons offerts. Obtiens 5 jetons en suivant ChapCam sur TikTok, Instagram, Facebook et X."
           style={({ pressed }) => [styles.bonusCard, pressed && styles.pressed]}
         >
           <View style={styles.bonusIcon}>
@@ -373,7 +373,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </View>
           <View style={styles.bonusText}>
             <Text style={styles.bonusTitle}>5 jetons offerts</Text>
-            <Text style={styles.bonusCopy}>Obtiens 5 jetons en suivant ChapCam sur TikTok, Facebook, X et Instagram.</Text>
+            <Text style={styles.bonusCopy}>Obtiens 5 jetons en suivant ChapCam sur TikTok, Instagram, Facebook et X.</Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={C.muted} />
         </Pressable>
