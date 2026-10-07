@@ -148,31 +148,30 @@ function HomeShell({ user }) {
 
   const onQuickLaunch = onOpenTool
 
+  // Tabs stay mounted once visited so switching back does not refetch and re-show loaders.
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set(['home']))
+  useEffect(() => {
+    setVisitedTabs((prev) => (prev.has(tab) ? prev : new Set(prev).add(tab)))
+  }, [tab])
+
+  let overlay = null
   if (plansOpen) {
     const closePlans = () => {
       setPlansOpen(false)
       loadAccount()
     }
-    return <SubscriptionPlansScreen user={user} onBack={closePlans} onPurchased={loadAccount} />
-  }
-
-  if (plansPreviewOpen) {
-    return <PlansPreviewScreen onBack={() => setPlansPreviewOpen(false)} />
-  }
-
-  if (tokensOpen) {
+    overlay = <SubscriptionPlansScreen user={user} onBack={closePlans} onPurchased={loadAccount} />
+  } else if (plansPreviewOpen) {
+    overlay = <PlansPreviewScreen onBack={() => setPlansPreviewOpen(false)} />
+  } else if (tokensOpen) {
     const closeTokens = () => {
       setTokensOpen(false)
       loadAccount()
     }
-    return <TokenPacksScreen user={user} onBack={closeTokens} onPurchased={loadAccount} />
-  }
-
-  if (accountDetail) {
-    return <AccountDetailScreen type={accountDetail} onBack={() => setAccountDetail(null)} subscription={subscription} />
-  }
-
-  if (openTool === 'live') {
+    overlay = <TokenPacksScreen user={user} onBack={closeTokens} onPurchased={loadAccount} />
+  } else if (accountDetail) {
+    overlay = <AccountDetailScreen type={accountDetail} onBack={() => setAccountDetail(null)} subscription={subscription} />
+  } else if (openTool === 'live') {
     // The Live Swap debits subscriptions.points: refetch so Home and Profile show the new balance.
     const closeLiveSwap = () => {
       setOpenTool(null)
@@ -182,52 +181,59 @@ function HomeShell({ user }) {
       setOpenTool(null)
       setPlansOpen(true)
     }
-    return <LiveSwapScreen onBack={closeLiveSwap} onOpenPlans={openPlansFromLive} topInset={insets.top} bottomInset={insets.bottom} subscription={loading ? undefined : subscription} />
-  }
-  if (openTool === 'photo-video') {
-    return <PhotoVideoScreen onBack={() => setOpenTool(null)} />
-  }
-  if (openTool === 'voice') {
-    return <VoiceMessageScreen onBack={() => setOpenTool(null)} />
-  }
-  if (openTool === 'genjutsu') {
-    return <GenjutsuScreen onBack={() => setOpenTool(null)} onOpenCreations={() => { setOpenTool(null); setTab('creations') }} topInset={insets.top} />
-  }
-  if (openTool === 'motion') {
-    return <MotionControlScreen onBack={() => setOpenTool(null)} onOpenCreations={() => { setOpenTool(null); setTab('creations') }} topInset={insets.top} />
-  }
-  if (openTool === 'translate') {
-    return <VideoTranslationScreen onBack={() => setOpenTool(null)} />
-  }
-  if (openTool === 'verify') {
-    return <ChapVerifyScreen onBack={() => setOpenTool(null)} topInset={insets.top} />
+    overlay = <LiveSwapScreen onBack={closeLiveSwap} onOpenPlans={openPlansFromLive} topInset={insets.top} bottomInset={insets.bottom} subscription={loading ? undefined : subscription} />
+  } else if (openTool === 'photo-video') {
+    overlay = <PhotoVideoScreen onBack={() => setOpenTool(null)} />
+  } else if (openTool === 'voice') {
+    overlay = <VoiceMessageScreen onBack={() => setOpenTool(null)} />
+  } else if (openTool === 'genjutsu') {
+    overlay = <GenjutsuScreen onBack={() => setOpenTool(null)} onOpenCreations={() => { setOpenTool(null); setTab('creations') }} topInset={insets.top} />
+  } else if (openTool === 'motion') {
+    overlay = <MotionControlScreen onBack={() => setOpenTool(null)} onOpenCreations={() => { setOpenTool(null); setTab('creations') }} topInset={insets.top} />
+  } else if (openTool === 'translate') {
+    overlay = <VideoTranslationScreen onBack={() => setOpenTool(null)} />
+  } else if (openTool === 'verify') {
+    overlay = <ChapVerifyScreen onBack={() => setOpenTool(null)} topInset={insets.top} />
   }
 
+  const tabPane = (key, content) =>
+    visitedTabs.has(key) || tab === key ? (
+      <View key={key} style={[styles.tabPane, tab !== key && styles.hidden]}>
+        {content}
+      </View>
+    ) : null
+
+  const isKnownTab = ['home', 'explore', 'create', 'creations', 'profile'].includes(tab)
+
   return (
-    <View style={[styles.root, { paddingTop: insets.top }]}>
-      {tab === 'home' ? (
-        <HomeScreen
-          user={user}
-          credits={subscription ? credits : null}
-          loading={loading}
-          onNavigate={setTab}
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          onOpenTool={onOpenTool}
-        />
-      ) : tab === 'explore' ? (
-        <ExploreScreen onOpenTool={onOpenTool} />
-      ) : tab === 'create' ? (
-        <CreateScreen onOpenTool={onOpenTool} />
-      ) : tab === 'creations' ? (
-        <CreationsScreen onCreate={() => setQuickOpen(true)} openCreationId={notifiedCreationId} onOpenedCreation={clearNotifiedCreation} />
-      ) : tab === 'profile' ? (
-        <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} onOpenPlans={() => setPlansOpen(true)} onOpenTokens={() => setTokensOpen(true)} />
-      ) : (
-        <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />
-      )}
-      <TabBar tab={tab} onChange={(key) => (key === 'create' ? setQuickOpen(true) : setTab(key))} bottom={insets.bottom} />
-      <QuickLaunchMenu visible={quickOpen} bottom={insets.bottom} onClose={() => setQuickOpen(false)} onSelect={onQuickLaunch} />
+    <View style={styles.root}>
+      <View style={[styles.root, { paddingTop: insets.top }, overlay && styles.hidden]}>
+        {tabPane('home', (
+          <HomeScreen
+            user={user}
+            credits={subscription ? credits : null}
+            loading={loading}
+            onNavigate={setTab}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            onOpenTool={onOpenTool}
+          />
+        ))}
+        {tabPane('explore', <ExploreScreen onOpenTool={onOpenTool} />)}
+        {tabPane('create', <CreateScreen onOpenTool={onOpenTool} />)}
+        {tabPane('creations', (
+          <CreationsScreen onCreate={() => setQuickOpen(true)} openCreationId={notifiedCreationId} onOpenedCreation={clearNotifiedCreation} />
+        ))}
+        {tabPane('profile', (
+          <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} onOpenPlans={() => setPlansOpen(true)} onOpenTokens={() => setTokensOpen(true)} />
+        ))}
+        {!isKnownTab ? (
+          <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />
+        ) : null}
+        <TabBar tab={tab} onChange={(key) => (key === 'create' ? setQuickOpen(true) : setTab(key))} bottom={insets.bottom} />
+        <QuickLaunchMenu visible={quickOpen && !overlay} bottom={insets.bottom} onClose={() => setQuickOpen(false)} onSelect={onQuickLaunch} />
+      </View>
+      {overlay ? <View style={StyleSheet.absoluteFill}>{overlay}</View> : null}
     </View>
   )
 }
@@ -534,6 +540,8 @@ function TabBar({ tab, onChange, bottom }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
+  tabPane: { flex: 1 },
+  hidden: { display: 'none' },
   flex: { flex: 1 },
   pressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
   content: { paddingBottom: 120 },
