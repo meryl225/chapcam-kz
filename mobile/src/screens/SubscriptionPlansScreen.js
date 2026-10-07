@@ -82,10 +82,21 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
     if (!item || busySku || restoring) return
     setBusySku(productId)
     try {
-      await purchaseStoreItem(item)
+      await ensureRevenueCat(user.id)
+      const purchase = await purchaseStoreItem(item)
+      const info = purchase?.customerInfo
+      console.log('[iap-diag] achat Apple', {
+        productId,
+        productIdentifier: purchase?.productIdentifier,
+        appUserId: info?.originalAppUserId,
+        expectedUserId: user.id,
+        activeSubscriptions: info?.activeSubscriptions,
+        entitlements: Object.keys(info?.entitlements?.active ?? {}),
+      })
     } catch (error) {
       setBusySku(null)
       if (isCancelled(error)) return
+      console.log('[iap-diag] achat echoue', { productId, code: error?.code, message: error?.message })
       Alert.alert('Paiement non effectué', purchaseErrorMessage(error))
       return
     }

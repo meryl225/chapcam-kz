@@ -107,24 +107,48 @@ async function applySubscriptions(admin: Admin, userId: string, email: string, s
     }
 
     active = true
-    // Reservation atomique : chaque periode Apple n'ouvre le forfait qu'une fois,
-    // quelle que soit la source (achat, restauration, webhook).
-    const { error: claimErr } = await admin.from('processed_payments').insert({
+    // Reservation atomique par transaction Apple : l'app et le webhook peuvent
+    // arriver en meme temps, seul celui qui bascule credited false -> true credite.
+    const { error: insertErr } = await admin.from('processed_payments').insert({
       token,
       email,
       product_id: plan.id,
       amount: plan.price,
       credited: false,
     })
-    if (claimErr) {
-      const { data: claim } = await admin.from('processed_payments').select('credited').eq('token', token).maybeSingle()
-      if (claim?.credited) {
-        items.push({ productId, transactionId: token, status: 'already', expiresAt: sub.expires_date })
-        continue
-      }
+    if (insertErr && insertErr.code !== '23505') throw new Error(`processed_payments insert: ${insertErr.message}`)
+    const { data: claimed, error: claimErr } = await admin
+      .from('processed_payments')
+      .update({ credited: true })
+      .eq('token', token)
+      .eq('credited', false)
+      .select('token')
+    if (claimErr) throw new Error(`processed_payments claim: ${claimErr.message}`)
+    if (!claimed?.length) {
+      console.info('[iap-diag] deja credite', { userId, productId, token })
+      items.push({ productId, transactionId: token, status: 'already', expiresAt: sub.expires_date })
+      continue
     }
-    await activateSubscription(admin, userId, email, plan, { endDate: new Date(expiresMs) })
-    await admin.from('processed_payments').update({ credited: true }).eq('token', token)
+
+    try {
+      await activateSubscription(admin, userId, email, plan, { endDate: new Date(expiresMs) })
+      // activateSubscription journalise ses erreurs sans les lever : on relit la
+      // ligne pour ne jamais marquer credite un forfait qui n'a pas ete ecrit.
+      const { data: written } = await admin
+        .from('subscriptions')
+        .select('plan, is_active, end_date')
+        .eq('user_id', userId)
+        .maybeSingle()
+      const writtenEnd = written?.end_date ? Date.parse(written.end_date) : 0
+      if (!written?.is_active || writtenEnd < expiresMs - 60_000) {
+        throw new Error(`abonnement non enregistre (${JSON.stringify(written)})`)
+      }
+      console.info('[iap-diag] forfait applique', { userId, productId, plan: plan.id, token, endDate: written.end_date, jetons: plan.jetons, source })
+    } catch (error) {
+      await admin.from('processed_payments').update({ credited: false }).eq('token', token)
+      console.error('[iap-diag] activation echouee', { userId, productId, token, error: (error as Error).message })
+      throw error
+    }
     await logPaymentEvent(admin, { ...logBase, status: 'completed', credited: true })
     items.push({ productId, transactionId: token, status: 'activated', expiresAt: sub.expires_date })
   }
@@ -173,6 +197,14 @@ export async function syncRevenueCatCustomer(userId: string, opts: { email?: str
   const subscriber = await fetchSubscriber(userId)
   const admin = createAdminClient()
   const email = await emailFor(admin, userId, opts.email)
+  console.info('[iap-diag] revenuecat', {
+    userId,
+    source: opts.source,
+    supabaseUserFound: Boolean(email),
+    subscriptions: Object.fromEntries(
+      Object.entries(subscriber.subscriptions ?? {}).map(([id, s]) => [id, { expires: s.expires_date, tx: s.store_transaction_id, sandbox: s.is_sandbox }]),
+    ),
+  })
   const subs = await applySubscriptions(admin, userId, email, subscriber, opts.source)
   const packs = await applyTokenPacks(admin, userId, email, subscriber, opts.source)
   return { items: [...subs.items, ...packs.items], subscriptionActive: subs.active, balance: packs.balance }
