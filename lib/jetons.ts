@@ -100,6 +100,23 @@ export async function creditJetonsOnce(userId: string, transactionId: string, am
   return { credited: false as const, balance: (await getJetonsBalance(userId)).balance }
 }
 
+export const WELCOME_BONUS_JETONS = 5
+// Only accounts created from the launch of the offer qualify: existing users
+// were never promised this bonus and must not receive it retroactively.
+const WELCOME_BONUS_START = Date.parse('2026-10-07T00:00:00Z')
+
+/**
+ * Grants the signup bonus at most once per account. The `welcome:<userId>` key
+ * goes through the same atomic claim as IAP credits, so concurrent requests or
+ * repeated logins can never credit it twice.
+ */
+export async function grantWelcomeJetonsOnce(userId: string, accountCreatedAt: string | undefined | null) {
+  const createdAt = accountCreatedAt ? Date.parse(accountCreatedAt) : Number.NaN
+  if (Number.isNaN(createdAt) || createdAt < WELCOME_BONUS_START) return { credited: false as const }
+  const result = await creditJetonsOnce(userId, `welcome:${userId}`, WELCOME_BONUS_JETONS, { source: 'welcome_bonus' })
+  return { credited: result.credited }
+}
+
 export async function reserveJetons(userId: string, providerCostUsd: number, tool: string, meta?: Record<string, unknown>) {
   return debitJetons(userId, providerCostToJetons(providerCostUsd), providerCostUsd, tool, meta)
 }

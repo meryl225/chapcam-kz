@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getJetonsBalance } from '@/lib/jetons'
+import { getJetonsBalance, grantWelcomeJetonsOnce } from '@/lib/jetons'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
@@ -22,6 +22,14 @@ export async function GET(request: NextRequest) {
   if (authError || !user) {
     return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: NO_STORE })
   }
+
+  // Granted before reading the balance so the first summary already shows it.
+  // A failure here must never block the account from loading; it is retried on
+  // the next summary call and stays idempotent.
+  const welcomeBonus = await grantWelcomeJetonsOnce(user.id, user.created_at).catch((error) => {
+    console.error('[mobile/account-summary] Bonus de bienvenue non crédité:', error)
+    return { credited: false as const }
+  })
 
   try {
     // Authenticate with the mobile bearer token, then read the same production
@@ -83,6 +91,7 @@ export async function GET(request: NextRequest) {
         points_per_second: typeof remainingPoints === 'number' ? 2 : null,
       },
       subscription: returnedSubscription,
+      welcome_bonus_credited: welcomeBonus.credited,
     }, { headers: NO_STORE })
   } catch (error) {
     console.error('[mobile/account-summary] Erreur:', error)
