@@ -39,6 +39,13 @@ const openUrl = async (url) => {
 
 const isActivated = (item) => item.status === 'activated' || item.status === 'already'
 
+function currentPlan(result, purchasedProductId, plans) {
+  const other = result.items.find((i) => i.productId !== purchasedProductId && isActivated(i) && i.expiresAt !== undefined)
+  if (!other) return null
+  const plan = plans.find((p) => p.productId === other.productId)
+  return { name: plan?.name ?? 'actuel', expiresAt: other.expiresAt }
+}
+
 export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
   const insets = useSafeAreaInsets()
   const [state, setState] = useState({ status: 'loading', plans: [], products: {} })
@@ -90,6 +97,16 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
         Alert.alert('Abonnement activé', 'Merci ! Ton forfait ChapCam est actif et ton profil est à jour.')
       } else if (mine.some((i) => i.status === 'revoked')) {
         Alert.alert('Abonnement annulé', 'Cet achat a été remboursé ou annulé par Apple.')
+      } else if (currentPlan(result, productId, state.plans)) {
+        // Apple traite l'achat comme un changement de forfait dans le meme groupe :
+        // le nouveau forfait ne demarre qu'au prochain renouvellement.
+        const { name, expiresAt } = currentPlan(result, productId, state.plans)
+        const until = expiresAt ? ` jusqu'au ${new Date(expiresAt).toLocaleDateString('fr-FR')}` : ''
+        onPurchasedRef.current?.()
+        Alert.alert(
+          'Changement de forfait programmé',
+          `Ton forfait ${name} reste actif${until}. Apple activera le nouveau forfait à ce renouvellement, il sera alors appliqué automatiquement à ton compte.`,
+        )
       } else {
         Alert.alert('Vérification en cours', "Ton paiement Apple est enregistré. Ton forfait sera activé dans quelques instants, ou via « Restaurer les achats ».")
       }
