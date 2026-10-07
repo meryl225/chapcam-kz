@@ -107,6 +107,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const [reporting, setReporting] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
   const [socialOpen, setSocialOpen] = useState(false)
+  const socialStatus = account.summary?.social_bonus_status
+  const socialPending = socialStatus === 'pending'
   const showSocialBonus = account.summary?.social_bonus_claimed === false
   // undefined = follow the session user's metadata; string/null = result of an edit made on this screen.
   const [editedAvatarUrl, setEditedAvatarUrl] = useState(undefined)
@@ -373,13 +375,22 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </View>
           <View style={styles.bonusText}>
             <Text style={styles.bonusTitle}>5 jetons offerts</Text>
-            <Text style={styles.bonusCopy}>Obtiens 5 jetons en suivant ChapCam sur TikTok, Instagram, Facebook et X.</Text>
+            <Text style={styles.bonusCopy}>
+              {socialPending
+                ? 'Ta preuve est en attente de vérification.'
+                : 'Obtiens 5 jetons en suivant ChapCam sur TikTok, Instagram, Facebook et X.'}
+            </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={C.muted} />
         </Pressable>
       ) : null}
 
-      <SocialBonusSheet visible={socialOpen} onClose={() => setSocialOpen(false)} onClaimed={account.reload} />
+      <SocialBonusSheet
+        visible={socialOpen}
+        status={socialStatus}
+        onClose={() => setSocialOpen(false)}
+        onSubmitted={account.reload}
+      />
 
       {jetonsError ? (
         <View style={styles.summaryError}>
