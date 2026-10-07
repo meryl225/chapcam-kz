@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 /** Stores the proof screenshots and opens a pending claim. Jetons are only credited after admin approval. */
 export async function POST(request: NextRequest) {
   const user = await authenticate(request)
-  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: NO_STORE })
+  if (!user) return NextResponse.json({ error: 'Non autorisé', stage: 'auth' }, { status: 401, headers: NO_STORE })
 
   const form = await request.formData().catch(() => null)
   const files = (form?.getAll('proofs') ?? []).filter((item): item is File => item instanceof File && item.size > 0)
@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  let stage: 'database' | 'upload' = 'database'
   try {
     const state = await getSocialBonusState(user.id)
     if (state === 'approved') {
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Ta preuve est déjà en cours de vérification.', status: state }, { status: 409, headers: NO_STORE })
     }
 
+    stage = 'upload'
     await ensureProofBucket()
     const storage = createAdminClient().storage.from(SOCIAL_PROOF_BUCKET)
     const batch = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`
@@ -80,6 +82,7 @@ export async function POST(request: NextRequest) {
       paths.push(path)
     }
 
+    stage = 'database'
     const claimId = await createPendingClaim(user.id, paths)
     if (!claimId) {
       await storage.remove(paths)
@@ -87,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
     return NextResponse.json({ status: 'pending', claim_id: claimId }, { headers: NO_STORE })
   } catch (error) {
-    console.error('[mobile/social-bonus] Erreur:', error)
-    return NextResponse.json({ error: 'Envoi impossible pour le moment.' }, { status: 500, headers: NO_STORE })
+    console.error(`[mobile/social-bonus] Erreur (${stage}):`, error)
+    return NextResponse.json({ error: 'Envoi impossible pour le moment.', stage }, { status: 500, headers: NO_STORE })
   }
 }
