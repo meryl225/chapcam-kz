@@ -12,6 +12,7 @@ import { getUserAvatarSource, getUserPhotoUrl } from '../lib/userAvatar'
 import { AccountSummaryError, accountSummaryMessage, fetchAccountSummary } from '../lib/accountSummary'
 import { BRAND, C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
+import { ReportAbuseSheet } from '../ui/Safety'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const DANGER = '#E5484D'
@@ -101,6 +102,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const insets = useSafeAreaInsets()
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [reporting, setReporting] = useState(false)
   // undefined = follow the session user's metadata; string/null = result of an edit made on this screen.
   const [editedAvatarUrl, setEditedAvatarUrl] = useState(undefined)
   const [avatarBusy, setAvatarBusy] = useState(false)
@@ -497,10 +499,16 @@ onPress={onOpenPlans}
       <Text style={styles.sectionTitle} accessibilityRole="header">Support</Text>
       <View style={styles.rows}>
         <Row icon="help-buoy-outline" tint={C.blue} label="Aide & support" value="contact@chapcam.com" onPress={() => open(LINKS.support)} />
+        {Platform.OS === 'ios' ? (
+          <Row icon="flag-outline" tint={C.violet} label="Signaler un contenu" onPress={() => setReporting(true)} />
+        ) : null}
         <Row icon="document-text-outline" tint={C.violet} label="Conditions d'utilisation" onPress={() => open(LINKS.terms)} />
         <Row icon="lock-closed-outline" tint={C.blue} label="Politique de confidentialité" onPress={() => open(LINKS.privacy)} />
         <Row icon="language-outline" tint={C.violet} label="Langue" value="Français" />
       </View>
+      {Platform.OS === 'ios' ? (
+        <ReportAbuseSheet visible={reporting} onClose={() => setReporting(false)} contentUrl="" context="Profil" />
+      ) : null}
 
       <Pressable
         accessibilityRole="button"
