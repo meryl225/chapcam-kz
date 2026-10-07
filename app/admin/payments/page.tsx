@@ -23,6 +23,7 @@ import {
   Zap,
   Coins,
   Mic,
+  Smartphone,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -438,6 +439,13 @@ export default function AdminPaymentsPage() {
             >
               <ArrowLeft className="h-4 w-4" />
               Abonnements
+            </Link>
+            <Link
+              href="/admin/apple-subscriptions"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#00d4ff]/40 bg-[#0a1620] px-4 py-2.5 text-sm font-medium text-[#00d4ff] transition-colors hover:border-[#00d4ff] hover:text-white"
+            >
+              <Smartphone className="h-4 w-4" />
+              Abonnements Apple
             </Link>
             <Link
               href="/admin/live-minutes"
