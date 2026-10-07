@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { apiForm, friendlyError, readApiError } from '../lib/api'
@@ -14,6 +15,7 @@ const NETWORKS = [
   { id: 'x', label: 'X', handle: '@metaafrika', icon: 'logo-x', url: 'https://x.com/metaafrika?s=11' },
 ]
 const MAX_PROOFS = 4
+const MAX_PROOF_WIDTH = 1080
 
 export function SocialBonusSheet({ visible, status, onClose, onSubmitted }) {
   const insets = useSafeAreaInsets()
@@ -64,20 +66,32 @@ export function SocialBonusSheet({ visible, status, onClose, onSubmitted }) {
   const submit = async () => {
     if (!ready || proofs.length === 0 || sending) return
     setSending(true)
+    let stage = 'compression'
     try {
+      // iOS screenshots are full-resolution PNGs: 4 of them exceed the 4.5 MB request limit of the server (HTTP 413).
       const form = new FormData()
-      proofs.forEach((asset, index) => {
-        const type = asset.mimeType || 'image/jpeg'
-        const extension = type.split('/')[1] || 'jpg'
-        form.append('proofs', { uri: asset.uri, name: asset.fileName || `preuve-${index + 1}.${extension}`, type })
-      })
+      for (const [index, asset] of proofs.entries()) {
+        const actions = asset.width > MAX_PROOF_WIDTH ? [{ resize: { width: MAX_PROOF_WIDTH } }] : []
+        const compressed = await manipulateAsync(asset.uri, actions, { compress: 0.7, format: SaveFormat.JPEG })
+        form.append('proofs', { uri: compressed.uri, name: `preuve-${index + 1}.jpg`, type: 'image/jpeg' })
+      }
+      stage = 'api'
       const response = await apiForm('/api/mobile/social-bonus', form)
-      if (!response.ok) throw new Error(await readApiError(response, 'Envoi impossible pour le moment.'))
+      if (!response.ok) {
+        const body = await response.clone().json().catch(() => null)
+        stage = body?.stage || (response.status === 401 ? 'auth' : response.status === 413 ? 'upload' : 'api')
+        if (__DEV__) console.log('[SocialBonus] échec', { status: response.status, stage, error: body?.error ?? null })
+        if (response.status === 413) throw new Error('Captures trop lourdes. Réessaie avec des captures plus petites.')
+        throw new Error(await readApiError(response, 'Envoi impossible pour le moment.'))
+      }
+      const result = await response.json().catch(() => null)
+      if (result?.status !== 'pending') throw new Error('Envoi impossible pour le moment.')
       setProofs([])
       onSubmitted?.()
       onClose()
       Alert.alert('Preuve envoyée', 'Ta demande est en attente de vérification. Les 5 jetons seront ajoutés dès sa validation.')
     } catch (e) {
+      if (__DEV__) console.log('[SocialBonus] erreur', { stage, message: e?.message })
       Alert.alert('Bonus réseaux', friendlyError(e, 'Envoi impossible pour le moment. Réessaie dans un instant.'))
     } finally {
       setSending(false)
