@@ -30,6 +30,7 @@ export const isChapcamUserId = (id: unknown): id is string => typeof id === 'str
 interface RcSubscription {
   expires_date: string | null
   purchase_date: string
+  original_purchase_date?: string | null
   store: string
   is_sandbox: boolean
   refunded_at?: string | null
@@ -63,7 +64,7 @@ async function fetchSubscriber(userId: string): Promise<RcSubscriber> {
   return body?.subscriber ?? {}
 }
 
-export type SyncStatus = 'activated' | 'already' | 'credited' | 'expired' | 'revoked'
+export type SyncStatus = 'activated' | 'already' | 'credited' | 'expired' | 'revoked' | 'other_account'
 
 export interface SyncItem {
   productId: string
@@ -81,6 +82,56 @@ export interface SyncResult {
 
 const transactionKey = (productId: string, entry: { store_transaction_id?: string | null; purchase_date: string; id?: string }) =>
   entry.store_transaction_id ? `apple:${entry.store_transaction_id}` : `rc:${entry.id ?? `${productId}:${entry.purchase_date}`}`
+
+// Un abonnement Apple appartient au compte Apple, pas au compte ChapCam. Quand
+// un autre compte ChapCam se connecte sur le meme iPhone, RevenueCat peut lui
+// transferer l'abonnement (et ses renouvellements, qui ont chacun un nouvel id
+// de transaction). On rattache donc la lignee de l'abonnement (produit + date
+// d'achat d'origine) au premier compte ChapCam credite, et les autres comptes
+// ne recoivent jamais le forfait.
+async function ownsSubscriptionLineage(
+  admin: Admin,
+  userId: string,
+  email: string,
+  productId: string,
+  planId: string,
+  sub: RcSubscription,
+  transactionToken: string,
+): Promise<boolean> {
+  const lineage = `apple-owner:${productId}:${sub.original_purchase_date ?? sub.purchase_date}`
+  const myToken = `${lineage}:${userId}`
+  const firstOwner = async () => {
+    const { data, error } = await admin
+      .from('processed_payments')
+      .select('token')
+      .like('token', `${lineage}:%`)
+      .order('created_at', { ascending: true })
+      .limit(1)
+    if (error) throw new Error(`processed_payments owner: ${error.message}`)
+    return data?.[0]?.token ?? null
+  }
+
+  const owner = await firstOwner()
+  if (owner) return owner === myToken
+
+  // Lignee creditee avant ce controle : elle n'est a ce compte que si son
+  // forfait est bien celui enregistre sur ce compte.
+  const { data: claimed } = await admin
+    .from('processed_payments')
+    .select('credited')
+    .eq('token', transactionToken)
+    .maybeSingle()
+  if (claimed?.credited) {
+    const { data: row } = await admin.from('subscriptions').select('plan, is_active').eq('user_id', userId).maybeSingle()
+    if (!row?.is_active || row.plan !== planId) return false
+  }
+
+  const { error: insertErr } = await admin
+    .from('processed_payments')
+    .insert({ token: myToken, email, product_id: planId, amount: 0, credited: true })
+  if (insertErr && insertErr.code !== '23505') throw new Error(`processed_payments owner insert: ${insertErr.message}`)
+  return (await firstOwner()) === myToken
+}
 
 async function applySubscriptions(admin: Admin, userId: string, email: string, subscriber: RcSubscriber, source: string) {
   const items: SyncItem[] = []
@@ -103,6 +154,12 @@ async function applySubscriptions(admin: Admin, userId: string, email: string, s
     }
     if (!expiresMs || expiresMs <= Date.now()) {
       items.push({ productId, transactionId: token, status: 'expired', expiresAt: sub.expires_date })
+      continue
+    }
+
+    if (!(await ownsSubscriptionLineage(admin, userId, email, productId, plan.id, sub, token))) {
+      console.info('[iap-diag] abonnement rattache a un autre compte', { userId, productId, token })
+      items.push({ productId, transactionId: token, status: 'other_account', expiresAt: sub.expires_date })
       continue
     }
 
