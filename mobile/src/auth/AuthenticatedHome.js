@@ -142,6 +142,7 @@ function HomeShell({ user }) {
   const onRefresh = () => { setRefreshing(true); loadAccount() }
 
   const [aiConsented, setAiConsented] = useState(() => Platform.OS !== 'ios' || hasAiDataConsent(user))
+  const [consentPromptOpen, setConsentPromptOpen] = useState(() => Platform.OS === 'ios' && !hasAiDataConsent(user))
   const [pendingTool, setPendingTool] = useState(null)
 
   const onOpenTool = (key) => {
@@ -150,12 +151,19 @@ function HomeShell({ user }) {
       setTab('explore')
       return
     }
+    // Only reached if the user declined the one-time prompt on the home screen.
     if (!aiConsented) {
       setQuickOpen(false)
       setPendingTool(key)
+      setConsentPromptOpen(true)
       return
     }
     setOpenTool(key)
+  }
+
+  const declineAiConsent = () => {
+    setConsentPromptOpen(false)
+    setPendingTool(null)
   }
 
   const acceptAiConsent = async () => {
@@ -165,6 +173,7 @@ function HomeShell({ user }) {
       return
     }
     setAiConsented(true)
+    setConsentPromptOpen(false)
     const key = pendingTool
     setPendingTool(null)
     if (key) setOpenTool(key)
@@ -258,7 +267,7 @@ function HomeShell({ user }) {
         <QuickLaunchMenu visible={quickOpen && !overlay} bottom={insets.bottom} onClose={() => setQuickOpen(false)} onSelect={onQuickLaunch} />
       </View>
       {overlay ? <View style={StyleSheet.absoluteFill}>{overlay}</View> : null}
-      <AiDataConsentSheet visible={Boolean(pendingTool)} onAccept={acceptAiConsent} onDecline={() => setPendingTool(null)} />
+      <AiDataConsentSheet visible={consentPromptOpen} onAccept={acceptAiConsent} onDecline={declineAiConsent} />
     </View>
   )
 }
