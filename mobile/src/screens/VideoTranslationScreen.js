@@ -148,7 +148,7 @@ export function VideoTranslationScreen({ onBack }) {
         {error ? <View style={styles.error}><Text style={styles.errorText}>{error}</Text></View> : null}
         <RightsConsent checked={rightsOk} onChange={setRightsOk} disabled={busy} />
         {busy ? <View style={styles.loading}><ChapCamLoader size="small" /><Text style={styles.loadingText}>Traduction en cours</Text></View> : <Pressable disabled={!video?.uri || !language || busy || !rightsOk} onPress={translate} style={[styles.cta, (!video?.uri || !language || busy || !rightsOk) && styles.ctaDisabled]} accessibilityRole="button"><Ionicons name="language" size={20} color={C.white} /><Text style={styles.ctaText}>Traduire la vidéo</Text></Pressable>}
-        {result ? <View style={styles.result}><Text style={styles.section}>Vidéo traduite</Text><AiBadge /><Preview uri={result} result /><ReportAbuseButton contentUrl={result} context="Traduction de Vidéo" /></View> : null}
+        {result ? <View style={styles.result}><Text style={styles.section}>Vidéo traduite</Text><AiBadge /><Preview uri={result} result />{Platform.OS !== 'ios' ? <ReportAbuseButton contentUrl={result} context="Traduction de Vidéo" /> : null}</View> : null}
       </ScrollView>
     </KeyboardAvoidingView>
   )

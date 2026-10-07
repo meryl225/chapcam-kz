@@ -473,7 +473,7 @@ export function MotionControlScreen({ onBack, onOpenCreations, topInset = 0 }) {
             <View style={styles.result}>
               <AiBadge />
               <LoopVideo uri={resultUrl} style={styles.resultVideo} controls />
-              <ReportAbuseButton contentUrl={resultUrl} context="Motion Control" />
+              {Platform.OS !== 'ios' ? <ReportAbuseButton contentUrl={resultUrl} context="Motion Control" /> : null}
             </View>
           ) : null}
 

@@ -8,9 +8,9 @@
     "userInterfaceStyle": "dark",
     "scheme": "chapcam",
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.chapcam.app",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "icon": "./assets/icon.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,

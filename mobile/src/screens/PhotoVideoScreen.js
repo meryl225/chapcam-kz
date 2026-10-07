@@ -263,7 +263,7 @@ export function PhotoVideoScreen({ onBack }) {
           <View style={styles.resultCard}>
             <View style={styles.resultHead}><Text style={styles.resultLabel}>VIDÉO GÉNÉRÉE</Text><AiBadge /></View>
             <ResultVideo uri={result} />
-            <ReportAbuseButton contentUrl={result} context="Photos en Vidéo" />
+            {Platform.OS !== 'ios' ? <ReportAbuseButton contentUrl={result} context="Photos en Vidéo" /> : null}
           </View>
         ) : null}
         {error ? <Text style={styles.error}>{error}</Text> : null}

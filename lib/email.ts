@@ -259,6 +259,59 @@ export async function sendAbuseReportEmail(report: {
   }
 }
 
+// Demande d'assistance envoyee depuis l'app mobile -> service client
+export async function sendSupportRequestEmail(request: {
+  name: string
+  email: string
+  message: string
+  userId: string
+  platform: string
+}) {
+  const client = await getResendClient()
+  if (!client) {
+    console.warn('[Email] Resend not configured - skipping support request email')
+    return { success: false, error: 'Email service not configured' }
+  }
+
+  const esc = (v: string) =>
+    v.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: ['contact@chapcam.com'],
+      replyTo: request.email,
+      subject: `Service client — ${request.name}`,
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #0a0a0a; color: #ffffff;">
+          <h2 style="color: #00ff88; margin: 0 0 16px;">Nouvelle demande d'assistance</h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+            <tr><td style="padding: 8px 0; color: #9aa3b2; width: 160px;">Nom</td><td style="padding: 8px 0;">${esc(request.name)}</td></tr>
+            <tr><td style="padding: 8px 0; color: #9aa3b2;">Email</td><td style="padding: 8px 0;">${esc(request.email)}</td></tr>
+            <tr><td style="padding: 8px 0; color: #9aa3b2;">ID utilisateur</td><td style="padding: 8px 0;">${esc(request.userId)}</td></tr>
+            <tr><td style="padding: 8px 0; color: #9aa3b2;">Plateforme</td><td style="padding: 8px 0;">${esc(request.platform)}</td></tr>
+          </table>
+          <div style="margin-top: 16px; padding: 16px; background: #111111; border: 1px solid #242424; border-radius: 12px;">
+            <p style="color: #9aa3b2; margin: 0 0 8px; font-size: 13px;">Message</p>
+            <p style="margin: 0; white-space: pre-wrap; line-height: 1.6;">${esc(request.message)}</p>
+          </div>
+          <p style="margin-top: 16px; color: #666; font-size: 12px;">Reçu le ${new Date().toLocaleString('fr-FR')}</p>
+        </div>
+      `,
+    })
+
+    if (error) {
+      console.error('[Email] Error sending support request:', error)
+      return { success: false, error }
+    }
+
+    return { success: true, id: data?.id }
+  } catch (error) {
+    console.error('[Email] Exception sending support request:', error)
+    return { success: false, error }
+  }
+}
+
 // Alerte admin : une licence ChapCam PC est suspectee d'etre partagee.
 export async function sendLicenseSharingAlertEmail(info: {
   licenseKey: string

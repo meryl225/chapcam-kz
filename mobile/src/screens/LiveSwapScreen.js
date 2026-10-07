@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { AccessibilityInfo, Alert, Animated, AppState, Image, Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
+import { AccessibilityInfo, Alert, Animated, AppState, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
@@ -22,6 +22,38 @@ const ERROR = '#E5484D'
 const STAGE = '#050816'
 const CONTROLS_IDLE_MS = 2500
 const FADE_MS = 220
+
+const EFFECT_PLANS = ['premium', 'vip-pro', 'vip-debout']
+const normalizePlan = (plan) => (plan ? String(plan).toLowerCase().trim().replace(/[\s_]+/g, '-') : '')
+
+const BACKGROUNDS = [
+  { key: 'none', label: 'Aucun', icon: 'close-circle-outline', prompt: null },
+  { key: 'beach', label: 'Plage', icon: 'sunny-outline', prompt: 'a sunny tropical beach with palm trees and turquoise sea' },
+  { key: 'studio', label: 'Studio', icon: 'aperture-outline', prompt: 'a clean professional photo studio with soft lighting' },
+  { key: 'city', label: 'Ville la nuit', icon: 'business-outline', prompt: 'a modern city skyline at night with glowing lights' },
+  { key: 'office', label: 'Bureau', icon: 'briefcase-outline', prompt: 'a bright modern office with large windows' },
+  { key: 'space', label: 'Espace', icon: 'planet-outline', prompt: 'outer space with stars, nebula and planets' },
+  { key: 'forest', label: 'Forêt', icon: 'leaf-outline', prompt: 'a lush green forest with soft sunlight through the trees' },
+]
+
+const EFFECTS = [
+  { key: 'none', label: 'Aucun', icon: 'close-circle-outline', prompt: null },
+  { key: 'cinema', label: 'Cinéma', icon: 'film-outline', prompt: 'cinematic color grading, film look' },
+  { key: 'neon', label: 'Néon', icon: 'flash-outline', prompt: 'vibrant neon cyberpunk lighting' },
+  { key: 'anime', label: 'Anime', icon: 'color-palette-outline', prompt: 'anime illustration style' },
+  { key: 'bw', label: 'Noir & blanc', icon: 'contrast-outline', prompt: 'black and white photography' },
+  { key: 'paint', label: 'Peinture', icon: 'brush-outline', prompt: 'oil painting style' },
+  { key: 'vintage', label: 'Vintage', icon: 'camera-outline', prompt: 'vintage 1970s film photo look' },
+]
+
+const buildLookPrompt = ({ background, effect }) => {
+  const bg = BACKGROUNDS.find((b) => b.key === background)?.prompt
+  const fx = EFFECTS.find((e) => e.key === effect)?.prompt
+  const parts = []
+  if (bg) parts.push(`Replace the background with ${bg}, keep the person unchanged`)
+  if (fx) parts.push(`Apply ${fx}`)
+  return parts.length ? parts.join('. ') : null
+}
 
 const formatPlan = (plan) => (plan ? plan.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) : null)
 const formatClock = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
@@ -75,6 +107,21 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
 
   const planName = formatPlan(subscription?.plan)
   const planActive = Boolean(subscription && (subscription.is_active === true || subscription.status === 'active'))
+  const effectsUnlocked = planActive && EFFECT_PLANS.includes(normalizePlan(subscription?.plan))
+  const [look, setLook] = useState({ background: 'none', effect: 'none' })
+
+  const applyLook = async (next) => {
+    const client = clientRef.current
+    if (!client || !face) return false
+    const prompt = buildLookPrompt(next)
+    try {
+      await client.set(prompt ? { image: face.base64, prompt, enhance: true } : { image: face.base64 })
+      setLook(next)
+      return true
+    } catch {
+      return false
+    }
+  }
 
   useEffect(() => {
     authedFetch('/api/points')
@@ -218,6 +265,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     if (!localRef.current) return setNotice({ tone: 'error', text: 'La caméra démarre encore. Réessaie.' })
 
     setNotice(null)
+    setLook({ background: 'none', effect: 'none' })
     setPhase('preparing')
     const session = { id: newSessionId(), liveAt: null, startedAt: null }
     sessionRef.current = session
@@ -299,6 +347,10 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
         bottomInset={bottomInset}
         onStop={() => stop(null)}
         onBack={exitSession}
+        effectsUnlocked={effectsUnlocked}
+        look={look}
+        onApplyLook={applyLook}
+        onOpenPlans={onOpenPlans}
       />
     )
   }
@@ -420,8 +472,9 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
   )
 }
 
-function ImmersiveSession({ stream, mirrored, phase, elapsed, face, planLabel, remaining, topInset, bottomInset, onStop, onBack }) {
+function ImmersiveSession({ stream, mirrored, phase, elapsed, face, planLabel, remaining, topInset, bottomInset, onStop, onBack, effectsUnlocked, look, onApplyLook, onOpenPlans }) {
   const [visible, setVisible] = useState(false)
+  const [effectsOpen, setEffectsOpen] = useState(false)
   const [pinned, setPinned] = useState(false)
   const opacity = useRef(new Animated.Value(0)).current
   const hideTimer = useRef(null)
@@ -457,6 +510,19 @@ function ImmersiveSession({ stream, mirrored, phase, elapsed, face, planLabel, r
   const reveal = () => {
     setVisible(true)
     scheduleHide()
+  }
+
+  const openEffects = () => {
+    if (!live) return
+    if (!effectsUnlocked) {
+      Alert.alert('Forfait Premium requis', 'Les effets et arrière-plans sont disponibles à partir du forfait Premium.', [
+        { text: 'Plus tard', style: 'cancel' },
+        ...(onOpenPlans ? [{ text: 'Voir les forfaits', onPress: onOpenPlans }] : []),
+      ])
+      return
+    }
+    clearTimeout(hideTimer.current)
+    setEffectsOpen(true)
   }
 
   const toggle = () => {
@@ -519,7 +585,21 @@ function ImmersiveSession({ stream, mirrored, phase, elapsed, face, planLabel, r
             </Text>
           ) : null}
           <View style={styles.bottomRow} pointerEvents="box-none">
-            <View style={styles.sideSlot} />
+            <View style={[styles.sideSlot, styles.sideSlotStart]}>
+              <Pressable
+                onPress={openEffects}
+                onPressIn={scheduleHide}
+                disabled={!live}
+                accessibilityRole="button"
+                accessibilityLabel={effectsUnlocked ? 'Effets et arrière-plans' : 'Effets et arrière-plans, réservé au forfait Premium'}
+                style={({ pressed }) => [styles.effectsBtn, pressed && styles.pressed, !live && styles.dim]}
+              >
+                <View style={styles.glassBtn}>
+                  <Ionicons name={effectsUnlocked ? 'sparkles' : 'lock-closed'} size={20} color={C.white} />
+                </View>
+                <Text style={styles.effectsLabel}>Effets</Text>
+              </Pressable>
+            </View>
             <Pressable
               onPress={onStop}
               onPressIn={scheduleHide}
@@ -545,7 +625,68 @@ function ImmersiveSession({ stream, mirrored, phase, elapsed, face, planLabel, r
           </View>
         </View>
       </Animated.View>
+
+      {effectsOpen ? (
+        <EffectsSheet look={look} bottomInset={bottomInset} onApply={onApplyLook} onClose={() => setEffectsOpen(false)} />
+      ) : null}
     </View>
+  )
+}
+
+function EffectsSheet({ look, bottomInset, onApply, onClose }) {
+  const [pending, setPending] = useState(null)
+  const [failed, setFailed] = useState(false)
+
+  const choose = async (kind, key) => {
+    if (pending || look[kind] === key) return
+    setPending(`${kind}:${key}`)
+    setFailed(false)
+    const ok = await onApply({ ...look, [kind]: key })
+    setPending(null)
+    if (!ok) setFailed(true)
+  }
+
+  const renderRow = (kind, items) => (
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
+      {items.map((item) => {
+        const active = look[kind] === item.key
+        const loading = pending === `${kind}:${item.key}`
+        return (
+          <Pressable
+            key={item.key}
+            onPress={() => choose(kind, item.key)}
+            disabled={Boolean(pending)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active, busy: loading }}
+            accessibilityLabel={item.label}
+            style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}
+          >
+            {loading ? <ChapCamLoader size="small" /> : <Ionicons name={item.icon} size={20} color={active ? C.white : 'rgba(255,255,255,0.85)'} />}
+            <Text style={[styles.chipLabel, active && styles.chipLabelActive]} numberOfLines={1}>{item.label}</Text>
+          </Pressable>
+        )
+      })}
+    </ScrollView>
+  )
+
+  return (
+    <Modal transparent animationType="slide" visible onRequestClose={onClose}>
+      <Pressable style={styles.sheetBackdrop} onPress={onClose} accessibilityLabel="Fermer" accessibilityRole="button" />
+      <View style={[styles.sheet, { paddingBottom: Math.max(bottomInset, 16) + 8 }]}>
+        <View style={styles.sheetHandle} />
+        <View style={styles.sheetHeader}>
+          <Text style={styles.sheetTitle} accessibilityRole="header">Effets</Text>
+          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="Fermer" hitSlop={10}>
+            <Ionicons name="close" size={22} color={C.white} />
+          </Pressable>
+        </View>
+        <Text style={styles.sheetSection}>Arrière-plan</Text>
+        {renderRow('background', BACKGROUNDS)}
+        <Text style={styles.sheetSection}>Effet</Text>
+        {renderRow('effect', EFFECTS)}
+        {failed ? <Text style={styles.sheetError}>Impossible d&apos;appliquer ce choix. Réessaie.</Text> : null}
+      </View>
+    </Modal>
   )
 }
 
@@ -615,6 +756,21 @@ const styles = StyleSheet.create({
   meta: { color: 'rgba(255,255,255,0.72)', fontSize: 12, fontWeight: '600', letterSpacing: 0.2 },
   bottomRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', alignSelf: 'stretch' },
   sideSlot: { width: 64, alignItems: 'flex-end' },
+  sideSlotStart: { alignItems: 'flex-start' },
+  effectsBtn: { alignItems: 'center', gap: 6 },
+  effectsLabel: { color: C.white, fontSize: 12, fontWeight: '700' },
+  sheetBackdrop: { flex: 1 },
+  sheet: { backgroundColor: 'rgba(10,14,34,0.96)', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 8, gap: 10 },
+  sheetHandle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' },
+  sheetHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, height: 40 },
+  sheetTitle: { color: C.white, fontSize: 18, fontWeight: '800' },
+  sheetSection: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '700', paddingHorizontal: 20 },
+  sheetError: { color: '#FF8A8D', fontSize: 13, fontWeight: '600', paddingHorizontal: 20 },
+  chipRow: { gap: 10, paddingHorizontal: 20 },
+  chip: { width: 84, height: 76, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 6 },
+  chipActive: { backgroundColor: C.blue, borderColor: C.blue },
+  chipLabel: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '600' },
+  chipLabelActive: { color: C.white },
   sessionPip: { width: 56, height: 56, borderRadius: 16, overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.85)', backgroundColor: '#11173A' },
   stopWrap: { alignItems: 'center', gap: 8 },
   stopRing: { width: 76, height: 76, borderRadius: 38, borderWidth: 3, borderColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },

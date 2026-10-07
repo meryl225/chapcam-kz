@@ -9,7 +9,6 @@ import {
   ensureRevenueCat,
   isCancelled,
   loadStoreProducts,
-  probeSubscriptionProducts,
   openManageSubscriptions,
   purchaseErrorMessage,
   purchaseStoreItem,
@@ -56,7 +55,6 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
     setState((s) => ({ ...s, status: 'loading' }))
     try {
       await ensureRevenueCat(user.id)
-      await probeSubscriptionProducts(IOS_PRODUCT_IDS)
       const [products, catalog] = await Promise.all([
         loadStoreProducts(IOS_PRODUCT_IDS, 'subs'),
         fetchIosCatalog(),
