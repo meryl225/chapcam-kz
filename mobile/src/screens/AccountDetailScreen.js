@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { supabase } from '../lib/supabase'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { C, PAD } from '../ui/catalog'
@@ -14,11 +15,38 @@ const CONFIG = {
   activity: { title: 'Activité récente', icon: 'pulse-outline', intro: 'Retrouve ici les dernières utilisations de ChapCam.' },
   purchases: { title: 'Achats et factures', icon: 'receipt-outline', intro: 'Consulte tes achats et retrouve tes justificatifs.' },
   subscription: { title: 'Gestion de l’abonnement', icon: 'diamond-outline', intro: 'Gère ton forfait Live Swap et ses avantages.' },
+  personal: { title: 'Informations personnelles', icon: 'person-outline', intro: 'Ces informations restent privées et servent uniquement à ton compte ChapCam.' },
 }
 
-export function AccountDetailScreen({ type, onBack, subscription, jetons }) {
+export function AccountDetailScreen({ type, onBack, subscription, jetons, user }) {
   const config = CONFIG[type] || CONFIG.activity
   const insets = useSafeAreaInsets()
+  if (type === 'personal') {
+    return (
+      <View style={[styles.root, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Retour au profil" onPress={onBack} style={styles.back}>
+            <Ionicons name="arrow-back" size={22} color={NAVY} />
+          </Pressable>
+          <Text style={styles.headerTitle}>{config.title}</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+        <ScrollView
+          contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets
+        >
+          <View style={styles.hero}>
+            <View style={styles.heroIcon}><Ionicons name={config.icon} size={25} color={C.blue} /></View>
+            <Text style={styles.title}>{config.title}</Text>
+            <Text style={styles.intro}>{config.intro}</Text>
+          </View>
+          <PersonalInfo user={user} />
+        </ScrollView>
+      </View>
+    )
+  }
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -151,9 +179,124 @@ function Subscription({ subscription }) {
   </>
 }
 
+const PHONE_PATTERN = /^\+?[0-9 ()-]{6,20}$/
+
+function readPersonal(user) {
+  const md = user?.user_metadata || {}
+  const [first = '', ...rest] = String(md.full_name || md.name || '').trim().split(/\s+/)
+  return {
+    firstName: String(md.first_name ?? first ?? ''),
+    lastName: String(md.last_name ?? rest.join(' ') ?? ''),
+    phone: String(md.phone_number || ''),
+    country: String(md.country || ''),
+    city: String(md.city || ''),
+  }
+}
+
+function PersonalInfo({ user }) {
+  const [saved, setSaved] = useState(() => readPersonal(user))
+  const [form, setForm] = useState(saved)
+  const [saving, setSaving] = useState(false)
+  const [feedback, setFeedback] = useState(null)
+
+  // The parent's `user` can be stale right after an edit; the auth client holds the latest metadata.
+  useEffect(() => {
+    let active = true
+    supabase.auth.getUser().then(({ data }) => {
+      if (!active || !data?.user) return
+      const fresh = readPersonal(data.user)
+      setSaved(fresh)
+      setForm(fresh)
+    })
+    return () => { active = false }
+  }, [])
+
+  const dirty = Object.keys(form).some((key) => form[key].trim() !== saved[key])
+  const update = (key) => (value) => { setForm((prev) => ({ ...prev, [key]: value })); setFeedback(null) }
+
+  const save = async () => {
+    const next = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim().slice(0, 80)]))
+    if (next.phone && !PHONE_PATTERN.test(next.phone)) {
+      setFeedback({ type: 'error', text: 'Numéro invalide. Exemple : +225 07 00 00 00 00' })
+      return
+    }
+    setSaving(true)
+    setFeedback(null)
+    const fullName = [next.firstName, next.lastName].filter(Boolean).join(' ')
+    const { error } = await supabase.auth.updateUser({
+      data: { first_name: next.firstName, last_name: next.lastName, full_name: fullName, phone_number: next.phone, country: next.country, city: next.city },
+    })
+    setSaving(false)
+    if (error) {
+      setFeedback({ type: 'error', text: 'Enregistrement impossible. Vérifie ta connexion et réessaie.' })
+      return
+    }
+    setSaved(next)
+    setForm(next)
+    setFeedback({ type: 'success', text: 'Informations enregistrées.' })
+  }
+
+  const memberSince = user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '—'
+
+  return <>
+    <View style={styles.card}>
+      <Field label="Prénom" value={form.firstName} onChangeText={update('firstName')} autoComplete="given-name" textContentType="givenName" />
+      <Field label="Nom" value={form.lastName} onChangeText={update('lastName')} autoComplete="family-name" textContentType="familyName" />
+      <Field label="Téléphone" value={form.phone} onChangeText={update('phone')} placeholder="+225 07 00 00 00 00" keyboardType="phone-pad" autoComplete="tel" textContentType="telephoneNumber" />
+      <Field label="Pays" value={form.country} onChangeText={update('country')} autoComplete="country" textContentType="countryName" />
+      <Field label="Ville" value={form.city} onChangeText={update('city')} textContentType="addressCity" last />
+    </View>
+
+    <View style={styles.card}>
+      <Row icon="mail-outline" label="E-mail" value={user?.email || '—'} />
+      <Row icon="calendar-outline" label="Membre depuis" value={memberSince} />
+    </View>
+
+    {feedback ? (
+      <Text accessibilityLiveRegion="polite" style={[styles.feedback, feedback.type === 'error' ? styles.feedbackError : styles.feedbackSuccess]}>{feedback.text}</Text>
+    ) : null}
+
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !dirty || saving }}
+      disabled={!dirty || saving}
+      onPress={save}
+      style={({ pressed }) => [styles.saveButton, (!dirty || saving) && styles.saveButtonDisabled, pressed && { opacity: 0.85 }]}
+    >
+      {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveText}>Enregistrer</Text>}
+    </Pressable>
+    <Text style={styles.note}>{"L’adresse e-mail sert à te connecter et ne peut pas être modifiée ici."}</Text>
+  </>
+}
+
+function Field({ label, last, ...inputProps }) {
+  return (
+    <View style={[styles.field, last && styles.activityRowLast]}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        accessibilityLabel={label}
+        placeholderTextColor="#A3AAC2"
+        autoCorrect={false}
+        maxLength={80}
+        style={styles.fieldInput}
+        {...inputProps}
+      />
+    </View>
+  )
+}
+
 function Row({ icon, label, value }) { return <View style={styles.row}><View style={styles.rowIcon}><Ionicons name={icon} size={19} color={C.blue} /></View><Text style={styles.rowLabel}>{label}</Text><Text style={styles.rowValue}>{value}</Text></View> }
 
 const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: BG },
+  field: { paddingVertical: 12, gap: 4, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E3E7F2' },
+  fieldLabel: { color: MUTED, fontSize: 12, fontWeight: '700' },
+  fieldInput: { color: NAVY, fontSize: 16, fontWeight: '600', paddingVertical: 4, minHeight: 32 },
+  feedback: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
+  feedbackError: { color: '#C9363B' },
+  feedbackSuccess: { color: '#15734C' },
+  saveButton: { height: 54, borderRadius: 27, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center' },
+  saveButtonDisabled: { opacity: 0.45 },
+  saveText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
   activityState: { backgroundColor: '#FFF', borderRadius: 20, padding: 28, alignItems: 'center', gap: 10 },
   activityStateTitle: { color: NAVY, fontSize: 17, fontWeight: '800' },
   activityStateText: { color: MUTED, fontSize: 14, lineHeight: 21, textAlign: 'center' },

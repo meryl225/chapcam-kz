@@ -123,6 +123,20 @@ export default function ConfidentialitePage() {
             présente Politique.
           </li>
         </ul>
+        <div id="sous-traitants" className="scroll-mt-24 space-y-3 pt-2">
+          <h3 className="font-semibold text-foreground">Sous-traitants IA</h3>
+          <p>
+            Pour générer les contenus demandés, certaines données (photos et vidéos sélectionnées, image filmée par la
+            caméra, enregistrements vocaux) sont transmises temporairement aux prestataires suivants :
+          </p>
+          <ul className="ml-5 list-disc space-y-2">
+            <li>HeyGen : photos en vidéo, traduction vidéo et voix ;</li>
+            <li>Decart et LiveKit : Live Swap (vidéo en temps réel) ;</li>
+            <li>Kling : Motion Control ;</li>
+            <li>ElevenLabs et Resemble AI : message vocal, génération et transformation de voix.</li>
+          </ul>
+          <p>Ces données ne sont ni vendues ni utilisées à des fins publicitaires.</p>
+        </div>
       </LegalSection>
 
       <LegalSection title="7. Transferts hors de l'Union européenne">

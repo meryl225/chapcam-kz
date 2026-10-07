@@ -203,7 +203,7 @@ function HomeShell({ user }) {
     }
     overlay = <TokenPacksScreen user={user} onBack={closeTokens} onPurchased={loadAccount} />
   } else if (accountDetail) {
-    overlay = <AccountDetailScreen type={accountDetail} onBack={() => setAccountDetail(null)} subscription={subscription} />
+    overlay = <AccountDetailScreen type={accountDetail} onBack={() => setAccountDetail(null)} subscription={subscription} user={user} />
   } else if (openTool === 'live') {
     // The Live Swap debits subscriptions.points: refetch so Home and Profile show the new balance.
     const closeLiveSwap = () => {

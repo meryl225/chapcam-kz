@@ -100,6 +100,7 @@ export async function GET(request: NextRequest) {
       // null hides the bonus UI when the status cannot be read.
       social_bonus_claimed: socialBonusState === null ? null : socialBonusState === 'approved',
       social_bonus_status: socialBonusState,
+      avatar_url: typeof user.user_metadata?.avatar_url === 'string' ? user.user_metadata.avatar_url : null,
     }, { headers: NO_STORE })
   } catch (error) {
     console.error('[mobile/account-summary] Erreur:', error)

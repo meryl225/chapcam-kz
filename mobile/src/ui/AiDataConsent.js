@@ -10,20 +10,14 @@ export const AI_CONSENT_KEY = 'ai_data_consent_at'
 
 export const hasAiDataConsent = (user) => Boolean(user?.user_metadata?.[AI_CONSENT_KEY])
 
-const PROVIDERS = [
-  { name: 'HeyGen', use: 'Photos en Vidéo, Traduction vidéo, voix' },
-  { name: 'Decart et LiveKit', use: 'Live Swap (vidéo en temps réel)' },
-  { name: 'Kling', use: 'Motion Control' },
-  { name: 'ElevenLabs et Resemble AI', use: 'Message vocal, génération et transformation de voix' },
-]
-
 const DATA_SENT = [
-  'Les photos et vidéos que vous choisissez',
-  'L’image de votre visage filmée par la caméra',
-  'Les enregistrements de votre voix',
+  { icon: 'images-outline', label: 'Photos et vidéos sélectionnées' },
+  { icon: 'camera-outline', label: 'Image filmée par la caméra' },
+  { icon: 'mic-outline', label: 'Enregistrements vocaux' },
 ]
 
-const openPrivacy = () => WebBrowser.openBrowserAsync(`${API_URL}/confidentialite`).catch(() => {})
+const openSubprocessors = () =>
+  WebBrowser.openBrowserAsync(`${API_URL}/confidentialite#sous-traitants`).catch(() => {})
 
 export function AiDataConsentSheet({ visible, onAccept, onDecline }) {
   const insets = useSafeAreaInsets()
@@ -43,35 +37,44 @@ export function AiDataConsentSheet({ visible, onAccept, onDecline }) {
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onDecline}>
       <View style={s.backdrop}>
         <View style={[s.sheet, { paddingBottom: insets.bottom + 16 }]}>
+          <View style={s.grabber} />
           <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
             <View style={s.iconWrap}>
-              <Ionicons name="shield-checkmark" size={26} color={C.blue} />
+              <Ionicons name="shield-checkmark" size={24} color={C.blue} />
             </View>
             <Text style={s.title} accessibilityRole="header">Partage de vos données avec des services d’IA</Text>
+            <Text style={s.lead}>Votre accord est nécessaire avant la première utilisation.</Text>
+
+            <Text style={s.section}>Utilisation de vos données par nos services IA</Text>
             <Text style={s.body}>
-              Pour créer vos contenus, ChapCam envoie certaines données à des services d’intelligence artificielle tiers. Nous avons besoin de votre accord avant la première utilisation.
+              Certaines fonctionnalités ChapCam nécessitent l’envoi temporaire de vos photos, vidéos, images de caméra ou enregistrements vocaux à des prestataires technologiques tiers afin de générer le contenu demandé.
             </Text>
 
             <Text style={s.section}>Données envoyées</Text>
-            {DATA_SENT.map((item) => (
-              <View key={item} style={s.row}>
-                <Ionicons name="checkmark-circle" size={16} color={C.violet} />
-                <Text style={s.rowText}>{item}</Text>
-              </View>
-            ))}
+            <View style={s.card}>
+              {DATA_SENT.map((item, i) => (
+                <View key={item.label} style={[s.row, i > 0 && s.rowDivider]}>
+                  <View style={s.rowIcon}>
+                    <Ionicons name={item.icon} size={17} color={C.violet} />
+                  </View>
+                  <Text style={s.rowText}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
 
-            <Text style={s.section}>Services destinataires</Text>
-            {PROVIDERS.map((p) => (
-              <View key={p.name} style={s.provider}>
-                <Text style={s.providerName}>{p.name}</Text>
-                <Text style={s.providerUse}>{p.use}</Text>
-              </View>
-            ))}
-
+            <Text style={s.section}>Pourquoi ces données sont utilisées</Text>
             <Text style={s.body}>
-              Ces données servent uniquement à générer le contenu que vous demandez. Elles ne sont pas vendues et ne servent pas à la publicité. Vous pouvez retirer votre accord à tout moment en supprimant votre compte depuis le Profil.
+              Création, transformation, traduction et génération de contenu avec les outils IA ChapCam.
             </Text>
-            <Text style={s.link} onPress={openPrivacy} accessibilityRole="link">Lire la politique de confidentialité</Text>
+
+            <Text style={s.note}>
+              Vos données ne sont ni vendues ni utilisées à des fins publicitaires. Vous pouvez retirer votre accord à tout moment en supprimant votre compte depuis le Profil.
+            </Text>
+
+            <Pressable onPress={openSubprocessors} accessibilityRole="link" hitSlop={8} style={s.linkRow}>
+              <Text style={s.link}>En savoir plus sur nos sous-traitants</Text>
+              <Ionicons name="arrow-forward" size={13} color={C.muted} />
+            </Pressable>
           </ScrollView>
 
           <Pressable
@@ -94,19 +97,23 @@ export function AiDataConsentSheet({ visible, onAccept, onDecline }) {
 
 const s = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(11,18,53,0.55)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: C.white, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingHorizontal: 20, paddingTop: 22, maxHeight: '90%' },
-  content: { paddingBottom: 16 },
-  iconWrap: { width: 52, height: 52, borderRadius: 16, backgroundColor: C.softBlue, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  title: { fontSize: 21, fontWeight: '800', color: C.ink, marginBottom: 8 },
-  body: { fontSize: 14, lineHeight: 21, color: C.muted, marginTop: 4 },
-  section: { fontSize: 12, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase', color: C.ink, marginTop: 18, marginBottom: 8 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
-  rowText: { flex: 1, fontSize: 14, lineHeight: 20, color: C.ink },
-  provider: { paddingVertical: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.line },
-  providerName: { fontSize: 14, fontWeight: '700', color: C.ink },
-  providerUse: { fontSize: 13, lineHeight: 19, color: C.muted, marginTop: 2 },
-  link: { fontSize: 14, fontWeight: '700', color: C.blue, marginTop: 12 },
-  primary: { height: 52, borderRadius: 26, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  sheet: { backgroundColor: C.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 22, paddingTop: 10, maxHeight: '90%' },
+  grabber: { alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: C.line, marginBottom: 18 },
+  content: { paddingBottom: 18 },
+  iconWrap: { width: 48, height: 48, borderRadius: 15, backgroundColor: C.softBlue, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  title: { fontSize: 22, lineHeight: 28, fontWeight: '800', color: C.ink, letterSpacing: -0.3 },
+  lead: { fontSize: 14, lineHeight: 20, color: C.muted, marginTop: 6 },
+  section: { fontSize: 15, fontWeight: '700', color: C.ink, marginTop: 22, marginBottom: 6 },
+  body: { fontSize: 14, lineHeight: 21, color: C.muted },
+  card: { borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: C.line, paddingHorizontal: 14, marginTop: 4 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  rowDivider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.line },
+  rowIcon: { width: 30, height: 30, borderRadius: 9, backgroundColor: C.softBlue, alignItems: 'center', justifyContent: 'center' },
+  rowText: { flex: 1, fontSize: 14, lineHeight: 20, fontWeight: '600', color: C.ink },
+  note: { fontSize: 12.5, lineHeight: 18, color: C.muted, marginTop: 22 },
+  linkRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 12, alignSelf: 'flex-start' },
+  link: { fontSize: 13, fontWeight: '600', color: C.muted, textDecorationLine: 'underline' },
+  primary: { height: 54, borderRadius: 27, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   primaryBusy: { opacity: 0.6 },
   primaryText: { fontSize: 16, fontWeight: '800', color: C.white },
   secondary: { height: 46, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
