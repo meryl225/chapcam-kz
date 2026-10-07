@@ -117,6 +117,25 @@ export async function grantWelcomeJetonsOnce(userId: string, accountCreatedAt: s
   return { credited: result.credited }
 }
 
+export const SOCIAL_BONUS_JETONS = 5
+export const SOCIAL_NETWORKS = ['tiktok', 'instagram', 'facebook', 'x'] as const
+
+const socialBonusKey = (userId: string) => `social:${userId}`
+
+/** Social follows cannot be verified through public APIs, so the bonus is capped at one claim per account. */
+export async function grantSocialBonusOnce(userId: string) {
+  return creditJetonsOnce(userId, socialBonusKey(userId), SOCIAL_BONUS_JETONS, { source: 'social_bonus' })
+}
+
+export async function hasClaimedSocialBonus(userId: string) {
+  try {
+    const rows = await sql`SELECT 1 FROM jetons_iap_credits WHERE transaction_id = ${socialBonusKey(userId)} LIMIT 1` as unknown[]
+    return rows.length > 0
+  } catch {
+    return false
+  }
+}
+
 export async function reserveJetons(userId: string, providerCostUsd: number, tool: string, meta?: Record<string, unknown>) {
   return debitJetons(userId, providerCostToJetons(providerCostUsd), providerCostUsd, tool, meta)
 }

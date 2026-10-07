@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { getJetonsBalance, grantWelcomeJetonsOnce } from '@/lib/jetons'
+import { getJetonsBalance, grantWelcomeJetonsOnce, hasClaimedSocialBonus } from '@/lib/jetons'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     // Authenticate with the mobile bearer token, then read the same production
     // tables as the website with service-role scope (RLS otherwise hides them).
     const accountDb = createAdminClient()
-    const [{ data: subscription, error: subscriptionError }, jetons] = await Promise.all([
+    const [{ data: subscription, error: subscriptionError }, jetons, socialBonusClaimed] = await Promise.all([
       accountDb
         .from('subscriptions')
         .select('plan,status,is_active,points,expires_at,end_date')
@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
         .limit(1)
         .maybeSingle(),
       getJetonsBalance(user.id),
+      hasClaimedSocialBonus(user.id),
     ])
 
     if (subscriptionError) throw subscriptionError
@@ -92,6 +93,7 @@ export async function GET(request: NextRequest) {
       },
       subscription: returnedSubscription,
       welcome_bonus_credited: welcomeBonus.credited,
+      social_bonus_claimed: socialBonusClaimed,
     }, { headers: NO_STORE })
   } catch (error) {
     console.error('[mobile/account-summary] Erreur:', error)
