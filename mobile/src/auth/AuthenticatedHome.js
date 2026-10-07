@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Alert, Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { AI_CONSENT_KEY, AiDataConsentSheet, hasAiDataConsent } from '../ui/AiDataConsent'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -140,10 +141,33 @@ function HomeShell({ user }) {
   const credits = subscriptionExpired ? 0 : Math.max(0, Number(subscription?.points) || 0)
   const onRefresh = () => { setRefreshing(true); loadAccount() }
 
+  const [aiConsented, setAiConsented] = useState(() => Platform.OS !== 'ios' || hasAiDataConsent(user))
+  const [pendingTool, setPendingTool] = useState(null)
+
   const onOpenTool = (key) => {
     if (COMING_SOON_TOOLS.has(key)) return
-    if (NATIVE_TOOLS.has(key)) setOpenTool(key)
-    else setTab('explore')
+    if (!NATIVE_TOOLS.has(key)) {
+      setTab('explore')
+      return
+    }
+    if (!aiConsented) {
+      setQuickOpen(false)
+      setPendingTool(key)
+      return
+    }
+    setOpenTool(key)
+  }
+
+  const acceptAiConsent = async () => {
+    const { error } = await supabase.auth.updateUser({ data: { [AI_CONSENT_KEY]: new Date().toISOString() } })
+    if (error) {
+      Alert.alert('Erreur', 'Impossible d’enregistrer votre accord. Vérifiez votre connexion et réessayez.')
+      return
+    }
+    setAiConsented(true)
+    const key = pendingTool
+    setPendingTool(null)
+    if (key) setOpenTool(key)
   }
 
   const onQuickLaunch = onOpenTool
@@ -234,6 +258,7 @@ function HomeShell({ user }) {
         <QuickLaunchMenu visible={quickOpen && !overlay} bottom={insets.bottom} onClose={() => setQuickOpen(false)} onSelect={onQuickLaunch} />
       </View>
       {overlay ? <View style={StyleSheet.absoluteFill}>{overlay}</View> : null}
+      <AiDataConsentSheet visible={Boolean(pendingTool)} onAccept={acceptAiConsent} onDecline={() => setPendingTool(null)} />
     </View>
   )
 }
