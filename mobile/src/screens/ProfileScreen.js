@@ -125,7 +125,11 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const email = user?.email ?? ''
   const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || null
   const initial = ((metaName || email).trim().charAt(0) || 'C').toUpperCase()
-  const avatarUrl = editedAvatarUrl !== undefined ? editedAvatarUrl : getUserPhotoUrl(user)
+  // The server value wins over the cached session so the photo survives an app relaunch.
+  const serverAvatarUrl = account.summary && 'avatar_url' in account.summary ? account.summary.avatar_url : undefined
+  const avatarUrl = editedAvatarUrl !== undefined
+    ? editedAvatarUrl
+    : serverAvatarUrl !== undefined ? serverAvatarUrl || getUserPhotoUrl(user) : getUserPhotoUrl(user)
   const hasCustomAvatar = Boolean(avatarUrl && !avatarFailed)
   const avatarSource = hasCustomAvatar ? { uri: avatarUrl } : getUserAvatarSource(user)
 
@@ -139,13 +143,17 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const uploadAvatar = async (asset) => {
     setAvatarBusy(true)
     try {
-      const type = asset.mimeType || 'image/jpeg'
-      const extension = type.split('/')[1] || 'jpg'
+      const uriExtension = (asset.uri.split('?')[0].split('.').pop() || '').toLowerCase()
+      const type = asset.mimeType && asset.mimeType.startsWith('image/')
+        ? asset.mimeType
+        : uriExtension === 'png' ? 'image/png' : uriExtension === 'heic' ? 'image/heic' : 'image/jpeg'
+      const extension = type === 'image/jpeg' ? 'jpg' : type.split('/')[1]
       const form = new FormData()
-      form.append('file', { uri: asset.uri, name: asset.fileName || `avatar.${extension}`, type })
+      form.append('file', { uri: asset.uri, name: `avatar.${extension}`, type })
       const response = await apiForm('/api/mobile/avatar', form)
       if (!response.ok) throw new Error(await readApiError(response, 'Impossible d’enregistrer la photo.'))
-      const body = await response.json()
+      const body = await response.json().catch(() => ({}))
+      if (!body.avatar_url) throw new Error('Impossible d’enregistrer la photo.')
       await applyAvatar(body.avatar_url)
     } catch (error) {
       Alert.alert('Photo non enregistrée', friendlyError(error, 'Impossible d’enregistrer la photo. Réessaie dans un instant.'))
