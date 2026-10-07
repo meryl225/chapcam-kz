@@ -454,6 +454,13 @@ export default function AdminPaymentsPage() {
               Ajouter jetons
             </Link>
             <Link
+              href="/admin/social-claims"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#ffb300]/40 bg-[#1a1405] px-4 py-2.5 text-sm font-medium text-[#ffb300] transition-colors hover:border-[#ffb300] hover:text-white"
+            >
+              <Coins className="h-4 w-4" />
+              Bonus réseaux
+            </Link>
+            <Link
               href="/admin/voice-messages"
               className="inline-flex items-center gap-2 rounded-xl border border-[#ff5db1]/40 bg-[#1a0512] px-4 py-2.5 text-sm font-medium text-[#ff5db1] transition-colors hover:border-[#ff5db1] hover:text-white"
             >

@@ -1,36 +1,93 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { grantSocialBonusOnce, SOCIAL_BONUS_JETONS, SOCIAL_NETWORKS } from '@/lib/jetons'
+import { createAdminClient } from '@/lib/supabase/admin'
+import {
+  createPendingClaim,
+  ensureProofBucket,
+  getSocialBonusState,
+  MAX_PROOF_BYTES,
+  MAX_PROOFS,
+  PROOF_TYPES,
+  SOCIAL_PROOF_BUCKET,
+} from '@/lib/social-claims'
 
+export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const NO_STORE = { 'Cache-Control': 'private, no-store' }
 
-export async function POST(request: NextRequest) {
+async function authenticate(request: NextRequest) {
   const header = request.headers.get('authorization') || ''
   const token = header.startsWith('Bearer ') ? header.slice(7).trim() : ''
-  if (!token) return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: NO_STORE })
-
+  if (!token) return null
   const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   })
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-  if (authError || !user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: NO_STORE })
+  const { data: { user } } = await supabase.auth.getUser(token)
+  return user ?? null
+}
 
-  const body = await request.json().catch(() => null)
-  const visited = Array.isArray(body?.visited) ? body.visited.filter((v: unknown) => typeof v === 'string') : []
-  if (!SOCIAL_NETWORKS.every((network) => visited.includes(network))) {
-    return NextResponse.json({ error: 'Suis ChapCam sur les 4 réseaux pour obtenir le bonus.' }, { status: 400, headers: NO_STORE })
+export async function GET(request: NextRequest) {
+  const user = await authenticate(request)
+  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: NO_STORE })
+  try {
+    return NextResponse.json({ status: await getSocialBonusState(user.id) }, { headers: NO_STORE })
+  } catch (error) {
+    console.error('[mobile/social-bonus] Statut indisponible:', error)
+    return NextResponse.json({ error: 'Statut indisponible pour le moment.' }, { status: 500, headers: NO_STORE })
+  }
+}
+
+/** Stores the proof screenshots and opens a pending claim. Jetons are only credited after admin approval. */
+export async function POST(request: NextRequest) {
+  const user = await authenticate(request)
+  if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: NO_STORE })
+
+  const form = await request.formData().catch(() => null)
+  const files = (form?.getAll('proofs') ?? []).filter((item): item is File => item instanceof File && item.size > 0)
+  if (files.length === 0) {
+    return NextResponse.json({ error: 'Ajoute au moins une capture d’écran.' }, { status: 400, headers: NO_STORE })
+  }
+  if (files.length > MAX_PROOFS) {
+    return NextResponse.json({ error: `${MAX_PROOFS} captures maximum.` }, { status: 400, headers: NO_STORE })
+  }
+  for (const file of files) {
+    if (!PROOF_TYPES[file.type]) {
+      return NextResponse.json({ error: 'Format non pris en charge. Utilise des images JPG, PNG ou HEIC.' }, { status: 400, headers: NO_STORE })
+    }
+    if (file.size > MAX_PROOF_BYTES) {
+      return NextResponse.json({ error: 'Chaque capture doit faire moins de 8 Mo.' }, { status: 400, headers: NO_STORE })
+    }
   }
 
   try {
-    const result = await grantSocialBonusOnce(user.id)
-    return NextResponse.json(
-      { credited: result.credited, already_claimed: !result.credited, jetons: SOCIAL_BONUS_JETONS, balance: result.balance },
-      { headers: NO_STORE },
-    )
+    const state = await getSocialBonusState(user.id)
+    if (state === 'approved') {
+      return NextResponse.json({ error: 'Ce bonus a déjà été obtenu.', status: state }, { status: 409, headers: NO_STORE })
+    }
+    if (state === 'pending') {
+      return NextResponse.json({ error: 'Ta preuve est déjà en cours de vérification.', status: state }, { status: 409, headers: NO_STORE })
+    }
+
+    await ensureProofBucket()
+    const storage = createAdminClient().storage.from(SOCIAL_PROOF_BUCKET)
+    const batch = `${Date.now()}-${crypto.randomUUID().slice(0, 8)}`
+    const paths: string[] = []
+    for (const [index, file] of files.entries()) {
+      const path = `${user.id}/${batch}/${index + 1}.${PROOF_TYPES[file.type]}`
+      const { error } = await storage.upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false })
+      if (error) throw error
+      paths.push(path)
+    }
+
+    const claimId = await createPendingClaim(user.id, paths)
+    if (!claimId) {
+      await storage.remove(paths)
+      return NextResponse.json({ error: 'Ta preuve est déjà en cours de vérification.', status: 'pending' }, { status: 409, headers: NO_STORE })
+    }
+    return NextResponse.json({ status: 'pending', claim_id: claimId }, { headers: NO_STORE })
   } catch (error) {
     console.error('[mobile/social-bonus] Erreur:', error)
-    return NextResponse.json({ error: 'Bonus indisponible pour le moment.' }, { status: 500, headers: NO_STORE })
+    return NextResponse.json({ error: 'Envoi impossible pour le moment.' }, { status: 500, headers: NO_STORE })
   }
 }
