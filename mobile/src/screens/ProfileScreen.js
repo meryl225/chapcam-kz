@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Alert, Image, Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActionSheetIOS, ActivityIndicator, Alert, Image, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { supabase } from '../lib/supabase'
-import { apiJson, friendlyError } from '../lib/api'
+import { apiForm, apiJson, friendlyError, readApiError } from '../lib/api'
 import { unregisterPushToken } from '../lib/pushNotifications'
 import { getUserAvatarSource, getUserPhotoUrl } from '../lib/userAvatar'
 import { AccountSummaryError, accountSummaryMessage, fetchAccountSummary } from '../lib/accountSummary'
@@ -100,6 +101,9 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const insets = useSafeAreaInsets()
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  // undefined = follow the session user's metadata; string/null = result of an edit made on this screen.
+  const [editedAvatarUrl, setEditedAvatarUrl] = useState(undefined)
+  const [avatarBusy, setAvatarBusy] = useState(false)
 
   // Live Swap + plan come from the same Supabase `subscriptions` row the website dashboard reads
   // (loaded by AuthenticatedHome under the user's session / RLS). Jetons live in the Neon
@@ -112,8 +116,93 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const email = user?.email ?? ''
   const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || null
   const initial = ((metaName || email).trim().charAt(0) || 'C').toUpperCase()
-  const avatarUrl = getUserPhotoUrl(user)
-  const avatarSource = avatarUrl && !avatarFailed ? { uri: avatarUrl } : getUserAvatarSource(user)
+  const avatarUrl = editedAvatarUrl !== undefined ? editedAvatarUrl : getUserPhotoUrl(user)
+  const hasCustomAvatar = Boolean(avatarUrl && !avatarFailed)
+  const avatarSource = hasCustomAvatar ? { uri: avatarUrl } : getUserAvatarSource(user)
+
+  const applyAvatar = async (url) => {
+    setAvatarFailed(false)
+    setEditedAvatarUrl(url)
+    // Pull the new user_metadata into the session so every screen sees the same photo.
+    await supabase.auth.refreshSession().catch(() => {})
+  }
+
+  const uploadAvatar = async (asset) => {
+    setAvatarBusy(true)
+    try {
+      const type = asset.mimeType || 'image/jpeg'
+      const extension = type.split('/')[1] || 'jpg'
+      const form = new FormData()
+      form.append('file', { uri: asset.uri, name: asset.fileName || `avatar.${extension}`, type })
+      const response = await apiForm('/api/mobile/avatar', form)
+      if (!response.ok) throw new Error(await readApiError(response, 'Impossible d’enregistrer la photo.'))
+      const body = await response.json()
+      await applyAvatar(body.avatar_url)
+    } catch (error) {
+      Alert.alert('Photo non enregistrée', friendlyError(error, 'Impossible d’enregistrer la photo. Réessaie dans un instant.'))
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  const pickAvatar = async (source) => {
+    const permission = source === 'camera'
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permission.granted) {
+      Alert.alert(
+        'Accès refusé',
+        source === 'camera'
+          ? 'Autorise l’accès à la caméra dans Réglages > ChapCam pour prendre ta photo de profil.'
+          : 'Autorise l’accès à tes photos dans Réglages > ChapCam pour choisir ta photo de profil.',
+        [{ text: 'Annuler', style: 'cancel' }, { text: 'Ouvrir les Réglages', onPress: () => Linking.openSettings() }],
+      )
+      return
+    }
+    const options = { mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 }
+    const result = source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ ...options, cameraType: ImagePicker.CameraType.front })
+      : await ImagePicker.launchImageLibraryAsync(options)
+    if (!result.canceled && result.assets?.[0]) await uploadAvatar(result.assets[0])
+  }
+
+  const removeAvatar = async () => {
+    setAvatarBusy(true)
+    try {
+      const { response, body } = await apiJson('/api/mobile/avatar', { method: 'DELETE' })
+      if (!response.ok) throw new Error(body?.error || 'Impossible de retirer la photo.')
+      await applyAvatar(null)
+    } catch (error) {
+      Alert.alert('Photo non retirée', friendlyError(error, 'Impossible de retirer la photo. Réessaie dans un instant.'))
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  const openAvatarMenu = () => {
+    if (avatarBusy) return
+    const actions = [
+      { label: 'Choisir dans mes photos', run: () => pickAvatar('library') },
+      { label: 'Prendre une photo', run: () => pickAvatar('camera') },
+      ...(hasCustomAvatar ? [{ label: 'Retirer ma photo', destructive: true, run: removeAvatar }] : []),
+    ]
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: 'Photo de profil',
+          options: [...actions.map((a) => a.label), 'Annuler'],
+          cancelButtonIndex: actions.length,
+          destructiveButtonIndex: actions.findIndex((a) => a.destructive),
+        },
+        (index) => actions[index]?.run(),
+      )
+      return
+    }
+    Alert.alert('Photo de profil', undefined, [
+      ...actions.map((a) => ({ text: a.label, style: a.destructive ? 'destructive' : 'default', onPress: a.run })),
+      { text: 'Annuler', style: 'cancel' },
+    ])
+  }
   const memberSince = formatMemberSince(user?.created_at)
 
   const planKey = accountSubscription?.plan || null
@@ -200,28 +289,35 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
         <View style={styles.heroClip} pointerEvents="none">
           <Image source={CHAPCAM_MARK} style={styles.heroMark} resizeMode="contain" accessibilityIgnoresInvertColors />
         </View>
-        <View style={styles.avatarRing}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Modifier la photo de profil"
+          accessibilityHint="Choisir une photo, en prendre une ou retirer la photo actuelle"
+          accessibilityState={{ busy: avatarBusy }}
+          onPress={openAvatarMenu}
+          hitSlop={6}
+          style={({ pressed }) => [styles.avatarRing, pressed && styles.pressed]}
+        >
           <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.avatar}>
             <Text style={styles.avatarText}>{initial}</Text>
             <Image
+              key={hasCustomAvatar ? avatarUrl : 'default'}
               source={avatarSource}
               style={styles.avatarPhoto}
-              resizeMode="contain"
+              resizeMode={hasCustomAvatar ? 'cover' : 'contain'}
               onError={() => setAvatarFailed(true)}
-              accessibilityLabel="Photo de profil"
+              accessibilityIgnoresInvertColors
             />
+            {avatarBusy ? (
+              <View style={styles.avatarBusy}>
+                <ActivityIndicator color={C.white} />
+              </View>
+            ) : null}
           </LinearGradient>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Modifier les informations du profil"
-            accessibilityHint="La photo de profil sera bientôt disponible"
-            onPress={() => open(LINKS.settings)}
-            hitSlop={6}
-            style={styles.avatarEdit}
-          >
-            <Ionicons name="pencil" size={12} color={C.white} />
-          </Pressable>
-        </View>
+          <View style={styles.avatarEdit} pointerEvents="none">
+            <Ionicons name={hasCustomAvatar ? 'pencil' : 'camera'} size={12} color={C.white} />
+          </View>
+        </Pressable>
         <View style={styles.heroInfo}>
           <View style={styles.identityEyebrow}>
             <Text style={styles.identityEyebrowText}>COMPTE CHAPCAM</Text>
@@ -229,7 +325,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           </View>
           {metaName ? <Text style={styles.heroName} numberOfLines={1}>{metaName}</Text> : null}
           <Text style={metaName ? styles.heroEmailSub : styles.heroName} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{email}</Text>
-          <Text style={styles.avatarHint} numberOfLines={1}>Avatar ChapCam</Text>
+          <Text style={styles.avatarHint} numberOfLines={1}>{hasCustomAvatar ? 'Ma photo de profil' : 'Touchez l’avatar pour ajouter votre photo'}</Text>
           {subscriptionLoading ? (
             <ChapCamLoader size="small" tone="light" style={styles.heroLoader} />
           ) : (
@@ -509,6 +605,7 @@ const styles = StyleSheet.create({
   avatar: { width: 82, height: 82, borderRadius: 41, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   avatarText: { color: C.white, fontSize: 34, fontWeight: '900' },
   avatarPhoto: { ...StyleSheet.absoluteFillObject, borderRadius: 41 },
+  avatarBusy: { ...StyleSheet.absoluteFillObject, borderRadius: 41, backgroundColor: 'rgba(11, 16, 48, 0.55)', alignItems: 'center', justifyContent: 'center' },
   avatarEdit: { position: 'absolute', right: -2, bottom: -2, width: 28, height: 28, borderRadius: 14, backgroundColor: NAVY, borderWidth: 2, borderColor: C.white, alignItems: 'center', justifyContent: 'center' },
   heroInfo: { flex: 1, gap: 6, minWidth: 0 },
   identityEyebrow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 1 },

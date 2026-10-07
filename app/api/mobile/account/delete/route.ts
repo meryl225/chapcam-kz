@@ -140,8 +140,11 @@ export async function POST(request: NextRequest) {
     }
 
     // The account no longer exists; media cleanup is best-effort and logged.
+    const avatarPath = user.user_metadata?.avatar_path
+    const avatarTasks: Promise<unknown>[] =
+      typeof avatarPath === 'string' && avatarPath.startsWith(`avatars/${userId}/`) ? [del(avatarPath)] : []
     await Promise.allSettled(
-      media.flatMap((m) => {
+      avatarTasks.concat(media.flatMap((m) => {
         const tasks: Promise<unknown>[] = []
         if (m.blob_pathname) tasks.push(del(m.blob_pathname))
         if (isR2Configured()) {
@@ -151,7 +154,7 @@ export async function POST(request: NextRequest) {
         }
         if (m.stream_uid) tasks.push(deleteStream(m.stream_uid))
         return tasks
-      }),
+      })),
     ).then((results) => {
       const failed = results.filter((r) => r.status === 'rejected').length
       if (failed) console.error(`[mobile/account/delete] ${failed} fichier(s) média non supprimé(s)`)
