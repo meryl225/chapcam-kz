@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getJetonsBalance, grantWelcomeJetonsOnce } from '@/lib/jetons'
 import { getSocialBonusState } from '@/lib/social-claims'
+import { getTopupPoints } from '@/lib/liveswap-topup'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const dynamic = 'force-dynamic'
@@ -66,10 +67,11 @@ export async function GET(request: NextRequest) {
     // `points` is the Live Swap balance credited by purchases/admin and debited
     // by /api/points. `points_remaining` is a legacy column (default 0, only
     // written by the old faceswap routes) and must never be shown as balance.
-    // Expired => 0, same rule as GET /api/points.
+    // Expired => only the never-expiring top-up minutes remain, same rule as GET /api/points.
     const expired = expirationTime !== null && !Number.isNaN(expirationTime) && expirationTime < Date.now()
+    const totalPoints = Math.max(0, Number(subscription?.points) || 0)
     const remainingPoints = subscription
-      ? expired ? 0 : Math.max(0, Number(subscription.points) || 0)
+      ? expired ? await getTopupPoints(user.id, totalPoints) : totalPoints
       : null
 
     if (!jetons || typeof jetons.balance !== 'number') {

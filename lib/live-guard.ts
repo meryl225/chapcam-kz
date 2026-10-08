@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { POINTS_PER_SECOND_SD } from '@/lib/swap-pricing'
+import { getTopupPoints, setTopupPoints } from '@/lib/liveswap-topup'
 
 // Nombre minimal de points pour DEMARRER un swap : 1 palier de deduction (5s)
 // au tarif de base 720p (2 pts/s) = 10 points. Meme regle que le hook client.
@@ -9,14 +10,20 @@ export const MIN_POINTS_TO_START = POINTS_PER_SECOND_SD * 5
 // Expiration = annulation IMMEDIATE du forfait. Des que la date d'expiration
 // est depassee, le forfait est annule : points remis a zero, forfait desactive
 // et repasse en 'free'. Il n'y a AUCUNE fenetre de grace.
-export async function cancelSubscription(userId: string): Promise<void> {
+// Exception : les minutes de recharge (consommables Apple) n'expirent jamais et
+// sont conservees. Seule la part abonnement est remise a zero.
+export async function cancelSubscription(userId: string): Promise<number> {
   // Ecriture avec le service_role : on force la remise a zero meme si la RLS
   // publique restreint la colonne is_active / plan.
   const admin = createAdminClient()
+  const { data } = await admin.from('subscriptions').select('points').eq('user_id', userId).maybeSingle()
+  const topup = await getTopupPoints(userId, Number(data?.points) || 0)
   await admin
     .from('subscriptions')
-    .update({ points: 0, is_active: false, plan: 'free' })
+    .update({ points: topup, is_active: false, plan: 'free' })
     .eq('user_id', userId)
+  if (topup > 0) await setTopupPoints(userId, topup).catch(() => {})
+  return topup
 }
 
 // ---------------------------------------------------------------------------
@@ -117,19 +124,27 @@ export async function checkLiveAccess(userId: string): Promise<LiveGuardResult> 
   const points = Number(sub.points) || 0
   const plan = String(sub.plan || 'free')
 
-  // Compte jamais actif (desactive manuellement, ou aucun abonnement paye)
-  if (!sub.is_active) {
-    return { allowed: false, points, plan, isActive: false, reason: 'inactive' }
+  // Abonnement expire : annulation IMMEDIATE, sans fenetre de grace. Des que la
+  // date d'expiration est depassee, le forfait est annule et les points
+  // d'abonnement sont remis a zero. Les minutes de recharge sont conservees.
+  if (isExpired) {
+    const topup =
+      points > 0 || sub.is_active || plan !== 'free'
+        ? await cancelSubscription(userId)
+        : await getTopupPoints(userId, points)
+    if (topup >= MIN_POINTS_TO_START) {
+      return { allowed: true, points: topup, plan: 'free', isActive: false, reason: 'ok' }
+    }
+    return { allowed: false, points: topup, plan: 'free', isActive: false, reason: 'expired' }
   }
 
-  // Abonnement expire : annulation IMMEDIATE, sans fenetre de grace. Des que la
-  // date d'expiration est depassee, le forfait est annule et les points restants
-  // sont definitivement remis a zero (forfait desactive et repasse en 'free').
-  if (isExpired) {
-    if (points > 0 || sub.is_active || plan !== 'free') {
-      await cancelSubscription(userId)
+  // Compte sans abonnement actif : seules les minutes de recharge sont utilisables.
+  if (!sub.is_active) {
+    const topup = await getTopupPoints(userId, points)
+    if (topup >= MIN_POINTS_TO_START) {
+      return { allowed: true, points: topup, plan, isActive: false, reason: 'ok' }
     }
-    return { allowed: false, points: 0, plan: 'free', isActive: false, reason: 'expired' }
+    return { allowed: false, points, plan, isActive: false, reason: 'inactive' }
   }
 
   if (points < MIN_POINTS_TO_START) {

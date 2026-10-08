@@ -1,6 +1,7 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { activateSubscription, creditMinutes, logPaymentEvent } from '@/lib/fulfillment'
+import { activateSubscription, creditTopupPoints, logPaymentEvent } from '@/lib/fulfillment'
+import { recordTopupCredit } from '@/lib/liveswap-topup'
 import { creditJetonsOnce } from '@/lib/jetons'
 import { APPLE_PRODUCTS, deactivateAppleSubscription, emailFor, planForAppleProduct } from '@/lib/apple-iap'
 
@@ -28,7 +29,6 @@ export const TOKEN_PACKS: { productId: string; jetons: number }[] = [
 // nombre de minutes vient UNIQUEMENT de ce tableau, jamais du client.
 export const LIVESWAP_MINUTES_OFFERING = 'liveswap_minutes'
 const LIVESWAP_POINTS_PER_SECOND = 2
-const LIVESWAP_MINUTES_VALIDITY_DAYS = 30
 
 export const LIVESWAP_MINUTE_PACKS: { productId: string; packageId: string; minutes: number }[] = [
   { productId: 'com.chapcam.app.liveswap.minutes.5', packageId: 'liveswap_5min', minutes: 5 },
@@ -301,12 +301,10 @@ async function applyMinutePacks(admin: Admin, userId: string, email: string, sub
 
       try {
         const before = await readLiveSwapPoints(admin, userId)
-        await creditMinutes(admin, userId, email, {
-          id: pack.productId,
-          points: packPoints,
-          validityDays: LIVESWAP_MINUTES_VALIDITY_DAYS,
-        })
-        // creditMinutes journalise ses erreurs sans les lever : on relit le solde.
+        // Part non expirable enregistree avant le solde : idempotente par token,
+        // un nouvel essai apres un echec Supabase ne la double donc pas.
+        await recordTopupCredit(token, userId, pack.productId, packPoints)
+        await creditTopupPoints(admin, userId, email, packPoints)
         points = await readLiveSwapPoints(admin, userId)
         if (points < before + packPoints) throw new Error(`minutes non enregistrees (avant ${before}, apres ${points})`)
         console.info('[iap-diag] minutes Live Swap creditees', { userId, productId: pack.productId, token, minutes: pack.minutes, points, source })
