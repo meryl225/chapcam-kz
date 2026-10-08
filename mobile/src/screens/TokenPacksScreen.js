@@ -3,6 +3,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, 
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import Purchases from 'react-native-purchases'
 import { IOS_PRODUCT_IDS, TOKEN_PRODUCT_IDS, fetchIosCatalog } from '../lib/iap'
 import {
   ensureRevenueCat,
@@ -71,7 +72,34 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
     } catch (error) {
       setBusySku(null)
       if (isCancelled(error)) return
-      Alert.alert('Paiement non effectué', purchaseErrorMessage(error))
+      // DIAGNOSTIC TEMPORAIRE : afficher l'erreur RevenueCat/StoreKit brute.
+      let appUserID = null
+      try {
+        appUserID = await Purchases.getAppUserID()
+      } catch (idError) {
+        appUserID = `indisponible (${idError?.message})`
+      }
+      const diag = {
+        productIdentifier: pack.productId,
+        code: error?.code,
+        message: error?.message,
+        readableErrorCode: error?.readableErrorCode ?? error?.userInfo?.readableErrorCode,
+        underlyingErrorMessage: error?.underlyingErrorMessage ?? error?.userInfo?.underlyingErrorMessage,
+        userInfo: error?.userInfo,
+        appUserID,
+      }
+      console.log('[iap-diag] erreur achat jetons', JSON.stringify(diag, null, 2))
+      Alert.alert(
+        'Paiement non effectué (diagnostic)',
+        [
+          `PRODUCT ID : ${diag.productIdentifier}`,
+          `ERROR CODE : ${diag.code} (${diag.readableErrorCode ?? '-'})`,
+          `ERROR MESSAGE : ${diag.message ?? '-'}`,
+          `UNDERLYING ERROR : ${diag.underlyingErrorMessage ?? '-'}`,
+          `APP USER ID : ${diag.appUserID}`,
+          `USER INFO : ${JSON.stringify(diag.userInfo ?? null)}`,
+        ].join('\n\n'),
+      )
       return
     }
     const isThisPurchase = (i) => i.productId === pack.productId && (!transactionId || i.transactionId === `apple:${transactionId}`)
