@@ -5,15 +5,38 @@ import { apiJson } from './api'
 
 export const OFFERING_ID = 'sale'
 
-const API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? Constants.expoConfig?.extra?.revenueCatIosApiKey
+const IS_ANDROID = Platform.OS === 'android'
+
+export const IAP_SUPPORTED = Platform.OS === 'ios' || IS_ANDROID
+
+// Prefixe des transactions renvoyees par le serveur (voir lib/revenuecat.ts).
+export const STORE_TX_PREFIX = IS_ANDROID ? 'google' : 'apple'
+
+export const STORE = IS_ANDROID
+  ? { name: 'Google Play', the: 'Google Play', account: 'Google', settings: 'ton compte Google Play' }
+  : { name: 'App Store', the: "l'App Store", account: 'Apple', settings: 'ton compte App Store' }
+
+const API_KEY = IS_ANDROID
+  ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY ?? Constants.expoConfig?.extra?.revenueCatAndroidApiKey
+  : process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? Constants.expoConfig?.extra?.revenueCatIosApiKey
+
+// Google Play identifie un abonnement par « produit:base-plan » ; le reste de
+// l'app ne connait que l'id produit.
+const baseProductId = (id) => (IS_ANDROID && typeof id === 'string' ? id.split(':')[0] : id)
 
 let configuredFor = null
 
 // RevenueCat est identifie par l'id Supabase : le serveur relit les achats de
 // ce meme identifiant, donc un achat ne peut etre credite qu'a ce compte.
 export async function ensureRevenueCat(userId) {
-  if (Platform.OS !== 'ios') throw new Error('unsupported')
-  if (!API_KEY) throw new Error('Clé RevenueCat iOS manquante (EXPO_PUBLIC_REVENUECAT_IOS_API_KEY)')
+  if (!IAP_SUPPORTED) throw new Error('unsupported')
+  if (!API_KEY) {
+    throw new Error(
+      IS_ANDROID
+        ? 'Clé RevenueCat Android manquante (EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY)'
+        : 'Clé RevenueCat iOS manquante (EXPO_PUBLIC_REVENUECAT_IOS_API_KEY)',
+    )
+  }
   if (configuredFor === null) {
     Purchases.configure({ apiKey: API_KEY, appUserID: userId })
     configuredFor = userId
@@ -44,8 +67,8 @@ export async function loadStoreProducts(productIds, category, offeringId = OFFER
     const offerings = await Purchases.getOfferings()
     const offering = offerings?.all?.[offeringId] ?? offerings?.current
     for (const pkg of offering?.availablePackages ?? []) {
-      const id = pkg?.product?.identifier
-      if (productIds.includes(id)) byId[id] = { product: pkg.product, pkg }
+      const id = baseProductId(pkg?.product?.identifier)
+      if (productIds.includes(id) && !byId[id]) byId[id] = { product: pkg.product, pkg }
     }
   } catch {
     // Offering indisponible : lecture directe des produits ci-dessous.
@@ -56,12 +79,29 @@ export async function loadStoreProducts(productIds, category, offeringId = OFFER
       missing,
       category === 'subs' ? PRODUCT_CATEGORY.SUBSCRIPTION : PRODUCT_CATEGORY.NON_SUBSCRIPTION,
     )
-    for (const product of products ?? []) byId[product.identifier] = { product, pkg: null }
+    for (const product of products ?? []) {
+      const id = baseProductId(product.identifier)
+      if (!byId[id]) byId[id] = { product, pkg: null }
+    }
   }
   return byId
 }
 
+// Sur Google Play, changer de forfait sans indiquer l'ancien cree un second
+// abonnement facture en parallele. Apple gere ce cas seul (groupe d'abonnements).
+async function googleProductChange(item) {
+  if (!IS_ANDROID || item.product?.productCategory !== PRODUCT_CATEGORY.SUBSCRIPTION) return null
+  const info = await Purchases.getCustomerInfo()
+  const newId = baseProductId(item.product.identifier)
+  const oldId = (info?.activeSubscriptions ?? []).map(baseProductId).find((id) => id !== newId)
+  return oldId ? { oldProductIdentifier: oldId } : null
+}
+
 export async function purchaseStoreItem(item) {
+  if (IS_ANDROID) {
+    const change = await googleProductChange(item)
+    return item.pkg ? Purchases.purchasePackage(item.pkg, null, change) : Purchases.purchaseStoreProduct(item.product, change)
+  }
   return item.pkg ? Purchases.purchasePackage(item.pkg) : Purchases.purchaseStoreProduct(item.product)
 }
 
@@ -74,7 +114,23 @@ export async function openManageSubscriptions() {
 export const isCancelled = (error) =>
   Boolean(error?.userCancelled) || error?.code === PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
 
+function googlePurchaseErrorMessage(error) {
+  switch (error?.code) {
+    case PURCHASES_ERROR_CODE.NETWORK_ERROR:
+      return 'Connexion à Google Play impossible. Vérifie ta connexion et réessaie.'
+    case PURCHASES_ERROR_CODE.PRODUCT_NOT_AVAILABLE_FOR_PURCHASE_ERROR:
+      return "Ce produit n'est pas disponible sur Google Play pour le moment."
+    case PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR:
+      return "Le paiement est en attente. Il sera validé automatiquement dès que Google Play le confirme."
+    case PURCHASES_ERROR_CODE.PURCHASE_NOT_ALLOWED_ERROR:
+      return "Les achats intégrés ne sont pas autorisés sur cet appareil."
+    default:
+      return "Le paiement Google Play n'a pas abouti. Aucun montant n'a été débité si l'achat n'a pas été confirmé."
+  }
+}
+
 export function purchaseErrorMessage(error) {
+  if (IS_ANDROID) return googlePurchaseErrorMessage(error)
   switch (error?.code) {
     case PURCHASES_ERROR_CODE.NETWORK_ERROR:
       return "Connexion à l'App Store impossible. Vérifie ta connexion et réessaie."

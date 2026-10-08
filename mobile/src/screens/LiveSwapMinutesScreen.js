@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { MINUTES_OFFERING_ID, MINUTE_PRODUCT_IDS, fetchIosCatalog } from '../lib/iap'
 import {
+  IAP_SUPPORTED,
+  STORE,
+  STORE_TX_PREFIX,
   ensureRevenueCat,
   isCancelled,
   loadStoreProducts,
@@ -56,7 +59,7 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
   const livePointsPerSecond = account.summary?.live_swap?.points_per_second || POINTS_PER_SECOND
 
   const load = useCallback(async () => {
-    if (Platform.OS !== 'ios') {
+    if (!IAP_SUPPORTED) {
       setState({ status: 'unsupported', packs: [], products: {} })
       return
     }
@@ -98,20 +101,20 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
       Alert.alert('Paiement non effectué', purchaseErrorMessage(error))
       return
     }
-    const isThisPurchase = (i) => i.productId === pack.productId && (!transactionId || i.transactionId === `apple:${transactionId}`)
+    const isThisPurchase = (i) => i.productId === pack.productId && (!transactionId || i.transactionId === `${STORE_TX_PREFIX}:${transactionId}`)
     try {
       const result = await syncPurchases('purchase', (body) => body.items.some(isThisPurchase))
       if (result.items.some(isThisPurchase)) {
         refreshAfterCredit()
         Alert.alert('Minutes ajoutées', `${pack.minutes} minutes Live Swap ont été ajoutées à ton solde.`)
       } else {
-        Alert.alert('Vérification en cours', 'Ton paiement Apple est enregistré. Tes minutes seront ajoutées dans quelques instants, ou via « Restaurer les achats ».')
+        Alert.alert('Vérification en cours', `Ton paiement ${STORE.account} est enregistré. Tes minutes seront ajoutées dans quelques instants, ou via « Restaurer les achats ».`)
       }
     } catch (error) {
       console.warn('[iap] Verification serveur impossible:', error?.message)
       Alert.alert(
         'Vérification en attente',
-        "Ton paiement Apple est enregistré, mais nous n'avons pas pu le vérifier. Tes minutes seront ajoutées automatiquement, ou via « Restaurer les achats ».",
+        `Ton paiement ${STORE.account} est enregistré, mais nous n'avons pas pu le vérifier. Tes minutes seront ajoutées automatiquement, ou via « Restaurer les achats ».`,
       )
     } finally {
       setBusySku(null)
@@ -167,7 +170,7 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
         {state.status === 'loading' ? (
           <View style={styles.centered}>
             <ActivityIndicator color={C.blue} />
-            <Text style={styles.muted}>Chargement des recharges App Store…</Text>
+            <Text style={styles.muted}>Chargement des recharges {STORE.name}…</Text>
           </View>
         ) : state.status === 'ready' ? (
           <View style={styles.list}>
@@ -210,7 +213,7 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
             <Text style={styles.errorText}>
               {state.status === 'unsupported'
                 ? "L'achat de minutes est disponible dans l'app ChapCam sur iPhone."
-                : "Impossible de récupérer les recharges depuis l'App Store pour le moment. Vérifie ta connexion et réessaie."}
+                : `Impossible de récupérer les recharges depuis ${STORE.the} pour le moment. Vérifie ta connexion et réessaie.`}
             </Text>
             {state.status !== 'unsupported' ? (
               <Pressable accessibilityRole="button" onPress={load} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
@@ -221,7 +224,7 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
         )}
 
         <Text style={styles.legal}>
-          Achat unique débité sur ton compte Apple à la confirmation. Les minutes sont ajoutées à ton compte ChapCam dès que l'achat est validé.
+          Achat unique débité sur ton compte {STORE.account} à la confirmation. Les minutes sont ajoutées à ton compte ChapCam dès que l'achat est validé.
         </Text>
 
         <Pressable

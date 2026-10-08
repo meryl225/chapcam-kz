@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { IOS_PRODUCT_IDS, TOKEN_PRODUCT_IDS, fetchIosCatalog } from '../lib/iap'
 import {
+  IAP_SUPPORTED,
+  STORE,
+  STORE_TX_PREFIX,
   ensureRevenueCat,
   isCancelled,
   loadStoreProducts,
@@ -31,7 +34,7 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
   onPurchasedRef.current = onPurchased
 
   const load = useCallback(async () => {
-    if (Platform.OS !== 'ios') {
+    if (!IAP_SUPPORTED) {
       setState({ status: 'unsupported', packs: [], products: {} })
       return
     }
@@ -73,20 +76,20 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
       Alert.alert('Achat impossible', 'Réessaie dans quelques instants.')
       return
     }
-    const isThisPurchase = (i) => i.productId === pack.productId && (!transactionId || i.transactionId === `apple:${transactionId}`)
+    const isThisPurchase = (i) => i.productId === pack.productId && (!transactionId || i.transactionId === `${STORE_TX_PREFIX}:${transactionId}`)
     try {
       const result = await syncPurchases('purchase', (body) => body.items.some(isThisPurchase))
       if (result.items.some(isThisPurchase)) {
         refreshAfterCredit()
         Alert.alert('Jetons ajoutés', `${formatJetons(pack.jetons)} jetons ont été ajoutés à ton solde.`)
       } else {
-        Alert.alert('Vérification en cours', "Ton paiement Apple est enregistré. Tes jetons seront ajoutés dans quelques instants, ou via « Restaurer les achats ».")
+        Alert.alert('Vérification en cours', `Ton paiement ${STORE.account} est enregistré. Tes jetons seront ajoutés dans quelques instants, ou via « Restaurer les achats ».`)
       }
     } catch (error) {
       console.warn('[iap] Verification serveur impossible:', error?.message)
       Alert.alert(
         'Vérification en attente',
-        "Ton paiement Apple est enregistré, mais nous n'avons pas pu le vérifier. Tes jetons seront ajoutés automatiquement, ou via « Restaurer les achats ».",
+        `Ton paiement ${STORE.account} est enregistré, mais nous n'avons pas pu le vérifier. Tes jetons seront ajoutés automatiquement, ou via « Restaurer les achats ».`,
       )
     } finally {
       setBusySku(null)
@@ -140,7 +143,7 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
         {state.status === 'loading' ? (
           <View style={styles.centered}>
             <ActivityIndicator color={C.blue} />
-            <Text style={styles.muted}>Chargement des packs App Store…</Text>
+            <Text style={styles.muted}>Chargement des packs {STORE.name}…</Text>
           </View>
         ) : state.status === 'ready' ? (
           <View style={styles.grid}>
@@ -181,7 +184,7 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
             <Text style={styles.errorText}>
               {state.status === 'unsupported'
                 ? "L'achat de jetons est disponible dans l'app ChapCam sur iPhone."
-                : "Impossible de récupérer les packs depuis l'App Store pour le moment. Vérifie ta connexion et réessaie."}
+                : `Impossible de récupérer les packs depuis ${STORE.the} pour le moment. Vérifie ta connexion et réessaie.`}
             </Text>
             {state.status !== 'unsupported' ? (
               <Pressable accessibilityRole="button" onPress={load} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
@@ -192,7 +195,7 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
         )}
 
         <Text style={styles.legal}>
-          Achat unique débité sur ton compte Apple à la confirmation. Les jetons sont ajoutés à ton compte ChapCam dès que l'achat est validé.
+          Achat unique débité sur ton compte {STORE.account} à la confirmation. Les jetons sont ajoutés à ton compte ChapCam dès que l'achat est validé.
         </Text>
 
         <Pressable

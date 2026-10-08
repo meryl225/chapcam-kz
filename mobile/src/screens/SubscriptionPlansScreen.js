@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { IOS_PRODUCT_IDS, fetchIosCatalog, periodLabel } from '../lib/iap'
 import {
+  IAP_SUPPORTED,
+  STORE,
+  STORE_TX_PREFIX,
   ensureRevenueCat,
   isCancelled,
   loadStoreProducts,
@@ -38,7 +41,7 @@ const openUrl = async (url) => {
   }
 }
 
-const OTHER_ACCOUNT_MESSAGE = "L'abonnement de ce compte Apple est déjà rattaché à un autre compte ChapCam. Connecte-toi à ce compte, ou utilise un autre identifiant Apple pour t'abonner ici."
+const OTHER_ACCOUNT_MESSAGE = `L'abonnement de ce compte ${STORE.account} est déjà rattaché à un autre compte ChapCam. Connecte-toi à ce compte, ou utilise un autre compte ${STORE.account} pour t'abonner ici.`
 
 const isActivated = (item) => item.status === 'activated' || item.status === 'already'
 
@@ -58,7 +61,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
   onPurchasedRef.current = onPurchased
 
   const load = useCallback(async () => {
-    if (Platform.OS !== 'ios') {
+    if (!IAP_SUPPORTED) {
       setState({ status: 'unsupported', plans: [], products: {} })
       return
     }
@@ -102,7 +105,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
       } else if (result.items.some((i) => i.status === 'other_account')) {
         Alert.alert('Abonnement déjà utilisé', OTHER_ACCOUNT_MESSAGE)
       } else if (mine.some((i) => i.status === 'revoked')) {
-        Alert.alert('Abonnement annulé', 'Cet achat a été remboursé ou annulé par Apple.')
+        Alert.alert('Abonnement annulé', `Cet achat a été remboursé ou annulé par ${STORE.account}.`)
       } else if (currentPlan(result, productId, state.plans)) {
         // Apple traite l'achat comme un changement de forfait dans le meme groupe :
         // le nouveau forfait ne demarre qu'au prochain renouvellement.
@@ -111,16 +114,16 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
         onPurchasedRef.current?.()
         Alert.alert(
           'Changement de forfait programmé',
-          `Ton forfait ${name} reste actif${until}. Apple activera le nouveau forfait à ce renouvellement, il sera alors appliqué automatiquement à ton compte.`,
+          `Ton forfait ${name} reste actif${until}. ${STORE.account} activera le nouveau forfait à ce renouvellement, il sera alors appliqué automatiquement à ton compte.`,
         )
       } else {
-        Alert.alert('Vérification en cours', "Ton paiement Apple est enregistré. Ton forfait sera activé dans quelques instants, ou via « Restaurer les achats ».")
+        Alert.alert('Vérification en cours', `Ton paiement ${STORE.account} est enregistré. Ton forfait sera activé dans quelques instants, ou via « Restaurer les achats ».`)
       }
     } catch (error) {
       console.warn('[iap] Verification serveur impossible:', error?.message)
       Alert.alert(
         'Vérification en attente',
-        "Ton paiement Apple est enregistré, mais nous n'avons pas pu le vérifier. Il sera validé automatiquement, ou via « Restaurer les achats ».",
+        `Ton paiement ${STORE.account} est enregistré, mais nous n'avons pas pu le vérifier. Il sera validé automatiquement, ou via « Restaurer les achats ».`,
       )
     } finally {
       setBusySku(null)
@@ -140,7 +143,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
       } else if (result.items.some((i) => i.status === 'other_account')) {
         Alert.alert('Abonnement déjà utilisé', OTHER_ACCOUNT_MESSAGE)
       } else if (result.items.length === 0) {
-        Alert.alert('Aucun achat à restaurer', "Aucun achat ChapCam n'est associé à ce compte Apple.")
+        Alert.alert('Aucun achat à restaurer', `Aucun achat ChapCam n'est associé à ce compte ${STORE.account}.`)
       } else {
         Alert.alert('Aucun abonnement actif', 'Tes abonnements ChapCam ont expiré ou ont été annulés. Tes jetons achetés sont bien conservés.')
       }
@@ -172,13 +175,13 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
 
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 40 + insets.bottom }]} showsVerticalScrollIndicator={false}>
         <Text style={styles.lead}>
-          Choisis le forfait adapté à ta création. Paiement sécurisé par Apple, résiliable à tout moment.
+          Choisis le forfait adapté à ta création. Paiement sécurisé par {STORE.account}, résiliable à tout moment.
         </Text>
 
         {state.status === 'loading' ? (
           <View style={styles.centered}>
             <ActivityIndicator color={C.blue} />
-            <Text style={styles.muted}>Chargement des forfaits App Store…</Text>
+            <Text style={styles.muted}>Chargement des forfaits {STORE.name}…</Text>
           </View>
         ) : state.status === 'ready' ? (
           state.plans.map((plan) => (
@@ -198,7 +201,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
             <Text style={styles.errorText}>
               {state.status === 'unsupported'
                 ? "Les abonnements sont disponibles dans l'app ChapCam sur iPhone."
-                : "Impossible de récupérer les forfaits depuis l'App Store pour le moment. Vérifie ta connexion et réessaie."}
+                : `Impossible de récupérer les forfaits depuis ${STORE.the} pour le moment. Vérifie ta connexion et réessaie.`}
             </Text>
             {state.status !== 'unsupported' ? (
               <Pressable accessibilityRole="button" onPress={load} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
@@ -209,8 +212,8 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
         )}
 
         <Text style={styles.legal}>
-          Le paiement est débité sur ton compte Apple à la confirmation de l'achat. L'abonnement se renouvelle automatiquement
-          sauf s'il est résilié au moins 24 heures avant la fin de la période en cours, depuis les réglages de ton compte App Store.
+          Le paiement est débité sur ton compte {STORE.account} à la confirmation de l'achat. L'abonnement se renouvelle automatiquement
+          sauf s'il est résilié au moins 24 heures avant la fin de la période en cours, depuis les réglages de {STORE.settings}.
         </Text>
 
         <View style={styles.actions}>
@@ -244,7 +247,7 @@ function PlanCard({ plan, product, busy, disabled, onSubscribe }) {
           {period ? <Text style={styles.period}>{period}</Text> : null}
         </View>
       ) : (
-        <Text style={styles.unavailable}>Indisponible sur l'App Store pour le moment</Text>
+        <Text style={styles.unavailable}>Indisponible sur {STORE.the} pour le moment</Text>
       )}
 
       <View style={styles.stats}>

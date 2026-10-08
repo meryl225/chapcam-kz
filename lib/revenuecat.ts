@@ -6,7 +6,7 @@ import { creditJetonsOnce } from '@/lib/jetons'
 import { APPLE_PRODUCTS, deactivateAppleSubscription, emailFor, planForAppleProduct } from '@/lib/apple-iap'
 
 // ============================================================
-// Achats iOS via RevenueCat.
+// Achats iOS (App Store) et Android (Google Play) via RevenueCat.
 //
 // Le client ne fait jamais foi : apres un achat, une restauration ou un
 // webhook, le serveur relit le client RevenueCat avec la cle secrete
@@ -94,8 +94,24 @@ export interface SyncResult {
   liveSwapPoints: number | null
 }
 
-const transactionKey = (productId: string, entry: { store_transaction_id?: string | null; purchase_date: string; id?: string }) =>
-  entry.store_transaction_id ? `apple:${entry.store_transaction_id}` : `rc:${entry.id ?? `${productId}:${entry.purchase_date}`}`
+// Achats credites : App Store (iOS) et Google Play (Android).
+const isSupportedStore = (store: string) => store === 'app_store' || store === 'play_store'
+
+const storePrefix = (store: string) => (store === 'play_store' ? 'google' : 'apple')
+
+const transactionKey = (productId: string, entry: { store: string; store_transaction_id?: string | null; purchase_date: string; id?: string }) =>
+  entry.store_transaction_id ? `${storePrefix(entry.store)}:${entry.store_transaction_id}` : `rc:${entry.id ?? `${productId}:${entry.purchase_date}`}`
+
+// Google Play peut indexer un abonnement par « produit:base-plan ».
+function findSubscription(subscriptions: Record<string, RcSubscription>, productId: string): RcSubscription | null {
+  const direct = subscriptions[productId]
+  if (direct && isSupportedStore(direct.store)) return direct
+  const playEntries = Object.entries(subscriptions)
+    .filter(([key, sub]) => key.startsWith(`${productId}:`) && sub.store === 'play_store')
+    .map(([, sub]) => sub)
+    .sort((a, b) => Date.parse(b.expires_date ?? '') - Date.parse(a.expires_date ?? ''))
+  return playEntries[0] ?? null
+}
 
 // Un abonnement Apple appartient au compte Apple, pas au compte ChapCam. Quand
 // un autre compte ChapCam se connecte sur le meme iPhone, RevenueCat peut lui
@@ -112,7 +128,7 @@ async function ownsSubscriptionLineage(
   sub: RcSubscription,
   transactionToken: string,
 ): Promise<boolean> {
-  const lineage = `apple-owner:${productId}:${sub.original_purchase_date ?? sub.purchase_date}`
+  const lineage = `${storePrefix(sub.store)}-owner:${productId}:${sub.original_purchase_date ?? sub.purchase_date}`
   const myToken = `${lineage}:${userId}`
   const firstOwner = async () => {
     const { data, error } = await admin
@@ -153,9 +169,9 @@ async function applySubscriptions(admin: Admin, userId: string, email: string, s
   const subscriptions = subscriber.subscriptions ?? {}
 
   for (const { productId } of APPLE_PRODUCTS) {
-    const sub = subscriptions[productId]
+    const sub = findSubscription(subscriptions, productId)
     const plan = planForAppleProduct(productId)
-    if (!sub || !plan || sub.store !== 'app_store') continue
+    if (!sub || !plan) continue
     const token = transactionKey(productId, sub)
     const expiresMs = sub.expires_date ? Date.parse(sub.expires_date) : 0
     const logBase = { source, token, transactionId: token, email, productId: plan.id, amount: plan.price, creditKind: 'subscription', userLinked: true }
@@ -234,12 +250,12 @@ async function applyTokenPacks(admin: Admin, userId: string, email: string, subs
 
   for (const pack of TOKEN_PACKS) {
     for (const entry of purchases[pack.productId] ?? []) {
-      if (entry.store !== 'app_store') continue
+      if (!isSupportedStore(entry.store)) continue
       const token = transactionKey(pack.productId, entry)
       const result = await creditJetonsOnce(userId, token, pack.jetons, {
         source,
         productId: pack.productId,
-        store: 'app_store',
+        store: entry.store,
         sandbox: entry.is_sandbox,
       })
       balance = result.balance
@@ -279,7 +295,7 @@ async function applyMinutePacks(admin: Admin, userId: string, email: string, sub
 
   for (const pack of LIVESWAP_MINUTE_PACKS) {
     for (const entry of purchases[pack.productId] ?? []) {
-      if (entry.store !== 'app_store') continue
+      if (!isSupportedStore(entry.store)) continue
       const token = transactionKey(pack.productId, entry)
       const packPoints = pack.minutes * 60 * LIVESWAP_POINTS_PER_SECOND
 
