@@ -95,7 +95,6 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
     } catch (error) {
       setBusySku(null)
       if (isCancelled(error)) return
-      console.log('[iap-diag] erreur achat minutes', JSON.stringify({ productId: pack.productId, code: error?.code, message: error?.message }))
       Alert.alert('Paiement non effectué', purchaseErrorMessage(error))
       return
     }
