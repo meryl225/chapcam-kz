@@ -121,7 +121,12 @@ export function ReportAbuseSheet({ visible, onClose, contentUrl, context }) {
       <KeyboardAvoidingView style={s.sheetWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={s.backdrop} onPress={close} accessibilityLabel="Fermer" />
         <View style={[s.sheet, { paddingBottom: insets.bottom + 16 }]}>
-          <View style={s.handle} />
+          <View style={s.topBar}>
+            <View style={s.handle} />
+            <Pressable onPress={close} disabled={sending} accessibilityRole="button" accessibilityLabel="Fermer" hitSlop={10} style={({ pressed }) => [s.closeBtn, pressed && { opacity: 0.85 }]}>
+              <Ionicons name="close" size={20} color={C.ink} />
+            </Pressable>
+          </View>
           <Text style={s.sheetTitle} accessibilityRole="header">Signaler un abus</Text>
           <Text style={s.sheetCopy}>Ton signalement est transmis à l’équipe de modération ChapCam.</Text>
           <ScrollView style={s.sheetScroll} keyboardShouldPersistTaps="handled">
@@ -176,7 +181,9 @@ const s = StyleSheet.create({
   sheetWrap: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(14,21,48,0.45)' },
   sheet: { maxHeight: '85%', backgroundColor: C.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 18, paddingTop: 10, gap: 8 },
-  handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: C.line, marginBottom: 6 },
+  topBar: { height: 32, alignItems: 'center', justifyContent: 'center' },
+  handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: C.line },
+  closeBtn: { position: 'absolute', top: 0, right: -4, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
   sheetTitle: { color: C.ink, fontSize: 19, fontWeight: '900' },
   sheetCopy: { color: C.muted, fontSize: 13, lineHeight: 19 },
   sheetScroll: { flexGrow: 0 },
