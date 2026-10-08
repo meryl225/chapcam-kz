@@ -1,6 +1,6 @@
 import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { activateSubscription, logPaymentEvent } from '@/lib/fulfillment'
+import { activateSubscription, creditMinutes, logPaymentEvent } from '@/lib/fulfillment'
 import { creditJetonsOnce } from '@/lib/jetons'
 import { APPLE_PRODUCTS, deactivateAppleSubscription, emailFor, planForAppleProduct } from '@/lib/apple-iap'
 
@@ -22,6 +22,18 @@ export const TOKEN_PACKS: { productId: string; jetons: number }[] = [
   { productId: 'com.chapcam.app.tokens.250', jetons: 250 },
   { productId: 'com.chapcam.app.tokens.500', jetons: 500 },
   { productId: 'com.chapcam.app.tokens.1000', jetons: 1000 },
+]
+
+// Recharges Live Swap (consommables Apple, offering RevenueCat dedie). Le
+// nombre de minutes vient UNIQUEMENT de ce tableau, jamais du client.
+export const LIVESWAP_MINUTES_OFFERING = 'liveswap_minutes'
+const LIVESWAP_POINTS_PER_SECOND = 2
+const LIVESWAP_MINUTES_VALIDITY_DAYS = 30
+
+export const LIVESWAP_MINUTE_PACKS: { productId: string; packageId: string; minutes: number }[] = [
+  { productId: 'com.chapcam.app.liveswap.minutes.5', packageId: 'liveswap_5min', minutes: 5 },
+  { productId: 'com.chapcam.app.liveswap.minutes.15', packageId: 'liveswap_15min', minutes: 15 },
+  { productId: 'com.chapcam.app.liveswap.minutes.25', packageId: 'liveswap_25min', minutes: 25 },
 ]
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -71,6 +83,7 @@ export interface SyncItem {
   transactionId: string
   status: SyncStatus
   jetons?: number
+  minutes?: number
   expiresAt?: string | null
 }
 
@@ -78,6 +91,7 @@ export interface SyncResult {
   items: SyncItem[]
   subscriptionActive: boolean
   balance: number | null
+  liveSwapPoints: number | null
 }
 
 const transactionKey = (productId: string, entry: { store_transaction_id?: string | null; purchase_date: string; id?: string }) =>
@@ -250,6 +264,76 @@ async function applyTokenPacks(admin: Admin, userId: string, email: string, subs
   return { items, balance }
 }
 
+async function readLiveSwapPoints(admin: Admin, userId: string) {
+  const { data, error } = await admin.from('subscriptions').select('points').eq('user_id', userId).maybeSingle()
+  if (error) throw new Error(`subscriptions points: ${error.message}`)
+  return Number(data?.points ?? 0)
+}
+
+// Chaque transaction Apple est reservee dans processed_payments (cle primaire
+// token) : seule la source qui bascule credited false -> true ajoute les minutes.
+async function applyMinutePacks(admin: Admin, userId: string, email: string, subscriber: RcSubscriber, source: string) {
+  const items: SyncItem[] = []
+  let points: number | null = null
+  const purchases = subscriber.non_subscriptions ?? {}
+
+  for (const pack of LIVESWAP_MINUTE_PACKS) {
+    for (const entry of purchases[pack.productId] ?? []) {
+      if (entry.store !== 'app_store') continue
+      const token = transactionKey(pack.productId, entry)
+      const packPoints = pack.minutes * 60 * LIVESWAP_POINTS_PER_SECOND
+
+      const { error: insertErr } = await admin
+        .from('processed_payments')
+        .insert({ token, email, product_id: pack.productId, amount: 0, credited: false })
+      if (insertErr && insertErr.code !== '23505') throw new Error(`processed_payments insert: ${insertErr.message}`)
+      const { data: claimed, error: claimErr } = await admin
+        .from('processed_payments')
+        .update({ credited: true })
+        .eq('token', token)
+        .eq('credited', false)
+        .select('token')
+      if (claimErr) throw new Error(`processed_payments claim: ${claimErr.message}`)
+      if (!claimed?.length) {
+        items.push({ productId: pack.productId, transactionId: token, status: 'already', minutes: pack.minutes })
+        continue
+      }
+
+      try {
+        const before = await readLiveSwapPoints(admin, userId)
+        await creditMinutes(admin, userId, email, {
+          id: pack.productId,
+          points: packPoints,
+          validityDays: LIVESWAP_MINUTES_VALIDITY_DAYS,
+        })
+        // creditMinutes journalise ses erreurs sans les lever : on relit le solde.
+        points = await readLiveSwapPoints(admin, userId)
+        if (points < before + packPoints) throw new Error(`minutes non enregistrees (avant ${before}, apres ${points})`)
+        console.info('[iap-diag] minutes Live Swap creditees', { userId, productId: pack.productId, token, minutes: pack.minutes, points, source })
+      } catch (error) {
+        await admin.from('processed_payments').update({ credited: false }).eq('token', token)
+        console.error('[iap-diag] credit minutes echoue', { userId, productId: pack.productId, token, error: (error as Error).message })
+        throw error
+      }
+      await logPaymentEvent(admin, {
+        source,
+        token,
+        transactionId: token,
+        email,
+        productId: pack.productId,
+        amount: 0,
+        creditKind: 'minutes',
+        userLinked: true,
+        status: 'completed',
+        credited: true,
+      })
+      items.push({ productId: pack.productId, transactionId: token, status: 'credited', minutes: pack.minutes })
+    }
+  }
+
+  return { items, points }
+}
+
 export async function syncRevenueCatCustomer(userId: string, opts: { email?: string | null; source: string }): Promise<SyncResult> {
   const subscriber = await fetchSubscriber(userId)
   const admin = createAdminClient()
@@ -264,5 +348,11 @@ export async function syncRevenueCatCustomer(userId: string, opts: { email?: str
   })
   const subs = await applySubscriptions(admin, userId, email, subscriber, opts.source)
   const packs = await applyTokenPacks(admin, userId, email, subscriber, opts.source)
-  return { items: [...subs.items, ...packs.items], subscriptionActive: subs.active, balance: packs.balance }
+  const minutes = await applyMinutePacks(admin, userId, email, subscriber, opts.source)
+  return {
+    items: [...subs.items, ...packs.items, ...minutes.items],
+    subscriptionActive: subs.active,
+    balance: packs.balance,
+    liveSwapPoints: minutes.points,
+  }
 }

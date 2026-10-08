@@ -29,6 +29,7 @@ import { ProfileScreen } from '../screens/ProfileScreen'
 import { AccountDetailScreen } from '../screens/AccountDetailScreen'
 import { SubscriptionPlansScreen } from '../screens/SubscriptionPlansScreen'
 import { TokenPacksScreen } from '../screens/TokenPacksScreen'
+import { LiveSwapMinutesScreen } from '../screens/LiveSwapMinutesScreen'
 import { PlansPreviewScreen } from '../screens/PlansPreviewScreen'
 import { QuickLaunchMenu } from '../ui/QuickLaunchMenu'
 
@@ -105,6 +106,7 @@ function HomeShell({ user }) {
   const [accountDetail, setAccountDetail] = useState(null)
   const [plansOpen, setPlansOpen] = useState(false)
   const [tokensOpen, setTokensOpen] = useState(false)
+  const [minutesOpen, setMinutesOpen] = useState(false)
   const [plansPreviewOpen, setPlansPreviewOpen] = useState(false)
   const [notifiedCreationId, setNotifiedCreationId] = useState(null)
   const notificationResponse = Notifications.useLastNotificationResponse()
@@ -120,6 +122,7 @@ function HomeShell({ user }) {
     setOpenTool(null)
     setPlansOpen(false)
     setTokensOpen(false)
+    setMinutesOpen(false)
     setPlansPreviewOpen(false)
     setAccountDetail(null)
     setQuickOpen(false)
@@ -242,6 +245,12 @@ function HomeShell({ user }) {
       loadAccount()
     }
     overlay = <TokenPacksScreen user={user} onBack={closeTokens} onPurchased={loadAccount} />
+  } else if (minutesOpen) {
+    const closeMinutes = () => {
+      setMinutesOpen(false)
+      loadAccount()
+    }
+    overlay = <LiveSwapMinutesScreen user={user} onBack={closeMinutes} onPurchased={loadAccount} />
   } else if (accountDetail) {
     overlay = <AccountDetailScreen type={accountDetail} onBack={() => setAccountDetail(null)} subscription={subscription} user={user} />
   } else if (openTool === 'live') {
@@ -300,7 +309,7 @@ function HomeShell({ user }) {
           <CreationsScreen onCreate={() => setQuickOpen(true)} openCreationId={notifiedCreationId} onOpenedCreation={clearNotifiedCreation} />
         ))}
         {tabPane('profile', (
-          <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} onOpenPlans={() => setPlansOpen(true)} onOpenTokens={() => setTokensOpen(true)} />
+          <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} onOpenPlans={() => setPlansOpen(true)} onOpenTokens={() => setTokensOpen(true)} onOpenMinutes={() => setMinutesOpen(true)} />
         ))}
         {!isKnownTab ? (
           <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />

@@ -39,11 +39,11 @@ export async function logOutRevenueCat() {
 
 // Produits Apple (prix localises) pour les ids demandes : d'abord l'offering
 // « sale », puis lecture directe des produits absents de l'offering.
-export async function loadStoreProducts(productIds, category) {
+export async function loadStoreProducts(productIds, category, offeringId = OFFERING_ID) {
   const byId = {}
   try {
     const offerings = await Purchases.getOfferings()
-    const offering = offerings?.all?.[OFFERING_ID] ?? offerings?.current
+    const offering = offerings?.all?.[offeringId] ?? offerings?.current
     for (const pkg of offering?.availablePackages ?? []) {
       const id = pkg?.product?.identifier
       if (productIds.includes(id)) byId[id] = { product: pkg.product, pkg }

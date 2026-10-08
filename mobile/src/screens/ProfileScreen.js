@@ -99,7 +99,7 @@ function useAccountSummary() {
   return { summary, loading, error, reload: load }
 }
 
-export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh, onOpenAccountDetail, onOpenPlans, onOpenTokens }) {
+export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh, onOpenAccountDetail, onOpenPlans, onOpenTokens, onOpenMinutes }) {
   const account = useAccountSummary()
   const insets = useSafeAreaInsets()
   const [avatarFailed, setAvatarFailed] = useState(false)
@@ -491,6 +491,17 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
             {livePoints !== null ? 'Temps restant dans votre forfait.' : 'Aucun forfait Live Swap'}
           </Text>
           <View style={styles.flexFill} />
+          {onOpenMinutes ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ajouter des minutes Live Swap"
+              onPress={onOpenMinutes}
+              style={({ pressed }) => [styles.balanceCta, styles.balanceCtaMinutes, pressed && styles.pressed]}
+            >
+              <Text style={styles.balanceCtaText} numberOfLines={1}>+ Ajouter des minutes</Text>
+              <Ionicons name="add-circle" size={18} color={C.white} />
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="link"
             accessibilityLabel="Voir les options Live Swap"
@@ -728,6 +739,7 @@ const styles = StyleSheet.create({
   balanceCta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6, height: 44, borderRadius: 22, paddingLeft: 14, paddingRight: 6, marginTop: 8 },
   balanceCtaText: { flexShrink: 1, color: C.white, fontSize: 13, fontWeight: '800' },
   balanceCtaPlus: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
+  balanceCtaMinutes: { paddingRight: 14, backgroundColor: 'rgba(255,255,255,0.16)' },
   balanceCtaLight: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 6, height: 44, borderRadius: 22, paddingHorizontal: 14, marginTop: 8, backgroundColor: '#E7E2FF' },
   balanceCtaLightText: { flexShrink: 1, color: NAVY, fontSize: 13, fontWeight: '800' },
 
