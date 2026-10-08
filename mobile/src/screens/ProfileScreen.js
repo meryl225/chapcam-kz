@@ -25,7 +25,6 @@ const CHAPCAM_MARK = require('../../assets/chapcam-mark.png')
 const LINKS = {
   plans: `${WEB_URL}/dashboard/plans`,
   jetons: `${WEB_URL}/dashboard/jetons`,
-  settings: `${WEB_URL}/dashboard/settings`,
   terms: `${WEB_URL}/conditions`,
   privacy: `${WEB_URL}/confidentialite`,
   support: 'mailto:contact@chapcam.com',
@@ -301,7 +300,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Paramètres du compte"
-          onPress={() => open(LINKS.settings)}
+          onPress={() => onOpenAccountDetail?.('security')}
           hitSlop={8}
           style={({ pressed }) => [styles.settingsBtn, pressed && styles.pressed]}
         >
@@ -569,7 +568,7 @@ onPress={onOpenPlans}
       <Text style={styles.sectionTitle} accessibilityRole="header">Paramètres du compte</Text>
       <View style={styles.rows}>
         <Row icon="person-outline" tint={C.blue} label="Informations personnelles" onPress={() => onOpenAccountDetail?.('personal')} />
-        <Row icon="shield-half-outline" tint={C.violet} label="Sécurité et confidentialité" onPress={() => open(LINKS.settings)} />
+        <Row icon="shield-half-outline" tint={C.violet} label="Sécurité et confidentialité" onPress={() => onOpenAccountDetail?.('security')} />
         <Row icon="pulse-outline" tint={C.violet} label="Activité récente" onPress={() => onOpenAccountDetail?.('activity')} />
         <Row icon="wallet-outline" tint={C.blue} label="Achats et factures" onPress={() => onOpenAccountDetail?.('purchases')} />
         <Row icon="notifications-outline" tint={WARM} label="Notifications" onPress={openNotificationSettings} />
