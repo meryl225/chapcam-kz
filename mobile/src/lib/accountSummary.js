@@ -33,7 +33,36 @@ async function request(token) {
   }
 }
 
-export async function fetchAccountSummary() {
+// Last known summary, shared by every screen so reopening one shows the balance instantly
+// while a silent refresh runs; concurrent callers share one request.
+let cachedSummary = null
+let inFlight = null
+
+export function getCachedAccountSummary() {
+  return cachedSummary
+}
+
+export function clearAccountSummaryCache() {
+  cachedSummary = null
+  inFlight = null
+}
+
+export function fetchAccountSummary() {
+  if (!inFlight) {
+    const request = loadAccountSummary()
+      .then((summary) => {
+        if (inFlight === request) cachedSummary = summary
+        return summary
+      })
+      .finally(() => {
+        if (inFlight === request) inFlight = null
+      })
+    inFlight = request
+  }
+  return inFlight
+}
+
+async function loadAccountSummary() {
   const { data } = await supabase.auth.getSession()
   let token = data?.session?.access_token
   if (!token) throw new AccountSummaryError('session', 'aucune session')

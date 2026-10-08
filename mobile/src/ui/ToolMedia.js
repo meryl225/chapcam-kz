@@ -6,6 +6,7 @@ import { ChapCamLoader } from './ChapCamLoader'
 
 // expo-video needs a native rebuild; older dev clients fall back to the production poster.
 const video = requireOptionalNativeModule('ExpoVideo') ? require('expo-video') : null
+const CachedImage = requireOptionalNativeModule('ExpoImage') ? require('expo-image').Image : null
 
 const CHECK_MS = 400
 const PRELOAD_MARGIN = 120
@@ -61,6 +62,23 @@ function LoopingVideo({ src, active, label }) {
 function Still({ src, label }) {
   const [ready, setReady] = useState(false)
   if (!src) return <View style={[StyleSheet.absoluteFill, styles.empty]} />
+  if (CachedImage) {
+    // Disk cache: an image already seen appears instantly, no loader on every screen visit.
+    return (
+      <>
+        <View style={[StyleSheet.absoluteFill, styles.empty]} />
+        <CachedImage
+          source={asset(src)}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={120}
+          recyclingKey={typeof src === 'string' ? src : undefined}
+          accessibilityLabel={label}
+        />
+      </>
+    )
+  }
   return (
     <>
       <View style={[StyleSheet.absoluteFill, styles.empty]} />

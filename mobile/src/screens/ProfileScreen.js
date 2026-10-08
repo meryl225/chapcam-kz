@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase'
 import { apiForm, apiJson, friendlyError, readApiError } from '../lib/api'
 import { unregisterPushToken } from '../lib/pushNotifications'
 import { getUserAvatarSource, getUserPhotoUrl, resolveAvatarUrl } from '../lib/userAvatar'
-import { AccountSummaryError, accountSummaryMessage, fetchAccountSummary } from '../lib/accountSummary'
+import { AccountSummaryError, accountSummaryMessage, fetchAccountSummary, getCachedAccountSummary } from '../lib/accountSummary'
 import { BRAND, C, PAD } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { ReportAbuseSheet } from '../ui/Safety'
@@ -80,17 +80,24 @@ const openNotificationSettings = async () => {
 }
 
 function useAccountSummary() {
-  const [summary, setSummary] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [summary, setSummary] = useState(getCachedAccountSummary)
+  const [loading, setLoading] = useState(() => !getCachedAccountSummary())
   const [error, setError] = useState(null)
   const load = useCallback(async () => {
-    setLoading(true)
+    // A known balance stays on screen during the refresh instead of a loader.
+    setLoading(!getCachedAccountSummary())
     setError(null)
     try {
       setSummary(await fetchAccountSummary())
     } catch (e) {
-      setSummary(null)
-      setError(e instanceof AccountSummaryError ? e : new AccountSummaryError('server', e?.message))
+      const err = e instanceof AccountSummaryError ? e : new AccountSummaryError('server', e?.message)
+      const previous = getCachedAccountSummary()
+      if (err.kind === 'session' || !previous) {
+        setSummary(null)
+        setError(err)
+      } else {
+        setSummary(previous)
+      }
     } finally {
       setLoading(false)
     }

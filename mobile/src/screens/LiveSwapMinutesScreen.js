@@ -13,7 +13,7 @@ import {
   restoreRevenueCat,
   syncPurchases,
 } from '../lib/revenuecat'
-import { fetchAccountSummary } from '../lib/accountSummary'
+import { fetchAccountSummary, getCachedAccountSummary } from '../lib/accountSummary'
 import { BRAND, C, PAD } from '../ui/catalog'
 
 const BG = '#F5F7FF'
@@ -27,10 +27,10 @@ const fmtClock = (points, pointsPerSecond = POINTS_PER_SECOND) => {
 }
 
 function useAccountSummary() {
-  const [summary, setSummary] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [summary, setSummary] = useState(getCachedAccountSummary)
+  const [loading, setLoading] = useState(() => !getCachedAccountSummary())
   const load = useCallback(async () => {
-    setLoading(true)
+    setLoading(!getCachedAccountSummary())
     try {
       setSummary(await fetchAccountSummary())
     } catch (error) {
