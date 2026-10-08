@@ -15,6 +15,7 @@ import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { ReportAbuseSheet } from '../ui/Safety'
 import { SupportSheet } from '../ui/SupportSheet'
 import { SocialBonusSheet } from '../ui/SocialBonusSheet'
+import { openInApp } from '../lib/openInApp'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const DANGER = '#E5484D'
@@ -23,8 +24,6 @@ const JETONS_LOGO = require('../../assets/jetons-logo.png')
 const CHAPCAM_MARK = require('../../assets/chapcam-mark.png')
 
 const LINKS = {
-  plans: `${WEB_URL}/dashboard/plans`,
-  jetons: `${WEB_URL}/dashboard/jetons`,
   terms: `${WEB_URL}/conditions`,
   privacy: `${WEB_URL}/confidentialite`,
   support: 'mailto:contact@chapcam.com',
@@ -584,8 +583,8 @@ onPress={onOpenPlans}
         {Platform.OS === 'ios' ? (
           <Row icon="flag-outline" tint={C.violet} label="Signaler un contenu" onPress={() => setReporting(true)} />
         ) : null}
-        <Row icon="document-text-outline" tint={C.violet} label="Conditions d'utilisation" onPress={() => open(LINKS.terms)} />
-        <Row icon="lock-closed-outline" tint={C.blue} label="Politique de confidentialité" onPress={() => open(LINKS.privacy)} />
+        <Row icon="document-text-outline" tint={C.violet} label="Conditions d'utilisation" onPress={() => openInApp(LINKS.terms)} />
+        <Row icon="lock-closed-outline" tint={C.blue} label="Politique de confidentialité" onPress={() => openInApp(LINKS.privacy)} />
         <Row icon="language-outline" tint={C.violet} label="Langue" value="Français" />
       </View>
       {Platform.OS === 'ios' ? (

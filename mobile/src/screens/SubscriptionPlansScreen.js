@@ -16,6 +16,7 @@ import {
   syncPurchases,
 } from '../lib/revenuecat'
 import { BRAND, C, PAD } from '../ui/catalog'
+import { openInApp } from '../lib/openInApp'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const LINKS = {
@@ -215,8 +216,8 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
         <View style={styles.actions}>
           <SecondaryAction icon="refresh" label="Restaurer les achats" busy={restoring} onPress={restore} />
           <SecondaryAction icon="card-outline" label="Gérer mon abonnement" onPress={manage} />
-          <SecondaryAction icon="document-text-outline" label="Conditions d'utilisation" onPress={() => openUrl(LINKS.terms)} />
-          <SecondaryAction icon="lock-closed-outline" label="Politique de confidentialité" onPress={() => openUrl(LINKS.privacy)} last />
+          <SecondaryAction icon="document-text-outline" label="Conditions d'utilisation" onPress={() => openInApp(LINKS.terms)} />
+          <SecondaryAction icon="lock-closed-outline" label="Politique de confidentialité" onPress={() => openInApp(LINKS.privacy)} last />
         </View>
       </ScrollView>
     </View>

@@ -1,7 +1,6 @@
 import React, { useRef, useState } from 'react'
 import {
   KeyboardAvoidingView,
-  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -18,6 +17,7 @@ import { BRAND, C, shadow } from '../ui/catalog'
 import { ChapCamBrand } from '../ui/ChapCamBrand'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { API_URL } from '../lib/api'
+import { openInApp } from '../lib/openInApp'
 
 const TERMS_URL = `${API_URL}/conditions`
 const PRIVACY_URL = `${API_URL}/confidentialite`
@@ -259,11 +259,11 @@ function AuthContent() {
                 <View style={styles.termsTextWrap}>
                   <Text style={styles.termsText} onPress={() => setAcceptedTerms((value) => !value)}>
                     {'J’accepte les '}
-                    <Text accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(TERMS_URL)}>
+                    <Text accessibilityRole="link" style={styles.termsLink} onPress={() => openInApp(TERMS_URL)}>
                       Conditions Générales d’Utilisation
                     </Text>
                     {' et la '}
-                    <Text accessibilityRole="link" style={styles.termsLink} onPress={() => Linking.openURL(PRIVACY_URL)}>
+                    <Text accessibilityRole="link" style={styles.termsLink} onPress={() => openInApp(PRIVACY_URL)}>
                       Politique de confidentialité
                     </Text>
                     {'.'}
