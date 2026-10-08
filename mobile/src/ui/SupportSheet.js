@@ -42,7 +42,12 @@ export function SupportSheet({ visible, onClose }) {
       <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={s.backdrop} onPress={close} accessibilityLabel="Fermer" />
         <View style={[s.sheet, { paddingBottom: insets.bottom + 16 }]}>
-          <View style={s.handle} />
+          <View style={s.topBar}>
+            <View style={s.handle} />
+            <Pressable onPress={close} disabled={sending} accessibilityRole="button" accessibilityLabel="Fermer" hitSlop={10} style={({ pressed }) => [s.closeBtn, pressed && s.pressed]}>
+              <Ionicons name="close" size={20} color={C.ink} />
+            </Pressable>
+          </View>
           <View style={s.header}>
             <View style={s.icon}>
               <Ionicons name="headset-outline" size={22} color={C.blue} />
@@ -90,7 +95,9 @@ const s = StyleSheet.create({
   wrap: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(11,18,53,0.45)' },
   sheet: { gap: 16, paddingHorizontal: 20, paddingTop: 10, borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: C.white },
+  topBar: { height: 32, alignItems: 'center', justifyContent: 'center' },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: C.line },
+  closeBtn: { position: 'absolute', top: 0, right: -4, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   icon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: C.softBlue },
   headerText: { flex: 1, gap: 2 },

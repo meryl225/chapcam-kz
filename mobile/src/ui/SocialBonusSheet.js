@@ -103,7 +103,12 @@ export function SocialBonusSheet({ visible, status, onClose, onSubmitted }) {
       <View style={s.wrap}>
         <Pressable style={s.backdrop} onPress={close} accessibilityLabel="Fermer" />
         <View style={[s.sheet, { paddingBottom: insets.bottom + 16 }]}>
-          <View style={s.handle} />
+          <View style={s.topBar}>
+            <View style={s.handle} />
+            <Pressable onPress={close} disabled={sending} accessibilityRole="button" accessibilityLabel="Fermer" hitSlop={10} style={({ pressed }) => [s.closeBtn, pressed && s.pressed]}>
+              <Ionicons name="close" size={20} color={C.ink} />
+            </Pressable>
+          </View>
           <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false} bounces={false}>
             <View style={s.header}>
               <View style={s.icon}>
@@ -229,7 +234,9 @@ const s = StyleSheet.create({
   wrap: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(11,18,53,0.45)' },
   sheet: { maxHeight: '90%', paddingHorizontal: 20, paddingTop: 10, borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: C.white },
-  handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: C.line, marginBottom: 16 },
+  topBar: { height: 32, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: C.line },
+  closeBtn: { position: 'absolute', top: 0, right: -4, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
   content: { gap: 16 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   icon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: C.softBlue },
