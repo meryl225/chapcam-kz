@@ -21,7 +21,6 @@ export async function ensureRevenueCat(userId) {
   // Jamais d'achat sous un identifiant anonyme ou celui d'un autre compte.
   const current = await Purchases.getAppUserID()
   if (current !== userId) {
-    console.log('[iap-diag] identite RevenueCat corrigee', { from: current, to: userId })
     await Purchases.logIn(userId)
   }
   configuredFor = userId
@@ -104,7 +103,6 @@ export async function syncPurchases(source = 'purchase', until) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ source }),
     })
-    console.log('[iap-diag] reponse backend', { source, attempt, status: response.status, items: body?.items, subscriptionActive: body?.subscriptionActive, error: body?.error })
     if (!response.ok || !Array.isArray(body?.items)) {
       throw new Error(body?.error || `Erreur HTTP ${response.status}`)
     }
