@@ -289,6 +289,48 @@ export async function creditMinutes(
   return { points: prevPoints + offer.points }
 }
 
+// Recharge Live Swap (consommable Apple) : ajoute uniquement au solde, sans
+// toucher a expires_at / end_date / plan / is_active. La part recharge est
+// suivie dans lib/liveswap-topup.ts et ne s'efface jamais a l'expiration.
+export async function creditTopupPoints(
+  admin: Admin,
+  userId: string,
+  email: string,
+  points: number,
+): Promise<void> {
+  const now = new Date().toISOString()
+  const { data: existing, error: readErr } = await admin
+    .from('subscriptions')
+    .select('id, points, max_points')
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (readErr) throw new Error(`subscriptions read: ${readErr.message}`)
+
+  if (existing) {
+    const { error } = await admin
+      .from('subscriptions')
+      .update({
+        points: Number(existing.points ?? 0) + points,
+        max_points: Number(existing.max_points ?? 0) + points,
+        updated_at: now,
+      })
+      .eq('id', existing.id)
+    if (error) throw new Error(`subscriptions update: ${error.message}`)
+  } else {
+    const { error } = await admin.from('subscriptions').insert({
+      user_id: userId,
+      email,
+      plan: 'free',
+      is_active: false,
+      points,
+      max_points: points,
+      start_date: now,
+      updated_at: now,
+    })
+    if (error) throw new Error(`subscriptions insert: ${error.message}`)
+  }
+}
+
 export interface PurchaseInput {
   productId: string // id de formule (plans.ts) OU id d'offre Live (live-offers.ts)
   email: string

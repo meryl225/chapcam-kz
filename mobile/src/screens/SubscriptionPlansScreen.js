@@ -37,7 +37,16 @@ const openUrl = async (url) => {
   }
 }
 
+const OTHER_ACCOUNT_MESSAGE = "L'abonnement de ce compte Apple est déjà rattaché à un autre compte ChapCam. Connecte-toi à ce compte, ou utilise un autre identifiant Apple pour t'abonner ici."
+
 const isActivated = (item) => item.status === 'activated' || item.status === 'already'
+
+function currentPlan(result, purchasedProductId, plans) {
+  const other = result.items.find((i) => i.productId !== purchasedProductId && isActivated(i) && i.expiresAt !== undefined)
+  if (!other) return null
+  const plan = plans.find((p) => p.productId === other.productId)
+  return { name: plan?.name ?? 'actuel', expiresAt: other.expiresAt }
+}
 
 export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
   const insets = useSafeAreaInsets()
@@ -75,10 +84,21 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
     if (!item || busySku || restoring) return
     setBusySku(productId)
     try {
-      await purchaseStoreItem(item)
+      await ensureRevenueCat(user.id)
+      const purchase = await purchaseStoreItem(item)
+      const info = purchase?.customerInfo
+      console.log('[iap-diag] achat Apple', {
+        productId,
+        productIdentifier: purchase?.productIdentifier,
+        appUserId: info?.originalAppUserId,
+        expectedUserId: user.id,
+        activeSubscriptions: info?.activeSubscriptions,
+        entitlements: Object.keys(info?.entitlements?.active ?? {}),
+      })
     } catch (error) {
       setBusySku(null)
       if (isCancelled(error)) return
+      console.log('[iap-diag] achat echoue', { productId, code: error?.code, message: error?.message })
       Alert.alert('Paiement non effectué', purchaseErrorMessage(error))
       return
     }
@@ -88,8 +108,20 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
       if (mine.some(isActivated)) {
         onPurchasedRef.current?.()
         Alert.alert('Abonnement activé', 'Merci ! Ton forfait ChapCam est actif et ton profil est à jour.')
+      } else if (result.items.some((i) => i.status === 'other_account')) {
+        Alert.alert('Abonnement déjà utilisé', OTHER_ACCOUNT_MESSAGE)
       } else if (mine.some((i) => i.status === 'revoked')) {
         Alert.alert('Abonnement annulé', 'Cet achat a été remboursé ou annulé par Apple.')
+      } else if (currentPlan(result, productId, state.plans)) {
+        // Apple traite l'achat comme un changement de forfait dans le meme groupe :
+        // le nouveau forfait ne demarre qu'au prochain renouvellement.
+        const { name, expiresAt } = currentPlan(result, productId, state.plans)
+        const until = expiresAt ? ` jusqu'au ${new Date(expiresAt).toLocaleDateString('fr-FR')}` : ''
+        onPurchasedRef.current?.()
+        Alert.alert(
+          'Changement de forfait programmé',
+          `Ton forfait ${name} reste actif${until}. Apple activera le nouveau forfait à ce renouvellement, il sera alors appliqué automatiquement à ton compte.`,
+        )
       } else {
         Alert.alert('Vérification en cours', "Ton paiement Apple est enregistré. Ton forfait sera activé dans quelques instants, ou via « Restaurer les achats ».")
       }
@@ -114,6 +146,8 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
       onPurchasedRef.current?.()
       if (result.subscriptionActive) {
         Alert.alert('Achats restaurés', 'Ton abonnement ChapCam est de nouveau actif.')
+      } else if (result.items.some((i) => i.status === 'other_account')) {
+        Alert.alert('Abonnement déjà utilisé', OTHER_ACCOUNT_MESSAGE)
       } else if (result.items.length === 0) {
         Alert.alert('Aucun achat à restaurer', "Aucun achat ChapCam n'est associé à ce compte Apple.")
       } else {

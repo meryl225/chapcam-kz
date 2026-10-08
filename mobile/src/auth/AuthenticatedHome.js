@@ -1,5 +1,7 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, AppState, Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Alert, AppState, FlatList, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Image } from 'expo-image'
+import { requireOptionalNativeModule } from 'expo-modules-core'
 import { AI_CONSENT_KEY, AiDataConsentSheet, hasAiDataConsent } from '../ui/AiDataConsent'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
@@ -27,6 +29,7 @@ import { ProfileScreen } from '../screens/ProfileScreen'
 import { AccountDetailScreen } from '../screens/AccountDetailScreen'
 import { SubscriptionPlansScreen } from '../screens/SubscriptionPlansScreen'
 import { TokenPacksScreen } from '../screens/TokenPacksScreen'
+import { LiveSwapMinutesScreen } from '../screens/LiveSwapMinutesScreen'
 import { PlansPreviewScreen } from '../screens/PlansPreviewScreen'
 import { QuickLaunchMenu } from '../ui/QuickLaunchMenu'
 
@@ -79,6 +82,11 @@ const TRENDS = [
 const R_CARD = 22
 const R_HERO = 26
 
+// Same guard as ToolMedia: older dev clients without the expo-video native module fall back to posters.
+const videoModule = requireOptionalNativeModule('ExpoVideo') ? require('expo-video') : null
+const IMAGE_TRANSITION_MS = 150
+const TREND_VIEWABILITY = { itemVisiblePercentThreshold: 80 }
+
 export function AuthenticatedHome(props) {
   return (
     <SafeAreaProvider>
@@ -98,6 +106,7 @@ function HomeShell({ user }) {
   const [accountDetail, setAccountDetail] = useState(null)
   const [plansOpen, setPlansOpen] = useState(false)
   const [tokensOpen, setTokensOpen] = useState(false)
+  const [minutesOpen, setMinutesOpen] = useState(false)
   const [plansPreviewOpen, setPlansPreviewOpen] = useState(false)
   const [notifiedCreationId, setNotifiedCreationId] = useState(null)
   const notificationResponse = Notifications.useLastNotificationResponse()
@@ -113,6 +122,7 @@ function HomeShell({ user }) {
     setOpenTool(null)
     setPlansOpen(false)
     setTokensOpen(false)
+    setMinutesOpen(false)
     setPlansPreviewOpen(false)
     setAccountDetail(null)
     setQuickOpen(false)
@@ -141,18 +151,23 @@ function HomeShell({ user }) {
   }, [])
 
   const loadAccount = useCallback(async () => {
-    loadJetons()
-    const { data } = await supabase
+    const subscriptionQuery = supabase
       .from('subscriptions')
       .select('plan,status,points,expires_at,end_date,is_active')
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle()
-    setSubscription(data || null)
-    setLoading(false)
-    setRefreshing(false)
-  }, [user.id])
+    try {
+      const [, { data }] = await Promise.all([loadJetons(), subscriptionQuery])
+      setSubscription(data || null)
+    } catch {
+      // keep the previous subscription
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [user.id, loadJetons])
 
   useEffect(() => { loadAccount() }, [loadAccount])
 
@@ -167,13 +182,13 @@ function HomeShell({ user }) {
   const subscriptionEnd = subscription?.expires_at || subscription?.end_date
   const subscriptionExpired = Boolean(subscriptionEnd) && new Date(subscriptionEnd).getTime() < Date.now()
   const credits = subscriptionExpired ? 0 : Math.max(0, Number(subscription?.points) || 0)
-  const onRefresh = () => { setRefreshing(true); loadAccount() }
+  const onRefresh = useCallback(() => { setRefreshing(true); loadAccount() }, [loadAccount])
 
   const [aiConsented, setAiConsented] = useState(() => Platform.OS !== 'ios' || hasAiDataConsent(user))
   const [consentPromptOpen, setConsentPromptOpen] = useState(() => Platform.OS === 'ios' && !hasAiDataConsent(user))
   const [pendingTool, setPendingTool] = useState(null)
 
-  const onOpenTool = (key) => {
+  const onOpenTool = useCallback((key) => {
     if (COMING_SOON_TOOLS.has(key)) return
     if (!NATIVE_TOOLS.has(key)) {
       setTab('explore')
@@ -187,7 +202,7 @@ function HomeShell({ user }) {
       return
     }
     setOpenTool(key)
-  }
+  }, [aiConsented])
 
   const declineAiConsent = () => {
     setConsentPromptOpen(false)
@@ -230,6 +245,12 @@ function HomeShell({ user }) {
       loadAccount()
     }
     overlay = <TokenPacksScreen user={user} onBack={closeTokens} onPurchased={loadAccount} />
+  } else if (minutesOpen) {
+    const closeMinutes = () => {
+      setMinutesOpen(false)
+      loadAccount()
+    }
+    overlay = <LiveSwapMinutesScreen user={user} onBack={closeMinutes} onPurchased={loadAccount} />
   } else if (accountDetail) {
     overlay = <AccountDetailScreen type={accountDetail} onBack={() => setAccountDetail(null)} subscription={subscription} user={user} />
   } else if (openTool === 'live') {
@@ -279,6 +300,7 @@ function HomeShell({ user }) {
             refreshing={refreshing}
             onRefresh={onRefresh}
             onOpenTool={onOpenTool}
+            visible={tab === 'home' && !overlay}
           />
         ))}
         {tabPane('explore', <ExploreScreen onOpenTool={onOpenTool} />)}
@@ -287,7 +309,7 @@ function HomeShell({ user }) {
           <CreationsScreen onCreate={() => setQuickOpen(true)} openCreationId={notifiedCreationId} onOpenedCreation={clearNotifiedCreation} />
         ))}
         {tabPane('profile', (
-          <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} onOpenPlans={() => setPlansOpen(true)} onOpenTokens={() => setTokensOpen(true)} />
+          <ProfileScreen user={user} subscription={subscription} loading={loading} refreshing={refreshing} onRefresh={onRefresh} onOpenAccountDetail={setAccountDetail} onOpenPlans={() => setPlansOpen(true)} onOpenTokens={() => setTokensOpen(true)} onOpenMinutes={() => setMinutesOpen(true)} />
         ))}
         {!isKnownTab ? (
           <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />
@@ -301,32 +323,29 @@ function HomeShell({ user }) {
   )
 }
 
-function HomeScreen({ user, jetons, jetonsLoading, avatarUrl, refreshing, onRefresh, onOpenTool, onNavigate }) {
+const HomeScreen = memo(function HomeScreen({ user, jetons, jetonsLoading, avatarUrl, refreshing, onRefresh, onOpenTool, onNavigate, visible }) {
   const { width } = useWindowDimensions()
-  const colW = (width - PAD * 2 - GAP) / 2
-  const goExplore = () => onNavigate('explore')
+  const colW = useMemo(() => (width - PAD * 2 - GAP) / 2, [width])
+  const goExplore = useCallback(() => onNavigate('explore'), [onNavigate])
+  const openProfile = useCallback(() => onNavigate('profile'), [onNavigate])
+  const refreshControl = useMemo(
+    () => <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.blue} />,
+    [refreshing, onRefresh],
+  )
 
   return (
     <ScrollView
       style={styles.flex}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.blue} />}
+      refreshControl={refreshControl}
     >
-      <Header user={user} jetons={jetons} jetonsLoading={jetonsLoading} avatarUrl={avatarUrl} onOpenProfile={() => onNavigate('profile')} />
+      <Header user={user} jetons={jetons} jetonsLoading={jetonsLoading} avatarUrl={avatarUrl} onOpenProfile={openProfile} />
       <HeroCarousel width={width} onOpenTool={onOpenTool} />
       <QuickActions onOpenTool={onOpenTool} />
 
       <SectionHeader title="Tendances" subtitle="Les effets du moment" onSeeAll={goExplore} />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.trendRow}
-        decelerationRate="fast"
-        snapToInterval={TREND_W + GAP}
-      >
-        {TRENDS.map((item) => <TrendCard key={item.key} item={item} onPress={() => onOpenTool(item.tool)} />)}
-      </ScrollView>
+      <TrendsList onOpenTool={onOpenTool} visible={visible} />
 
       <SectionHeader title="Pour toi" subtitle="Des idées à recréer" onSeeAll={goExplore} />
       <View style={styles.feed}>
@@ -336,9 +355,9 @@ function HomeScreen({ user, jetons, jetonsLoading, avatarUrl, refreshing, onRefr
       </View>
     </ScrollView>
   )
-}
+})
 
-function Header({ user, jetons, jetonsLoading, avatarUrl, onOpenProfile }) {
+const Header = memo(function Header({ user, jetons, jetonsLoading, avatarUrl, onOpenProfile }) {
   const metaName = user?.user_metadata?.full_name || user?.user_metadata?.name || null
   const initial = ((metaName || user?.email || '').trim().charAt(0) || 'C').toUpperCase()
   const photoUrl = resolveAvatarUrl(avatarUrl, user)
@@ -352,12 +371,12 @@ function Header({ user, jetons, jetonsLoading, avatarUrl, onOpenProfile }) {
         {jetons !== null ? (
           <View style={styles.creditPill} accessible accessibilityLabel={`${jetons} jetons disponibles`}>
             <View style={styles.creditIcon}>
-              <Image source={JETONS_LOGO} style={styles.creditIconImage} resizeMode="contain" accessibilityIgnoresInvertColors />
+              <Image source={JETONS_LOGO} style={styles.creditIconImage} contentFit="contain" cachePolicy="memory-disk" accessibilityIgnoresInvertColors />
             </View>
             <Text style={styles.creditText}>{jetons.toLocaleString('fr-FR')}</Text>
           </View>
         ) : jetonsLoading ? (
-          <ChapCamLoader size="small" />
+          <View style={[styles.creditPill, styles.creditSkeleton]} accessible accessibilityLabel="Chargement des jetons" />
         ) : null}
         <Pressable accessibilityRole="button" accessibilityLabel="Mon profil" hitSlop={8} onPress={onOpenProfile}>
           {/* The photo sits beside the gradient (not inside it): remote images nested in the native gradient view stay blank on iOS. */}
@@ -368,7 +387,9 @@ function Header({ user, jetons, jetonsLoading, avatarUrl, onOpenProfile }) {
               key={hasPhoto ? photoUrl : 'default'}
               source={hasPhoto ? { uri: photoUrl } : getUserAvatarSource(user)}
               style={styles.avatarPhoto}
-              resizeMode={hasPhoto ? 'cover' : 'contain'}
+              contentFit={hasPhoto ? 'cover' : 'contain'}
+              cachePolicy="memory-disk"
+              transition={IMAGE_TRANSITION_MS}
               onLoad={() => { if (hasPhoto) setLoadedUrl(photoUrl) }}
               onError={() => { if (hasPhoto) setFailedUrl(photoUrl) }}
               accessibilityIgnoresInvertColors
@@ -378,9 +399,9 @@ function Header({ user, jetons, jetonsLoading, avatarUrl, onOpenProfile }) {
       </View>
     </View>
   )
-}
+})
 
-function HeroCarousel({ width, onOpenTool }) {
+const HeroCarousel = memo(function HeroCarousel({ width, onOpenTool }) {
   const [index, setIndex] = useState(0)
   const scroller = useRef(null)
   const cardW = width - PAD * 2
@@ -442,9 +463,9 @@ function HeroCarousel({ width, onOpenTool }) {
       </View>
     </View>
   )
-}
+})
 
-function QuickActions({ onOpenTool }) {
+const QuickActions = memo(function QuickActions({ onOpenTool }) {
   return (
     <View style={styles.quickRow}>
       {QUICK_ACTIONS.map((action) => {
@@ -484,9 +505,9 @@ function QuickActions({ onOpenTool }) {
       })}
     </View>
   )
-}
+})
 
-function SectionHeader({ title, subtitle, onSeeAll }) {
+const SectionHeader = memo(function SectionHeader({ title, subtitle, onSeeAll }) {
   return (
     <View style={styles.sectionHeader}>
       <View style={styles.flex}>
@@ -505,11 +526,96 @@ function SectionHeader({ title, subtitle, onSeeAll }) {
       </Pressable>
     </View>
   )
-}
+})
 
 const TREND_W = 148
+const TREND_STEP = TREND_W + GAP
+const trendKeyExtractor = (item) => item.key
+const getTrendLayout = (_, index) => ({ length: TREND_STEP, offset: PAD + TREND_STEP * index, index })
+const TrendSeparator = () => <View style={styles.trendSeparator} />
 
-function TrendCard({ item, onPress }) {
+const TrendsList = memo(function TrendsList({ onOpenTool, visible }) {
+  const [activeKey, setActiveKey] = useState(TRENDS[0].key)
+  // FlatList requires a callback that never changes identity.
+  const onViewableItemsChanged = useRef(({ viewableItems }) => {
+    const first = viewableItems.find((v) => v.isViewable)
+    if (first) setActiveKey(first.key)
+  }).current
+
+  const renderItem = useCallback(
+    ({ item }) => <TrendCard item={item} onOpenTool={onOpenTool} playing={visible && item.key === activeKey} />,
+    [onOpenTool, visible, activeKey],
+  )
+
+  return (
+    <FlatList
+      horizontal
+      data={TRENDS}
+      keyExtractor={trendKeyExtractor}
+      renderItem={renderItem}
+      extraData={activeKey}
+      getItemLayout={getTrendLayout}
+      ItemSeparatorComponent={TrendSeparator}
+      initialNumToRender={3}
+      maxToRenderPerBatch={3}
+      windowSize={5}
+      removeClippedSubviews
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.trendRow}
+      decelerationRate="fast"
+      snapToInterval={TREND_STEP}
+      viewabilityConfig={TREND_VIEWABILITY}
+      onViewableItemsChanged={onViewableItemsChanged}
+    />
+  )
+})
+
+function TrendVideo({ src, playing, label }) {
+  const source = useMemo(() => (typeof src === 'string' ? asset(src).uri : src), [src])
+  const player = videoModule.useVideoPlayer(source, (p) => {
+    p.loop = true
+    p.muted = true
+  })
+  useEffect(() => {
+    if (playing) player.play()
+    else player.pause()
+  }, [playing, player])
+  return (
+    <videoModule.VideoView
+      player={player}
+      style={StyleSheet.absoluteFill}
+      contentFit="cover"
+      nativeControls={false}
+      allowsPictureInPicture={false}
+      accessibilityLabel={label}
+    />
+  )
+}
+
+// Only the visible card decodes video; the others show their poster (or a paused first frame when the asset has no poster).
+const TrendMedia = memo(function TrendMedia({ media, playing, label }) {
+  const isVideo = media?.type === 'video' && videoModule
+  const still = media?.type === 'image' ? media.src : media?.poster
+  return (
+    <View style={[StyleSheet.absoluteFill, styles.mediaPlaceholder]} pointerEvents="none">
+      {isVideo && (playing || !still) ? (
+        <TrendVideo src={media.src} playing={playing} label={label} />
+      ) : still ? (
+        <Image
+          source={asset(still)}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={IMAGE_TRANSITION_MS}
+          accessibilityLabel={label}
+        />
+      ) : null}
+    </View>
+  )
+})
+
+const TrendCard = memo(function TrendCard({ item, onOpenTool, playing }) {
+  const onPress = useCallback(() => onOpenTool(item.tool), [onOpenTool, item.tool])
   return (
     <Pressable
       accessibilityRole="button"
@@ -517,7 +623,7 @@ function TrendCard({ item, onPress }) {
       onPress={onPress}
       style={({ pressed }) => [styles.trend, pressed && styles.pressed]}
     >
-      <MediaView media={item.media} />
+      <TrendMedia media={item.media} playing={playing} />
       <LinearGradient colors={['rgba(11,18,51,0)', 'rgba(11,18,51,0.88)']} locations={[0.5, 1]} style={StyleSheet.absoluteFill} />
       <View style={styles.trendTag}>
         {item.tool === 'live' ? <View style={styles.liveDot} /> : null}
@@ -529,15 +635,15 @@ function TrendCard({ item, onPress }) {
       </View>
     </Pressable>
   )
-}
+})
 
-function CreatorTile({ item, width }) {
+const CreatorTile = memo(function CreatorTile({ item, width }) {
   return (
     <View style={[styles.tile, { width, height: Math.round(width * 1.28) }]}>
       <MediaView media={item.media} />
     </View>
   )
-}
+})
 
 const TAB_TITLES = { create: 'Créer', creations: 'Mes créations', profile: 'Mon profil' }
 
@@ -659,7 +765,10 @@ const styles = StyleSheet.create({
   seeAll: { flexDirection: 'row', alignItems: 'center', gap: 2, paddingBottom: 2 },
   seeAllText: { color: C.blue, fontSize: 13, fontWeight: '700' },
 
-  trendRow: { paddingHorizontal: PAD, gap: GAP },
+  creditSkeleton: { width: 58, backgroundColor: C.line },
+  trendRow: { paddingHorizontal: PAD },
+  trendSeparator: { width: GAP },
+  mediaPlaceholder: { backgroundColor: '#1A1F45' },
   trend: { width: TREND_W, height: Math.round(TREND_W * 1.36), borderRadius: R_CARD, overflow: 'hidden', backgroundColor: INK_DEEP },
   trendTag: { position: 'absolute', top: 10, left: 10, flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 9, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.94)' },
   trendTagText: { color: C.ink, fontSize: 10, fontWeight: '800' },

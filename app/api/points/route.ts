@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { pointsPerSecond } from '@/lib/swap-pricing'
 import { trackGPUUsage } from '@/lib/rate-limit'
 import { cancelSubscription, claimLiveSession, releaseLiveSession } from '@/lib/live-guard'
+import { getTopupPoints } from '@/lib/liveswap-topup'
 
 export async function POST(request: NextRequest) {
   try {
@@ -385,10 +386,11 @@ export async function GET() {
     let plan = subscription.plan || 'free'
     let isActive = subscription.is_active
     if (isExpired) {
-      if (points > 0 || isActive || plan !== 'free') {
-        await cancelSubscription(user.id)
-      }
-      points = 0
+      // Les minutes de recharge (consommables) ne s'effacent pas a l'expiration.
+      points =
+        points > 0 || isActive || plan !== 'free'
+          ? await cancelSubscription(user.id)
+          : await getTopupPoints(user.id, points)
       plan = 'free'
       isActive = false
     }

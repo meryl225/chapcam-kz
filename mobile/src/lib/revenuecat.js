@@ -14,10 +14,14 @@ let configuredFor = null
 export async function ensureRevenueCat(userId) {
   if (Platform.OS !== 'ios') throw new Error('unsupported')
   if (!API_KEY) throw new Error('Clé RevenueCat iOS manquante (EXPO_PUBLIC_REVENUECAT_IOS_API_KEY)')
-  if (configuredFor === userId) return
   if (configuredFor === null) {
     Purchases.configure({ apiKey: API_KEY, appUserID: userId })
-  } else {
+    configuredFor = userId
+  }
+  // Jamais d'achat sous un identifiant anonyme ou celui d'un autre compte.
+  const current = await Purchases.getAppUserID()
+  if (current !== userId) {
+    console.log('[iap-diag] identite RevenueCat corrigee', { from: current, to: userId })
     await Purchases.logIn(userId)
   }
   configuredFor = userId
@@ -35,11 +39,11 @@ export async function logOutRevenueCat() {
 
 // Produits Apple (prix localises) pour les ids demandes : d'abord l'offering
 // « sale », puis lecture directe des produits absents de l'offering.
-export async function loadStoreProducts(productIds, category) {
+export async function loadStoreProducts(productIds, category, offeringId = OFFERING_ID) {
   const byId = {}
   try {
     const offerings = await Purchases.getOfferings()
-    const offering = offerings?.all?.[OFFERING_ID] ?? offerings?.current
+    const offering = offerings?.all?.[offeringId] ?? offerings?.current
     for (const pkg of offering?.availablePackages ?? []) {
       const id = pkg?.product?.identifier
       if (productIds.includes(id)) byId[id] = { product: pkg.product, pkg }
@@ -93,13 +97,14 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 // enregistre une transaction qui vient d'etre validee par Apple.
 export async function syncPurchases(source = 'purchase', until) {
   let last = null
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    if (attempt > 0) await wait(1500 * attempt)
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    if (attempt > 0) await wait(Math.min(1500 * attempt, 5000))
     const { response, body } = await apiJson('/api/mobile/iap/revenuecat/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ source }),
     })
+    console.log('[iap-diag] reponse backend', { source, attempt, status: response.status, items: body?.items, subscriptionActive: body?.subscriptionActive, error: body?.error })
     if (!response.ok || !Array.isArray(body?.items)) {
       throw new Error(body?.error || `Erreur HTTP ${response.status}`)
     }
