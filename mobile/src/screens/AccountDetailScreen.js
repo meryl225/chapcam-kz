@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { API_URL } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -15,6 +16,7 @@ const CONFIG = {
   activity: { title: 'Activité récente', icon: 'pulse-outline', intro: 'Retrouve ici les dernières utilisations de ChapCam.' },
   purchases: { title: 'Achats et factures', icon: 'receipt-outline', intro: 'Consulte tes achats et retrouve tes justificatifs.' },
   subscription: { title: 'Gestion de l’abonnement', icon: 'diamond-outline', intro: 'Gère ton forfait Live Swap et ses avantages.' },
+  security: { title: 'Sécurité et confidentialité', icon: 'shield-half-outline', intro: 'Protège l’accès à ton compte ChapCam.' },
   personal: { title: 'Informations personnelles', icon: 'person-outline', intro: 'Ces informations restent privées et servent uniquement à ton compte ChapCam.' },
 }
 
@@ -65,6 +67,7 @@ export function AccountDetailScreen({ type, onBack, subscription, jetons, user }
         {type === 'activity' ? <Activity /> : null}
         {type === 'purchases' ? <Purchases subscription={subscription} jetons={jetons} /> : null}
         {type === 'subscription' ? <Subscription subscription={subscription} /> : null}
+        {type === 'security' ? <Security user={user} /> : null}
       </ScrollView>
     </View>
   )
@@ -176,6 +179,70 @@ function Subscription({ subscription }) {
     <View style={styles.planCard}><Text style={styles.planEyebrow}>FORFAIT ACTUEL</Text><Text style={styles.planName}>{plan}</Text><Text style={styles.planStatus}>{subscription?.is_active === false ? 'Inactif' : 'Actif'}</Text>{date ? <Text style={styles.planDate}>Valable jusqu’au {new Date(date).toLocaleDateString('fr-FR')}</Text> : null}</View>
     <View style={styles.card}><Row icon="checkmark-circle-outline" label="Live Swap inclus" value="Selon ton forfait" /><Row icon="shield-checkmark-outline" label="Paiement sécurisé" value="Géré par ChapCam" /></View>
     <Text style={styles.note}>Pour modifier ton forfait ou annuler un renouvellement, contacte le support ChapCam.</Text>
+  </>
+}
+
+function Security({ user }) {
+  const email = user?.email || ''
+  const [sending, setSending] = useState(false)
+  const [feedback, setFeedback] = useState(null)
+
+  const sendPasswordLink = async () => {
+    if (!email || sending) return
+    setSending(true)
+    setFeedback(null)
+    try {
+      const response = await fetch(`${API_URL}/api/email/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await response.json().catch(() => null)
+      if (!response.ok || !data?.success) throw new Error(`HTTP ${response.status}`)
+      setFeedback({ tone: 'success', text: 'E-mail envoyé. Ouvre le lien reçu pour choisir un nouveau mot de passe. Pense à vérifier tes spams.' })
+    } catch {
+      setFeedback({ tone: 'error', text: 'Envoi impossible pour le moment. Vérifie ta connexion et réessaie.' })
+    } finally {
+      setSending(false)
+    }
+  }
+
+  const confirmSignOutEverywhere = () =>
+    Alert.alert(
+      'Déconnecter tous les appareils ?',
+      'Tu seras déconnecté de ChapCam sur cet iPhone et sur tous tes autres appareils.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Déconnecter',
+          style: 'destructive',
+          onPress: async () => {
+            const { error } = await supabase.auth.signOut({ scope: 'global' })
+            if (error) await supabase.auth.signOut({ scope: 'local' })
+          },
+        },
+      ],
+    )
+
+  return <>
+    <View style={styles.card}>
+      <Row icon="mail-outline" label="E-mail de connexion" value={email || '—'} />
+      <Row icon="lock-closed-outline" label="Mot de passe" value="••••••••" />
+    </View>
+    {feedback ? <Text style={[styles.feedback, feedback.tone === 'error' ? styles.feedbackError : styles.feedbackSuccess]} accessibilityLiveRegion="polite">{feedback.text}</Text> : null}
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ disabled: sending || !email, busy: sending }}
+      disabled={sending || !email}
+      onPress={sendPasswordLink}
+      style={[styles.saveButton, (sending || !email) && styles.saveButtonDisabled]}
+    >
+      {sending ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveText}>Changer mon mot de passe</Text>}
+    </Pressable>
+    <Pressable accessibilityRole="button" onPress={confirmSignOutEverywhere} style={styles.secondaryButton}>
+      <Text style={styles.secondaryText}>Déconnecter tous les appareils</Text>
+    </Pressable>
+    <Text style={styles.note}>Tes données personnelles restent privées. La politique de confidentialité et la suppression du compte sont disponibles depuis ton profil.</Text>
   </>
 }
 
@@ -297,6 +364,8 @@ const styles = StyleSheet.create({ root: { flex: 1, backgroundColor: BG },
   saveButton: { height: 54, borderRadius: 27, backgroundColor: C.blue, alignItems: 'center', justifyContent: 'center' },
   saveButtonDisabled: { opacity: 0.45 },
   saveText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
+  secondaryButton: { height: 54, borderRadius: 27, borderWidth: 1, borderColor: '#E3E7F2', backgroundColor: '#FFF', alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { color: '#C9363B', fontSize: 16, fontWeight: '800' },
   activityState: { backgroundColor: '#FFF', borderRadius: 20, padding: 28, alignItems: 'center', gap: 10 },
   activityStateTitle: { color: NAVY, fontSize: 17, fontWeight: '800' },
   activityStateText: { color: MUTED, fontSize: 14, lineHeight: 21, textAlign: 'center' },
