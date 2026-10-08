@@ -51,7 +51,7 @@ async function ensureTable() {
       created_at timestamptz NOT NULL DEFAULT now(),
       reviewed_at timestamptz,
       reviewed_by text,
-      reward_amount integer NOT NULL DEFAULT ${SOCIAL_BONUS_JETONS}
+      reward_amount integer NOT NULL DEFAULT 5
     )
   `
   // A user can only hold one open or approved claim; rejected claims allow a new submission.
