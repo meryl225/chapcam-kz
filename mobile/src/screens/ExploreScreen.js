@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react'
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { C, CATEGORIES, GAP, PAD, TOOLS as ALL_TOOLS, normalize } from '../ui/catalog'
 import { ToolCard } from '../ui/ToolCard'
 
 const IOS_HIDDEN_TOOL_KEYS = ['voice-swap', 'voice-translator']
-const TOOLS = Platform.OS === 'ios' ? ALL_TOOLS.filter((tool) => !IOS_HIDDEN_TOOL_KEYS.includes(tool.key)) : ALL_TOOLS
+const TOOLS = ALL_TOOLS.filter((tool) => !IOS_HIDDEN_TOOL_KEYS.includes(tool.key))
 
 export function ExploreScreen({ onOpenTool }) {
   const { width } = useWindowDimensions()

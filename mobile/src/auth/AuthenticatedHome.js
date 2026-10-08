@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, AppState, FlatList, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Alert, AppState, FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { Image } from 'expo-image'
 import { requireOptionalNativeModule } from 'expo-modules-core'
 import { AI_CONSENT_KEY, AiDataConsentSheet, hasAiDataConsent } from '../ui/AiDataConsent'
@@ -184,8 +184,8 @@ function HomeShell({ user }) {
   const credits = subscriptionExpired ? 0 : Math.max(0, Number(subscription?.points) || 0)
   const onRefresh = useCallback(() => { setRefreshing(true); loadAccount() }, [loadAccount])
 
-  const [aiConsented, setAiConsented] = useState(() => Platform.OS !== 'ios' || hasAiDataConsent(user))
-  const [consentPromptOpen, setConsentPromptOpen] = useState(() => Platform.OS === 'ios' && !hasAiDataConsent(user))
+  const [aiConsented, setAiConsented] = useState(() => hasAiDataConsent(user))
+  const [consentPromptOpen, setConsentPromptOpen] = useState(() => !hasAiDataConsent(user))
   const [pendingTool, setPendingTool] = useState(null)
 
   const onOpenTool = useCallback((key) => {

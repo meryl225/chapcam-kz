@@ -575,24 +575,14 @@ onPress={onOpenPlans}
 
       <Text style={styles.sectionTitle} accessibilityRole="header">Support</Text>
       <View style={styles.rows}>
-        {Platform.OS === 'ios' ? (
-          <Row icon="headset-outline" tint={C.blue} label="Service client" onPress={() => setSupportOpen(true)} />
-        ) : (
-          <Row icon="help-buoy-outline" tint={C.blue} label="Aide & support" value="contact@chapcam.com" onPress={() => open(LINKS.support)} />
-        )}
-        {Platform.OS === 'ios' ? (
-          <Row icon="flag-outline" tint={C.violet} label="Signaler un contenu" onPress={() => setReporting(true)} />
-        ) : null}
+        <Row icon="headset-outline" tint={C.blue} label="Service client" onPress={() => setSupportOpen(true)} />
+        <Row icon="flag-outline" tint={C.violet} label="Signaler un contenu" onPress={() => setReporting(true)} />
         <Row icon="document-text-outline" tint={C.violet} label="Conditions d'utilisation" onPress={() => openInApp(LINKS.terms)} />
         <Row icon="lock-closed-outline" tint={C.blue} label="Politique de confidentialité" onPress={() => openInApp(LINKS.privacy)} />
         <Row icon="language-outline" tint={C.violet} label="Langue" value="Français" />
       </View>
-      {Platform.OS === 'ios' ? (
-        <>
-          <ReportAbuseSheet visible={reporting} onClose={() => setReporting(false)} contentUrl="" context="Profil" />
-          <SupportSheet visible={supportOpen} onClose={() => setSupportOpen(false)} />
-        </>
-      ) : null}
+      <ReportAbuseSheet visible={reporting} onClose={() => setReporting(false)} contentUrl="" context="Profil" />
+      <SupportSheet visible={supportOpen} onClose={() => setSupportOpen(false)} />
 
       <Pressable
         accessibilityRole="button"
