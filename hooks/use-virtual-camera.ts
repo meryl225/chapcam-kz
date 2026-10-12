@@ -10,6 +10,24 @@ const DEFAULT_STATE: VirtualCameraState = {
   error: null,
 }
 
+type RawVirtualCameraStatus = Partial<VirtualCameraState> & {
+  isRunning?: boolean
+  available?: boolean
+}
+
+// Le process principal (electron/virtual-camera.js) renvoie { isRunning, available }
+// alors que l'UI lit { running, driverInstalled } : on accepte les deux formes.
+function normalizeStatus(raw: RawVirtualCameraStatus | null | undefined): VirtualCameraState | null {
+  if (!raw) return null
+  return {
+    ...DEFAULT_STATE,
+    ...raw,
+    running: raw.running ?? raw.isRunning ?? false,
+    driverInstalled: raw.driverInstalled ?? raw.available ?? false,
+    error: raw.error ?? null,
+  }
+}
+
 /**
  * Suit l'etat de la camera virtuelle "ChapCam Camera".
  * - En Electron : ecoute les evenements pousses par le main + polling de secours.
@@ -42,19 +60,20 @@ export function useVirtualCamera() {
     // Etat initial
     api.virtualCamera
       .status()
-      .then((s) => active && s && setState(s))
+      .then((s) => { const n = normalizeStatus(s); if (active && n) setState(n) })
       .catch(() => {})
 
     // Evenements pousses par le process principal (peut ne pas exister)
     api.onVirtualCameraState?.((s) => {
-      if (active && s) setState(s)
+      const n = normalizeStatus(s)
+      if (active && n) setState(n)
     })
 
     // Polling de secours (si un evenement est manque)
     const interval = setInterval(() => {
       api.virtualCamera
         ?.status?.()
-        .then((s) => active && s && setState(s))
+        .then((s) => { const n = normalizeStatus(s); if (active && n) setState(n) })
         .catch(() => {})
     }, 3000)
 
@@ -68,14 +87,16 @@ export function useVirtualCamera() {
     const api = getElectronAPI()
     if (typeof api?.virtualCamera?.start !== 'function') return
     const s = await api.virtualCamera.start({ width: 1280, height: 720, fps: 30 })
-    if (s) setState(s)
+    const n = normalizeStatus(s)
+    if (n) setState(n)
   }, [])
 
   const stop = useCallback(async () => {
     const api = getElectronAPI()
     if (typeof api?.virtualCamera?.stop !== 'function') return
     const s = await api.virtualCamera.stop()
-    if (s) setState(s)
+    const n = normalizeStatus(s)
+    if (n) setState(n)
   }, [])
 
   return { state, available, start, stop }
