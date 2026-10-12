@@ -2,12 +2,37 @@ name: Desktop build (Windows + macOS)
 
 on:
   workflow_dispatch:
+    inputs:
+      platforms:
+        description: "Plateformes a construire"
+        type: choice
+        default: all
+        options: [all, windows, macos]
   push:
     tags: ["desktop-v*"]
+    branches: [main]
+    paths: &desktop_paths
+      - "electron/**"
+      - "native/**"
+      - "electron-builder.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/desktop-build.yml"
+  pull_request:
+    paths: *desktop_paths
 
 jobs:
   windows:
+    if: github.event_name != 'workflow_dispatch' || inputs.platforms != 'macos'
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            cmake_arch: x64
+          - arch: arm64
+            cmake_arch: ARM64
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -18,10 +43,10 @@ jobs:
           node-version: 20
           cache: pnpm
 
-      - name: Build native virtual camera
+      - name: Build native virtual camera (${{ matrix.arch }})
         shell: pwsh
         run: |
-          cmake -S native/windows -B native/windows/build -A x64
+          cmake -S native/windows -B native/windows/build -A ${{ matrix.cmake_arch }}
           cmake --build native/windows/build --config Release
           New-Item -ItemType Directory -Force resources/vcam/win | Out-Null
           Copy-Item native/windows/build/Release/ChapCamVCamSource.dll resources/vcam/win/
@@ -29,18 +54,47 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Package installer
-        run: pnpm exec electron-builder --win --x64 --publish never
+      # Windows signing uses only WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD. Apple
+      # certificates (CSC_LINK, MAC_*) are never exposed to this job. Without
+      # a Windows certificate the installer is produced unsigned.
+      - name: Configure Windows code signing
+        shell: bash
         env:
-          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+          if [ -n "$WIN_CSC_LINK" ]; then
+            echo "WIN_CSC_LINK=$WIN_CSC_LINK" >> "$GITHUB_ENV"
+            echo "WIN_CSC_KEY_PASSWORD=$WIN_CSC_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "Signature Windows : certificat WIN_CSC_LINK utilise."
+          else
+            echo "::warning::WIN_CSC_LINK absent : installateur Windows NON signe."
+          fi
+
+      - name: Package installer (${{ matrix.arch }})
+        shell: bash
+        run: pnpm exec electron-builder --win nsis --${{ matrix.arch }} --publish never
+
+      - name: Check signature
+        shell: pwsh
+        run: |
+          Get-ChildItem dist/*.exe | ForEach-Object {
+            $sig = Get-AuthenticodeSignature $_.FullName
+            Write-Host "$($_.Name) : $($sig.Status) ($([math]::Round($_.Length / 1MB, 1)) Mo)"
+          }
 
       - uses: actions/upload-artifact@v4
         with:
-          name: chapcam-windows
+          name: chapcam-windows-${{ matrix.arch }}
           path: dist/*.exe
+          if-no-files-found: error
 
   macos:
+    # macOS needs signing/notarization: only on manual runs and desktop-v* tags.
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.platforms != 'windows') ||
+      startsWith(github.ref, 'refs/tags/desktop-v')
     runs-on: macos-14
     strategy:
       fail-fast: false

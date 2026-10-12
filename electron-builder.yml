@@ -20,10 +20,16 @@ afterPack: electron/build/after-pack.js
 win:
   target:
     - target: nsis
-      arch: [x64]
+      arch: [x64, arm64]
   # L'app n'a plus besoin d'etre admin : seule l'installation l'est (perMachine).
   requestedExecutionLevel: asInvoker
-  artifactName: ChapCam-Setup-${version}.${ext}
+  artifactName: ChapCam-Setup-${version}-${arch}.${ext}
+  # Signature : electron-builder lit WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD (.pfx).
+  # Sans certificat, l'installateur est genere non signe.
+  publisherName: ChapCam
+  signingHashAlgorithms: [sha256]
+  rfc3161TimeStampServer: http://timestamp.digicert.com
+  verifyUpdateCodeSignature: false
   extraResources:
     - from: resources/vcam/win
       to: vcam/win
