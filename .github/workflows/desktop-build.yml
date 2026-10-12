@@ -8,6 +8,10 @@ on:
         type: choice
         default: all
         options: [all, windows, macos]
+      publish:
+        description: "Publier les installateurs sur GitHub Releases (liens chapcam.com/download)"
+        type: boolean
+        default: false
   push:
     tags: ["desktop-v*"]
     branches: [main]
@@ -170,3 +174,37 @@ jobs:
         with:
           name: chapcam-macos-${{ matrix.arch }}
           path: dist/*.dmg
+
+  release:
+    # Publishes whatever platforms built successfully. chapcam.com/download/<target>
+    # always redirects to the newest release that contains the requested installer.
+    needs: [windows, macos]
+    if: >-
+      always() &&
+      (needs.windows.result == 'success' || needs.macos.result == 'success') &&
+      ((github.event_name == 'workflow_dispatch' && inputs.publish) ||
+       startsWith(github.ref, 'refs/tags/desktop-v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: chapcam-*
+          path: installers
+          merge-multiple: true
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          TAG="desktop-v${VERSION}"
+          ls -la installers
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" installers/* --clobber
+          else
+            gh release create "$TAG" installers/* --target "$GITHUB_SHA" \
+              --title "ChapCam Desktop ${VERSION}" --latest \
+              --notes "Installateurs ChapCam Desktop ${VERSION}. Telechargement : https://chapcam.com/download"
+          fi

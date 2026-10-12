@@ -1,16 +1,33 @@
 "use client"
 
+import { useSyncExternalStore } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { Apple, Monitor, ArrowLeft, Download, Shield, Zap, Cpu, CheckCircle } from "lucide-react"
 
-// URLs des fichiers - GitHub Releases v1.0.0
+// Liens stables : /download/<cible> redirige vers la derniere version publiee sur GitHub Releases.
 const DOWNLOAD_URLS = {
-  mac: "https://github.com/meryl225/chapcam-kz/releases/download/v1.0.0/ChapCam-1.0.0.dmg",
-  macArm: "https://github.com/meryl225/chapcam-kz/releases/download/v1.0.0/ChapCam-1.0.0-arm64.dmg",
-  windows: "https://github.com/meryl225/chapcam-kz/releases/download/v1.0.0/ChapCam.Setup.1.0.0.exe",
+  mac: "/download/mac-x64",
+  macArm: "/download/mac-arm64",
+  windows: "/download/windows-x64",
+  windowsArm: "/download/windows-arm64",
+}
+
+type DetectedOS = "mac" | "windows" | null
+
+function subscribeNoop() {
+  return () => {}
+}
+
+function detectOS(): DetectedOS {
+  const platform =
+    (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
+    navigator.userAgent
+  if (/mac/i.test(platform)) return "mac"
+  if (/win/i.test(platform)) return "windows"
+  return null
 }
 
 const features = [
@@ -38,13 +55,13 @@ const features = [
 
 const requirements = {
   mac: [
-    "macOS 10.15 (Catalina) ou plus recent",
+    "macOS 12.3 (Monterey) ou plus recent",
     "4 GB RAM minimum (8 GB recommande)",
     "500 MB d'espace disque",
     "Webcam integree ou externe"
   ],
   windows: [
-    "Windows 10 ou plus recent (64-bit)",
+    "Windows 11 (requis pour la camera virtuelle ChapCam Camera)",
     "4 GB RAM minimum (8 GB recommande)", 
     "500 MB d'espace disque",
     "Webcam integree ou externe",
@@ -53,6 +70,17 @@ const requirements = {
 }
 
 export default function DownloadPage() {
+  const detectedOS = useSyncExternalStore(subscribeNoop, detectOS, () => null)
+  const unavailable = useSyncExternalStore(
+    subscribeNoop,
+    () => new URLSearchParams(window.location.search).get("unavailable"),
+    () => null,
+  )
+  const cardClass = (os: Exclude<DetectedOS, null>) =>
+    `bg-white/5 border rounded-2xl p-8 hover:border-[#00ff88]/50 transition-colors ${
+      detectedOS === os ? "border-[#00ff88] md:order-first" : "border-white/10"
+    }`
+
   return (
     <main className="min-h-screen bg-[#0a0e1a]">
       <Header />
@@ -96,8 +124,18 @@ export default function DownloadPage() {
             transition={{ delay: 0.3 }}
             className="grid md:grid-cols-2 gap-6 mb-16"
           >
+            {unavailable && (
+              <p role="status" className="md:col-span-2 rounded-xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-200">
+                {unavailable.startsWith("mac")
+                  ? "La version macOS n'est pas encore publiee. Elle sera disponible ici des sa sortie."
+                  : "Cette version n'est pas encore publiee. Reessayez dans quelques minutes."}
+              </p>
+            )}
             {/* Mac Download */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-8 hover:border-[#00ff88]/50 transition-colors">
+            <div className={cardClass("mac")}>
+              {detectedOS === "mac" && (
+                <p className="mb-4 text-sm font-semibold text-[#00ff88]">Recommande pour votre ordinateur</p>
+              )}
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center">
                   <Apple className="w-10 h-10 text-white" />
@@ -109,18 +147,18 @@ export default function DownloadPage() {
               </div>
               
               <div className="space-y-3 mb-6">
-                <a href={DOWNLOAD_URLS.mac} target="_blank" rel="noopener noreferrer">
-                  <Button className="w-full bg-[#00ff88] hover:bg-[#00cc6a] text-black font-bold py-6 text-lg">
+                <Button asChild className="w-full bg-[#00ff88] hover:bg-[#00cc6a] text-black font-bold py-6 text-lg">
+                  <a href={DOWNLOAD_URLS.macArm}>
                     <Download className="w-5 h-5 mr-2" />
-                    Telecharger pour Mac Intel
-                  </Button>
-                </a>
-                <a href={DOWNLOAD_URLS.macArm} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" className="w-full border-[#00ff88]/50 text-[#00ff88] hover:bg-[#00ff88]/10 py-6 mt-2">
+                    Mac Apple Silicon (M1/M2/M3/M4)
+                  </a>
+                </Button>
+                <Button asChild variant="outline" className="w-full border-[#00ff88]/50 text-[#00ff88] hover:bg-[#00ff88]/10 py-6 mt-2">
+                  <a href={DOWNLOAD_URLS.mac}>
                     <Download className="w-5 h-5 mr-2" />
-                    Mac Apple Silicon (M1/M2/M3)
-                  </Button>
-                </a>
+                    Mac Intel
+                  </a>
+                </Button>
               </div>
 
               <div className="space-y-2">
@@ -135,25 +173,33 @@ export default function DownloadPage() {
             </div>
 
             {/* Windows Download */}
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-8 hover:border-[#00ff88]/50 transition-colors">
+            <div className={cardClass("windows")}>
+              {detectedOS === "windows" && (
+                <p className="mb-4 text-sm font-semibold text-[#00ff88]">Recommande pour votre ordinateur</p>
+              )}
               <div className="flex items-center gap-4 mb-6">
                 <div className="w-16 h-16 bg-white/10 rounded-xl flex items-center justify-center">
                   <Monitor className="w-10 h-10 text-white" />
                 </div>
                 <div>
                   <h2 className="text-2xl font-bold text-white">Windows</h2>
-                  <p className="text-gray-400">Pour Windows 10/11</p>
+                  <p className="text-gray-400">Pour Windows 11 (x64 et ARM)</p>
                 </div>
               </div>
               
               <div className="space-y-3 mb-6">
-                <a href={DOWNLOAD_URLS.windows} target="_blank" rel="noopener noreferrer">
-                  <Button className="w-full bg-[#00ff88] hover:bg-[#00cc6a] text-black font-bold py-6 text-lg">
+                <Button asChild className="w-full bg-[#00ff88] hover:bg-[#00cc6a] text-black font-bold py-6 text-lg">
+                  <a href={DOWNLOAD_URLS.windows}>
                     <Download className="w-5 h-5 mr-2" />
-                    Telecharger pour Windows
-                  </Button>
-                </a>
-                <p className="text-center text-sm text-gray-500">Version 64-bit uniquement</p>
+                    Telecharger pour Windows (x64)
+                  </a>
+                </Button>
+                <Button asChild variant="outline" className="w-full border-[#00ff88]/50 text-[#00ff88] hover:bg-[#00ff88]/10 py-6 mt-2">
+                  <a href={DOWNLOAD_URLS.windowsArm}>
+                    <Download className="w-5 h-5 mr-2" />
+                    Windows ARM (Snapdragon)
+                  </a>
+                </Button>
               </div>
 
               <div className="space-y-2">
