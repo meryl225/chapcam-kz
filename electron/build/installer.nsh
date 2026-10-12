@@ -1,25 +1,23 @@
 ; ============================================================
 ; Hooks NSIS pour ChapCam Desktop
-; Installe / desinstalle le pilote de camera virtuelle "ChapCam Camera"
-; (akvirtualcamera : DirectShow + Media Foundation).
-;
-; Requiert des privileges administrateur (cf. requestedExecutionLevel
-; dans electron-builder.yml).
+; Installe / desinstalle la camera virtuelle native "ChapCam Camera"
+; (source Media Foundation, Windows 11). L'installeur est perMachine,
+; donc deja eleve en administrateur.
 ; ============================================================
 
 !macro customInstall
-  DetailPrint "Installation du pilote ChapCam Camera..."
-  ; $INSTDIR\resources\akvirtualcamera contient les binaires (extraResources)
-  ; install-driver.bat enregistre les DLL DirectShow + Media Foundation,
-  ; installe l'assistant, puis cree le peripherique "ChapCam Camera".
-  nsExec::ExecToLog '"$INSTDIR\resources\akvirtualcamera\install-driver.bat" "$INSTDIR\resources\akvirtualcamera"'
+  DetailPrint "Installation de la camera ChapCam Camera..."
+  nsExec::ExecToLog '"$INSTDIR\resources\vcam\win\chapcam-vcam.exe" install'
   Pop $0
-  DetailPrint "Pilote ChapCam Camera : code retour $0"
+  ${If} $0 == "2"
+    DetailPrint "ChapCam Camera necessite Windows 11 : camera virtuelle non installee."
+  ${ElseIf} $0 != "0"
+    DetailPrint "ChapCam Camera : echec de l'installation (code $0)"
+  ${EndIf}
 !macroend
 
 !macro customUnInstall
-  DetailPrint "Suppression du pilote ChapCam Camera..."
-  nsExec::ExecToLog '"$INSTDIR\resources\akvirtualcamera\uninstall-driver.bat" "$INSTDIR\resources\akvirtualcamera"'
+  DetailPrint "Suppression de la camera ChapCam Camera..."
+  nsExec::ExecToLog '"$INSTDIR\resources\vcam\win\chapcam-vcam.exe" uninstall'
   Pop $0
-  DetailPrint "Pilote ChapCam Camera supprime : code retour $0"
 !macroend

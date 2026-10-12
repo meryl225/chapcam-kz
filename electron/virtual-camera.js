@@ -1,22 +1,15 @@
 /**
- * Camera virtuelle ChapCam Desktop
- * ----------------------------------
- * Cree un VRAI peripherique camera systeme nomme "ChapCam Camera" et lui
- * pousse, image par image, la sortie face-swap deja transformee.
+ * Camera virtuelle ChapCam Desktop - "ChapCam Camera"
+ * ---------------------------------------------------
+ * Pilotes natifs, sans OBS :
+ *   - Windows 11 : source Media Foundation (MFCreateVirtualCamera)
+ *       resources/vcam/win/ChapCamVCamSource.dll + chapcam-vcam.exe
+ *   - macOS 12.3+ : extension Core Media IO (Camera Extension)
+ *       ChapCam.app/Contents/Library/SystemExtensions/... + chapcam-vcam-mac
+ *   - Linux (dev) : v4l2loopback via ffmpeg
  *
- * IMPORTANT (limite OS) : une app ne peut PAS "inventer" une camera systeme
- * sans pilote. Il faut un pilote de camera virtuelle installe. ChapCam embarque
- * le pilote open-source "akvirtualcamera" (DirectShow + Media Foundation), ce
- * qui le rend visible PARTOUT :
- *   - DirectShow  -> OBS (Peripherique de capture video), Zoom, Discord, Chrome/Google Meet, Edge
- *   - Media Foundation -> Microsoft Teams, application Camera de Windows
- *
- * Flux des frames :
- *   renderer (capture du canvas) --IPC--> main --stdin--> AkVCamManager stream
- *   --> pilote "ChapCam Camera" --> applications tierces.
- *
- * Le binaire pilote est attendu sous resources/akvirtualcamera/<arch>/.
- * Cf. electron/build/ pour l'installation/desinstallation au moment du setup.
+ * Flux : preload (capture du canvas transforme, RGBA) --IPC--> main
+ *        --stdin BGRA--> helper natif --> "ChapCam Camera" --> Zoom/Teams/Meet/OBS
  */
 
 const { ipcMain, app } = require('electron')
@@ -24,52 +17,71 @@ const path = require('path')
 const fs = require('fs')
 const { spawn, execFile } = require('child_process')
 
-// ---- Identite du peripherique (ce que verront OBS/Zoom/Teams/etc.) ----
 const DEVICE_DESCRIPTION = 'ChapCam Camera'
-const DEVICE_ID = 'ChapCamCamera' // id interne stable pour akvirtualcamera
-
-// ---- Format de sortie ----
+const DEVICE_ID = 'ChapCamCamera'
+const MAC_EXTENSION_ID = 'com.chapcam.desktop.camera-extension'
 const DEFAULT = { width: 1280, height: 720, fps: 30 }
 
-// Reglages couleur/orientation (a ajuster si rendu errone au 1er test Windows) :
-//   - SWAP_RB : echange Rouge/Bleu (RGBA navigateur -> BGR DirectShow)
-//   - FLIP_V  : retourne verticalement (DShow attend souvent bottom-up)
-const SWAP_RB = true
-const FLIP_V = true
+const WIN_EXIT = { unsupportedOs: 2, notInstalled: 3 }
 
 function log(msg) {
   console.log(`[VirtualCamera] ${msg}`)
 }
 
-// Resout le chemin du gestionnaire akvirtualcamera selon plateforme/arch.
-function akvcamManagerPath() {
-  if (process.platform !== 'win32') return null
-  const arch = process.arch === 'ia32' ? 'x86' : 'x64'
+function nativeDir() {
+  const sub = process.platform === 'win32' ? 'win' : 'mac'
   const candidates = [
-    // Empaquete dans l'app (production)
-    path.join(process.resourcesPath || '', 'akvirtualcamera', arch, 'AkVCamManager.exe'),
-    // Dev : binaire pose dans le repo
-    path.join(__dirname, '..', 'resources', 'akvirtualcamera', arch, 'AkVCamManager.exe'),
-    // Installation systeme du pilote (fallback)
-    path.join(process.env['ProgramFiles'] || 'C:\\Program Files', 'AkVirtualCamera', arch, 'AkVCamManager.exe'),
+    path.join(process.resourcesPath || '', 'vcam', sub),
+    path.join(__dirname, '..', 'resources', 'vcam', sub),
   ]
-  for (const c of candidates) {
-    if (c && fs.existsSync(c)) return c
+  return candidates.find((dir) => fs.existsSync(dir)) || null
+}
+
+function helperPath() {
+  const dir = nativeDir()
+  if (!dir) return null
+  const file = process.platform === 'win32' ? 'chapcam-vcam.exe' : 'chapcam-vcam-mac'
+  const full = path.join(dir, file)
+  return fs.existsSync(full) ? full : null
+}
+
+let macActivator
+function loadMacActivator() {
+  if (macActivator !== undefined) return macActivator
+  macActivator = null
+  const dir = nativeDir()
+  const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
+  const addon = dir && path.join(dir, arch, 'vcam_activator.node')
+  if (addon && fs.existsSync(addon)) {
+    try {
+      macActivator = require(addon)
+    } catch (e) {
+      log(`Activateur macOS indisponible: ${e.message}`)
+    }
   }
-  return null
+  return macActivator
+}
+
+function runHelper(helper, args) {
+  return new Promise((resolve) => {
+    execFile(helper, args, { timeout: 20000 }, (err, stdout, stderr) => {
+      resolve({ code: err ? (typeof err.code === 'number' ? err.code : 1) : 0, output: `${stdout}${stderr}`.trim() })
+    })
+  })
 }
 
 class VirtualCamera {
   constructor() {
     this.isRunning = false
-    this.proc = null // process AkVCamManager stream / ffmpeg
+    this.proc = null
     this.deviceName = DEVICE_DESCRIPTION
     this.width = DEFAULT.width
     this.height = DEFAULT.height
     this.fps = DEFAULT.fps
-    this._rgb = null // buffer RGB24 reutilise (anti-GC)
+    this._out = null
     this._lastError = null
     this._frames = 0
+    this._macActivated = false
   }
 
   getStatus() {
@@ -85,11 +97,11 @@ class VirtualCamera {
     }
   }
 
-  // Le pilote est-il present sur la machine ?
   isAvailable() {
-    if (process.platform === 'win32') return !!akvcamManagerPath()
+    if (process.platform === 'win32') return !!helperPath()
+    if (process.platform === 'darwin') return !!helperPath() && !!loadMacActivator()
     if (process.platform === 'linux') return fs.existsSync('/dev/video10')
-    return false // macOS : voir startMacOS
+    return false
   }
 
   async start(options = {}) {
@@ -98,21 +110,13 @@ class VirtualCamera {
     this.fps = options.fps || DEFAULT.fps
     this._lastError = null
 
-    if (this.isRunning) {
-      log('Deja active')
-      return this.getStatus()
-    }
+    if (this.isRunning) return this.getStatus()
 
     try {
-      if (process.platform === 'win32') {
-        await this.startWindows()
-      } else if (process.platform === 'linux') {
-        await this.startLinux()
-      } else if (process.platform === 'darwin') {
-        await this.startMacOS()
-      } else {
-        throw new Error(`Plateforme non supportee: ${process.platform}`)
-      }
+      if (process.platform === 'win32') await this.startWindows()
+      else if (process.platform === 'darwin') await this.startMacOS()
+      else if (process.platform === 'linux') await this.startLinux()
+      else throw new Error(`Plateforme non supportee: ${process.platform}`)
       this.isRunning = true
       this._frames = 0
       log(`Demarree (${this.deviceName} ${this.width}x${this.height}@${this.fps})`)
@@ -139,29 +143,55 @@ class VirtualCamera {
     return this.getStatus()
   }
 
-  // ----------------------------------------------------------------
-  // WINDOWS : pilote akvirtualcamera (DirectShow + Media Foundation)
-  // ----------------------------------------------------------------
+  // Windows 11 : source Media Foundation enregistree a l'installation.
   async startWindows() {
-    const manager = akvcamManagerPath()
-    if (!manager) {
-      throw new Error(
-        'Pilote "ChapCam Camera" introuvable. Reinstalle ChapCam pour installer le pilote camera.',
-      )
+    const helper = helperPath()
+    if (!helper) throw new Error('Camera "ChapCam Camera" introuvable. Reinstalle ChapCam.')
+
+    const { code, output } = await runHelper(helper, ['status'])
+    if (code === WIN_EXIT.unsupportedOs) {
+      throw new Error('La camera virtuelle ChapCam necessite Windows 11.')
+    }
+    if (code === WIN_EXIT.notInstalled) {
+      throw new Error('Camera "ChapCam Camera" non installee. Reinstalle ChapCam (droits administrateur).')
+    }
+    if (code !== 0) throw new Error(`Camera virtuelle indisponible: ${output}`)
+
+    this.spawnHelper(helper)
+  }
+
+  // macOS : activer l'extension (une approbation utilisateur est demandee la 1re fois).
+  async startMacOS() {
+    const helper = helperPath()
+    const activator = loadMacActivator()
+    if (!helper || !activator) throw new Error('Camera "ChapCam Camera" absente de cette version de ChapCam.')
+
+    if (!this._macActivated) {
+      const exe = app.getPath('exe')
+      if (!exe.startsWith('/Applications/')) {
+        throw new Error('Deplace ChapCam dans le dossier Applications, puis relance-le pour activer la camera.')
+      }
+      const result = await activator.activate(MAC_EXTENSION_ID)
+      log(`Extension camera: ${result}`)
+      if (result === 'needs-approval') {
+        throw new Error(
+          'Autorise "ChapCam" dans Reglages Systeme > General > Ouverture et extensions > Extensions de camera, puis reactive la camera.',
+        )
+      }
+      if (result === 'reboot-required') {
+        throw new Error('Redemarre ton Mac pour terminer l\'installation de "ChapCam Camera".')
+      }
+      this._macActivated = true
     }
 
-    // S'assurer que le peripherique existe et expose le bon format.
-    await this.ensureWindowsDevice(manager)
+    this.spawnHelper(helper)
+  }
 
-    // Lancer le flux : AkVCamManager lit des frames RGB24 brutes sur stdin.
-    // Syntaxe v9 : stream <deviceId> <format> <largeur> <hauteur> <fps>
-    this.proc = spawn(
-      manager,
-      ['stream', DEVICE_ID, 'RGB24', String(this.width), String(this.height), String(this.fps)],
-      { stdio: ['pipe', 'pipe', 'pipe'] },
-    )
-
-    this.proc.stderr.on('data', (d) => log(`akvcam: ${String(d).trim()}`))
+  spawnHelper(helper) {
+    this.proc = spawn(helper, ['stream', String(this.width), String(this.height), String(this.fps)], {
+      stdio: ['pipe', 'ignore', 'pipe'],
+    })
+    this.proc.stderr.on('data', (d) => log(`helper: ${String(d).trim()}`))
     this.proc.on('error', (e) => {
       this._lastError = e.message
       log(`Erreur process: ${e.message}`)
@@ -169,44 +199,13 @@ class VirtualCamera {
     })
     this.proc.on('close', (code) => {
       log(`Flux termine (code ${code})`)
+      if (code === 3) this._lastError = 'Camera "ChapCam Camera" introuvable sur le systeme.'
       this.isRunning = false
       this.proc = null
     })
   }
 
-  // Cree/renomme le peripherique "ChapCam Camera" et configure son format.
-  // Idempotent : peut etre relance a chaque demarrage sans casser l'existant.
-  ensureWindowsDevice(manager) {
-    return new Promise((resolve) => {
-      const run = (args) =>
-        new Promise((res) => {
-          execFile(manager, args, (err, stdout, stderr) => {
-            if (err) log(`(${args[0]}) ${stderr || err.message}`)
-            res({ stdout: String(stdout || ''), err })
-          })
-        })
-
-      ;(async () => {
-        // Le device existe-t-il deja ? (`devices` liste les IDs, un par ligne)
-        const { stdout } = await run(['devices'])
-        const exists = stdout.split(/\r?\n/).some((l) => l.trim() === DEVICE_ID)
-
-        if (!exists) {
-          // Syntaxe v9 : add-device -i <id> "<nom affiche>"
-          await run(['add-device', '-i', DEVICE_ID, DEVICE_DESCRIPTION])
-          // (Re)declarer le format de sortie souhaite (uniquement a la creation)
-          await run(['add-format', DEVICE_ID, 'RGB24', String(this.width), String(this.height), String(this.fps)])
-        }
-        // Appliquer la configuration
-        await run(['update'])
-        resolve()
-      })()
-    })
-  }
-
-  // ----------------------------------------------------------------
-  // LINUX : v4l2loopback via ffmpeg (dev/tests)
-  // ----------------------------------------------------------------
+  // Linux : v4l2loopback via ffmpeg (dev/tests)
   async startLinux() {
     const device = '/dev/video10'
     if (!fs.existsSync(device)) {
@@ -216,16 +215,8 @@ class VirtualCamera {
     }
     this.proc = spawn(
       'ffmpeg',
-      [
-        '-f', 'rawvideo',
-        '-pix_fmt', 'rgba',
-        '-s', `${this.width}x${this.height}`,
-        '-r', String(this.fps),
-        '-i', 'pipe:0',
-        '-f', 'v4l2',
-        '-pix_fmt', 'yuv420p',
-        device,
-      ],
+      ['-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${this.width}x${this.height}`, '-r', String(this.fps),
+        '-i', 'pipe:0', '-f', 'v4l2', '-pix_fmt', 'yuv420p', device],
       { stdio: ['pipe', 'pipe', 'pipe'] },
     )
     this.proc.stderr.on('data', (d) => {
@@ -239,97 +230,58 @@ class VirtualCamera {
     })
   }
 
-  // ----------------------------------------------------------------
-  // macOS : pilote CMIO (akvirtualcamera fournit aussi macOS). Non cable ici.
-  // ----------------------------------------------------------------
-  async startMacOS() {
-    throw new Error(
-      'Camera virtuelle macOS non encore cablee. Le pilote akvirtualcamera macOS doit etre installe et streame de la meme facon.',
-    )
-  }
-
   /**
-   * Recoit une frame RGBA (Uint8/Buffer, longueur = w*h*4) depuis le renderer,
-   * la convertit au format attendu par le pilote, et l'ecrit sur stdin.
+   * Recoit une frame RGBA (top-down) du renderer. Windows/macOS attendent du
+   * BGRA top-down ; Linux (ffmpeg) prend le RGBA tel quel.
    */
   writeFrame(rgba, width, height) {
-    if (!this.isRunning || !this.proc || !this.proc.stdin || !this.proc.stdin.writable) return
+    if (!this.isRunning || !this.proc || !this.proc.stdin || this.proc.stdin.destroyed) return
+    if (width !== this.width || height !== this.height) return
+    const bytes = width * height * 4
+    if (!rgba || rgba.length < bytes) return
 
-    // Linux/ffmpeg : on envoie le RGBA tel quel (pix_fmt rgba).
     if (process.platform === 'linux') {
-      this._safeWrite(Buffer.isBuffer(rgba) ? rgba : Buffer.from(rgba))
+      this._safeWrite(rgba.subarray(0, bytes))
       return
     }
 
-    // Windows/akvcam : conversion RGBA -> RGB24 (+ swap R/B et flip vertical au besoin).
-    const w = width || this.width
-    const h = height || this.height
-    const need = w * h * 3
-    if (!this._rgb || this._rgb.length !== need) this._rgb = Buffer.allocUnsafe(need)
-    const out = this._rgb
-    const src = rgba
-
-    for (let y = 0; y < h; y++) {
-      const sy = FLIP_V ? h - 1 - y : y
-      let si = sy * w * 4
-      let di = y * w * 3
-      for (let x = 0; x < w; x++) {
-        const r = src[si]
-        const g = src[si + 1]
-        const b = src[si + 2]
-        if (SWAP_RB) {
-          out[di] = b
-          out[di + 1] = g
-          out[di + 2] = r
-        } else {
-          out[di] = r
-          out[di + 1] = g
-          out[di + 2] = b
-        }
-        si += 4
-        di += 3
-      }
+    if (!this._out || this._out.length !== bytes) this._out = Buffer.allocUnsafe(bytes)
+    const out = this._out
+    for (let i = 0; i < bytes; i += 4) {
+      out[i] = rgba[i + 2]
+      out[i + 1] = rgba[i + 1]
+      out[i + 2] = rgba[i]
+      out[i + 3] = 255
     }
     this._safeWrite(out)
   }
 
   _safeWrite(buf) {
     try {
-      // back-pressure : si le pipe est sature, on laisse tomber la frame
-      // (on privilegie la latence a l'exhaustivite).
-      const ok = this.proc.stdin.write(buf)
+      // Si le pipe sature, on laisse tomber la frame pour garder la latence.
+      if (this.proc.stdin.writableLength > buf.length * 2) return
+      this.proc.stdin.write(Buffer.from(buf))
       this._frames++
-      if (!ok && this._frames % 120 === 0) log('stdin sature : frames droppees pour garder la latence')
     } catch (e) {
       this._lastError = e.message
     }
   }
 }
 
-// ---- Singleton ----
 let instance = null
 function getVirtualCamera() {
   if (!instance) instance = new VirtualCamera()
   return instance
 }
 
-// ---- IPC ----
 function setupVirtualCameraIPC() {
-  ipcMain.handle('virtual-camera-start', async (_e, options) => {
-    return getVirtualCamera().start(options || {})
-  })
-  ipcMain.handle('virtual-camera-stop', async () => {
-    return getVirtualCamera().stop()
-  })
-  ipcMain.handle('virtual-camera-status', async () => {
-    return getVirtualCamera().getStatus()
-  })
-  // Frames poussees par le renderer (preload). On evite invoke (trop lourd a 30fps)
-  // au profit de send/on.
+  ipcMain.handle('virtual-camera-start', async (_e, options) => getVirtualCamera().start(options || {}))
+  ipcMain.handle('virtual-camera-stop', async () => getVirtualCamera().stop())
+  ipcMain.handle('virtual-camera-status', async () => getVirtualCamera().getStatus())
+  // Frames poussees par le preload : send/on (invoke serait trop lourd a 30 fps).
   ipcMain.on('vcam:frame', (_e, payload) => {
     if (!payload || !payload.buffer) return
-    const view = Buffer.from(payload.buffer)
-    getVirtualCamera().writeFrame(view, payload.width, payload.height)
+    getVirtualCamera().writeFrame(Buffer.from(payload.buffer), payload.width, payload.height)
   })
 }
 

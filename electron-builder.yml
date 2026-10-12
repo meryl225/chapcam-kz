@@ -1,5 +1,7 @@
 # Configuration electron-builder pour ChapCam Desktop
-# Empaquete l'app + le pilote de camera virtuelle "ChapCam Camera".
+# Empaquete l'app + la camera virtuelle native "ChapCam Camera".
+# Les binaires natifs sont produits par .github/workflows/desktop-build.yml
+# (native/windows et native/macos) dans resources/vcam/.
 appId: com.chapcam.desktop
 productName: ChapCam
 copyright: Copyright (c) ChapCam
@@ -8,45 +10,53 @@ directories:
   output: dist
   buildResources: electron/build
 
-# Fichiers de l'app embarques dans l'asar
 files:
   - electron/**/*
-  - .next/**/*
   - public/**/*
   - package.json
 
-# Le pilote akvirtualcamera est copie HORS de l'asar (binaires natifs a executer).
-# Depose les binaires dans resources/akvirtualcamera/{x64,x86}/ avant le build
-# (voir electron/build/README-driver.md).
-extraResources:
-  - from: resources/akvirtualcamera
-    to: akvirtualcamera
-    filter:
-      - "**/*"
+afterPack: electron/build/after-pack.js
 
-# L'icone est auto-detectee depuis buildResources (electron/build/icon.png),
-# electron-builder genere .ico/.icns automatiquement.
 win:
   target:
-    - nsis
-  # Installer le pilote = privileges administrateur obligatoires
-  requestedExecutionLevel: requireAdministrator
+    - target: nsis
+      arch: [x64]
+  # L'app n'a plus besoin d'etre admin : seule l'installation l'est (perMachine).
+  requestedExecutionLevel: asInvoker
   artifactName: ChapCam-Setup-${version}.${ext}
+  extraResources:
+    - from: resources/vcam/win
+      to: vcam/win
 
 nsis:
   oneClick: false
-  perMachine: true # pilote systeme -> installation pour toute la machine
+  perMachine: true
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: ChapCam
-  # Hooks personnalises : (de)sinstallation du pilote camera
   include: electron/build/installer.nsh
 
 mac:
   target:
     - dmg
   category: public.app-category.video
+  artifactName: ChapCam-${version}-${arch}.${ext}
+  minimumSystemVersion: "12.3"
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: electron/build/entitlements.mac.plist
+  entitlementsInherit: electron/build/entitlements.mac.inherit.plist
+  # L'extension camera est deja signee avec ses propres entitlements.
+  signIgnore:
+    - "Contents/Library/SystemExtensions"
+  extraResources:
+    - from: resources/vcam/mac
+      to: vcam/mac
+  extendInfo:
+    NSCameraUsageDescription: ChapCam utilise la camera pour la transformation du visage en temps reel.
+    NSMicrophoneUsageDescription: ChapCam utilise le micro pour la transformation de la voix.
+    NSSystemExtensionUsageDescription: Ajoute la camera "ChapCam Camera" utilisable dans Zoom, Teams, Meet, Discord et OBS.
 
 linux:
   target:

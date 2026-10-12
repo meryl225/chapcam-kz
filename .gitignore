@@ -18,3 +18,9 @@ node_modules
 *.tsbuildinfo
 .vercel
 .env*
+
+# Native virtual camera build outputs (produced in CI)
+native/windows/build/
+native/macos/build/
+native/macos/activator/build/
+resources/vcam/

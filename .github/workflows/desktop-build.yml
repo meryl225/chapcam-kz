@@ -1,0 +1,99 @@
+name: Desktop build (Windows + macOS)
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["desktop-v*"]
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Build native virtual camera
+        shell: pwsh
+        run: |
+          cmake -S native/windows -B native/windows/build -A x64
+          cmake --build native/windows/build --config Release
+          New-Item -ItemType Directory -Force resources/vcam/win | Out-Null
+          Copy-Item native/windows/build/Release/ChapCamVCamSource.dll resources/vcam/win/
+          Copy-Item native/windows/build/Release/chapcam-vcam.exe resources/vcam/win/
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Package installer
+        run: pnpm exec electron-builder --win --x64 --publish never
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chapcam-windows
+          path: dist/*.exe
+
+  macos:
+    runs-on: macos-14
+    strategy:
+      matrix:
+        arch: [arm64, x64]
+    env:
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Import Developer ID certificate
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          p12-password: ${{ secrets.MAC_CERT_PASSWORD }}
+
+      - name: Install provisioning profiles
+        env:
+          APP_PROFILE: ${{ secrets.MAC_APP_PROFILE_BASE64 }}
+          EXT_PROFILE: ${{ secrets.MAC_EXT_PROFILE_BASE64 }}
+        run: |
+          echo "$APP_PROFILE" | base64 --decode > "$RUNNER_TEMP/app.provisionprofile"
+          echo "$EXT_PROFILE" | base64 --decode > "$RUNNER_TEMP/ext.provisionprofile"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build native virtual camera
+        run: |
+          export ELECTRON_VERSION="$(node -p "require('electron/package.json').version")"
+          export MAC_EXT_PROFILE_PATH="$RUNNER_TEMP/ext.provisionprofile"
+          export BUILD_NUMBER="${{ github.run_number }}"
+          bash native/macos/build.sh
+
+      - name: Fill team identifier in entitlements
+        run: sed -i '' "s/__TEAM_ID__/${APPLE_TEAM_ID}/g" electron/build/entitlements.mac.plist
+
+      - name: Package, sign and notarize
+        run: >
+          pnpm exec electron-builder --mac --${{ matrix.arch }} --publish never
+          -c.mac.provisioningProfile="$RUNNER_TEMP/app.provisionprofile"
+          -c.mac.notarize=true
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "true"
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chapcam-macos-${{ matrix.arch }}
+          path: dist/*.dmg
