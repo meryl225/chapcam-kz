@@ -43,11 +43,30 @@ jobs:
   macos:
     runs-on: macos-14
     strategy:
+      fail-fast: false
       matrix:
         arch: [arm64, x64]
     env:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
+      - name: Check Apple signing secrets
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+          MAC_APP_PROFILE_BASE64: ${{ secrets.MAC_APP_PROFILE_BASE64 }}
+          MAC_EXT_PROFILE_BASE64: ${{ secrets.MAC_EXT_PROFILE_BASE64 }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          missing=""
+          for name in APPLE_TEAM_ID MAC_CERT_P12_BASE64 MAC_CERT_PASSWORD MAC_APP_PROFILE_BASE64 MAC_EXT_PROFILE_BASE64 APPLE_ID APPLE_APP_SPECIFIC_PASSWORD; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Missing GitHub secrets for macOS signing:$missing"
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
