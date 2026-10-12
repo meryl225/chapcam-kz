@@ -9,6 +9,10 @@ const EXTENSION = 'com.chapcam.desktop.camera-extension.systemextension'
 
 exports.default = async function afterPack(context) {
   if (context.electronPlatformName !== 'darwin') return
+  if (process.env.CHAPCAM_MAC_VCAM === '0') {
+    console.log('  • camera extension skipped (no provisioning profiles)')
+    return
+  }
 
   const source = path.join(context.packager.projectDir, 'resources', 'vcam', 'mac-extension', EXTENSION)
   if (!fs.existsSync(source)) {

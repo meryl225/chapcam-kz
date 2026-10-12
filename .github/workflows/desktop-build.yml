@@ -13,7 +13,8 @@ on:
         type: boolean
         default: false
   push:
-    tags: ["desktop-v*"]
+    # desktop-test-* : build macOS de verification, sans publication.
+    tags: ["desktop-v*", "desktop-test-*"]
     branches: [main]
     paths: &desktop_paths
       - "electron/**"
@@ -27,7 +28,9 @@ on:
 
 jobs:
   windows:
-    if: github.event_name != 'workflow_dispatch' || inputs.platforms != 'macos'
+    if: >-
+      (github.event_name != 'workflow_dispatch' || inputs.platforms != 'macos') &&
+      !startsWith(github.ref, 'refs/tags/desktop-test-')
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -98,7 +101,8 @@ jobs:
     # macOS needs signing/notarization: only on manual runs and desktop-v* tags.
     if: >-
       (github.event_name == 'workflow_dispatch' && inputs.platforms != 'windows') ||
-      startsWith(github.ref, 'refs/tags/desktop-v')
+      startsWith(github.ref, 'refs/tags/desktop-v') ||
+      startsWith(github.ref, 'refs/tags/desktop-test-')
     runs-on: macos-14
     strategy:
       fail-fast: false
@@ -107,7 +111,11 @@ jobs:
     env:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
+      # Signing + notarization secrets are required. The two provisioning profiles
+      # are only needed for the "ChapCam Camera" system extension: without them
+      # the DMG is still signed and notarized, but ships without the extension.
       - name: Check Apple signing secrets
+        id: secrets
         env:
           MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
           MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
@@ -115,14 +123,25 @@ jobs:
           MAC_EXT_PROFILE_BASE64: ${{ secrets.MAC_EXT_PROFILE_BASE64 }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/desktop-v') || (github.event_name == 'workflow_dispatch' && inputs.publish) }}
         run: |
+          if [ "$IS_RELEASE" = "true" ] && { [ -z "$MAC_APP_PROFILE_BASE64" ] || [ -z "$MAC_EXT_PROFILE_BASE64" ]; }; then
+            echo "::error::Publication macOS refusee : MAC_APP_PROFILE_BASE64 et MAC_EXT_PROFILE_BASE64 sont obligatoires pour inclure la camera virtuelle."
+            exit 1
+          fi
           missing=""
-          for name in APPLE_TEAM_ID MAC_CERT_P12_BASE64 MAC_CERT_PASSWORD MAC_APP_PROFILE_BASE64 MAC_EXT_PROFILE_BASE64 APPLE_ID APPLE_APP_SPECIFIC_PASSWORD; do
+          for name in APPLE_TEAM_ID MAC_CERT_P12_BASE64 MAC_CERT_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD; do
             if [ -z "${!name}" ]; then missing="$missing $name"; fi
           done
           if [ -n "$missing" ]; then
             echo "::error::Missing GitHub secrets for macOS signing:$missing"
             exit 1
+          fi
+          if [ -n "$MAC_APP_PROFILE_BASE64" ] && [ -n "$MAC_EXT_PROFILE_BASE64" ]; then
+            echo "vcam=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "vcam=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::MAC_APP_PROFILE_BASE64 / MAC_EXT_PROFILE_BASE64 absents : DMG signe et notarise SANS l'extension camera virtuelle macOS."
           fi
 
       - uses: actions/checkout@v4
@@ -141,6 +160,7 @@ jobs:
           p12-password: ${{ secrets.MAC_CERT_PASSWORD }}
 
       - name: Install provisioning profiles
+        if: steps.secrets.outputs.vcam == 'true'
         env:
           APP_PROFILE: ${{ secrets.MAC_APP_PROFILE_BASE64 }}
           EXT_PROFILE: ${{ secrets.MAC_EXT_PROFILE_BASE64 }}
@@ -148,9 +168,53 @@ jobs:
           echo "$APP_PROFILE" | base64 --decode > "$RUNNER_TEMP/app.provisionprofile"
           echo "$EXT_PROFILE" | base64 --decode > "$RUNNER_TEMP/ext.provisionprofile"
 
+      # Fails early if a profile does not match its bundle ID, is not a
+      # Developer ID profile, is expired, or was not issued for the imported
+      # Developer ID Application certificate. Prints no secret values.
+      - name: Validate provisioning profiles
+        if: steps.secrets.outputs.vcam == 'true'
+        run: |
+          security cms -D -i "$RUNNER_TEMP/app.provisionprofile" > "$RUNNER_TEMP/app.plist"
+          security cms -D -i "$RUNNER_TEMP/ext.provisionprofile" > "$RUNNER_TEMP/ext.plist"
+          python3 - "$RUNNER_TEMP/app.plist" "$RUNNER_TEMP/ext.plist" <<'PY'
+          import datetime, hashlib, os, plistlib, subprocess, sys
+          team = os.environ["APPLE_TEAM_ID"]
+          identities = subprocess.run(["security", "find-identity", "-v", "-p", "codesigning"],
+                                      capture_output=True, text=True).stdout
+          cert_hashes = {line.split()[1].upper() for line in identities.splitlines()
+                         if "Developer ID Application" in line}
+          print(f"Developer ID Application identities in keychain: {len(cert_hashes)}")
+          expected = {"app": "com.chapcam.desktop", "ext": "com.chapcam.desktop.camera-extension"}
+          failures = []
+          for kind, path in zip(("app", "ext"), sys.argv[1:]):
+              with open(path, "rb") as f:
+                  profile = plistlib.load(f)
+              ent = profile.get("Entitlements", {})
+              bundle = ent.get("com.apple.application-identifier", "").split(".", 1)[-1]
+              checks = {
+                  "bundle id": bundle == expected[kind],
+                  "team id": ent.get("com.apple.developer.team-identifier") == team,
+                  "Developer ID (all devices)": profile.get("ProvisionsAllDevices") is True,
+                  "not expired": profile["ExpirationDate"].replace(tzinfo=None) > datetime.datetime.utcnow(),
+                  "issued for imported certificate": bool(
+                      {hashlib.sha1(c).hexdigest().upper() for c in profile.get("DeveloperCertificates", [])} & cert_hashes),
+              }
+              if kind == "app":
+                  checks["system-extension.install"] = ent.get("com.apple.developer.system-extension.install") is True
+              print(f"[{kind}] profile '{profile.get('Name')}' bundle={bundle} expires={profile['ExpirationDate'].date()}")
+              for label, ok in checks.items():
+                  print(f"    {'OK  ' if ok else 'FAIL'} {label}")
+                  if not ok:
+                      failures.append(f"{kind}: {label}")
+          if failures:
+              print("::error::Provisioning profile problems: " + ", ".join(failures))
+              sys.exit(1)
+          PY
+
       - run: pnpm install --frozen-lockfile
 
       - name: Build native virtual camera
+        if: steps.secrets.outputs.vcam == 'true'
         run: |
           export ELECTRON_VERSION="$(node -p "require('electron/package.json').version")"
           export MAC_EXT_PROFILE_PATH="$RUNNER_TEMP/ext.provisionprofile"
@@ -158,17 +222,79 @@ jobs:
           bash native/macos/build.sh
 
       - name: Fill team identifier in entitlements
+        if: steps.secrets.outputs.vcam == 'true'
         run: sed -i '' "s/__TEAM_ID__/${APPLE_TEAM_ID}/g" electron/build/entitlements.mac.plist
 
       - name: Package, sign and notarize
-        run: >
-          pnpm exec electron-builder --mac --${{ matrix.arch }} --publish never
-          -c.mac.provisioningProfile="$RUNNER_TEMP/app.provisionprofile"
-          -c.mac.notarize=true
         env:
+          VCAM: ${{ steps.secrets.outputs.vcam }}
           CSC_IDENTITY_AUTO_DISCOVERY: "true"
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          extra=()
+          if [ "$VCAM" = "true" ]; then
+            extra+=(-c.mac.provisioningProfile="$RUNNER_TEMP/app.provisionprofile")
+          else
+            export CHAPCAM_MAC_VCAM=0
+            mkdir -p resources/vcam/mac
+            extra+=(-c.mac.entitlements=electron/build/entitlements.mac.basic.plist)
+          fi
+          pnpm exec electron-builder --mac --${{ matrix.arch }} --publish never \
+            -c.mac.notarize=true "${extra[@]}"
+
+      - name: Verify signature and notarization
+        env:
+          VCAM: ${{ steps.secrets.outputs.vcam }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          app="$(ls -d dist/mac*/ChapCam.app | head -1)"
+          echo "App: $app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv --verbose=2 "$app" 2>&1 | grep -E "Identifier|Authority|Runtime"
+          spctl --assess --type execute --verbose=2 "$app"
+          xcrun stapler validate "$app"
+          echo "App executable archs: $(lipo -archs "$app/Contents/MacOS/ChapCam")"
+
+          if [ "$VCAM" = "true" ]; then
+            ext="$app/Contents/Library/SystemExtensions/com.chapcam.desktop.camera-extension.systemextension"
+            helper="$app/Contents/Resources/vcam/mac/chapcam-vcam-mac"
+            addon="$app/Contents/Resources/vcam/mac/$ARCH/vcam_activator.node"
+            for path in "$ext" "$ext/Contents/embedded.provisionprofile" "$app/Contents/embedded.provisionprofile" "$helper" "$addon"; do
+              [ -e "$path" ] || { echo "::error::Missing in app bundle: ${path#$app/}"; exit 1; }
+            done
+            echo "== Camera extension"
+            codesign --verify --strict --verbose=2 "$ext"
+            codesign -dv --verbose=2 "$ext" 2>&1 | grep -E "^Identifier|Authority|Runtime"
+            echo "Extension archs: $(lipo -archs "$ext/Contents/MacOS/com.chapcam.desktop.camera-extension")"
+            codesign -d --entitlements - --xml "$ext" 2>/dev/null | plutil -p - | grep -E "app-sandbox|application-groups|application-identifier" | sed -E 's/[A-Z0-9]{10}\./<TEAM>./g'
+            echo "== App entitlements"
+            codesign -d --entitlements - --xml "$app" 2>/dev/null | plutil -p - | grep -q "system-extension.install" \
+              && echo "system-extension.install present" \
+              || { echo "::error::App is missing com.apple.developer.system-extension.install"; exit 1; }
+            echo "== Frame helper"
+            codesign --verify --strict --verbose=2 "$helper"
+            echo "Helper archs: $(lipo -archs "$helper")"
+            echo "== Activation addon"
+            codesign --verify --strict --verbose=2 "$addon"
+            echo "Addon archs: $(lipo -archs "$addon")"
+          else
+            echo "::warning::Camera extension NOT embedded in this build."
+          fi
+
+          echo "== DMG contents"
+          dmg="$(ls dist/*.dmg | head -1)"
+          mount="$(mktemp -d)"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mount" "$dmg" >/dev/null
+          xcrun stapler validate "$mount/ChapCam.app"
+          spctl --assess --type execute --verbose=2 "$mount/ChapCam.app"
+          if [ "$VCAM" = "true" ]; then
+            ls "$mount/ChapCam.app/Contents/Library/SystemExtensions"
+          fi
+          hdiutil detach "$mount" >/dev/null
+          ls -la dist/*.dmg
+          shasum -a 256 dist/*.dmg
 
       - uses: actions/upload-artifact@v4
         with:
