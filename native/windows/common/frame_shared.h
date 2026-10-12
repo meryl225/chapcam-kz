@@ -7,6 +7,7 @@
 
 #include <windows.h>
 #include <shlobj.h>
+#include <knownfolders.h>
 #include <stdint.h>
 #include <string>
 
@@ -34,7 +35,7 @@ struct FrameHeader {
   volatile LONG64 sequence;
   // GetTickCount64() of the last completed write (system-wide clock).
   volatile LONG64 writtenAtMs;
-  uint8_t reserved[24];
+  uint8_t reserved[32];
 };
 #pragma pack(pop)
 static_assert(sizeof(FrameHeader) == 64, "FrameHeader layout must stay 64 bytes");

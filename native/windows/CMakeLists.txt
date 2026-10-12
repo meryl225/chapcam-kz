@@ -16,8 +16,8 @@ add_compile_options(/W3 /EHsc /permissive-)
 
 add_library(ChapCamVCamSource SHARED source/source.cpp source/source.def)
 target_include_directories(ChapCamVCamSource PRIVATE common)
-target_link_libraries(ChapCamVCamSource PRIVATE mfplat ole32 shell32 advapi32 runtimeobject)
+target_link_libraries(ChapCamVCamSource PRIVATE mfplat ole32 shell32 advapi32 uuid runtimeobject)
 
 add_executable(chapcam-vcam helper/main.cpp)
 target_include_directories(chapcam-vcam PRIVATE common)
-target_link_libraries(chapcam-vcam PRIVATE mfplat ole32 shell32 advapi32)
+target_link_libraries(chapcam-vcam PRIVATE mfplat ole32 shell32 advapi32 uuid)
