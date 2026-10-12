@@ -85,7 +85,10 @@ class VirtualCamera {
   }
 
   getStatus() {
+    const available = this.isAvailable()
     return {
+      running: this.isRunning,
+      driverInstalled: available,
       isRunning: this.isRunning,
       deviceName: this.deviceName,
       platform: process.platform,
