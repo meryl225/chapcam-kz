@@ -105,6 +105,20 @@ export async function emailFor(admin: Admin, userId: string, fallback?: string |
 }
 
 // Retire l'acces quand Apple rembourse/revoque la periode qui l'a ouvert.
+// En environnement de test Apple (Sandbox / TestFlight), un abonnement se
+// renouvelle automatiquement toutes les 24 h, quelle que soit sa duree. Chaque
+// renouvellement porte un nouvel id de transaction : sans ce garde-fou, le
+// forfait (points, jetons, quotas, revenu) etait recredite chaque jour.
+// Seul l'achat d'origine credite ; un renouvellement de test prolonge l'acces.
+export async function extendAppleSubscription(admin: Admin, userId: string, plan: PlanConfig, endMs: number) {
+  const end = new Date(endMs).toISOString()
+  const { error } = await admin
+    .from('subscriptions')
+    .update({ plan: normalizePlanName(plan.id), is_active: true, status: 'active', end_date: end, expires_at: end })
+    .eq('user_id', userId)
+  if (error) throw new Error(`subscriptions extend: ${error.message}`)
+}
+
 export async function deactivateAppleSubscription(admin: Admin, userId: string, plan: PlanConfig, expiresAt: number | null) {
   const { data: existing } = await admin
     .from('subscriptions')
@@ -179,6 +193,17 @@ export async function applyAppleTransaction(
   if (claimErr) {
     const { data: claim } = await admin.from('processed_payments').select('credited').eq('token', token).maybeSingle()
     if (claim?.credited) return { ...base, status: 'already' }
+  }
+
+  const isTestRenewal =
+    tx.environment !== Environment.PRODUCTION &&
+    Boolean(tx.originalTransactionId) &&
+    tx.originalTransactionId !== tx.transactionId
+  if (isTestRenewal) {
+    await extendAppleSubscription(admin, opts.userId, plan, tx.expiresDate)
+    await admin.from('processed_payments').update({ credited: true, amount: 0 }).eq('token', token)
+    await logPaymentEvent(admin, { ...logBase, source: `${opts.source}:sandbox`, amount: 0, status: 'sandbox_renewal', credited: false })
+    return { ...base, status: 'activated' }
   }
 
   await activateSubscription(admin, opts.userId, email, plan, { endDate: new Date(tx.expiresDate) })
