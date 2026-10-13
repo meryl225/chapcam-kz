@@ -16,6 +16,7 @@ import { LanguageToggle } from '@/components/language-toggle'
 import { useT } from '@/lib/i18n/language-provider'
 import { useState, useEffect } from 'react'
 import useSWR from 'swr'
+import { isVipPlan as isVipPlanName } from '@/lib/lucy-presets'
 import JetonsPage from '@/app/dashboard/jetons/page'
 
 const fetcher = (url: string) => fetch(url).then((response) => response.json())
@@ -45,8 +46,6 @@ const PLAN_COLORS: Record<string, string> = {
   vipdebout: 'bg-yellow-500 text-black',
 }
 
-// Forfaits VIP : rendu premium (dore, logo couronne, halo).
-const VIP_PLANS = new Set(['ultimate', 'vipdebout'])
 
 const PLAN_POINTS: Record<string, number> = {
   free: 0,
@@ -200,7 +199,7 @@ function SidebarContent({
   const pathname = usePathname()
   const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false
   const displayPlan = PLAN_LABELS[plan] || plan
-  const isVipPlan = VIP_PLANS.has(plan)
+  const isVipPlan = isVipPlanName(plan)
   const isPremiumPlan = displayPlan === 'Premium'
   const showUpgradeBanner = plan === 'free' || isExpired || !isActive || pointsRemaining <= 0
   const pointsPercentage = pointsTotal > 0 ? (pointsRemaining / pointsTotal) * 100 : 0
@@ -382,7 +381,7 @@ function SidebarContent({
         <div className="mb-3 rounded-lg border border-border bg-card p-3 dark:border-white/[0.08] dark:bg-white/[0.035]">
           <div className="mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Battery className={`h-4 w-4 ${VIP_PLANS.has(plan) ? 'text-yellow-500' : 'text-primary'}`} />
+              <Battery className={`h-4 w-4 ${isVipPlan ? 'text-yellow-500' : 'text-primary'}`} />
               <span className="text-xs font-medium text-foreground">{t('Points restants')}</span>
             </div>
             <span className="text-sm font-black text-cyan-950 drop-shadow-[0_0_10px_rgba(103,232,249,0.35)] dark:text-cyan-100">
