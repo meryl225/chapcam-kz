@@ -3,7 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { activateSubscription, creditTopupPoints, logPaymentEvent } from '@/lib/fulfillment'
 import { recordTopupCredit } from '@/lib/liveswap-topup'
 import { creditJetonsOnce } from '@/lib/jetons'
-import { APPLE_PRODUCTS, deactivateAppleSubscription, emailFor, planForAppleProduct } from '@/lib/apple-iap'
+import { APPLE_PRODUCTS, deactivateAppleSubscription, emailFor, extendAppleSubscription, planForAppleProduct } from '@/lib/apple-iap'
 
 // ============================================================
 // Achats iOS via RevenueCat.
@@ -198,6 +198,24 @@ async function applySubscriptions(admin: Admin, userId: string, email: string, s
     if (!claimed?.length) {
       console.info('[iap-diag] deja credite', { userId, productId, token })
       items.push({ productId, transactionId: token, status: 'already', expiresAt: sub.expires_date })
+      continue
+    }
+
+    // Renouvellement de test (Sandbox/TestFlight, toutes les 24 h) : on prolonge
+    // l'acces sans recrediter le forfait ni compter de revenu.
+    const originalMs = sub.original_purchase_date ? Date.parse(sub.original_purchase_date) : NaN
+    const isTestRenewal = sub.is_sandbox && Number.isFinite(originalMs) && Date.parse(sub.purchase_date) > originalMs
+    if (isTestRenewal) {
+      try {
+        await extendAppleSubscription(admin, userId, plan, expiresMs)
+      } catch (error) {
+        await admin.from('processed_payments').update({ credited: false }).eq('token', token)
+        throw error
+      }
+      await admin.from('processed_payments').update({ amount: 0 }).eq('token', token)
+      console.info('[iap-diag] renouvellement sandbox prolonge sans credit', { userId, productId, token })
+      await logPaymentEvent(admin, { ...logBase, source: `${source}:sandbox`, amount: 0, status: 'sandbox_renewal', credited: false })
+      items.push({ productId, transactionId: token, status: 'activated', expiresAt: sub.expires_date })
       continue
     }
 
