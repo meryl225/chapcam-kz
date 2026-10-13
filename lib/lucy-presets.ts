@@ -8,8 +8,14 @@
 /** Offres qui debloquent le Studio Lucy 2.5 (prompts en direct). */
 export const VIP_PLANS = new Set(['ultimate', 'vipdebout'])
 
+// La table subscriptions stocke le nom normalise ('vip pro', 'vip debout'),
+// alors que les IDs de lib/plans.ts sont 'ultimate' / 'vipdebout'.
+// On accepte toutes ces formes (memes alias que normalizePlanName).
+const VIP_PLAN_KEYS = new Set(['ultimate', 'vipdebout', 'vippro', 'vip', 'items850', 'jetons850'])
+
 export function isVipPlan(plan: string | null | undefined): boolean {
-  return VIP_PLANS.has(String(plan || '').toLowerCase())
+  const key = String(plan || '').trim().toLowerCase().replace(/[\s_-]+/g, '')
+  return VIP_PLAN_KEYS.has(key)
 }
 
 /**
