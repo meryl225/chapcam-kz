@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { isMotionPrivateStorage, motionBucket, motionFetchUrl, motionObjectPath, ownedMotionPathFromUrl } from "@/lib/motion-storage"
 import { createMotionJob, markMotionJobCompleted, markMotionJobFailed, getMotionJobModel, listMotionJobs } from "@/lib/motion-jobs"
 import { saveVideoHistory, finalizeCompletedVideo, failGenerationAndGetRefund, listProcessingGenerations } from "@/lib/video-history"
 import { creditJetons, reserveJetons } from "@/lib/jetons"
@@ -21,7 +22,7 @@ import { estimateGenjutsuPriceUsd, GENJUTSU_MARGIN_MULTIPLIER, GENJUTSU_MAX_DURA
 export const maxDuration = 60
 
 const HIGGSFIELD_API = "https://api.higgsfield.ai"
-const STORAGE_BUCKET = "avatars"
+const STORAGE_BUCKET = motionBucket()
 
 // Higgsfield connait des ralentissements transitoires : sans borne, un appel qui
 // pend consomme toute la duree de la fonction et retombe en 5xx. On abandonne
@@ -404,7 +405,7 @@ export async function POST(request: NextRequest) {
     // 1) Heberger l'image dans le bucket public Supabase -> URL publique HTTPS.
     const admin = createAdminClient()
     const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg"
-    const path = `motion/${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+    const path = motionObjectPath(user.id, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`)
     const bytes = Buffer.from(await file.arrayBuffer())
     const { error: upErr } = await admin.storage.from(STORAGE_BUCKET).upload(path, bytes, {
       contentType: file.type,
@@ -415,8 +416,7 @@ export async function POST(request: NextRequest) {
       console.error("[Motion] Upload Supabase echoue:", upErr.message)
       return NextResponse.json({ error: "Echec de l'upload de la photo." }, { status: 502 })
     }
-    const { data: pub } = admin.storage.from(STORAGE_BUCKET).getPublicUrl(path)
-    const imageUrl = pub.publicUrl
+    const imageUrl = (await motionFetchUrl(admin, path)) ?? ""
     const isHttpsUrl = (value: string): boolean => {
       if (!value || value.startsWith("blob:") || value.startsWith("data:") || value.startsWith("/")) return false
       try {
@@ -434,7 +434,22 @@ export async function POST(request: NextRequest) {
   let referencePath: string | undefined
   if (referenceVideoUrlInput) {
     if (!isHttpsUrl(referenceVideoUrlInput)) return NextResponse.json({ error: "URL de vidéo de référence invalide." }, { status: 400 })
-    videoUrl = referenceVideoUrlInput
+    if (isMotionPrivateStorage()) {
+      const ownedPath = ownedMotionPathFromUrl(referenceVideoUrlInput, user.id)
+      if (!ownedPath) {
+        await admin.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {})
+        return NextResponse.json({ error: "Vidéo de référence non autorisée." }, { status: 403 })
+      }
+      const signedReference = await motionFetchUrl(admin, ownedPath)
+      if (!signedReference) {
+        await admin.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {})
+        return NextResponse.json({ error: "Vidéo de référence introuvable. Réimporte-la puis réessaie." }, { status: 400 })
+      }
+      videoUrl = signedReference
+      referencePath = ownedPath
+    } else {
+      videoUrl = referenceVideoUrlInput
+    }
   } else if (referenceVideo) {
       if (!["video/mp4", "video/webm", "video/quicktime"].includes(referenceVideo.type)) {
         return NextResponse.json({ error: "Format vidéo invalide (MP4, WebM ou MOV)." }, { status: 400 })
@@ -443,7 +458,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Vidéo de référence trop volumineuse (max 50 Mo)." }, { status: 400 })
       }
       const videoExt = referenceVideo.type === "video/webm" ? "webm" : referenceVideo.type === "video/quicktime" ? "mov" : "mp4"
-      referencePath = `motion/${user.id}/${Date.now()}-reference.${videoExt}`
+      referencePath = motionObjectPath(user.id, `${Date.now()}-reference.${videoExt}`)
       const { error: videoUploadError } = await admin.storage.from(STORAGE_BUCKET).upload(referencePath, Buffer.from(await referenceVideo.arrayBuffer()), {
         contentType: referenceVideo.type,
         cacheControl: "3600",
@@ -453,8 +468,7 @@ export async function POST(request: NextRequest) {
         console.error("[Genjutsu] Upload vidéo de référence échoué", { error: videoUploadError.message })
         return NextResponse.json({ error: "Échec de l'upload de la vidéo de référence.", detail: videoUploadError.message }, { status: 502 })
       }
-      const { data: videoPublic } = admin.storage.from(STORAGE_BUCKET).getPublicUrl(referencePath)
-      videoUrl = videoPublic.publicUrl
+      videoUrl = (await motionFetchUrl(admin, referencePath)) ?? ""
       if (!isHttpsUrl(videoUrl)) {
         console.error("[Genjutsu] video_url invalide après upload", { video_url: videoUrl })
         return NextResponse.json({ error: "Le stockage n'a pas fourni une URL HTTPS valide pour la vidéo." }, { status: 502 })

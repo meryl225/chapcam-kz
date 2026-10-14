@@ -6,6 +6,7 @@ import { del } from '@vercel/blob'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { deleteVideo, isR2Configured } from '@/lib/r2'
 import { deleteStream } from '@/lib/cloudflare-stream'
+import { deleteUserMotionInputs } from '@/lib/motion-storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -132,6 +133,9 @@ export async function POST(request: NextRequest) {
         if (removeError) throw removeError
       }
     }
+
+    step.name = 'supabase:storage:motion-inputs'
+    await deleteUserMotionInputs(db, userId)
 
     step.name = 'supabase:auth:deleteUser'
     {
