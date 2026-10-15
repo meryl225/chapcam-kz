@@ -17,6 +17,32 @@ function escapeLike(value: string) {
   return value.replace(/[\\%_]/g, (c) => `\\${c}`)
 }
 
+const MOTION_INPUTS_BUCKET = 'avatars'
+const MOTION_LIST_LIMIT = 1000
+const MOTION_MAX_ROUNDS = 50
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Motion / Genjutsu source files live in avatars/motion/{userId}/ (flat folder).
+// Every removed path is rebuilt from this exact folder, so another account's
+// files can never be targeted. Throws on any failure so the account is kept
+// and the deletion can be retried.
+async function deleteUserMotionInputs(db: ReturnType<typeof createAdminClient>, userId: string) {
+  if (!UUID_PATTERN.test(userId)) throw new Error('Identifiant utilisateur invalide')
+  const folder = `motion/${userId}`
+  let removed = 0
+  for (let round = 0; round < MOTION_MAX_ROUNDS; round++) {
+    const { data, error } = await db.storage.from(MOTION_INPUTS_BUCKET).list(folder, { limit: MOTION_LIST_LIMIT })
+    if (error) throw error
+    const paths = (data ?? []).filter((f) => f.id).map((f) => `${folder}/${f.name}`)
+    if (paths.length === 0) return removed
+    const { data: deleted, error: removeError } = await db.storage.from(MOTION_INPUTS_BUCKET).remove(paths)
+    if (removeError) throw removeError
+    if (!deleted?.length) throw new Error('Fichiers Motion non supprimés')
+    removed += deleted.length
+  }
+  throw new Error('Trop de fichiers Motion à supprimer')
+}
+
 // Retention policy (privacy policy §5): personal data is deleted; records that
 // must be kept for legal, accounting or tax reasons (payments, Jetons ledger,
 // paid licenses/rentals) are kept but stripped of anything identifying.
@@ -48,6 +74,11 @@ export async function POST(request: NextRequest) {
   try {
     const db = createAdminClient()
     const sql = neon(process.env.DATABASE_URL!)
+
+    // First, so a storage failure leaves everything else intact for a clean retry.
+    step.name = 'supabase:storage:motion-inputs'
+    const motionRemoved = await deleteUserMotionInputs(db, userId)
+    if (motionRemoved) console.log(`[mobile/account/delete] ${motionRemoved} fichier(s) Motion supprimé(s)`)
 
     step.name = 'neon:media-lookup'
     const media = (await sql`
