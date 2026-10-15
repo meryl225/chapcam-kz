@@ -11,6 +11,8 @@ import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { supabase } from '../lib/supabase'
 import { loadDecart, mediaDevices, newSessionId, RTCView } from '../lib/realtime'
 import { AiBadge, RightsConsent } from '../ui/Safety'
+import { FaceLibrary } from '../ui/FaceLibrary'
+import { getFavoriteIds, loadPresetFace, saveFavoriteIds } from '../lib/liveSwapPresets'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 
@@ -87,6 +89,9 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
   const [facing, setFacing] = useState('front')
   const [mirror, setMirror] = useState(true)
   const [face, setFace] = useState(null)
+  const [customFace, setCustomFace] = useState(null)
+  const [loadingPresetId, setLoadingPresetId] = useState(null)
+  const [favorites, setFavorites] = useState([])
   const [phase, setPhase] = useState('idle')
   const [notice, setNotice] = useState(null)
   const [localStream, setLocalStream] = useState(null)
@@ -129,6 +134,10 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
         if (body?.success) setPoints(body.points ?? 0)
       })
       .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    getFavoriteIds().then(setFavorites).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -261,7 +270,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
   const start = async () => {
     if (!granted) return askCamera()
     if (!face) return pickFace()
-    if (!rightsOk) return setNotice({ tone: 'error', text: 'Confirme disposer des droits sur ce visage pour démarrer.' })
+    if (face.source !== 'preset' && !rightsOk) return setNotice({ tone: 'error', text: 'Confirme disposer des droits sur ce visage pour démarrer.' })
     if (!localRef.current) return setNotice({ tone: 'error', text: 'La caméra démarre encore. Réessaie.' })
 
     setNotice(null)
@@ -316,9 +325,38 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     try {
       const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8, base64: true })
       const asset = res.assets?.[0]
-      if (!res.canceled && asset?.uri && asset.base64) setFace({ uri: asset.uri, base64: asset.base64 })
+      if (!res.canceled && asset?.uri && asset.base64) {
+        const picked = { uri: asset.uri, base64: asset.base64, source: 'upload' }
+        setCustomFace(picked)
+        setFace(picked)
+      }
     } catch {
       Alert.alert('Visage', "Impossible d'ouvrir tes photos. Vérifie l'accès dans Réglages.")
+    }
+  }
+
+  const selectPreset = async (preset) => {
+    if (loadingPresetId) return
+    setLoadingPresetId(preset.id)
+    try {
+      setFace(await loadPresetFace(preset))
+      setNotice(null)
+    } catch {
+      setNotice({ tone: 'error', text: 'Ce visage est indisponible pour le moment. Choisis-en un autre.' })
+    } finally {
+      setLoadingPresetId(null)
+    }
+  }
+
+  const toggleFavorite = async (id) => {
+    const previous = favorites
+    const next = previous.includes(id) ? previous.filter((f) => f !== id) : [...previous, id]
+    setFavorites(next)
+    try {
+      await saveFavoriteIds(next)
+    } catch {
+      setFavorites(previous)
+      setNotice({ tone: 'error', text: "Impossible d'enregistrer tes favoris. Réessaie." })
     }
   }
 
@@ -403,31 +441,18 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
         <Notice notice={notice} onDismiss={() => setNotice(null)} />
 
         <Text style={styles.sectionTitle}>Choisir un visage</Text>
-        {face ? (
-          <View style={styles.faceRow}>
-            <View style={[styles.face, styles.faceActive]}>
-              <Image source={{ uri: face.uri }} style={styles.faceImage} accessibilityLabel="Visage source" />
-            </View>
-            <View style={styles.flex}>
-              <Text style={styles.faceTitle}>Visage prêt</Text>
-              <Text style={styles.faceCopy}>Photo nette, de face, bien éclairée.</Text>
-            </View>
-            <Pressable onPress={pickFace} accessibilityRole="button" hitSlop={8} style={styles.textBtn}>
-              <Text style={styles.textBtnLabel}>Changer</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Pressable onPress={pickFace} accessibilityRole="button" accessibilityLabel="Ajouter un visage" style={({ pressed }) => [styles.faceEmpty, pressed && styles.pressed]}>
-            <View style={styles.addIcon}><Ionicons name="add" size={22} color={C.blue} /></View>
-            <View style={styles.flex}>
-              <Text style={styles.faceTitle}>Ajouter</Text>
-              <Text style={styles.faceCopy}>Ajoute un visage pour commencer.</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={C.muted} />
-          </Pressable>
-        )}
+        <FaceLibrary
+          face={face}
+          customFace={customFace}
+          loadingId={loadingPresetId}
+          favorites={favorites}
+          onSelectPreset={selectPreset}
+          onSelectCustom={() => setFace(customFace)}
+          onImport={pickFace}
+          onToggleFavorite={toggleFavorite}
+        />
 
-        {face ? <RightsConsent checked={rightsOk} onChange={setRightsOk} /> : null}
+        {face?.source === 'upload' ? <RightsConsent checked={rightsOk} onChange={setRightsOk} /> : null}
 
         {granted && facing === 'front' ? (
           <>
