@@ -67,14 +67,14 @@ export function FaceLibrary({ face, customFace, loadingId, favorites, onSelectPr
             accessibilityLabel={selectedIsFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'}
             hitSlop={10}
           >
-            <Ionicons name={selectedIsFavorite ? 'heart' : 'heart-outline'} size={22} color={selectedIsFavorite ? C.violet : C.muted} />
+            <Ionicons name={selectedIsFavorite ? 'heart' : 'heart-outline'} size={22} color={selectedIsFavorite ? C.violet : DARK.text} />
           </Pressable>
         ) : null}
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row} decelerationRate="fast">
         <Pressable onPress={onImport} accessibilityRole="button" accessibilityLabel="Importer ton propre visage" style={styles.item}>
-          <View style={[styles.ring, styles.add]}><Ionicons name="add" size={30} color={C.blue} /></View>
+          <View style={[styles.ring, styles.add]}><Ionicons name="add" size={30} color={C.white} /></View>
           <Text style={styles.label}>Ajouter</Text>
         </Pressable>
 
@@ -105,23 +105,25 @@ export function FaceLibrary({ face, customFace, loadingId, favorites, onSelectPr
   )
 }
 
+const DARK = { bg: '#0A0A0C', ring: '#9A9EA8', ringDim: '#2A2C33', text: '#8C909C' }
+
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  card: { backgroundColor: C.white, borderRadius: 22, borderWidth: 1, borderColor: C.line, paddingTop: 14, paddingBottom: 12, gap: 12 },
+  card: { backgroundColor: DARK.bg, borderRadius: 22, paddingTop: 14, paddingBottom: 14, gap: 14 },
   tabs: { flexDirection: 'row', alignItems: 'center', gap: 20, paddingHorizontal: 16 },
-  tab: { color: C.muted, fontSize: 16, fontWeight: '700' },
-  tabActive: { color: C.ink },
-  row: { gap: 12, paddingHorizontal: 14 },
+  tab: { color: DARK.text, fontSize: 16, fontWeight: '700' },
+  tabActive: { color: C.white },
+  row: { gap: 10, paddingHorizontal: 14, paddingVertical: 4 },
   item: { width: SIZE + 8, alignItems: 'center', gap: 6 },
-  ring: { width: SIZE + 6, height: SIZE + 6, borderRadius: (SIZE + 6) / 2, padding: 3, backgroundColor: C.softBlue },
-  glow: { shadowColor: C.violet, shadowOpacity: 0.55, shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
-  image: { flex: 1, borderRadius: SIZE / 2, backgroundColor: C.line, borderWidth: 2, borderColor: C.white },
-  add: { alignItems: 'center', justifyContent: 'center', backgroundColor: C.white, borderWidth: 1.5, borderColor: C.blue, borderStyle: 'dashed' },
-  loading: { position: 'absolute', top: 0, width: SIZE + 6, height: SIZE + 6, borderRadius: (SIZE + 6) / 2, backgroundColor: 'rgba(14,21,48,0.45)', alignItems: 'center', justifyContent: 'center' },
-  check: { position: 'absolute', top: SIZE - 16, right: 0, width: 22, height: 22, borderRadius: 11, backgroundColor: C.blue, borderWidth: 2, borderColor: C.white, alignItems: 'center', justifyContent: 'center' },
-  heart: { position: 'absolute', top: 0, right: 2, width: 20, height: 20, borderRadius: 10, backgroundColor: C.white, alignItems: 'center', justifyContent: 'center' },
-  label: { color: C.muted, fontSize: 12, fontWeight: '600' },
-  labelActive: { color: C.ink },
+  ring: { width: SIZE + 6, height: SIZE + 6, borderRadius: (SIZE + 6) / 2, padding: 2, backgroundColor: DARK.ring },
+  glow: { padding: 3, shadowColor: C.violet, shadowOpacity: 0.8, shadowRadius: 10, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
+  image: { flex: 1, borderRadius: SIZE / 2, backgroundColor: DARK.ringDim, borderWidth: 2, borderColor: DARK.bg },
+  add: { alignItems: 'center', justifyContent: 'center', backgroundColor: DARK.bg, borderWidth: 1.5, borderColor: DARK.ring, borderStyle: 'dashed' },
+  loading: { position: 'absolute', top: 0, width: SIZE + 6, height: SIZE + 6, borderRadius: (SIZE + 6) / 2, backgroundColor: 'rgba(10,10,12,0.55)', alignItems: 'center', justifyContent: 'center' },
+  check: { position: 'absolute', top: SIZE - 16, right: 0, width: 22, height: 22, borderRadius: 11, backgroundColor: C.violet, borderWidth: 2, borderColor: C.white, alignItems: 'center', justifyContent: 'center' },
+  heart: { position: 'absolute', top: 0, right: 2, width: 20, height: 20, borderRadius: 10, backgroundColor: DARK.bg, borderWidth: 1, borderColor: DARK.ringDim, alignItems: 'center', justifyContent: 'center' },
+  label: { color: DARK.text, fontSize: 12, fontWeight: '600' },
+  labelActive: { color: C.white },
   empty: { width: 220, justifyContent: 'center' },
-  emptyText: { color: C.muted, fontSize: 13, lineHeight: 18 },
+  emptyText: { color: DARK.text, fontSize: 13, lineHeight: 18 },
 })

@@ -1,25 +1,19 @@
 import { supabase } from './supabase'
 
-// Images hosted in the public Supabase bucket `avatars`, under `presets/v1/`.
-// Portraits, animals and styles are original ChapCam creations (no real person);
-// La Joconde is a public-domain work (Léonard de Vinci, reproduction Wikimedia Commons).
-const presetUrl = (id) => supabase.storage.from('avatars').getPublicUrl(`presets/v1/${id}.jpg`).data.publicUrl
+// Portraits extracted from the reference sheet (no ring, check mark or glow), hosted
+// permanently in the public Supabase bucket `avatars`, under `presets/v2/` (512×512 JPEG).
+// Decart Lucy 2 accepts any character reference, including non-human ones, so all five are enabled.
+const presetUrl = (id) => supabase.storage.from('avatars').getPublicUrl(`presets/v2/${id}.jpg`).data.publicUrl
 
 export const PRESET_FACES = [
-  { id: 'clara', label: 'Clara', category: 'Réaliste' },
-  { id: 'amara', label: 'Amara', category: 'Réaliste' },
-  { id: 'lina', label: 'Lina', category: 'Réaliste' },
-  { id: 'mei', label: 'Mei', category: 'Réaliste' },
-  { id: 'kofi', label: 'Kofi', category: 'Réaliste' },
-  { id: 'arjun', label: 'Arjun', category: 'Réaliste' },
-  { id: 'mateo', label: 'Mateo', category: 'Réaliste' },
-  { id: 'joconde', label: 'La Joconde', category: 'Historique' },
-  { id: 'noble', label: 'Duchesse', category: 'Artistique' },
-  { id: 'toon', label: 'Toon', category: 'Amusant' },
-  { id: 'cyborg', label: 'Cyborg', category: 'Artistique' },
-  { id: 'puppy', label: 'Chiot', category: 'Animal' },
-  { id: 'cat', label: 'Chat', category: 'Animal' },
-].map((p) => ({ ...p, url: presetUrl(p.id) }))
+  { id: 'blonde', label: 'Blonde', order: 1 },
+  { id: 'brune', label: 'Brune', order: 2 },
+  { id: 'homme', label: 'Homme', order: 3 },
+  { id: 'loutre', label: 'Loutre', order: 4 },
+  { id: 'bebe', label: 'Bébé', order: 5 },
+]
+  .sort((a, b) => a.order - b.order)
+  .map((p) => ({ ...p, url: presetUrl(p.id) }))
 
 const MAX_BYTES = 2 * 1024 * 1024
 const cache = new Map()
