@@ -38,20 +38,20 @@ export const TOOL_MEDIA = {
   verify: { type: 'image', src: '/swap/poster-chapverify.png' },
 }
 
-const CREATOR_1491 = require('../../assets/creator-1491.mp4')
+const CREATOR_DANCE = require('../../assets/creator-dance-6632.mp4')
 const CREATOR_1466 = require('../../assets/creator-1466.mp4')
 const CREATOR_1469 = require('../../assets/creator-1469.mp4')
-const CREATOR_1475 = require('../../assets/creator-1475.mp4')
-const CREATOR_1474 = require('../../assets/creator-1474.mp4')
+const CREATOR_6637 = require('../../assets/creator-6637.mp4')
+const CREATOR_6640 = require('../../assets/creator-6640.mp4')
 const CREATOR_1472 = require('../../assets/creator-1472.mp4')
 
 // Only the six videos attached for the Home "Pour toi" section.
 export const CREATOR_VIDEOS = [
-  ['creator-1491', CREATOR_1491],
+  ['creator-dance-6632', CREATOR_DANCE],
   ['creator-1466', CREATOR_1466],
   ['creator-1469', CREATOR_1469],
-  ['creator-1475', CREATOR_1475],
-  ['creator-1474', CREATOR_1474],
+  ['creator-6637', CREATOR_6637],
+  ['creator-6640', CREATOR_6640],
   ['creator-1472', CREATOR_1472],
 ].map(([key, src]) => ({ key, media: { type: 'video', src } }))
 

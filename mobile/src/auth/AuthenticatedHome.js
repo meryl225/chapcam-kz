@@ -16,6 +16,7 @@ import { MediaView } from '../ui/ToolMedia'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { ChapCamBrand } from '../ui/ChapCamBrand'
 import { ExploreScreen } from '../screens/ExploreScreen'
+import { InspirationScreen } from '../screens/InspirationScreen'
 import { LiveSwapScreen } from '../screens/LiveSwapScreen'
 import { PhotoVideoScreen } from '../screens/PhotoVideoScreen'
 import { VoiceMessageScreen } from '../screens/VoiceMessageScreen'
@@ -103,6 +104,9 @@ function HomeShell({ user }) {
   const [refreshing, setRefreshing] = useState(false)
   const [openTool, setOpenTool] = useState(null)
   const [quickOpen, setQuickOpen] = useState(false)
+  const [ideasOpen, setIdeasOpen] = useState(false)
+  const openIdeas = useCallback(() => setIdeasOpen(true), [])
+  const closeIdeas = useCallback(() => setIdeasOpen(false), [])
   const [accountDetail, setAccountDetail] = useState(null)
   const [plansOpen, setPlansOpen] = useState(false)
   const [tokensOpen, setTokensOpen] = useState(false)
@@ -291,17 +295,24 @@ function HomeShell({ user }) {
     <View style={styles.root}>
       <View style={[styles.root, { paddingTop: insets.top }, overlay && styles.hidden]}>
         {tabPane('home', (
-          <HomeScreen
-            user={user}
-            jetons={jetons}
-            jetonsLoading={jetonsLoading}
-            avatarUrl={summaryAvatarUrl}
-            onNavigate={setTab}
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            onOpenTool={onOpenTool}
-            visible={tab === 'home' && !overlay}
-          />
+          <>
+            {/* Home stays mounted under the ideas list so its scroll position survives the round trip. */}
+            <View style={[styles.flex, ideasOpen && styles.hidden]}>
+              <HomeScreen
+                user={user}
+                jetons={jetons}
+                jetonsLoading={jetonsLoading}
+                avatarUrl={summaryAvatarUrl}
+                onNavigate={setTab}
+                onOpenIdeas={openIdeas}
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                onOpenTool={onOpenTool}
+                visible={tab === 'home' && !overlay && !ideasOpen}
+              />
+            </View>
+            {ideasOpen ? <InspirationScreen onBack={closeIdeas} /> : null}
+          </>
         ))}
         {tabPane('explore', <ExploreScreen onOpenTool={onOpenTool} />)}
         {tabPane('create', <CreateScreen onOpenTool={onOpenTool} />)}
@@ -314,7 +325,11 @@ function HomeShell({ user }) {
         {!isKnownTab ? (
           <PendingScreen tab={tab} user={user} credits={credits} plan={subscription?.plan} loading={loading} />
         ) : null}
-        <TabBar tab={tab} onChange={(key) => (key === 'create' ? setQuickOpen(true) : setTab(key))} bottom={insets.bottom} />
+        <TabBar tab={tab} onChange={(key) => {
+          if (key === 'create') return setQuickOpen(true)
+          if (key === 'home' && tab === 'home') setIdeasOpen(false)
+          setTab(key)
+        }} bottom={insets.bottom} />
         <QuickLaunchMenu visible={quickOpen && !overlay} bottom={insets.bottom} onClose={() => setQuickOpen(false)} onSelect={onQuickLaunch} />
       </View>
       {overlay ? <View style={StyleSheet.absoluteFill}>{overlay}</View> : null}
@@ -323,7 +338,7 @@ function HomeShell({ user }) {
   )
 }
 
-const HomeScreen = memo(function HomeScreen({ user, jetons, jetonsLoading, avatarUrl, refreshing, onRefresh, onOpenTool, onNavigate, visible }) {
+const HomeScreen = memo(function HomeScreen({ user, jetons, jetonsLoading, avatarUrl, refreshing, onRefresh, onOpenTool, onNavigate, onOpenIdeas, visible }) {
   const { width } = useWindowDimensions()
   const colW = useMemo(() => (width - PAD * 2 - GAP) / 2, [width])
   const goExplore = useCallback(() => onNavigate('explore'), [onNavigate])
@@ -347,7 +362,7 @@ const HomeScreen = memo(function HomeScreen({ user, jetons, jetonsLoading, avata
       <SectionHeader title="Tendances" subtitle="Les effets du moment" onSeeAll={goExplore} />
       <TrendsList onOpenTool={onOpenTool} visible={visible} />
 
-      <SectionHeader title="Pour toi" subtitle="Des idées à recréer" onSeeAll={goExplore} />
+      <SectionHeader title="Pour toi" subtitle="Des idées à recréer" onSeeAll={onOpenIdeas} />
       <View style={styles.feed}>
         {CREATOR_VIDEOS.map((item) => (
           <CreatorTile key={item.key} item={item} width={colW} />

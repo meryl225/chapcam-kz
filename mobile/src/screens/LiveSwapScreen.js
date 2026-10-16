@@ -464,7 +464,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
         <Pressable onPress={start} accessibilityRole="button" style={({ pressed }) => [pressed && styles.pressed]}>
           <LinearGradient colors={BRAND} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.cta}>
             <Ionicons name={!granted ? 'camera-outline' : face ? 'videocam' : 'person-add-outline'} size={20} color={C.white} />
-            <Text style={styles.ctaText}>{!granted ? 'Autoriser la caméra' : face ? 'Démarrer Live Swap' : 'Choisir un visage'}</Text>
+            <Text style={styles.ctaText}>{!granted ? (canAskAgain ? 'Continuer' : 'Ouvrir les Réglages') : face ? 'Démarrer Live Swap' : 'Choisir un visage'}</Text>
           </LinearGradient>
         </Pressable>
       </View>
@@ -698,12 +698,14 @@ function PermissionState({ loading, canAskAgain, onPress }) {
       ) : (
         <>
           <View style={styles.permissionIcon}><Ionicons name="camera-outline" size={26} color={C.white} /></View>
-          <Text style={styles.permissionTitle}>Caméra requise</Text>
+          <Text style={styles.permissionTitle}>Accès à la caméra</Text>
           <Text style={styles.permissionCopy}>
-            {canAskAgain ? "Autorise l'accès pour voir ton aperçu en direct." : "L'accès a été refusé. Active-le dans Réglages."}
+            {canAskAgain
+              ? 'Live Swap utilise la caméra pour afficher ton aperçu en direct.'
+              : "L'accès à la caméra n'est pas activé pour ChapCam. Tu peux modifier ce choix à tout moment dans les Réglages iOS."}
           </Text>
           <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.permissionBtn, pressed && styles.pressed]}>
-            <Text style={styles.permissionBtnText}>{canAskAgain ? 'Autoriser' : 'Ouvrir Réglages'}</Text>
+            <Text style={styles.permissionBtnText}>{canAskAgain ? 'Continuer' : 'Ouvrir les Réglages'}</Text>
           </Pressable>
         </>
       )}

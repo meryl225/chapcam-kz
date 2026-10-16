@@ -173,10 +173,10 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
       : await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
       Alert.alert(
-        'Accès refusé',
+        source === 'camera' ? 'Accès à la caméra' : 'Accès aux photos',
         source === 'camera'
-          ? 'Autorise l’accès à la caméra dans Réglages > ChapCam pour prendre ta photo de profil.'
-          : 'Autorise l’accès à tes photos dans Réglages > ChapCam pour choisir ta photo de profil.',
+          ? 'L’accès à la caméra n’est pas activé pour ChapCam. Tu peux modifier ce choix à tout moment dans Réglages > ChapCam.'
+          : 'L’accès aux photos n’est pas activé pour ChapCam. Tu peux modifier ce choix à tout moment dans Réglages > ChapCam.',
         [{ text: 'Annuler', style: 'cancel' }, { text: 'Ouvrir les Réglages', onPress: () => Linking.openSettings() }],
       )
       return

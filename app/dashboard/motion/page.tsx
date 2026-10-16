@@ -42,7 +42,7 @@ type Status = "idle" | "uploading" | "processing" | "completed" | "failed"
 // Modeles (mappes sur les tiers DoP cote API). Presente facon Higgsfield.
 const MODELS: { value: string; label: string; desc: string; pro?: boolean }[] = [
     { value: "standard", label: "Standard", desc: "Rendu rapide et fiable" },
-    { value: "genjutsu", label: "Kling 3.0", desc: "Motion Control ChapCam", pro: true },
+    { value: "genjutsu", label: "Motion Control", desc: "Motion Control ChapCam", pro: true },
     { value: "pro", label: "Pro", desc: "Détails & fluidité maximum", pro: true },
   ]
 const QUALITIES: { value: "720p" | "1080p"; label: string; desc: string }[] = [
@@ -297,7 +297,7 @@ export default function MotionPage() {
         }
               addJobToHistory(json.request_id, "higgsfield", "kling3", finalPrompt || prompt.trim())
         setStatus("idle")
-        toast({ title: "Motion Control lancé", description: "Kling 3.0 traite ta vidéo de référence via Higgsfield. Tu peux quitter la page." })
+        toast({ title: "Motion Control lancé", description: "Ta vidéo de référence est en cours de traitement. Tu peux quitter la page." })
       } catch {
         setStatus("idle")
         toast({ title: "Erreur réseau", description: "Réessaie dans un instant.", variant: "destructive" })
@@ -525,7 +525,7 @@ export default function MotionPage() {
             refVideo ? "border-[#c6f542]/30 bg-[#c6f542]/5 text-[#c6f542]" : "border-white/10 bg-white/[0.03] text-white/50"
           }`}>
             {refVideo ? (
-              <>Mode transfert de mouvement : le personnage de ton image reproduira les mouvements de la vidéo de référence (Kling Motion Control). Le clip généré dure comme la référence, {MOTION_MAX_SECONDS}s maximum.</>
+              <>Mode transfert de mouvement : le personnage de ton image reproduira les mouvements de la vidéo de référence. Le clip généré dure comme la référence, {MOTION_MAX_SECONDS}s maximum.</>
             ) : (
               <>Ajoute une vidéo de référence ({MOTION_MAX_SECONDS}s max) pour transférer son mouvement, ou laisse vide et décris le mouvement au prompt pour une simple animation.</>
             )}

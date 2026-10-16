@@ -304,7 +304,7 @@ export function MotionControlScreen({ onBack, onOpenCreations, topInset = 0 }) {
       setMessage({
         tone: 'info',
         text: reference
-          ? 'Motion Control lancé : Kling 3.0 traite ta vidéo de référence. Le résultat sera enregistré dans Mes créations.'
+          ? 'Motion Control lancé : ta vidéo de référence est en cours de traitement. Le résultat sera enregistré dans Mes créations.'
           : 'Génération lancée (1 à 3 min). Le résultat sera enregistré dans Mes créations.',
       })
     } catch (error) {
@@ -334,7 +334,7 @@ export function MotionControlScreen({ onBack, onOpenCreations, topInset = 0 }) {
         </View>
         <Text style={styles.note}>
           {reference
-            ? `Mode transfert de mouvement : le personnage de ton image reproduira les mouvements de la vidéo de référence (Kling Motion Control). Le clip généré dure comme la référence${referenceDuration !== null ? ` (${Math.round(referenceDuration)} s)` : ''}, ${MOTION_MAX_SECONDS} s maximum.`
+            ? `Mode transfert de mouvement : le personnage de ton image reproduira les mouvements de la vidéo de référence. Le clip généré dure comme la référence${referenceDuration !== null ? ` (${Math.round(referenceDuration)} s)` : ''}, ${MOTION_MAX_SECONDS} s maximum.`
             : `Ajoute une vidéo de référence (${MOTION_MAX_SECONDS} s max) pour transférer son mouvement, ou laisse vide et décris le mouvement au prompt pour une simple animation.`}
         </Text>
 
@@ -399,7 +399,7 @@ export function MotionControlScreen({ onBack, onOpenCreations, topInset = 0 }) {
           {reference ? (
             <View style={styles.modelFixed}>
               <Ionicons name="flash" size={16} color={C.violet} />
-              <Text style={styles.modelFixedText}>Kling 3.0 · Motion Control ChapCam</Text>
+              <Text style={styles.modelFixedText}>Motion Control ChapCam</Text>
             </View>
           ) : (
             <View style={styles.models}>

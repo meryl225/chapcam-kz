@@ -76,6 +76,8 @@ export async function GET(request: NextRequest) {
     const json = await res.json()
     const data = json?.data
     if (!res.ok || !data) {
+      // Erreur passagere HeyGen (5xx / limite de debit) : le job tourne encore, le client continue le suivi.
+      if (res.status >= 500 || res.status === 429) return NextResponse.json({ status: "processing" })
       return NextResponse.json({ status: "failed", error: json?.error?.message || "Statut indisponible." })
     }
     // Normalisation des statuts HeyGen -> etats simples pour le client.

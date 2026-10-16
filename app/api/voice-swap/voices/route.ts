@@ -58,7 +58,7 @@ export async function GET() {
 
   const apiKey = getApiKey()
   if (!apiKey) {
-    return NextResponse.json({ voices: FALLBACK_VOICES, fallback: true })
+    return NextResponse.json({ voices: fallbackVoices(), fallback: true })
   }
 
   try {
@@ -68,22 +68,66 @@ export async function GET() {
     })
     if (!res.ok) {
       // Cle restreinte (ex: permission voices_read manquante) -> voix par defaut.
-      return NextResponse.json({ voices: FALLBACK_VOICES, fallback: true })
+      return NextResponse.json({ voices: fallbackVoices(), fallback: true })
     }
     const data = await res.json()
-    const voices = (data.voices || []).map(
-      (v: { voice_id: string; name: string; category?: string; labels?: Record<string, string> }) => ({
-        id: v.voice_id,
-        name: v.name,
-        description: v.labels ? Object.values(v.labels).join(', ') : v.category,
-        locale: v.labels?.language,
-      }),
-    )
+    const voices = (data.voices || []).map((v: ElevenVoice) => ({
+      id: v.voice_id,
+      name: v.name,
+      description: v.labels ? Object.values(v.labels).join(', ') : v.category,
+      locale: v.labels?.language,
+      ...presentation(v.name, v.labels, v.preview_url, v.description),
+    }))
     if (voices.length === 0) {
-      return NextResponse.json({ voices: FALLBACK_VOICES, fallback: true })
+      return NextResponse.json({ voices: fallbackVoices(), fallback: true })
     }
     return NextResponse.json({ voices })
   } catch {
-    return NextResponse.json({ voices: FALLBACK_VOICES, fallback: true })
+    return NextResponse.json({ voices: fallbackVoices(), fallback: true })
   }
+}
+
+type ElevenVoice = {
+  voice_id: string
+  name: string
+  category?: string
+  description?: string
+  preview_url?: string
+  labels?: Record<string, string>
+}
+
+const GENDER_LABELS: Record<string, string> = { male: 'Homme', female: 'Femme', neutral: 'Neutre' }
+const LANGUAGE_LABELS: Record<string, string> = {
+  fr: 'Français', en: 'Anglais', es: 'Espagnol', de: 'Allemand', it: 'Italien', pt: 'Portugais',
+  nl: 'Néerlandais', pl: 'Polonais', ar: 'Arabe', hi: 'Hindi', ja: 'Japonais', zh: 'Chinois', ko: 'Coréen', tr: 'Turc', sv: 'Suédois',
+}
+const ACCENT_LABELS: Record<string, string> = {
+  american: 'accent américain', british: 'accent britannique', australian: 'accent australien', irish: 'accent irlandais',
+  african: 'accent africain', 'african-american': 'accent afro-américain', indian: 'accent indien', swedish: 'accent suédois',
+  transatlantic: 'accent transatlantique', parisian: 'accent parisien', standard: 'accent standard', french: 'accent français',
+}
+
+// Champs d'affichage (mobile) : nom court, genre, langue, accent et URL d'aperçu
+// gratuite fournie par ElevenLabs. Aucun appel de génération n'est fait ici.
+function presentation(fullName: string, labels: Record<string, string> = {}, previewUrl?: string, description?: string) {
+  const [shortName, ...rest] = fullName.split(' - ')
+  const language = (labels.language || '').toLowerCase()
+  const accent = (labels.accent || '').toLowerCase()
+  return {
+    shortName: shortName.trim(),
+    tagline: rest.join(' - ').trim() || null,
+    genderLabel: GENDER_LABELS[(labels.gender || '').toLowerCase()] || null,
+    languageLabel: LANGUAGE_LABELS[language] || null,
+    accentLabel: ACCENT_LABELS[accent] || null,
+    summary: description || null,
+    isFrench: language === 'fr' || accent === 'french' || accent === 'parisian',
+    previewUrl: previewUrl || null,
+  }
+}
+
+function fallbackVoices() {
+  return FALLBACK_VOICES.map((v) => {
+    const gender = v.description.startsWith('Femme') ? 'female' : 'male'
+    return { ...v, ...presentation(v.name, { gender }, undefined, v.description), languageLabel: 'Multilingue' }
+  })
 }

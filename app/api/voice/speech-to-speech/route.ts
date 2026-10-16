@@ -114,8 +114,9 @@ export async function POST(request: Request) {
 
     if (!res.ok || !res.body) {
       const detail = await res.text().catch(() => '')
+      console.error('[voice/sts] ElevenLabs error', res.status, detail.slice(0, 500))
       return NextResponse.json(
-        { error: `ElevenLabs a refusé la transformation (HTTP ${res.status}). ${detail.slice(0, 200)}` },
+        { error: 'La transformation de ta voix a échoué. Aucun jeton n’a été débité. Réessaie dans un instant.' },
         { status: 502 },
       )
     }
@@ -159,6 +160,10 @@ export async function POST(request: Request) {
       },
     })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 502 })
+    console.error('[voice/sts] unexpected error', e)
+    return NextResponse.json(
+      { error: 'La transformation de ta voix a échoué. Réessaie dans un instant.' },
+      { status: 502 },
+    )
   }
 }
