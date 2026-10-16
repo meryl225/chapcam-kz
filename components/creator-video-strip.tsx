@@ -13,7 +13,7 @@ type CreatorVideo = {
 const creatorVideoSources = [
   "/videos/creator-1466.mp4",
   "/videos/creator-1469.mp4",
-  "/videos/creator-1471.mp4",
+  "/videos/creator-6637.mp4",
   "/videos/creator-1472.mp4",
   "/videos/creator-1473.mp4",
   "/videos/creator-1475.mp4",
