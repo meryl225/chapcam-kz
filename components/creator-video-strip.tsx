@@ -16,8 +16,8 @@ const creatorVideoSources = [
   "/videos/creator-6637.mp4",
   "/videos/creator-1472.mp4",
   "/videos/creator-1473.mp4",
-  "/videos/creator-1475.mp4",
-  "/videos/img-1467.mp4",
+  "/videos/creator-6632.mp4",
+  "/videos/creator-6640.mp4",
 ]
 
 export const creatorVideos: CreatorVideo[] = Array.from({ length: 12 }, (_, index) => ({
