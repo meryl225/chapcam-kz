@@ -201,7 +201,7 @@ export default function SettingsPage() {
               checked={notificationsOn}
               onCheckedChange={toggleNotifications}
               disabled={savingNotif}
-              className="shrink-0 scale-125"
+              className="shrink-0 scale-125 data-[state=unchecked]:border-border"
             />
           </div>
         </section>

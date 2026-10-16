@@ -75,8 +75,10 @@ export function ThemeToggleSegmented() {
         return (
           <button
             key={opt.value}
+            type="button"
+            aria-pressed={active}
             onClick={() => setTheme(opt.value)}
-            className={`flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`flex min-h-10 items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${
               active
                 ? 'bg-primary text-primary-foreground'
                 : 'text-muted-foreground hover:text-foreground'
