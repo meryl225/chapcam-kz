@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Alert, LayoutAnimation, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, LayoutAnimation, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -83,6 +83,7 @@ export function VideoTranslationScreen({ onBack }) {
   const insets = useSafeAreaInsets()
   const [video, setVideo] = useState(null)
   const [languages, setLanguages] = useState([])
+  const [languagesFailed, setLanguagesFailed] = useState(false)
   const [language, setLanguage] = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [advancedOpen, setAdvancedOpen] = useState(false)
@@ -100,12 +101,15 @@ export function VideoTranslationScreen({ onBack }) {
   const selectedLanguage = language ? describeLanguage(language) : null
   const canSubmit = Boolean(video?.uri && language && rightsOk && !busy)
 
-  useEffect(() => () => pollRef.current && clearInterval(pollRef.current), [])
-  useEffect(() => {
-    let active = true
-    supabase.auth.getSession().then(async ({ data }) => {
+  const mountedRef = useRef(true)
+  useEffect(() => () => { mountedRef.current = false; if (pollRef.current) clearInterval(pollRef.current) }, [])
+
+  const loadInfo = async () => {
+    setLanguagesFailed(false)
+    try {
+      const { data } = await supabase.auth.getSession()
       const token = data?.session?.access_token
-      if (!token) return
+      if (!token) throw new Error('no session')
       const headers = { Authorization: `Bearer ${token}` }
       const [languageRes, quotaRes] = await Promise.all([
         fetch(`${API_URL}/api/heygen/video-translation?info=languages`, { headers }),
@@ -113,15 +117,25 @@ export function VideoTranslationScreen({ onBack }) {
       ])
       const languageJson = await languageRes.json().catch(() => ({}))
       const quotaJson = await quotaRes.json().catch(() => ({}))
-      if (active && languageRes.ok && Array.isArray(languageJson.languages)) setLanguages(languageJson.languages)
-      if (active && quotaRes.ok && typeof quotaJson.remaining === 'number') setCredits(quotaJson.remaining)
-    }).catch(() => {})
-    return () => { active = false }
-  }, [])
+      if (!mountedRef.current) return
+      if (quotaRes.ok && typeof quotaJson.remaining === 'number') setCredits(quotaJson.remaining)
+      if (languageRes.ok && Array.isArray(languageJson.languages) && languageJson.languages.length) setLanguages(languageJson.languages)
+      else setLanguagesFailed(true)
+    } catch {
+      if (mountedRef.current) setLanguagesFailed(true)
+    }
+  }
+  useEffect(() => { loadInfo() }, [])
 
   const chooseVideo = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (!permission.granted) return Alert.alert('Photos', 'Autorise ChapCam à accéder à tes vidéos dans Réglages.')
+    if (!permission.granted) {
+      return Alert.alert(
+        'Accès aux vidéos',
+        'Pour choisir une vidéo, tu peux autoriser l’accès à tes vidéos dans les Réglages.',
+        [{ text: 'Annuler', style: 'cancel' }, { text: 'Ouvrir les Réglages', onPress: () => Linking.openSettings() }],
+      )
+    }
     const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], allowsEditing: false })
     const selected = picked.assets?.[0]
     if (picked.canceled || !selected?.uri) return
@@ -209,8 +223,14 @@ export function VideoTranslationScreen({ onBack }) {
             </Text>
             {selectedLanguage && selectedLanguage.variant !== 'Standard' ? <Text style={styles.muted} numberOfLines={1}>{selectedLanguage.variant}</Text> : null}
           </View>
-          {!languages.length ? <Text style={styles.muted}>Chargement…</Text> : <Ionicons name="chevron-down" size={20} color={C.muted} />}
+          {languages.length ? <Ionicons name="chevron-down" size={20} color={C.muted} /> : languagesFailed ? null : <Text style={styles.muted}>Chargement…</Text>}
         </Pressable>
+        {languagesFailed && !languages.length ? (
+          <Pressable onPress={loadInfo} style={styles.retry} accessibilityRole="button">
+            <Ionicons name="refresh" size={16} color={C.violet} />
+            <Text style={styles.retryText}>Langues indisponibles · Réessayer</Text>
+          </Pressable>
+        ) : null}
 
         <View style={styles.advanced}>
           <Pressable onPress={toggleAdvanced} style={styles.advancedHeader} accessibilityRole="button" accessibilityState={{ expanded: advancedOpen }}>
@@ -264,7 +284,7 @@ export function VideoTranslationScreen({ onBack }) {
         {result ? <View style={styles.result}><Text style={styles.section}>Vidéo traduite</Text><AiBadge /><ResultPreview uri={result} />{Platform.OS !== 'ios' ? <ReportAbuseButton contentUrl={result} context="Traduction de Vidéo" /> : null}</View> : null}
       </ScrollView>
 
-      <LanguagePickerSheet visible={pickerOpen} languages={languages} selected={language} onSelect={setLanguage} onClose={() => setPickerOpen(false)} />
+      <LanguagePickerSheet visible={pickerOpen} languages={languages} failed={languagesFailed} onRetry={loadInfo} selected={language} onSelect={setLanguage} onClose={() => setPickerOpen(false)} />
     </View>
   )
 }
@@ -293,6 +313,8 @@ const styles = StyleSheet.create({
   languageCaption: { color: C.muted, fontSize: 12, fontWeight: '700' },
   languageValue: { color: C.ink, fontSize: 16, fontWeight: '900' },
   languagePlaceholder: { color: C.violet },
+  retry: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44 },
+  retryText: { color: C.violet, fontSize: 13, fontWeight: '800' },
   advanced: { backgroundColor: C.white, borderRadius: 20, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },
   advancedHeader: { minHeight: 56, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14 },
   advancedTitle: { color: C.ink, fontSize: 15, fontWeight: '900' },

@@ -8,7 +8,8 @@ import { POPULAR_LANGUAGE_IDS, describeLanguage, groupLanguages, normalizeText }
 const ROW_HEIGHT = 56
 
 // languages: exact backend names; selected: exact backend name; onSelect receives that exact name.
-export function LanguagePickerSheet({ visible, languages, selected, onSelect, onClose }) {
+export function LanguagePickerSheet({ visible, languages, failed, onRetry, selected, onSelect, onClose: closeSheet }) {
+  const onClose = () => { setQuery(''); closeSheet() }
   const insets = useSafeAreaInsets()
   const [query, setQuery] = useState('')
   const [expanded, setExpanded] = useState(() => new Set())
@@ -110,7 +111,14 @@ export function LanguagePickerSheet({ visible, languages, selected, onSelect, on
           <TextInput value={query} onChangeText={setQuery} placeholder="Rechercher une langue ou un pays" placeholderTextColor={C.muted} style={styles.searchInput} autoCorrect={false} clearButtonMode="while-editing" returnKeyType="search" />
         </View>
         {!languages.length ? (
-          <View style={styles.empty}><ActivityIndicator color={C.violet} /><Text style={styles.emptyText}>Chargement des langues disponibles…</Text></View>
+          failed ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>Impossible de charger les langues pour le moment.</Text>
+              <Pressable onPress={onRetry} style={styles.retry} accessibilityRole="button"><Text style={styles.retryText}>Réessayer</Text></Pressable>
+            </View>
+          ) : (
+            <View style={styles.empty}><ActivityIndicator color={C.violet} /><Text style={styles.emptyText}>Chargement des langues disponibles…</Text></View>
+          )
         ) : (
           <FlatList
             data={rows}
@@ -152,5 +160,7 @@ const styles = StyleSheet.create({
   rowMeta: { color: C.muted, fontSize: 12, marginTop: 2 },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.violet },
   empty: { alignItems: 'center', gap: 10, paddingTop: 40 },
+  retry: { minHeight: 44, paddingHorizontal: 20, borderRadius: 22, backgroundColor: '#F1ECFF', alignItems: 'center', justifyContent: 'center' },
+  retryText: { color: C.violet, fontSize: 14, fontWeight: '800' },
   emptyText: { color: C.muted, fontSize: 14, textAlign: 'center', paddingTop: 24 },
 })
