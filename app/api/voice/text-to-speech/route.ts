@@ -124,8 +124,9 @@ export async function POST(request: Request) {
 
     if (!res.ok || !res.body) {
       const detail = await res.text().catch(() => '')
+      console.error('[voice/tts] ElevenLabs error', res.status, detail.slice(0, 500))
       return NextResponse.json(
-        { error: `ElevenLabs a refusé la génération (HTTP ${res.status}). ${detail.slice(0, 200)}` },
+        { error: 'La génération du message vocal a échoué. Aucun jeton n’a été débité. Réessaie dans un instant.' },
         { status: 502 },
       )
     }
@@ -170,6 +171,10 @@ export async function POST(request: Request) {
       },
     })
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message }, { status: 502 })
+    console.error('[voice/tts] unexpected error', e)
+    return NextResponse.json(
+      { error: 'La génération du message vocal a échoué. Réessaie dans un instant.' },
+      { status: 502 },
+    )
   }
 }
