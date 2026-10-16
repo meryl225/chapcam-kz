@@ -556,6 +556,8 @@ export async function POST(request: NextRequest) {
       const batch = data?.users ?? []
       for (const u of batch) {
         if (!u.email) continue
+        // Preference "Notifications par email" desactivee dans /dashboard/settings.
+        if (u.user_metadata?.email_notifications === false) continue
         // Nettoyage + validation stricte de l'adresse.
         // Une seule adresse invalide fait echouer TOUT le batch Resend, on les exclut donc ici.
         const email = u.email.trim().toLowerCase()

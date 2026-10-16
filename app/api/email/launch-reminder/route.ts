@@ -176,7 +176,7 @@ export async function POST(request: Request) {
 
       const batchUsers = listData?.users ?? []
       for (const u of batchUsers) {
-        if (u.email) {
+        if (u.email && u.user_metadata?.email_notifications !== false) {
           const name = (u.user_metadata?.name as string) || u.email.split('@')[0]
           usersWithEmail.push({ email: u.email, name })
         }
