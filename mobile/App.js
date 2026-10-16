@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context'
 import * as SplashScreen from 'expo-splash-screen'
-import { ChapCamLoader } from './src/ui/ChapCamLoader'
+import { BootSplash } from './src/ui/BootSplash'
 import { StatusBar } from 'expo-status-bar'
 import { supabase } from './src/lib/supabase'
 import { clearAccountSummaryCache } from './src/lib/accountSummary'
 import { AuthScreen } from './src/auth/AuthScreen'
 import { AuthenticatedHome } from './src/auth/AuthenticatedHome'
 
-// Keep the native launch screen up until the session is known, so the app opens
-// straight on Home or Login instead of flashing an extra loader.
+// Keep the static native launch screen up until BootSplash has drawn the identical logo,
+// then BootSplash animates the light until the session is known.
 SplashScreen.preventAutoHideAsync().catch(() => {})
 
 export default function App() {
@@ -36,15 +36,23 @@ export default function App() {
     }
   }, [])
 
+  const [bootVisible, setBootVisible] = useState(true)
+  const hideNativeSplash = useCallback(() => {
+    SplashScreen.hideAsync().catch(() => {})
+  }, [])
+  const handleBootExited = useCallback(() => setBootVisible(false), [])
+
+  // Safety net: if the boot screen never reported its logo as drawn, still release the native splash once auth is known.
   useEffect(() => {
-    if (!loading) SplashScreen.hideAsync().catch(() => {})
-  }, [loading])
+    if (!loading) hideNativeSplash()
+  }, [loading, hideNativeSplash])
 
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <View style={styles.safe}>
         <StatusBar style="dark" />
-        {loading ? <View style={styles.loading}><ChapCamLoader size="large" /></View> : session?.user ? <AuthenticatedHome user={session.user} /> : <AuthScreen />}
+        {loading ? null : session?.user ? <AuthenticatedHome user={session.user} /> : <AuthScreen />}
+        {bootVisible ? <BootSplash exiting={!loading} onReady={hideNativeSplash} onExited={handleBootExited} /> : null}
       </View>
     </SafeAreaProvider>
   )
@@ -52,5 +60,4 @@ export default function App() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#070c18' },
-  loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#070c18' },
 })
