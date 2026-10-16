@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self'; style-src 'unsafe-inline'; script-src 'self'" />
+  <title>Caméra virtuelle ChapCam</title>
+  <style>
+    :root { --bg: #0a0e1a; --panel: #121829; --line: #232b42; --text: #eef1f7; --muted: #8a93a8; --accent: #00ff88; --warn: #ffb547; --err: #ff5d6c; }
+    * { box-sizing: border-box; margin: 0; }
+    body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; background: var(--bg); color: var(--text); padding: 28px; display: flex; flex-direction: column; gap: 20px; min-height: 100vh; -webkit-user-select: none; }
+    header { display: flex; align-items: center; gap: 14px; -webkit-app-region: drag; padding-top: 8px; }
+    header img { width: 44px; height: 44px; border-radius: 10px; }
+    h1 { font-size: 18px; font-weight: 650; }
+    header p { color: var(--muted); font-size: 13px; }
+    .status { display: flex; gap: 12px; align-items: flex-start; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; background: var(--muted); }
+    .status[data-tone="ok"] .dot { background: var(--accent); box-shadow: 0 0 0 4px rgba(0,255,136,.15); }
+    .status[data-tone="warn"] .dot { background: var(--warn); }
+    .status[data-tone="err"] .dot { background: var(--err); }
+    .status[data-tone="busy"] .dot { background: var(--accent); animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: .3; } }
+    #title { font-weight: 600; }
+    #message { color: var(--muted); font-size: 13px; margin-top: 2px; }
+    ol { color: var(--muted); font-size: 13px; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+    ol[hidden] { display: none; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: auto; }
+    button { font: inherit; font-weight: 600; border-radius: 9px; padding: 10px 16px; border: 1px solid var(--line); background: transparent; color: var(--text); cursor: pointer; }
+    button.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+    button:disabled { opacity: .45; cursor: default; }
+    button[hidden] { display: none; }
+    details { color: var(--muted); font-size: 12px; }
+    summary { cursor: pointer; }
+    pre { white-space: pre-wrap; word-break: break-all; margin-top: 8px; font: 11px/1.5 ui-monospace, Menlo, monospace; -webkit-user-select: text; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="icons/icon.png" alt="" />
+    <div>
+      <h1>Caméra virtuelle ChapCam</h1>
+      <p>Rend « ChapCam Camera » disponible dans Telegram, Zoom, Meet, Discord…</p>
+    </div>
+  </header>
+
+  <div class="status" id="status" data-tone="busy" role="status" aria-live="polite">
+    <span class="dot" aria-hidden="true"></span>
+    <div>
+      <p id="title">Vérification…</p>
+      <p id="message">Lecture de l’état réel de macOS.</p>
+    </div>
+  </div>
+
+  <ol id="approval" hidden>
+    <li>Clique sur « Ouvrir les Réglages Système ».</li>
+    <li id="approval-step">Active « ChapCam » dans les extensions de caméra.</li>
+    <li>Saisis ton mot de passe Mac si demandé. ChapCam détecte l’autorisation tout seul.</li>
+    <li>Quitte et rouvre Telegram / Zoom pour qu’il voie la nouvelle caméra.</li>
+  </ol>
+
+  <details>
+    <summary>Détails techniques</summary>
+    <pre id="details">—</pre>
+  </details>
+
+  <div class="actions">
+    <button class="primary" id="activate">Activer la caméra virtuelle</button>
+    <button id="settings" hidden>Ouvrir les Réglages Système</button>
+    <button id="log">Journal</button>
+    <button id="close">Fermer</button>
+  </div>
+
+  <script src="camera-setup.js"></script>
+</body>
+</html>

@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, systemPreferences, Menu, Tray, nativeImage,
 const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
-const { getVirtualCamera, setupVirtualCameraIPC } = require('./virtual-camera')
+const { getVirtualCamera, setupVirtualCameraIPC, macApprovalSettingsUrl } = require('./virtual-camera')
 const { getVoiceSwap, setupVoiceSwapIPC } = require('./voice-swap')
 
 // Resolution/cadence de sortie de la camera virtuelle
@@ -449,6 +449,9 @@ function createMenu() {
           checked: false,
           click: (menuItem) => toggleVirtualCamera(menuItem.checked)
         },
+        ...(process.platform === 'darwin'
+          ? [{ label: 'Activer la camera virtuelle (macOS)...', click: () => openCameraSetupWindow() }]
+          : []),
         { type: 'separator' },
         { label: 'Parametres Camera...', click: () => openCameraSettings() }
       ]
@@ -515,8 +518,57 @@ function openPreferences() {
 
 // Open camera settings
 function openCameraSettings() {
+  if (process.platform === 'darwin') return openCameraSetupWindow()
   if (mainWindow) {
     mainWindow.webContents.send('open-camera-settings')
+  }
+}
+
+// macOS : fenetre "Activer la camera virtuelle" (etat reel lu depuis le systeme)
+let cameraSetupWindow
+function openCameraSetupWindow() {
+  if (process.platform !== 'darwin') return
+  if (cameraSetupWindow && !cameraSetupWindow.isDestroyed()) {
+    cameraSetupWindow.show()
+    cameraSetupWindow.focus()
+    return
+  }
+  cameraSetupWindow = new BrowserWindow({
+    width: 520,
+    height: 560,
+    resizable: false,
+    minimizable: false,
+    title: 'Caméra virtuelle ChapCam',
+    titleBarStyle: 'hiddenInset',
+    backgroundColor: '#0a0e1a',
+    parent: mainWindow && mainWindow.isVisible() ? mainWindow : undefined,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(__dirname, 'camera-setup-preload.js'),
+    },
+  })
+  cameraSetupWindow.loadFile(path.join(__dirname, 'camera-setup.html'))
+  cameraSetupWindow.on('closed', () => { cameraSetupWindow = null })
+}
+
+ipcMain.handle('camera-setup-open-settings', () => shell.openExternal(macApprovalSettingsUrl()))
+ipcMain.handle('camera-setup-open-log', () => {
+  const file = path.join(app.getPath('logs'), 'virtual-camera.log')
+  return fs.existsSync(file) ? shell.openPath(file) : shell.openPath(app.getPath('logs'))
+})
+ipcMain.handle('camera-setup-close', () => cameraSetupWindow?.close())
+
+// Au lancement : si "ChapCam Camera" n'est pas encore exposee par macOS,
+// proposer l'activation (une seule fois par lancement).
+async function promptMacCameraSetupIfNeeded() {
+  if (process.platform !== 'darwin') return
+  try {
+    const state = await getVirtualCamera().getMacState()
+    if (state.status !== 'ready') openCameraSetupWindow()
+  } catch (e) {
+    log(`Camera setup check failed: ${e.message}`)
   }
 }
 
@@ -584,6 +636,9 @@ app.whenReady().then(() => {
   }
   
   createTray()
+
+  getVirtualCamera().onMacActivationNeeded = () => openCameraSetupWindow()
+  setTimeout(promptMacCameraSetupIfNeeded, isDev ? 6000 : 2500)
   
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
