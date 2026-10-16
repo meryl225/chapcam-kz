@@ -2,7 +2,7 @@
   "expo": {
     "name": "ChapCam",
     "slug": "chapcam",
-    "version": "1.0.0",
+    "version": "2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -10,7 +10,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.chapcam.app",
-      "buildNumber": "2",
+      "buildNumber": "24",
       "icon": "./assets/icon.png",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
