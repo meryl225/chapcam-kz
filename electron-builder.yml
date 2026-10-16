@@ -23,6 +23,7 @@ win:
       arch: [x64, arm64]
   # L'app n'a plus besoin d'etre admin : seule l'installation l'est (perMachine).
   requestedExecutionLevel: asInvoker
+  icon: electron/build/icon.ico
   artifactName: ChapCam-Setup-${version}-${arch}.${ext}
   # Signature : electron-builder lit WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD (.pfx).
   # Sans certificat, l'installateur est genere non signe.
@@ -41,12 +42,16 @@ nsis:
   createDesktopShortcut: true
   createStartMenuShortcut: true
   shortcutName: ChapCam
+  installerIcon: electron/build/icon.ico
+  uninstallerIcon: electron/build/icon.ico
+  installerHeaderIcon: electron/build/icon.ico
   include: electron/build/installer.nsh
 
 mac:
   target:
     - dmg
   category: public.app-category.video
+  icon: electron/build/icon.icns
   artifactName: ChapCam-${version}-${arch}.${ext}
   minimumSystemVersion: "12.3"
   hardenedRuntime: true
@@ -64,7 +69,11 @@ mac:
     NSMicrophoneUsageDescription: ChapCam utilise le micro pour la transformation de la voix.
     NSSystemExtensionUsageDescription: Ajoute la camera "ChapCam Camera" utilisable dans Zoom, Teams, Meet, Discord et OBS.
 
+dmg:
+  icon: electron/build/icon.icns
+
 linux:
+  icon: electron/build/icon.png
   target:
     - AppImage
   category: Video

@@ -162,7 +162,9 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: !isDev,
-      devTools: true
+      devTools: true,
+      // The virtual camera keeps streaming while Zoom/Meet is in front.
+      backgroundThrottling: false
     },
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     backgroundColor: '#0a0e1a',
@@ -217,35 +219,10 @@ function createWindow() {
 }
 
 // Get the correct icon path based on platform
+// Icons are generated from the official artwork by scripts/generate-desktop-icons.mjs.
 function getIconPath() {
-  // For Windows, try .ico first, then fall back to .jpg
-  // For other platforms, use .jpg
-  const iconNames = process.platform === 'win32' 
-    ? ['icon.ico', 'icon-512.jpg', 'icon.jpg'] 
-    : ['icon.jpg', 'icon-512.jpg']
-  
-  // Try multiple paths with multiple icon names
-  const basePaths = [
-    path.join(__dirname, '../public/icons'),
-    path.join(process.resourcesPath || '', 'public/icons'),
-    path.join(app.getAppPath(), 'public/icons'),
-    path.join(__dirname, '..', 'public', 'icons')
-  ]
-
-  for (const basePath of basePaths) {
-    for (const iconName of iconNames) {
-      const fullPath = path.join(basePath, iconName)
-      if (fs.existsSync(fullPath)) {
-        log(`Found icon at: ${fullPath}`)
-        return fullPath
-      }
-    }
-  }
-
-  // Ultimate fallback
-  const fallback = path.join(__dirname, '../public/icons/icon.jpg')
-  log(`Using fallback icon: ${fallback}`)
-  return fallback
+  const name = process.platform === 'win32' ? 'icon.ico' : 'icon.png'
+  return path.join(__dirname, 'icons', name)
 }
 
 // Load the application
@@ -370,13 +347,10 @@ async function requestCameraAccess() {
 
 // Create system tray
 function createTray() {
-  const iconPath = path.join(__dirname, '../public/icons/tray-icon.jpg')
-  
-  let icon
-  try {
-    icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
-  } catch (e) {
-    log(`Tray icon error: ${e.message}`)
+  // tray.png + tray@1.5x/@2x.png: Electron picks the right density automatically.
+  const icon = nativeImage.createFromPath(path.join(__dirname, 'icons', 'tray.png'))
+  if (icon.isEmpty()) {
+    log('Tray icon missing: electron/icons/tray.png')
     return
   }
   
@@ -657,12 +631,7 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
 // Set app user model ID for Windows
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.chapcam.desktop')
-  
-  // Also set the icon explicitly for the taskbar
-  const iconPath = path.join(__dirname, '../public/icons/icon-512.jpg')
-  if (fs.existsSync(iconPath)) {
-    app.setAsDefaultProtocolClient('chapcam')
-  }
+  app.setAsDefaultProtocolClient('chapcam')
 }
 
 log('Main process initialized')
