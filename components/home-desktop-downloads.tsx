@@ -2,13 +2,13 @@
 
 import Image from "next/image"
 import { useSyncExternalStore } from "react"
-import { Download, FlaskConical, ShieldAlert, ShieldCheck } from "lucide-react"
+import { Download, FlaskConical, Info, ShieldCheck } from "lucide-react"
 import { DESKTOP_VERSION, desktopReleases, type DesktopRelease } from "@/lib/desktop-releases"
 import { useT } from "@/lib/i18n/language-provider"
 
 const OS_ICONS = {
   windows: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/windows/default.svg",
-  mac: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/apple/default.svg",
+  mac: "https://cdn.jsdelivr.net/gh/glincker/thesvg@main/public/icons/apple/light.svg",
 } as const
 
 type DetectedOS = "mac" | "windows" | null
@@ -67,10 +67,10 @@ function ReleaseCard({ release, recommended }: { release: DesktopRelease; recomm
       </div>
 
       {release.os === "windows" && !release.signed && (
-        <p className="flex gap-2 rounded-xl bg-[#fff7ed] p-3 text-xs leading-5 text-[#9a3412]">
-          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        <p className="flex gap-2 text-xs leading-5 text-[#536783]">
+          <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#0ea5e9]" aria-hidden="true" />
           <span>
-            {t("Installateur non signé : Windows SmartScreen peut afficher un avertissement. Cliquez sur « Informations complémentaires » puis « Exécuter quand même ».")}
+            {t("Si Windows affiche un message SmartScreen, cliquez sur « Informations complémentaires » puis « Exécuter quand même ».")}
           </span>
         </p>
       )}
@@ -139,11 +139,9 @@ export function HomeDesktopDownloads() {
         ))}
       </div>
 
-      {desktopReleases.some((r) => r.status === "test") && (
-        <p className="mt-4 text-center text-xs leading-5 text-[#7487a1] text-pretty">
-          {t("Les versions de test n’ont pas encore été validées officiellement. Pour un Mac, choisissez Apple Silicon (puce M) ou Intel selon le menu Pomme → À propos de ce Mac.")}
-        </p>
-      )}
+      <p className="mt-4 text-center text-xs leading-5 text-[#7487a1] text-pretty">
+        {t("Pour un Mac, choisissez Apple Silicon (puce M) ou Intel selon le menu Pomme → À propos de ce Mac.")}
+      </p>
     </section>
   )
 }
