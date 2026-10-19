@@ -41,8 +41,11 @@ function ensureScratch(w, h) {
 // Trouve la source a diffuser : priorite au tag explicite, sinon plus grand
 // canvas/video visible de la page.
 function findSource() {
+  // Quand la page declare sa sortie transformee, on ne diffuse QUE celle-ci :
+  // tant qu'elle n'est pas prete, le repli "plus grande video" choisirait
+  // l'apercu brut de la webcam et l'enverrait a Zoom/Telegram.
   const tagged = document.querySelector('[data-chapcam-output]')
-  if (tagged && isUsable(tagged)) return tagged
+  if (tagged) return isUsable(tagged) ? tagged : null
 
   let best = null
   let bestArea = 0

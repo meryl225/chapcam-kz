@@ -17,6 +17,38 @@ const POINTS_PER_SECOND = 2
 // Plus court = arret plus precis a l'epuisement, moins de points "perdus".
 const DEDUCTION_INTERVAL = 5
 
+const CHAPCAM_VIRTUAL_CAMERA = /chapcam/i
+const OTHER_VIRTUAL_CAMERA = /virtual|obs|manycam|xsplit|snap camera|mmhmm/i
+
+// Le swap doit lire la webcam PHYSIQUE. Si le systeme renvoie par defaut la
+// camera virtuelle ChapCam (sa propre sortie), on obtiendrait une boucle video :
+// on la remplace par une vraie webcam, ou on refuse de demarrer.
+async function openPhysicalCamera(video: MediaTrackConstraints): Promise<MediaStream> {
+  const first = await navigator.mediaDevices.getUserMedia({ video })
+  const label = first.getVideoTracks()[0]?.label ?? ''
+  const isChapCam = CHAPCAM_VIRTUAL_CAMERA.test(label)
+  if (!isChapCam && !OTHER_VIRTUAL_CAMERA.test(label)) return first
+
+  const inputs = (await navigator.mediaDevices.enumerateDevices()).filter(
+    (d) => d.kind === 'videoinput' && d.deviceId && !CHAPCAM_VIRTUAL_CAMERA.test(d.label),
+  )
+  const physical = inputs.find((d) => !OTHER_VIRTUAL_CAMERA.test(d.label))
+  const replacement = physical ?? (isChapCam ? inputs[0] : undefined)
+
+  if (!replacement) {
+    if (!isChapCam) return first
+    first.getTracks().forEach((t) => t.stop())
+    const loopError = new Error('ChapCam Camera ne peut pas etre utilisee comme source.')
+    loopError.name = 'ChapCamLoopError'
+    throw loopError
+  }
+
+  first.getTracks().forEach((t) => t.stop())
+  return navigator.mediaDevices.getUserMedia({
+    video: { ...video, deviceId: { exact: replacement.deviceId } },
+  })
+}
+
 export function useLucy21() {
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -249,15 +281,15 @@ export function useLucy21() {
           // resolution "ideale" pour degrader proprement si la camera ne suit pas.
           const camWidth = useHd ? 1920 : 1280
           const camHeight = useHd ? 1080 : 720
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: camWidth },
-              height: { ideal: camHeight },
-              frameRate: { ideal: 30 },
-            },
+          stream = await openPhysicalCamera({
+            width: { ideal: camWidth },
+            height: { ideal: camHeight },
+            frameRate: { ideal: 30 },
           })
         } catch (camError: any) {
-          if (camError.name === 'NotAllowedError') {
+          if (camError.name === 'ChapCamLoopError') {
+            throw new Error('Aucune webcam physique detectee. ChapCam Camera ne peut pas servir de source : branche ou active ta webcam et reessaie.')
+          } else if (camError.name === 'NotAllowedError') {
             throw new Error('Acces camera refuse. Autorise ChapCam a acceder a ta camera dans les parametres du navigateur.')
           } else if (camError.name === 'NotFoundError') {
             throw new Error('Aucune camera detectee. Connecte une webcam et reessaie.')
