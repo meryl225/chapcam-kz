@@ -56,7 +56,7 @@ export function ReferenceHomepage() {
       <main className="relative mx-auto max-w-[760px] px-4 pb-28 sm:px-6 lg:max-w-7xl lg:max-w-[1440px] lg:pb-12">
         <header className="flex h-[76px] items-center justify-between gap-4 border-b border-[#d8e8f6]/80">
           <Link href="/" className="flex shrink-0 items-center gap-2.5" aria-label="ChapCam accueil">
-            <Image src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo%20chapcam-Zg2rUUnOrSECjteElTxoU1rcYfwF3i.jpg" alt="ChapCam" width={38} height={38} className="h-9 w-9 rounded-xl object-contain shadow-sm" />
+            <Image src="/images/chapcam-logo.png" alt="ChapCam" width={38} height={38} priority className="h-9 w-9 rounded-xl object-cover shadow-sm" />
             <span className="text-[21px] font-bold tracking-[-0.04em] text-[#10234d]">Chap<span className="text-[#159fea]">Cam</span></span>
           </Link>
           <nav className="hidden items-center gap-7 text-[13px] font-semibold text-[#536783] lg:flex" aria-label="Navigation principale">
