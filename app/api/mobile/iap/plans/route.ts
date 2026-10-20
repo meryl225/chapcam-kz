@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { APPLE_PRODUCTS, planForAppleProduct } from '@/lib/apple-iap'
-import { LIVESWAP_MINUTES_OFFERING, LIVESWAP_MINUTE_PACKS, REVENUECAT_OFFERING, TOKEN_PACKS } from '@/lib/revenuecat'
+import { androidProductIdForPlan, LIVESWAP_MINUTES_OFFERING, LIVESWAP_MINUTE_PACKS, REVENUECAT_OFFERING, TOKEN_PACKS } from '@/lib/revenuecat'
 
-// Contenu des 5 forfaits iOS (avantages, jetons, minutes). Les prix ne sont
-// volontairement PAS renvoyes : sur iOS ils viennent uniquement de StoreKit.
+// Contenu des 5 forfaits mobiles (avantages, jetons, minutes). Les prix ne sont
+// volontairement PAS renvoyes : ils viennent uniquement de StoreKit / Google Play.
 // Les mentions de filigrane sont retirees : aucun forfait iOS n'en affiche.
 const WATERMARK_PATTERN = /filigrane|logo chapcam/i
 
@@ -12,6 +12,7 @@ export async function GET() {
     const plan = planForAppleProduct(productId)!
     return {
       productId,
+      androidProductId: androidProductIdForPlan(plan.id),
       planId: plan.id,
       name: plan.name,
       jetons: plan.jetons,

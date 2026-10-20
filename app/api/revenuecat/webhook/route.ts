@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
 import { type NextRequest, NextResponse } from 'next/server'
-import { isChapcamUserId, syncRevenueCatCustomer } from '@/lib/revenuecat'
+import { isChapcamUserId, revokeRefundedPurchase, syncRevenueCatCustomer } from '@/lib/revenuecat'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,6 +45,9 @@ export async function POST(request: NextRequest) {
   if (!userId) return NextResponse.json({ ok: true, skipped: 'no_chapcam_user' })
 
   try {
+    if (event?.type === 'CANCELLATION' && event?.cancel_reason === 'CUSTOMER_SUPPORT') {
+      await revokeRefundedPurchase(userId, event)
+    }
     const result = await syncRevenueCatCustomer(userId, { source: `revenuecat_webhook:${event?.type ?? 'unknown'}` })
     console.info('[iap-diag] webhook applique', { userId, items: result.items, subscriptionActive: result.subscriptionActive })
     return NextResponse.json({ ok: true, items: result.items.length })

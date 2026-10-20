@@ -100,6 +100,47 @@ export async function creditJetonsOnce(userId: string, transactionId: string, am
   return { credited: false as const, balance: (await getJetonsBalance(userId)).balance }
 }
 
+let refundTableReady = false
+
+/**
+ * Retire une seule fois les jetons d'un achat rembourse par le store. Seuls les
+ * jetons reellement credites pour cette transaction sont retires, et le solde
+ * ne descend jamais sous zero (jetons deja depenses).
+ */
+export async function revokeJetonsOnce(transactionId: string, meta?: Record<string, unknown>) {
+  if (!refundTableReady) {
+    await sql`
+      CREATE TABLE IF NOT EXISTS jetons_iap_refunds (
+        transaction_id text PRIMARY KEY,
+        user_id text NOT NULL,
+        jetons integer NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now()
+      )
+    `
+    refundTableReady = true
+  }
+  const metaJson = JSON.stringify({ ...meta, transactionId })
+  const rows = await sql`
+    WITH credit AS (
+      SELECT transaction_id, user_id, jetons FROM jetons_iap_credits WHERE transaction_id = ${transactionId}
+    ), claim AS (
+      INSERT INTO jetons_iap_refunds (transaction_id, user_id, jetons)
+      SELECT transaction_id, user_id, jetons FROM credit
+      ON CONFLICT (transaction_id) DO NOTHING
+      RETURNING user_id, jetons
+    ), wallet AS (
+      UPDATE jetons_wallets w
+      SET balance = GREATEST(0, w.balance - c.jetons), updated_at = now()
+      FROM claim c WHERE w.user_id = c.user_id
+      RETURNING w.user_id, w.balance, c.jetons
+    )
+    INSERT INTO jetons_ledger (user_id, amount, balance_after, kind, meta)
+    SELECT user_id, -jetons, balance, 'refund', ${metaJson} FROM wallet
+    RETURNING user_id, balance_after
+  ` as Array<{ user_id: string; balance_after: number }>
+  return rows[0] ? { revoked: true as const, userId: rows[0].user_id, balance: Number(rows[0].balance_after) } : { revoked: false as const }
+}
+
 export const WELCOME_BONUS_JETONS = 5
 // Only accounts created from the launch of the offer qualify: existing users
 // were never promised this bonus and must not receive it retroactively.
