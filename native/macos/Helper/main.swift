@@ -61,7 +61,8 @@ func uid(of device: CMIOObjectID) -> String? {
 // Command-line tools have no main run loop serviced by AppKit: without this,
 // CoreMediaIO may never deliver the device list published by camera extensions.
 func useInternalCMIOThread() {
-    var addr = address(kCMIOHardwarePropertyRunLoop)
+    // kCMIOHardwarePropertyRunLoop ('rnlp') is not exported to Swift.
+    var addr = address(0x726E_6C70)
     var runLoop: CFRunLoop? = nil
     let status = CMIOObjectSetPropertyData(
         CMIOObjectID(kCMIOObjectSystemObject), &addr, 0, nil,
