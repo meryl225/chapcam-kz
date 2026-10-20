@@ -2,6 +2,10 @@ import CoreMediaIO
 import CoreVideo
 import Foundation
 import IOKit.audio
+import os
+
+// Read by the app with: log show --predicate 'subsystem == "com.chapcam.desktop.camera-extension"'
+let vcamLog = Logger(subsystem: "com.chapcam.desktop.camera-extension", category: "provider")
 
 let kFrameRate = 30
 let kWidth: Int32 = 1280
@@ -84,7 +88,9 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
         do {
             try device.addStream(sourceStream.stream)
             try device.addStream(sinkStream.stream)
+            vcamLog.notice("Streams added (source + sink)")
         } catch {
+            vcamLog.fault("Failed to add streams: \(error.localizedDescription, privacy: .public)")
             fatalError("ChapCam Camera: failed to add streams: \(error.localizedDescription)")
         }
     }
@@ -332,13 +338,19 @@ final class ChapCamProviderSource: NSObject, CMIOExtensionProviderSource {
         deviceSource = ChapCamDeviceSource(localizedName: kDeviceName)
         do {
             try provider.addDevice(deviceSource.device)
+            vcamLog.notice("Device published: \(kDeviceName, privacy: .public)")
         } catch {
+            vcamLog.fault("Failed to add device: \(error.localizedDescription, privacy: .public)")
             fatalError("ChapCam Camera: failed to add device: \(error.localizedDescription)")
         }
     }
 
-    func connect(to client: CMIOExtensionClient) throws {}
-    func disconnect(from client: CMIOExtensionClient) {}
+    func connect(to client: CMIOExtensionClient) throws {
+        vcamLog.info("Client connected: pid \(client.pid, privacy: .public)")
+    }
+    func disconnect(from client: CMIOExtensionClient) {
+        vcamLog.info("Client disconnected: pid \(client.pid, privacy: .public)")
+    }
 
     var availableProperties: Set<CMIOExtensionProperty> { [.providerManufacturer] }
 

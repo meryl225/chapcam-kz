@@ -9,6 +9,8 @@ import CoreVideo
 import Foundation
 
 let deviceName = "ChapCam Camera"
+// Must match the deviceID declared in CameraExtension/Provider.swift.
+let deviceUID = "5F2B8E14-9C3A-4D7E-B1A6-2E4C8F0D9A37"
 
 func log(_ message: String) {
     FileHandle.standardError.write((message + "\n").data(using: .utf8)!)
@@ -44,6 +46,37 @@ func name(of object: CMIOObjectID) -> String? {
     return cf.takeRetainedValue() as String
 }
 
+func uid(of device: CMIOObjectID) -> String? {
+    var addr = address(kCMIODevicePropertyDeviceUID)
+    var value: Unmanaged<CFString>?
+    var used: UInt32 = 0
+    let size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+    let status = withUnsafeMutablePointer(to: &value) {
+        CMIOObjectGetPropertyData(device, &addr, 0, nil, size, &used, $0)
+    }
+    guard status == noErr, let cf = value else { return nil }
+    return cf.takeRetainedValue() as String
+}
+
+// Command-line tools have no main run loop serviced by AppKit: without this,
+// CoreMediaIO may never deliver the device list published by camera extensions.
+func useInternalCMIOThread() {
+    var addr = address(kCMIOHardwarePropertyRunLoop)
+    var runLoop: CFRunLoop? = nil
+    let status = CMIOObjectSetPropertyData(
+        CMIOObjectID(kCMIOObjectSystemObject), &addr, 0, nil,
+        UInt32(MemoryLayout<CFRunLoop?>.size), &runLoop)
+    if status != noErr { log("kCMIOHardwarePropertyRunLoop: \(status)") }
+}
+
+func deviceNames() -> [String] {
+    objectIDs(kCMIOHardwarePropertyDevices, of: CMIOObjectID(kCMIOObjectSystemObject)).map { name(of: $0) ?? "?" }
+}
+
+func isChapCam(_ device: CMIOObjectID) -> Bool {
+    name(of: device) == deviceName || uid(of: device)?.uppercased() == deviceUID
+}
+
 func direction(of stream: CMIOStreamID) -> UInt32? {
     var addr = address(kCMIOStreamPropertyDirection)
     var value: UInt32 = 0
@@ -56,7 +89,7 @@ func findCamera(timeout: TimeInterval) -> (device: CMIODeviceID, sink: CMIOStrea
     let deadline = Date().addingTimeInterval(timeout)
     repeat {
         for device in objectIDs(kCMIOHardwarePropertyDevices, of: CMIOObjectID(kCMIOObjectSystemObject))
-        where name(of: device) == deviceName {
+        where isChapCam(device) {
             let streams = objectIDs(kCMIODevicePropertyStreams, of: device)
             // Direction 1 = input to the device, i.e. the sink stream.
             if let sink = streams.first(where: { direction(of: $0) == 1 }) ?? (streams.count > 1 ? streams[1] : nil) {
@@ -151,10 +184,15 @@ func stream(width: Int, height: Int, fps: Int) -> Int32 {
     return 0
 }
 
+useInternalCMIOThread()
+
 let args = CommandLine.arguments
 switch args.count > 1 ? args[1] : "" {
 case "probe", "status":
-    exit(findCamera(timeout: 3) != nil ? 0 : 3)
+    // The extension is launched on demand by the system; give it time to publish.
+    let found = findCamera(timeout: 8) != nil
+    print("devices: \(deviceNames().joined(separator: " | "))")
+    exit(found ? 0 : 3)
 case "stream" where args.count >= 5:
     exit(stream(width: Int(args[2]) ?? 1280, height: Int(args[3]) ?? 720, fps: Int(args[4]) ?? 30))
 default:

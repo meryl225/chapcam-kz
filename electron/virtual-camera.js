@@ -12,7 +12,7 @@
  *        --stdin BGRA--> helper natif --> "ChapCam Camera" --> Zoom/Teams/Meet/OBS
  */
 
-const { ipcMain, app, BrowserWindow } = require('electron')
+const { ipcMain, app, BrowserWindow, systemPreferences } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { spawn, execFile } = require('child_process')
@@ -130,6 +130,55 @@ function readMacRegistration() {
       else if (state.includes('terminat') || state.includes('uninstall')) registration = 'not-installed'
       resolve({ registration, raw: lines.join('\n').replace(/\b[A-Z0-9]{10}\b/g, '<TEAM>') })
     })
+  })
+}
+
+// Verification independante du helper : liste des cameras vue par AVFoundation,
+// c'est-a-dire exactement ce que Zoom, Telegram, FaceTime... voient.
+function readAvFoundationCameras() {
+  return new Promise((resolve) => {
+    execFile('/usr/sbin/system_profiler', ['SPCameraDataType', '-json'], { timeout: 20000 }, (err, stdout) => {
+      if (err && !stdout) return resolve(null)
+      try {
+        const items = JSON.parse(String(stdout)).SPCameraDataType || []
+        resolve(items.map((item) => item._name).filter(Boolean))
+      } catch (_) {
+        resolve(null)
+      }
+    })
+  })
+}
+
+function isMacExtensionRunning() {
+  return new Promise((resolve) => {
+    execFile('/usr/bin/pgrep', ['-f', MAC_EXTENSION_ID], { timeout: 5000 }, (err, stdout) => {
+      resolve(!err && String(stdout).trim().length > 0)
+    })
+  })
+}
+
+function macCameraAccess() {
+  try {
+    return systemPreferences.getMediaAccessStatus('camera')
+  } catch (_) {
+    return 'unknown'
+  }
+}
+
+// Journaux systeme lies a l'extension (lancement, sandbox, CoreMediaIO, sysextd),
+// recopies dans virtual-camera.log pour le diagnostic.
+function collectMacSystemLogs() {
+  const predicate = [
+    `subsystem == "${MAC_EXTENSION_ID}"`,
+    `process CONTAINS "${MAC_EXTENSION_ID}"`,
+    `(eventMessage CONTAINS[c] "chapcam" AND (subsystem BEGINSWITH "com.apple.cmio" OR process == "sysextd" OR process == "kernel" OR process == "amfid" OR process == "registerassistantservice"))`,
+  ].join(' OR ')
+  return new Promise((resolve) => {
+    execFile('/usr/bin/log', ['show', '--last', '15m', '--style', 'compact', '--info', '--predicate', predicate],
+      { timeout: 45000, maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => {
+        const lines = String(stdout || '').split('\n').filter((l) => l.trim() && !l.startsWith('Timestamp'))
+        resolve(lines.length ? lines.slice(-200).join('\n') : err ? `log show indisponible: ${err.message}` : '(aucune entree)')
+      })
   })
 }
 
@@ -290,19 +339,64 @@ class VirtualCamera {
       return this._setMacState({ ...base, ...parts, status: 'move-to-applications', message: 'ChapCam doit etre dans le dossier Applications pour installer sa camera.' })
     }
 
+    // Sans autorisation camera, macOS refuse a ChapCam l'acces au flux d'entree
+    // de "ChapCam Camera" : on la demande une fois, ChapCam en a besoin de toute facon.
+    let cameraAccess = macCameraAccess()
+    if (cameraAccess === 'not-determined' && !this._macAccessAsked) {
+      this._macAccessAsked = true
+      try {
+        await systemPreferences.askForMediaAccess('camera')
+      } catch (_) {}
+      cameraAccess = macCameraAccess()
+    }
+
     const { registration, raw } = await readMacRegistration()
-    const { code } = await runHelper(helper, ['probe'])
-    const deviceVisible = code === 0
-    const state = { ...base, ...parts, registration, registrationRaw: raw, deviceVisible }
+    const probe = await runHelper(helper, ['probe'])
+    const cmioVisible = probe.code === 0
+    const cmioDevices = (probe.output.match(/devices: (.*)/) || [])[1] || ''
+    const avCameras = registration === 'activated' ? await readAvFoundationCameras() : null
+    const avVisible = !!avCameras && avCameras.includes(DEVICE_DESCRIPTION)
+    const extensionRunning = await isMacExtensionRunning()
+    const deviceVisible = cmioVisible
+    const state = {
+      ...base, ...parts, registration, registrationRaw: raw, deviceVisible,
+      cmioVisible, cmioDevices, avVisible, avCameras, extensionRunning, cameraAccess,
+    }
+    this._logMacDiagnostics(state)
 
     if (this._macActivating) return this._setMacState({ ...state, status: 'installing', message: 'Installation de la camera en cours...' })
     if (deviceVisible) return this._setMacState({ ...state, status: 'ready', message: '"ChapCam Camera" est disponible dans les applications video.' })
+    if (avVisible && cameraAccess === 'denied') {
+      return this._setMacState({ ...state, status: 'error', message: 'ChapCam Camera est visible pour macOS, mais ChapCam n\'a pas acces a la camera. Reglages Systeme > Confidentialite et securite > Camera : active ChapCam.' })
+    }
     if (this._macPendingReboot) return this._setMacState({ ...state, status: 'reboot-required', message: 'Redemarre ton Mac pour terminer l\'installation.' })
     if (registration === 'waiting-for-user') return this._setMacState({ ...state, status: 'needs-approval', message: `Autorisation macOS requise. ${macApprovalHint()}` })
     if (registration === 'disabled') return this._setMacState({ ...state, status: 'disabled', message: `Extension desactivee dans macOS. ${macApprovalHint()}` })
-    if (registration === 'activated') return this._setMacState({ ...state, status: 'activated', message: 'Extension activee, mais la camera n\'est pas encore visible. Si cela dure plus d\'une minute, redemarre le Mac.' })
+    if (registration === 'activated') {
+      const reason = avVisible
+        ? 'macOS expose bien ChapCam Camera, mais ChapCam ne parvient pas a s\'y connecter.'
+        : extensionRunning
+          ? 'L\'extension tourne mais ne publie pas encore la camera.'
+          : 'macOS n\'a pas lance l\'extension camera (voir le journal).'
+      return this._setMacState({ ...state, status: 'activated', message: `Extension activee. ${reason} Si cela dure plus d'une minute, redemarre le Mac.` })
+    }
     if (this._macError) return this._setMacState({ ...state, status: 'error', message: this._macError })
     return this._setMacState({ ...state, status: 'not-installed', message: 'Camera virtuelle pas encore activee.' })
+  }
+
+  _logMacDiagnostics(state) {
+    const summary = `registration=${state.registration} cmio=${state.cmioVisible} av=${state.avVisible} ` +
+      `extensionProcess=${state.extensionRunning} cameraAccess=${state.cameraAccess} ` +
+      `cmioDevices=[${state.cmioDevices}] avCameras=[${(state.avCameras || []).join(' | ')}]`
+    if (summary !== this._lastMacSummary) {
+      this._lastMacSummary = summary
+      log(`Diagnostic: ${summary}`)
+    }
+    // Extension enregistree mais camera absente : on recopie une fois les journaux systeme.
+    if (state.registration === 'activated' && !state.cmioVisible && !this._macSystemLogsCollected) {
+      this._macSystemLogsCollected = true
+      collectMacSystemLogs().then((text) => log(`Journaux systeme (15 dernieres minutes):\n${text}`))
+    }
   }
 
   _setMacState(state) {

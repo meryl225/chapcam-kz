@@ -30,7 +30,12 @@ function render(state) {
     `App : ${state.appPath || '?'}`,
     `Extension dans l’app : ${state.bundled ? 'oui' : 'non'} · helper : ${state.helper ? 'oui' : 'non'} · activateur : ${state.activator ? 'oui' : 'non'}`,
     `Enregistrement système : ${state.registration || '—'}`,
-    `Caméra visible (CoreMediaIO) : ${state.deviceVisible ? 'oui' : 'non'}`,
+    `Caméra visible (CoreMediaIO) : ${state.cmioVisible ?? state.deviceVisible ? 'oui' : 'non'}`,
+    state.avCameras ? `Caméra visible (AVFoundation, Zoom/Telegram) : ${state.avVisible ? 'oui' : 'non'}` : '',
+    state.extensionRunning !== undefined ? `Processus de l’extension actif : ${state.extensionRunning ? 'oui' : 'non'}` : '',
+    state.cameraAccess ? `Autorisation caméra de ChapCam : ${state.cameraAccess}` : '',
+    state.cmioDevices ? `Périphériques CoreMediaIO : ${state.cmioDevices}` : '',
+    state.avCameras && state.avCameras.length ? `Caméras macOS : ${state.avCameras.join(', ')}` : '',
     state.registrationRaw ? `systemextensionsctl :\n${state.registrationRaw}` : '',
     state.logPath ? `Journal : ${state.logPath}` : '',
   ].filter(Boolean).join('\n')
