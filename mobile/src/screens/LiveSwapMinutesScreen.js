@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, 
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { MINUTES_OFFERING_ID, MINUTE_PRODUCT_IDS, fetchIosCatalog } from '../lib/iap'
+import { IAP_SUPPORTED, IS_ANDROID, MINUTES_OFFERING_ID, MINUTE_PRODUCT_IDS, STORE, fetchIosCatalog, skuOf } from '../lib/iap'
 import {
   ensureRevenueCat,
   isCancelled,
@@ -56,7 +56,7 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
   const livePointsPerSecond = account.summary?.live_swap?.points_per_second || POINTS_PER_SECOND
 
   const load = useCallback(async () => {
-    if (Platform.OS !== 'ios') {
+    if (!IAP_SUPPORTED) {
       setState({ status: 'unsupported', packs: [], products: {} })
       return
     }
@@ -67,7 +67,7 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
         loadStoreProducts(MINUTE_PRODUCT_IDS, 'consumable', MINUTES_OFFERING_ID),
         fetchIosCatalog(),
       ])
-      const anyAvailable = catalog.minutePacks.some((pack) => products[pack.productId])
+      const anyAvailable = catalog.minutePacks.some((pack) => products[skuOf(pack)])
       setState({ status: anyAvailable ? 'ready' : 'unavailable', packs: catalog.minutePacks, products })
     } catch (error) {
       console.warn('[iap] Chargement des packs minutes impossible:', error?.message)
@@ -85,9 +85,9 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
   // Les minutes ne sont creditees qu'apres relecture serveur de l'achat Apple,
   // une seule fois par transaction ; le nombre de minutes est fixe par le serveur.
   const buy = async (pack) => {
-    const item = state.products[pack.productId]
+    const item = state.products[skuOf(pack)]
     if (!item || busySku || restoring) return
-    setBusySku(pack.productId)
+    setBusySku(skuOf(pack))
     let transactionId = null
     try {
       const purchase = await purchaseStoreItem(item)
@@ -98,20 +98,20 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
       Alert.alert('Paiement non effectué', purchaseErrorMessage(error))
       return
     }
-    const isThisPurchase = (i) => i.productId === pack.productId && (!transactionId || i.transactionId === `apple:${transactionId}`)
+    const isThisPurchase = (i) => i.productId === skuOf(pack) && (!transactionId || IS_ANDROID || i.transactionId === `${STORE.prefix}:${transactionId}`)
     try {
       const result = await syncPurchases('purchase', (body) => body.items.some(isThisPurchase))
       if (result.items.some(isThisPurchase)) {
         refreshAfterCredit()
         Alert.alert('Minutes ajoutées', `${pack.minutes} minutes Live Swap ont été ajoutées à ton solde.`)
       } else {
-        Alert.alert('Vérification en cours', 'Ton paiement Apple est enregistré. Tes minutes seront ajoutées dans quelques instants, ou via « Restaurer les achats ».')
+        Alert.alert('Vérification en cours', `Ton paiement ${STORE.name} est enregistré. Tes minutes seront ajoutées dans quelques instants, ou via « Restaurer les achats ».`)
       }
     } catch (error) {
       console.warn('[iap] Verification serveur impossible:', error?.message)
       Alert.alert(
         'Vérification en attente',
-        "Ton paiement Apple est enregistré, mais nous n'avons pas pu le vérifier. Tes minutes seront ajoutées automatiquement, ou via « Restaurer les achats ».",
+        `Ton paiement ${STORE.name} est enregistré, mais nous n'avons pas pu le vérifier. Tes minutes seront ajoutées automatiquement, ou via « Restaurer les achats ».`,
       )
     } finally {
       setBusySku(null)
@@ -167,17 +167,17 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
         {state.status === 'loading' ? (
           <View style={styles.centered}>
             <ActivityIndicator color={C.blue} />
-            <Text style={styles.muted}>Chargement des recharges App Store…</Text>
+            <Text style={styles.muted}>{`Chargement des recharges ${STORE.name}…`}</Text>
           </View>
         ) : state.status === 'ready' ? (
           <View style={styles.list}>
             {state.packs.map((pack) => {
-              const product = state.products[pack.productId]?.product
-              const busy = busySku === pack.productId
+              const product = state.products[skuOf(pack)]?.product
+              const busy = busySku === skuOf(pack)
               const disabled = !product || Boolean(busySku) || restoring
               return (
                 <Pressable
-                  key={pack.productId}
+                  key={skuOf(pack)}
                   accessibilityRole="button"
                   accessibilityLabel={product ? `Acheter ${pack.minutes} minutes Live Swap, ${product.priceString}` : `${pack.minutes} minutes indisponible`}
                   accessibilityState={{ disabled, busy }}
@@ -210,7 +210,7 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
             <Text style={styles.errorText}>
               {state.status === 'unsupported'
                 ? "L'achat de minutes est disponible dans l'app ChapCam sur iPhone."
-                : "Impossible de récupérer les recharges depuis l'App Store pour le moment. Vérifie ta connexion et réessaie."}
+                : `Impossible de récupérer les recharges depuis ${STORE.name} pour le moment. Vérifie ta connexion et réessaie.`}
             </Text>
             {state.status !== 'unsupported' ? (
               <Pressable accessibilityRole="button" onPress={load} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
@@ -221,7 +221,7 @@ export function LiveSwapMinutesScreen({ user, onBack, onPurchased }) {
         )}
 
         <Text style={styles.legal}>
-          Achat unique débité sur ton compte Apple à la confirmation. Les minutes sont ajoutées à ton compte ChapCam dès que l'achat est validé.
+          {`Achat unique débité sur ton ${STORE.account} à la confirmation. Les minutes sont ajoutées à ton compte ChapCam dès que l'achat est validé.`}
         </Text>
 
         <Pressable

@@ -3,7 +3,7 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, 
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { IOS_PRODUCT_IDS, TOKEN_PRODUCT_IDS, fetchIosCatalog } from '../lib/iap'
+import { IAP_SUPPORTED, IS_ANDROID, STORE, TOKEN_PRODUCT_IDS, fetchIosCatalog, skuOf } from '../lib/iap'
 import {
   ensureRevenueCat,
   isCancelled,
@@ -31,7 +31,7 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
   onPurchasedRef.current = onPurchased
 
   const load = useCallback(async () => {
-    if (Platform.OS !== 'ios') {
+    if (!IAP_SUPPORTED) {
       setState({ status: 'unsupported', packs: [], products: {} })
       return
     }
@@ -42,7 +42,7 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
         loadStoreProducts(TOKEN_PRODUCT_IDS, 'consumable'),
         fetchIosCatalog(),
       ])
-      const anyAvailable = catalog.tokenPacks.some((pack) => products[pack.productId])
+      const anyAvailable = catalog.tokenPacks.some((pack) => products[skuOf(pack)])
       setState({ status: anyAvailable ? 'ready' : 'unavailable', packs: catalog.tokenPacks, products })
     } catch (error) {
       console.warn('[iap] Chargement des packs impossible:', error?.message)
@@ -60,9 +60,9 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
   // Les jetons ne sont credites qu'apres relecture serveur de l'achat Apple,
   // une seule fois par transaction.
   const buy = async (pack) => {
-    const item = state.products[pack.productId]
+    const item = state.products[skuOf(pack)]
     if (!item || busySku || restoring) return
-    setBusySku(pack.productId)
+    setBusySku(skuOf(pack))
     let transactionId = null
     try {
       const purchase = await purchaseStoreItem(item)
@@ -73,20 +73,20 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
       Alert.alert('Achat impossible', 'Réessaie dans quelques instants.')
       return
     }
-    const isThisPurchase = (i) => i.productId === pack.productId && (!transactionId || i.transactionId === `apple:${transactionId}`)
+    const isThisPurchase = (i) => i.productId === skuOf(pack) && (!transactionId || IS_ANDROID || i.transactionId === `${STORE.prefix}:${transactionId}`)
     try {
       const result = await syncPurchases('purchase', (body) => body.items.some(isThisPurchase))
       if (result.items.some(isThisPurchase)) {
         refreshAfterCredit()
         Alert.alert('Jetons ajoutés', `${formatJetons(pack.jetons)} jetons ont été ajoutés à ton solde.`)
       } else {
-        Alert.alert('Vérification en cours', "Ton paiement Apple est enregistré. Tes jetons seront ajoutés dans quelques instants, ou via « Restaurer les achats ».")
+        Alert.alert('Vérification en cours', `Ton paiement ${STORE.name} est enregistré. Tes jetons seront ajoutés dans quelques instants, ou via « Restaurer les achats ».`)
       }
     } catch (error) {
       console.warn('[iap] Verification serveur impossible:', error?.message)
       Alert.alert(
         'Vérification en attente',
-        "Ton paiement Apple est enregistré, mais nous n'avons pas pu le vérifier. Tes jetons seront ajoutés automatiquement, ou via « Restaurer les achats ».",
+        `Ton paiement ${STORE.name} est enregistré, mais nous n'avons pas pu le vérifier. Tes jetons seront ajoutés automatiquement, ou via « Restaurer les achats ».`,
       )
     } finally {
       setBusySku(null)
@@ -140,17 +140,17 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
         {state.status === 'loading' ? (
           <View style={styles.centered}>
             <ActivityIndicator color={C.blue} />
-            <Text style={styles.muted}>Chargement des packs App Store…</Text>
+            <Text style={styles.muted}>{`Chargement des packs ${STORE.name}…`}</Text>
           </View>
         ) : state.status === 'ready' ? (
           <View style={styles.grid}>
             {state.packs.map((pack) => {
-              const product = state.products[pack.productId]?.product
-              const busy = busySku === pack.productId
+              const product = state.products[skuOf(pack)]?.product
+              const busy = busySku === skuOf(pack)
               const disabled = !product || Boolean(busySku) || restoring
               return (
                 <Pressable
-                  key={pack.productId}
+                  key={skuOf(pack)}
                   accessibilityRole="button"
                   accessibilityLabel={product ? `Acheter ${pack.jetons} jetons, ${product.priceString}` : `${pack.jetons} jetons indisponible`}
                   accessibilityState={{ disabled, busy }}
@@ -181,7 +181,7 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
             <Text style={styles.errorText}>
               {state.status === 'unsupported'
                 ? "L'achat de jetons est disponible dans l'app ChapCam sur iPhone."
-                : "Impossible de récupérer les packs depuis l'App Store pour le moment. Vérifie ta connexion et réessaie."}
+                : `Impossible de récupérer les packs depuis ${STORE.name} pour le moment. Vérifie ta connexion et réessaie.`}
             </Text>
             {state.status !== 'unsupported' ? (
               <Pressable accessibilityRole="button" onPress={load} style={({ pressed }) => [styles.retry, pressed && styles.pressed]}>
@@ -192,7 +192,7 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
         )}
 
         <Text style={styles.legal}>
-          Achat unique débité sur ton compte Apple à la confirmation. Les jetons sont ajoutés à ton compte ChapCam dès que l'achat est validé.
+          {`Achat unique débité sur ton ${STORE.account} à la confirmation. Les jetons sont ajoutés à ton compte ChapCam dès que l'achat est validé.`}
         </Text>
 
         <Pressable

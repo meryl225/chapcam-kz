@@ -1,19 +1,25 @@
 import { Platform } from 'react-native'
 import Constants from 'expo-constants'
-import Purchases, { PRODUCT_CATEGORY, PURCHASES_ERROR_CODE } from 'react-native-purchases'
+import Purchases, { PRODUCT_CATEGORY, PURCHASES_ERROR_CODE, STORE_REPLACEMENT_MODE } from 'react-native-purchases'
 import { apiJson } from './api'
+import { IAP_SUPPORTED, IS_ANDROID, STORE } from './iap'
 
 export const OFFERING_ID = 'sale'
 
-const API_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? Constants.expoConfig?.extra?.revenueCatIosApiKey
+const extra = Constants.expoConfig?.extra ?? {}
+// Cle publique RevenueCat propre a chaque store : appl_… pour iOS, goog_… pour Android.
+const API_KEY = Platform.OS === 'android'
+  ? process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY ?? extra.revenueCatAndroidApiKey
+  : process.env.EXPO_PUBLIC_REVENUECAT_IOS_API_KEY ?? extra.revenueCatIosApiKey
+const KEY_NAME = Platform.OS === 'android' ? 'EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY' : 'EXPO_PUBLIC_REVENUECAT_IOS_API_KEY'
 
 let configuredFor = null
 
 // RevenueCat est identifie par l'id Supabase : le serveur relit les achats de
 // ce meme identifiant, donc un achat ne peut etre credite qu'a ce compte.
 export async function ensureRevenueCat(userId) {
-  if (Platform.OS !== 'ios') throw new Error('unsupported')
-  if (!API_KEY) throw new Error('Clé RevenueCat iOS manquante (EXPO_PUBLIC_REVENUECAT_IOS_API_KEY)')
+  if (!IAP_SUPPORTED) throw new Error('unsupported')
+  if (!API_KEY) throw new Error(`Clé RevenueCat ${Platform.OS} manquante (${KEY_NAME})`)
   if (configuredFor === null) {
     Purchases.configure({ apiKey: API_KEY, appUserID: userId })
     configuredFor = userId
@@ -52,17 +58,36 @@ export async function loadStoreProducts(productIds, category, offeringId = OFFER
   }
   const missing = productIds.filter((id) => !byId[id])
   if (missing.length > 0) {
+    // Google Play attend l'id d'abonnement seul et renvoie « abonnement:offre de base ».
+    const query = IS_ANDROID ? [...new Set(missing.map((id) => id.split(':')[0]))] : missing
     const products = await Purchases.getProducts(
-      missing,
+      query,
       category === 'subs' ? PRODUCT_CATEGORY.SUBSCRIPTION : PRODUCT_CATEGORY.NON_SUBSCRIPTION,
     )
-    for (const product of products ?? []) byId[product.identifier] = { product, pkg: null }
+    for (const product of products ?? []) {
+      if (missing.includes(product.identifier)) byId[product.identifier] = { product, pkg: null }
+    }
   }
   return byId
 }
 
-export async function purchaseStoreItem(item) {
-  return item.pkg ? Purchases.purchasePackage(item.pkg) : Purchases.purchaseStoreProduct(item.product)
+// Sur Google Play, un nouvel abonnement remplace celui deja actif (changement
+// de forfait) au lieu d'en facturer un second en parallele.
+async function googleChangeInfo(productIdentifier, subscriptionIds) {
+  if (!IS_ANDROID || !subscriptionIds) return null
+  const info = await Purchases.getCustomerInfo()
+  const target = productIdentifier.split(':')[0]
+  const current = (info?.activeSubscriptions ?? [])
+    .map((id) => id.split(':')[0])
+    .find((id) => id !== target && subscriptionIds.some((s) => s.split(':')[0] === id))
+  return current ? { oldProductIdentifier: current, replacementMode: STORE_REPLACEMENT_MODE.WITHOUT_PRORATION } : null
+}
+
+export async function purchaseStoreItem(item, subscriptionIds) {
+  const change = await googleChangeInfo(item.product.identifier, subscriptionIds)
+  return item.pkg
+    ? Purchases.purchasePackage(item.pkg, null, change)
+    : Purchases.purchaseStoreProduct(item.product, change)
 }
 
 export const restoreRevenueCat = () => Purchases.restorePurchases()
@@ -77,15 +102,17 @@ export const isCancelled = (error) =>
 export function purchaseErrorMessage(error) {
   switch (error?.code) {
     case PURCHASES_ERROR_CODE.NETWORK_ERROR:
-      return "Connexion à l'App Store impossible. Vérifie ta connexion et réessaie."
+      return `Connexion à ${STORE.name} impossible. Vérifie ta connexion et réessaie.`
     case PURCHASES_ERROR_CODE.PRODUCT_NOT_AVAILABLE_FOR_PURCHASE_ERROR:
-      return "Ce produit n'est pas disponible sur l'App Store pour le moment."
+      return `Ce produit n'est pas disponible sur ${STORE.name} pour le moment.`
     case PURCHASES_ERROR_CODE.PAYMENT_PENDING_ERROR:
-      return "Le paiement est en attente d'approbation. Il sera validé automatiquement dès qu'Apple le confirme."
+      return `Le paiement est en attente d'approbation. Il sera validé automatiquement dès que ${STORE.company} le confirme.`
     case PURCHASES_ERROR_CODE.PURCHASE_NOT_ALLOWED_ERROR:
       return "Les achats intégrés ne sont pas autorisés sur cet appareil."
+    case PURCHASES_ERROR_CODE.PRODUCT_ALREADY_PURCHASED_ERROR:
+      return `Ce produit est déjà actif sur ton ${STORE.account}. Utilise « Restaurer les achats ».`
     default:
-      return "Le paiement Apple n'a pas abouti. Aucun montant n'a été débité si l'achat n'a pas été confirmé."
+      return `Le paiement ${STORE.name} n'a pas abouti. Aucun montant n'a été débité si l'achat n'a pas été confirmé.`
   }
 }
 
