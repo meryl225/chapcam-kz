@@ -153,7 +153,7 @@ func stream(width: Int, height: Int, fps: Int) -> Int32 {
 
 let args = CommandLine.arguments
 switch args.count > 1 ? args[1] : "" {
-case "probe":
+case "probe", "status":
     exit(findCamera(timeout: 3) != nil ? 0 : 3)
 case "stream" where args.count >= 5:
     exit(stream(width: Int(args[2]) ?? 1280, height: Int(args[3]) ?? 720, fps: Int(args[4]) ?? 30))

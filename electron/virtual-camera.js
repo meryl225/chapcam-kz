@@ -291,7 +291,7 @@ class VirtualCamera {
     }
 
     const { registration, raw } = await readMacRegistration()
-    const { code } = await runHelper(helper, ['status'])
+    const { code } = await runHelper(helper, ['probe'])
     const deviceVisible = code === 0
     const state = { ...base, ...parts, registration, registrationRaw: raw, deviceVisible }
 
