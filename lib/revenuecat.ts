@@ -2,15 +2,16 @@ import 'server-only'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { activateSubscription, creditTopupPoints, logPaymentEvent } from '@/lib/fulfillment'
 import { recordTopupCredit } from '@/lib/liveswap-topup'
-import { creditJetonsOnce } from '@/lib/jetons'
+import { creditJetonsOnce, revokeJetonsOnce } from '@/lib/jetons'
 import { APPLE_PRODUCTS, deactivateAppleSubscription, emailFor, extendAppleSubscription, planForAppleProduct } from '@/lib/apple-iap'
+import { getPlan, type PlanConfig, type PlanId } from '@/lib/plans'
 
 // ============================================================
-// Achats iOS via RevenueCat.
+// Achats iOS (App Store) et Android (Google Play) via RevenueCat.
 //
 // Le client ne fait jamais foi : apres un achat, une restauration ou un
 // webhook, le serveur relit le client RevenueCat avec la cle secrete
-// (REVENUECAT_SECRET_API_KEY) et ne credite que ce qu'Apple a confirme.
+// (REVENUECAT_SECRET_API_KEY) et ne credite que ce que le store a confirme.
 // app_user_id RevenueCat = id Supabase de l'utilisateur ChapCam.
 // ============================================================
 
@@ -18,22 +19,49 @@ type Admin = ReturnType<typeof createAdminClient>
 
 export const REVENUECAT_OFFERING = 'sale'
 
-export const TOKEN_PACKS: { productId: string; jetons: number }[] = [
-  { productId: 'com.chapcam.app.tokens.100', jetons: 100 },
-  { productId: 'com.chapcam.app.tokens.250', jetons: 250 },
-  { productId: 'com.chapcam.app.tokens.500', jetons: 500 },
-  { productId: 'com.chapcam.app.tokens.1000', jetons: 1000 },
+export type Store = 'app_store' | 'play_store'
+const STORE_PREFIX: Record<Store, string> = { app_store: 'apple', play_store: 'google' }
+
+// productId = identifiant App Store, androidProductId = identifiant Google Play.
+// Les deux catalogues sont distincts : aucun identifiant Apple n'est reutilise.
+export const TOKEN_PACKS: { productId: string; androidProductId: string; jetons: number }[] = [
+  { productId: 'com.chapcam.app.tokens.100', androidProductId: 'chapcam_tokens_100', jetons: 100 },
+  { productId: 'com.chapcam.app.tokens.250', androidProductId: 'chapcam_tokens_250', jetons: 250 },
+  { productId: 'com.chapcam.app.tokens.500', androidProductId: 'chapcam_tokens_500', jetons: 500 },
+  { productId: 'com.chapcam.app.tokens.1000', androidProductId: 'chapcam_tokens_1000', jetons: 1000 },
 ]
 
-// Recharges Live Swap (consommables Apple, offering RevenueCat dedie). Le
+// Recharges Live Swap (consommables, offering RevenueCat dedie). Le
 // nombre de minutes vient UNIQUEMENT de ce tableau, jamais du client.
 export const LIVESWAP_MINUTES_OFFERING = 'liveswap_minutes'
 const LIVESWAP_POINTS_PER_SECOND = 2
 
-export const LIVESWAP_MINUTE_PACKS: { productId: string; packageId: string; minutes: number }[] = [
-  { productId: 'com.chapcam.app.liveswap.minutes.5', packageId: 'liveswap_5min', minutes: 5 },
-  { productId: 'com.chapcam.app.liveswap.minutes.15', packageId: 'liveswap_15min', minutes: 15 },
-  { productId: 'com.chapcam.app.liveswap.minutes.25', packageId: 'liveswap_25min', minutes: 25 },
+export const LIVESWAP_MINUTE_PACKS: { productId: string; androidProductId: string; packageId: string; minutes: number }[] = [
+  { productId: 'com.chapcam.app.liveswap.minutes.5', androidProductId: 'chapcam_liveswap_5min', packageId: 'liveswap_5min', minutes: 5 },
+  { productId: 'com.chapcam.app.liveswap.minutes.15', androidProductId: 'chapcam_liveswap_15min', packageId: 'liveswap_15min', minutes: 15 },
+  { productId: 'com.chapcam.app.liveswap.minutes.25', androidProductId: 'chapcam_liveswap_25min', packageId: 'liveswap_25min', minutes: 25 },
+]
+
+// Abonnements Google Play : un abonnement par forfait, une offre de base
+// (base plan) par periode. Cote SDK Android l'identifiant vaut « abonnement:base ».
+export const GOOGLE_PLAY_SUBSCRIPTIONS: { subscriptionId: string; basePlanId: string; planId: PlanId }[] = [
+  { subscriptionId: 'chapcam_testeur', basePlanId: 'weekly', planId: 'testeur' },
+  { subscriptionId: 'chapcam_starter', basePlanId: 'monthly', planId: 'starter' },
+  { subscriptionId: 'chapcam_premium', basePlanId: 'quarterly', planId: 'premium' },
+  { subscriptionId: 'chapcam_vippro', basePlanId: 'yearly', planId: 'ultimate' },
+  { subscriptionId: 'chapcam_vipdebout', basePlanId: 'yearly', planId: 'vipdebout' },
+]
+
+export const androidSubscriptionProductId = (g: { subscriptionId: string; basePlanId: string }) => `${g.subscriptionId}:${g.basePlanId}`
+
+export function androidProductIdForPlan(planId: string) {
+  const entry = GOOGLE_PLAY_SUBSCRIPTIONS.find((g) => g.planId === planId)
+  return entry ? androidSubscriptionProductId(entry) : null
+}
+
+const storeProducts = (pack: { productId: string; androidProductId: string }): [string, Store][] => [
+  [pack.productId, 'app_store'],
+  [pack.androidProductId, 'play_store'],
 ]
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -47,6 +75,7 @@ interface RcSubscription {
   is_sandbox: boolean
   refunded_at?: string | null
   store_transaction_id?: string | null
+  product_plan_identifier?: string | null
 }
 
 interface RcNonSubscription {
@@ -82,6 +111,7 @@ export interface SyncItem {
   productId: string
   transactionId: string
   status: SyncStatus
+  store: Store
   jetons?: number
   minutes?: number
   expiresAt?: string | null
@@ -94,8 +124,20 @@ export interface SyncResult {
   liveSwapPoints: number | null
 }
 
-const transactionKey = (productId: string, entry: { store_transaction_id?: string | null; purchase_date: string; id?: string }) =>
-  entry.store_transaction_id ? `apple:${entry.store_transaction_id}` : `rc:${entry.id ?? `${productId}:${entry.purchase_date}`}`
+// Les cles « apple: » existantes sont conservees telles quelles : changer leur
+// format recrediterait des achats iOS deja traites.
+export const transactionKey = (store: Store, productId: string, entry: { store_transaction_id?: string | null; purchase_date: string; id?: string }) =>
+  entry.store_transaction_id ? `${STORE_PREFIX[store]}:${entry.store_transaction_id}` : `rc:${entry.id ?? `${productId}:${entry.purchase_date}`}`
+
+// Abonnement Google Play dans l'API v1 : cle = id d'abonnement, offre de base
+// dans product_plan_identifier (ou cle « abonnement:base » selon la config).
+function googleSubscription(subscriptions: Record<string, RcSubscription>, g: { subscriptionId: string; basePlanId: string }) {
+  const combined = subscriptions[androidSubscriptionProductId(g)]
+  if (combined?.store === 'play_store') return combined
+  const sub = subscriptions[g.subscriptionId]
+  if (sub?.store !== 'play_store') return undefined
+  return !sub.product_plan_identifier || sub.product_plan_identifier === g.basePlanId ? sub : undefined
+}
 
 // Un abonnement Apple appartient au compte Apple, pas au compte ChapCam. Quand
 // un autre compte ChapCam se connecte sur le meme iPhone, RevenueCat peut lui
@@ -111,8 +153,9 @@ async function ownsSubscriptionLineage(
   planId: string,
   sub: RcSubscription,
   transactionToken: string,
+  store: Store,
 ): Promise<boolean> {
-  const lineage = `apple-owner:${productId}:${sub.original_purchase_date ?? sub.purchase_date}`
+  const lineage = `${STORE_PREFIX[store]}-owner:${productId}:${sub.original_purchase_date ?? sub.purchase_date}`
   const myToken = `${lineage}:${userId}`
   const firstOwner = async () => {
     const { data, error } = await admin
@@ -152,28 +195,39 @@ async function applySubscriptions(admin: Admin, userId: string, email: string, s
   let active = false
   const subscriptions = subscriber.subscriptions ?? {}
 
-  for (const { productId } of APPLE_PRODUCTS) {
-    const sub = subscriptions[productId]
-    const plan = planForAppleProduct(productId)
-    if (!sub || !plan || sub.store !== 'app_store') continue
-    const token = transactionKey(productId, sub)
+  const candidates: { productId: string; store: Store; sub: RcSubscription | undefined; plan: PlanConfig | null }[] = [
+    ...APPLE_PRODUCTS.map(({ productId }) => {
+      const sub = subscriptions[productId]
+      return { productId, store: 'app_store' as const, sub: sub?.store === 'app_store' ? sub : undefined, plan: planForAppleProduct(productId) }
+    }),
+    ...GOOGLE_PLAY_SUBSCRIPTIONS.map((g) => ({
+      productId: androidSubscriptionProductId(g),
+      store: 'play_store' as const,
+      sub: googleSubscription(subscriptions, g),
+      plan: getPlan(g.planId) ?? null,
+    })),
+  ]
+
+  for (const { productId, store, sub, plan } of candidates) {
+    if (!sub || !plan) continue
+    const token = transactionKey(store, productId, sub)
     const expiresMs = sub.expires_date ? Date.parse(sub.expires_date) : 0
     const logBase = { source, token, transactionId: token, email, productId: plan.id, amount: plan.price, creditKind: 'subscription', userLinked: true }
 
     if (sub.refunded_at) {
       await deactivateAppleSubscription(admin, userId, plan, expiresMs || null)
       await logPaymentEvent(admin, { ...logBase, status: 'revoked', failureReason: 'refunded' })
-      items.push({ productId, transactionId: token, status: 'revoked', expiresAt: sub.expires_date })
+      items.push({ productId, store, transactionId: token, status: 'revoked', expiresAt: sub.expires_date })
       continue
     }
     if (!expiresMs || expiresMs <= Date.now()) {
-      items.push({ productId, transactionId: token, status: 'expired', expiresAt: sub.expires_date })
+      items.push({ productId, store, transactionId: token, status: 'expired', expiresAt: sub.expires_date })
       continue
     }
 
-    if (!(await ownsSubscriptionLineage(admin, userId, email, productId, plan.id, sub, token))) {
+    if (!(await ownsSubscriptionLineage(admin, userId, email, productId, plan.id, sub, token, store))) {
       console.info('[iap-diag] abonnement rattache a un autre compte', { userId, productId, token })
-      items.push({ productId, transactionId: token, status: 'other_account', expiresAt: sub.expires_date })
+      items.push({ productId, store, transactionId: token, status: 'other_account', expiresAt: sub.expires_date })
       continue
     }
 
@@ -197,7 +251,7 @@ async function applySubscriptions(admin: Admin, userId: string, email: string, s
     if (claimErr) throw new Error(`processed_payments claim: ${claimErr.message}`)
     if (!claimed?.length) {
       console.info('[iap-diag] deja credite', { userId, productId, token })
-      items.push({ productId, transactionId: token, status: 'already', expiresAt: sub.expires_date })
+      items.push({ productId, store, transactionId: token, status: 'already', expiresAt: sub.expires_date })
       continue
     }
 
@@ -215,7 +269,7 @@ async function applySubscriptions(admin: Admin, userId: string, email: string, s
       await admin.from('processed_payments').update({ amount: 0 }).eq('token', token)
       console.info('[iap-diag] renouvellement sandbox prolonge sans credit', { userId, productId, token })
       await logPaymentEvent(admin, { ...logBase, source: `${source}:sandbox`, amount: 0, status: 'sandbox_renewal', credited: false })
-      items.push({ productId, transactionId: token, status: 'activated', expiresAt: sub.expires_date })
+      items.push({ productId, store, transactionId: token, status: 'activated', expiresAt: sub.expires_date })
       continue
     }
 
@@ -239,7 +293,7 @@ async function applySubscriptions(admin: Admin, userId: string, email: string, s
       throw error
     }
     await logPaymentEvent(admin, { ...logBase, status: 'completed', credited: true })
-    items.push({ productId, transactionId: token, status: 'activated', expiresAt: sub.expires_date })
+    items.push({ productId, store, transactionId: token, status: 'activated', expiresAt: sub.expires_date })
   }
 
   return { items, active }
@@ -251,13 +305,14 @@ async function applyTokenPacks(admin: Admin, userId: string, email: string, subs
   const purchases = subscriber.non_subscriptions ?? {}
 
   for (const pack of TOKEN_PACKS) {
-    for (const entry of purchases[pack.productId] ?? []) {
-      if (entry.store !== 'app_store') continue
-      const token = transactionKey(pack.productId, entry)
+    for (const [productId, store] of storeProducts(pack)) {
+    for (const entry of purchases[productId] ?? []) {
+      if (entry.store !== store) continue
+      const token = transactionKey(store, productId, entry)
       const result = await creditJetonsOnce(userId, token, pack.jetons, {
         source,
-        productId: pack.productId,
-        store: 'app_store',
+        productId,
+        store,
         sandbox: entry.is_sandbox,
       })
       balance = result.balance
@@ -267,7 +322,7 @@ async function applyTokenPacks(admin: Admin, userId: string, email: string, subs
           token,
           transactionId: token,
           email,
-          productId: pack.productId,
+          productId,
           amount: 0,
           creditKind: 'jetons',
           userLinked: true,
@@ -275,7 +330,8 @@ async function applyTokenPacks(admin: Admin, userId: string, email: string, subs
           credited: true,
         })
       }
-      items.push({ productId: pack.productId, transactionId: token, status: result.credited ? 'credited' : 'already', jetons: pack.jetons })
+      items.push({ productId, store, transactionId: token, status: result.credited ? 'credited' : 'already', jetons: pack.jetons })
+    }
     }
   }
 
@@ -296,14 +352,15 @@ async function applyMinutePacks(admin: Admin, userId: string, email: string, sub
   const purchases = subscriber.non_subscriptions ?? {}
 
   for (const pack of LIVESWAP_MINUTE_PACKS) {
-    for (const entry of purchases[pack.productId] ?? []) {
-      if (entry.store !== 'app_store') continue
-      const token = transactionKey(pack.productId, entry)
+    for (const [productId, store] of storeProducts(pack)) {
+    for (const entry of purchases[productId] ?? []) {
+      if (entry.store !== store) continue
+      const token = transactionKey(store, productId, entry)
       const packPoints = pack.minutes * 60 * LIVESWAP_POINTS_PER_SECOND
 
       const { error: insertErr } = await admin
         .from('processed_payments')
-        .insert({ token, email, product_id: pack.productId, amount: 0, credited: false })
+        .insert({ token, email, product_id: productId, amount: 0, credited: false })
       if (insertErr && insertErr.code !== '23505') throw new Error(`processed_payments insert: ${insertErr.message}`)
       const { data: claimed, error: claimErr } = await admin
         .from('processed_payments')
@@ -313,7 +370,7 @@ async function applyMinutePacks(admin: Admin, userId: string, email: string, sub
         .select('token')
       if (claimErr) throw new Error(`processed_payments claim: ${claimErr.message}`)
       if (!claimed?.length) {
-        items.push({ productId: pack.productId, transactionId: token, status: 'already', minutes: pack.minutes })
+        items.push({ productId, store, transactionId: token, status: 'already', minutes: pack.minutes })
         continue
       }
 
@@ -321,14 +378,14 @@ async function applyMinutePacks(admin: Admin, userId: string, email: string, sub
         const before = await readLiveSwapPoints(admin, userId)
         // Part non expirable enregistree avant le solde : idempotente par token,
         // un nouvel essai apres un echec Supabase ne la double donc pas.
-        await recordTopupCredit(token, userId, pack.productId, packPoints)
+        await recordTopupCredit(token, userId, productId, packPoints)
         await creditTopupPoints(admin, userId, email, packPoints)
         points = await readLiveSwapPoints(admin, userId)
         if (points < before + packPoints) throw new Error(`minutes non enregistrees (avant ${before}, apres ${points})`)
-        console.info('[iap-diag] minutes Live Swap creditees', { userId, productId: pack.productId, token, minutes: pack.minutes, points, source })
+        console.info('[iap-diag] minutes Live Swap creditees', { userId, productId: productId, token, minutes: pack.minutes, points, source })
       } catch (error) {
         await admin.from('processed_payments').update({ credited: false }).eq('token', token)
-        console.error('[iap-diag] credit minutes echoue', { userId, productId: pack.productId, token, error: (error as Error).message })
+        console.error('[iap-diag] credit minutes echoue', { userId, productId: productId, token, error: (error as Error).message })
         throw error
       }
       await logPaymentEvent(admin, {
@@ -336,18 +393,57 @@ async function applyMinutePacks(admin: Admin, userId: string, email: string, sub
         token,
         transactionId: token,
         email,
-        productId: pack.productId,
+        productId: productId,
         amount: 0,
         creditKind: 'minutes',
         userLinked: true,
         status: 'completed',
         credited: true,
       })
-      items.push({ productId: pack.productId, transactionId: token, status: 'credited', minutes: pack.minutes })
+      items.push({ productId, store, transactionId: token, status: 'credited', minutes: pack.minutes })
+    }
     }
   }
 
   return { items, points }
+}
+
+// Remboursement d'un achat unique (jetons ou minutes), signale par le webhook
+// RevenueCat CANCELLATION avec cancel_reason CUSTOMER_SUPPORT. Les jetons
+// credites pour cette transaction sont retires une seule fois ; les minutes
+// Live Swap remboursees sont journalisees pour traitement manuel.
+export async function revokeRefundedPurchase(userId: string, event: { store?: string; product_id?: string; transaction_id?: string; type?: string }) {
+  const store = event.store === 'PLAY_STORE' ? 'play_store' : event.store === 'APP_STORE' ? 'app_store' : null
+  if (!store || !event.product_id || !event.transaction_id) return { handled: false as const }
+  const token = `${STORE_PREFIX[store]}:${event.transaction_id}`
+  const tokenPack = TOKEN_PACKS.find((p) => p.productId === event.product_id || p.androidProductId === event.product_id)
+  const minutePack = LIVESWAP_MINUTE_PACKS.find((p) => p.productId === event.product_id || p.androidProductId === event.product_id)
+  if (!tokenPack && !minutePack) return { handled: false as const }
+
+  const admin = createAdminClient()
+  const email = await emailFor(admin, userId, null)
+  if (tokenPack) {
+    const result = await revokeJetonsOnce(token, { source: 'revenuecat_webhook:refund', productId: event.product_id, store })
+    if (result.revoked && result.userId !== userId) {
+      console.warn('[iap-diag] remboursement sur un autre compte que l acheteur', { token, eventUser: userId, creditedUser: result.userId })
+    }
+    console.info('[iap-diag] jetons rembourses', { userId, token, revoked: result.revoked })
+  } else {
+    console.warn('[iap-diag] minutes Live Swap remboursees, a retirer manuellement', { userId, token, minutes: minutePack!.minutes })
+  }
+  await logPaymentEvent(admin, {
+    source: 'revenuecat_webhook:refund',
+    token,
+    transactionId: token,
+    email,
+    productId: event.product_id,
+    amount: 0,
+    creditKind: tokenPack ? 'jetons' : 'minutes',
+    userLinked: true,
+    status: 'revoked',
+    failureReason: 'refunded',
+  })
+  return { handled: true as const }
 }
 
 export async function syncRevenueCatCustomer(userId: string, opts: { email?: string | null; source: string }): Promise<SyncResult> {

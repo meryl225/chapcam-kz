@@ -552,7 +552,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
         {!subscriptionLoading ? (
           <Pressable
             accessibilityRole="link"
-            accessibilityHint="Ouvre les forfaits ChapCam avec paiement Apple"
+            accessibilityHint={`Ouvre les forfaits ChapCam avec paiement ${Platform.OS === 'android' ? 'Google Play' : 'Apple'}`}
 onPress={onOpenPlans}
   style={({ pressed }) => [pressed && styles.pressed]}
   >

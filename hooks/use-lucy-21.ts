@@ -17,6 +17,44 @@ const POINTS_PER_SECOND = 2
 // Plus court = arret plus precis a l'epuisement, moins de points "perdus".
 const DEDUCTION_INTERVAL = 5
 
+const SWAP_PROMPT =
+  'Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.'
+
+// Output verification: both feeds are downscaled and compared every second.
+// A passthrough (Lucy returning the input untouched) stays below this mean
+// luma difference; a regenerated frame with another identity, a slight
+// pipeline lag and model texture never does. Kept deliberately low so a real
+// transformation is never flagged.
+const SAMPLE_W = 32
+const SAMPLE_H = 18
+const PASSTHROUGH_DIFF = 4
+const PASSTHROUGH_SECONDS = 8
+const VERIFIED_SECONDS = 3
+
+export type TransformStatus = 'idle' | 'verifying' | 'verified' | 'inactive'
+
+function sampleLuma(ctx: CanvasRenderingContext2D, el: HTMLVideoElement, flip: boolean) {
+  ctx.save()
+  if (flip) {
+    ctx.translate(SAMPLE_W, 0)
+    ctx.scale(-1, 1)
+  }
+  ctx.drawImage(el, 0, 0, SAMPLE_W, SAMPLE_H)
+  ctx.restore()
+  const { data } = ctx.getImageData(0, 0, SAMPLE_W, SAMPLE_H)
+  const luma = new Float32Array(SAMPLE_W * SAMPLE_H)
+  for (let i = 0; i < luma.length; i++) {
+    luma[i] = 0.299 * data[i * 4] + 0.587 * data[i * 4 + 1] + 0.114 * data[i * 4 + 2]
+  }
+  return luma
+}
+
+function meanAbsDiff(a: Float32Array, b: Float32Array) {
+  let sum = 0
+  for (let i = 0; i < a.length; i++) sum += Math.abs(a[i] - b[i])
+  return sum / a.length
+}
+
 export function useLucy21() {
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -69,6 +107,68 @@ export function useLucy21() {
   // Etat de la piste camera : true = active, false = coupee (pause camera).
   const [cameraEnabled, setCameraEnabled] = useState(true)
 
+  const [transformStatus, setTransformStatus] = useState<TransformStatus>('idle')
+  // Last measured raw-vs-output difference (0-255), shown in diagnostics.
+  const [outputDiff, setOutputDiff] = useState<number | null>(null)
+  const verifyTimerRef = useRef<number | null>(null)
+
+  const stopVerification = useCallback(() => {
+    if (verifyTimerRef.current) window.clearInterval(verifyTimerRef.current)
+    verifyTimerRef.current = null
+  }, [])
+
+  const startVerification = useCallback(() => {
+    stopVerification()
+    setTransformStatus('verifying')
+    setOutputDiff(null)
+    const canvas = document.createElement('canvas')
+    canvas.width = SAMPLE_W
+    canvas.height = SAMPLE_H
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return
+    let lowStreak = 0
+    let highStreak = 0
+    let flagged = false
+    verifyTimerRef.current = window.setInterval(() => {
+      const local = localVideoRef.current
+      const remote = remoteVideoRef.current
+      const ready = (v: HTMLVideoElement | null) =>
+        !!v && v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && v.videoWidth > 0
+      if (!ready(local) || !ready(remote)) return
+      const localTrack = (local!.srcObject as MediaStream | null)?.getVideoTracks()[0]
+      if (localTrack && !localTrack.enabled) return
+      try {
+        const raw = sampleLuma(ctx, local!, false)
+        const out = sampleLuma(ctx, remote!, false)
+        const outFlipped = sampleLuma(ctx, remote!, true)
+        const diff = Math.min(meanAbsDiff(raw, out), meanAbsDiff(raw, outFlipped))
+        setOutputDiff(Math.round(diff * 10) / 10)
+        if (diff < PASSTHROUGH_DIFF) {
+          lowStreak++
+          highStreak = 0
+        } else {
+          highStreak++
+          lowStreak = 0
+        }
+        if (lowStreak >= PASSTHROUGH_SECONDS && !flagged) {
+          flagged = true
+          console.warn('[ChapCam] Lucy output matches the raw input', { diff })
+          setTransformStatus('inactive')
+          setError(
+            "Transformation inactive : la caméra ChapCam renvoie la même image que la caméra réelle. L'avatar n'est pas appliqué par Lucy 2.5. Arrête puis relance le swap, ou choisis un autre avatar.",
+          )
+        } else if (highStreak >= VERIFIED_SECONDS) {
+          if (flagged) setError(null)
+          flagged = false
+          setTransformStatus('verified')
+        }
+      } catch (e) {
+        console.warn('[ChapCam] output verification unavailable:', e)
+        stopVerification()
+      }
+    }, 1000)
+  }, [stopVerification])
+
   useEffect(() => {
     return () => {
       disconnect()
@@ -86,6 +186,10 @@ export function useLucy21() {
     firstFrameRef.current = false
     avatarRefIdRef.current = null
     setCameraEnabled(true)
+    if (verifyTimerRef.current) window.clearInterval(verifyTimerRef.current)
+    verifyTimerRef.current = null
+    setTransformStatus('idle')
+    setOutputDiff(null)
 
     // 0. Si un enregistrement est en cours, on l'arrete proprement : le
     //    handler onstop du MediaRecorder finalisera le fichier telechargeable.
@@ -314,6 +418,7 @@ export function useLucy21() {
         setIsConnected(true)
         setIsConnecting(false)
         setConnectionState('connected')
+        startVerification()
       }
 
       const realtimeClient = await client.realtime.connect(stream, {
@@ -322,6 +427,13 @@ export function useLucy21() {
         // empêcher la création correcte de la room LiveKit.
         model: models.realtime('lucy-2.5'),
         mirror: 'auto',
+        // The reference avatar and prompt are part of the connection itself, so
+        // the very first frame Lucy returns is already transformed instead of a
+        // reference-less copy of the input.
+        initialState: {
+          prompt: { text: SWAP_PROMPT, enhance: true },
+          image: avatarImageRef,
+        },
 
         // Qualite reseau en direct : verdict lisse + facteur limitant.
         onConnectionQuality: (report: any) => {
@@ -408,11 +520,15 @@ export function useLucy21() {
 
       // Le SDK officiel applique l'état après l'établissement de la connexion.
       // Cela permet de conserver le flux de signalisation dans son cycle normal.
-      await realtimeClient.set({
-        prompt: 'Full body swap. Replace the person with the one in the reference image. Keep natural movements and expressions.',
-        enhance: true,
-        image: avatarImageRef,
-      })
+      try {
+        await realtimeClient.set({ prompt: SWAP_PROMPT, enhance: true, image: avatarImageRef })
+      } catch (setErr: any) {
+        console.error('[Lucy 2.5] avatar/prompt rejected by Decart:', setErr)
+        throw new Error(
+          "Lucy 2.5 a refusé l'avatar sélectionné : la transformation n'est pas active. " +
+            (setErr?.message ? `(${setErr.message})` : ''),
+        )
+      }
 
       // On NE facture PAS sur 'connected'/'generating' : ces etats signifient que
       // la connexion WebRTC est etablie, pas que l'image transformee est affichee.
@@ -655,6 +771,8 @@ export function useLucy21() {
     isConnected,
     isConnecting,
     connectionState,
+    transformStatus,
+    outputDiff,
     error,
     localVideoRef,
     remoteVideoRef,

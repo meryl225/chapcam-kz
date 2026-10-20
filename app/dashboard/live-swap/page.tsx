@@ -181,6 +181,8 @@ export default function DashboardPage() {
     startRecording,
     stopRecording,
     clearRecording,
+    transformStatus,
+    outputDiff,
   } = useLucy21()
 
   // Quand le swap n'est plus actif, on met en pause la video importee (qui
@@ -979,6 +981,25 @@ export default function DashboardPage() {
                 <span className="text-sm font-medium text-foreground">{t('Caméra ChapCam')}</span>
                 <div className="ml-auto flex items-center gap-2 text-[11px]">
                   {isConnected && (
+                    <span
+                      role="status"
+                      title={outputDiff !== null ? `${t('Écart caméra réelle / ChapCam')} : ${outputDiff}` : undefined}
+                      className={
+                        transformStatus === 'verified'
+                          ? 'rounded-full bg-primary/15 px-2 py-0.5 font-semibold text-primary'
+                          : transformStatus === 'inactive'
+                            ? 'rounded-full bg-red-500/15 px-2 py-0.5 font-semibold text-red-400'
+                            : 'rounded-full bg-muted-foreground/15 px-2 py-0.5 font-semibold text-foreground/60'
+                      }
+                    >
+                      {transformStatus === 'verified'
+                        ? t('Transformation vérifiée')
+                        : transformStatus === 'inactive'
+                          ? t('Transformation inactive')
+                          : t('Vérification…')}
+                    </span>
+                  )}
+                  {isConnected && (
                     <>
                       <span className="font-semibold text-primary">{stats.fps} FPS</span>
                       <span className="text-foreground/30">|</span>
@@ -1015,6 +1036,7 @@ export default function DashboardPage() {
                 <video
                   ref={remoteVideoRef}
                   data-chapcam-output="true"
+                  data-chapcam-live={isConnected && transformStatus !== 'inactive' ? 'true' : 'false'}
                   autoPlay
                   playsInline
                   muted

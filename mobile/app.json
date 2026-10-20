@@ -33,7 +33,7 @@
           "image": "./assets/chapcam-symbol.png",
           "imageWidth": 160,
           "resizeMode": "contain",
-          "backgroundColor": "#000000"
+          "backgroundColor": "#070c18"
         }
       ],
       "expo-web-browser",
@@ -72,8 +72,12 @@
         }
       ]
     ],
+    "owner": "chapcam",
     "extra": {
-      "websiteUrl": "https://chapcam.com"
+      "websiteUrl": "https://chapcam.com",
+      "eas": {
+        "projectId": "b3158703-031a-4e5f-b4bb-7bda01b63b29"
+      }
     }
   }
 }
