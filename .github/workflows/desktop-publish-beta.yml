@@ -1,0 +1,113 @@
+name: Desktop publish beta (GitHub Release)
+
+# Publishes the already-built and verified installers as a GitHub pre-release.
+# Nothing is rebuilt: artifacts are downloaded from the validated runs and
+# checked against their known SHA-256 before upload. Uses GITHUB_TOKEN only.
+#
+# Trigger: push a tag matching desktop-publish-* on the commit that contains
+# this file (workflow_dispatch only shows in the UI once the file is on main).
+
+on:
+  push:
+    tags: ["desktop-publish-*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: desktop-publish-beta
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: desktop-beta-1.0.0-1
+  RELEASE_TARGET: 41d8b53887c69e51c19b72871f7d2ec5098745bb
+  RELEASE_TITLE: "ChapCam Desktop 1.0.0 — version de test"
+  MAC_RUN_ID: "39027065439"
+  WINDOWS_RUN_ID: "38969032116"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download macOS Apple Silicon artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: chapcam-macos-arm64
+          run-id: ${{ env.MAC_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: dist/arm64
+
+      - name: Download macOS Intel artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: chapcam-macos-x64
+          run-id: ${{ env.MAC_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: dist/x64
+
+      - name: Download Windows x64 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: chapcam-windows-x64
+          run-id: ${{ env.WINDOWS_RUN_ID }}
+          github-token: ${{ github.token }}
+          path: dist/win-x64
+
+      - name: Verify SHA-256 of the validated installers
+        run: |
+          set -euo pipefail
+          ls -lR dist
+          cat > expected.sha256 <<'EOF'
+          f222e8cc259f8e2439c526b6ce2e79d09ac5babf42118d4d8c75abd944dfcbca  dist/arm64/ChapCam-1.0.0-arm64.dmg
+          bcf4732b9e4b8cd79d05256b60bbab1fe882972d89ee6675c3022f312c1d102e  dist/x64/ChapCam-1.0.0-x64.dmg
+          3ca717fefb9676c469862407312e664a2b35d1bfa113ec173d8073486bb13f9c  dist/win-x64/ChapCam-Setup-1.0.0-x64.exe
+          EOF
+          sed -i 's/^ *//' expected.sha256
+          sha256sum -c expected.sha256
+
+      - name: Refuse to overwrite an existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::error::La release $RELEASE_TAG existe déjà. Rien n'a été modifié."
+            exit 1
+          fi
+
+      - name: Create pre-release and upload installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cat > notes.md <<EOF
+          Version de test, non validée officiellement.
+
+          - macOS Apple Silicon et Intel : commit 41d8b53, run ${MAC_RUN_ID}, signé et notarisé.
+          - Windows 11 x64 : commit bccf1fa, run ${WINDOWS_RUN_ID}, NON signé (avertissement SmartScreen possible).
+
+          SHA-256 :
+          - ChapCam-1.0.0-arm64.dmg : f222e8cc259f8e2439c526b6ce2e79d09ac5babf42118d4d8c75abd944dfcbca
+          - ChapCam-1.0.0-x64.dmg : bcf4732b9e4b8cd79d05256b60bbab1fe882972d89ee6675c3022f312c1d102e
+          - ChapCam-Setup-1.0.0-x64.exe : 3ca717fefb9676c469862407312e664a2b35d1bfa113ec173d8073486bb13f9c
+          EOF
+          sed -i 's/^ *//' notes.md
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$RELEASE_TARGET" \
+            --prerelease \
+            --latest=false \
+            --title "$RELEASE_TITLE" \
+            --notes-file notes.md \
+            dist/arm64/ChapCam-1.0.0-arm64.dmg \
+            dist/x64/ChapCam-1.0.0-x64.dmg \
+            dist/win-x64/ChapCam-Setup-1.0.0-x64.exe
+
+      - name: Show published assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --json url,isPrerelease,isDraft,assets \
+            -q '"\(.url) prerelease=\(.isPrerelease) draft=\(.isDraft)", (.assets[] | "\(.name) \(.size) \(.digest // "") \(.url)")'

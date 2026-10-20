@@ -129,7 +129,15 @@ function tick() {
     }
   }
 
-  capture.rafId = requestAnimationFrame(tick)
+  scheduleTick()
+}
+
+// requestAnimationFrame stops when the window is hidden or minimized, which
+// froze ChapCam Camera as soon as the user switched to Zoom/Meet. A timer keeps
+// running because the window disables backgroundThrottling.
+function scheduleTick() {
+  const wait = Math.max(1, 1000 / capture.fps - (performance.now() - capture.lastSentAt))
+  capture.rafId = setTimeout(tick, wait)
 }
 
 function startCapture(opts = {}) {
@@ -141,12 +149,12 @@ function startCapture(opts = {}) {
   capture.lastSentAt = 0
   capture.missWarned = false
   console.log(`[ChapCam][capture] demarree ${capture.width}x${capture.height}@${capture.fps}`)
-  capture.rafId = requestAnimationFrame(tick)
+  scheduleTick()
 }
 
 function stopCapture() {
   capture.running = false
-  if (capture.rafId) cancelAnimationFrame(capture.rafId)
+  if (capture.rafId) clearTimeout(capture.rafId)
   capture.rafId = null
   console.log('[ChapCam][capture] arretee')
 }

@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, systemPreferences, Menu, Tray, nativeImage,
 const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
-const { getVirtualCamera, setupVirtualCameraIPC } = require('./virtual-camera')
+const { getVirtualCamera, setupVirtualCameraIPC, macApprovalSettingsUrl } = require('./virtual-camera')
 const { getVoiceSwap, setupVoiceSwapIPC } = require('./voice-swap')
 
 // Resolution/cadence de sortie de la camera virtuelle
@@ -162,7 +162,9 @@ function createWindow() {
       contextIsolation: true,
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: !isDev,
-      devTools: true
+      devTools: true,
+      // The virtual camera keeps streaming while Zoom/Meet is in front.
+      backgroundThrottling: false
     },
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     backgroundColor: '#0a0e1a',
@@ -217,35 +219,10 @@ function createWindow() {
 }
 
 // Get the correct icon path based on platform
+// Icons are generated from the official artwork by scripts/generate-desktop-icons.mjs.
 function getIconPath() {
-  // For Windows, try .ico first, then fall back to .jpg
-  // For other platforms, use .jpg
-  const iconNames = process.platform === 'win32' 
-    ? ['icon.ico', 'icon-512.jpg', 'icon.jpg'] 
-    : ['icon.jpg', 'icon-512.jpg']
-  
-  // Try multiple paths with multiple icon names
-  const basePaths = [
-    path.join(__dirname, '../public/icons'),
-    path.join(process.resourcesPath || '', 'public/icons'),
-    path.join(app.getAppPath(), 'public/icons'),
-    path.join(__dirname, '..', 'public', 'icons')
-  ]
-
-  for (const basePath of basePaths) {
-    for (const iconName of iconNames) {
-      const fullPath = path.join(basePath, iconName)
-      if (fs.existsSync(fullPath)) {
-        log(`Found icon at: ${fullPath}`)
-        return fullPath
-      }
-    }
-  }
-
-  // Ultimate fallback
-  const fallback = path.join(__dirname, '../public/icons/icon.jpg')
-  log(`Using fallback icon: ${fallback}`)
-  return fallback
+  const name = process.platform === 'win32' ? 'icon.ico' : 'icon.png'
+  return path.join(__dirname, 'icons', name)
 }
 
 // Load the application
@@ -370,13 +347,10 @@ async function requestCameraAccess() {
 
 // Create system tray
 function createTray() {
-  const iconPath = path.join(__dirname, '../public/icons/tray-icon.jpg')
-  
-  let icon
-  try {
-    icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 })
-  } catch (e) {
-    log(`Tray icon error: ${e.message}`)
+  // tray.png + tray@1.5x/@2x.png: Electron picks the right density automatically.
+  const icon = nativeImage.createFromPath(path.join(__dirname, 'icons', 'tray.png'))
+  if (icon.isEmpty()) {
+    log('Tray icon missing: electron/icons/tray.png')
     return
   }
   
@@ -475,6 +449,9 @@ function createMenu() {
           checked: false,
           click: (menuItem) => toggleVirtualCamera(menuItem.checked)
         },
+        ...(process.platform === 'darwin'
+          ? [{ label: 'Activer la camera virtuelle (macOS)...', click: () => openCameraSetupWindow() }]
+          : []),
         { type: 'separator' },
         { label: 'Parametres Camera...', click: () => openCameraSettings() }
       ]
@@ -541,8 +518,57 @@ function openPreferences() {
 
 // Open camera settings
 function openCameraSettings() {
+  if (process.platform === 'darwin') return openCameraSetupWindow()
   if (mainWindow) {
     mainWindow.webContents.send('open-camera-settings')
+  }
+}
+
+// macOS : fenetre "Activer la camera virtuelle" (etat reel lu depuis le systeme)
+let cameraSetupWindow
+function openCameraSetupWindow() {
+  if (process.platform !== 'darwin') return
+  if (cameraSetupWindow && !cameraSetupWindow.isDestroyed()) {
+    cameraSetupWindow.show()
+    cameraSetupWindow.focus()
+    return
+  }
+  cameraSetupWindow = new BrowserWindow({
+    width: 520,
+    height: 560,
+    resizable: false,
+    minimizable: false,
+    title: 'Caméra virtuelle ChapCam',
+    titleBarStyle: 'hiddenInset',
+    backgroundColor: '#0a0e1a',
+    parent: mainWindow && mainWindow.isVisible() ? mainWindow : undefined,
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(__dirname, 'camera-setup-preload.js'),
+    },
+  })
+  cameraSetupWindow.loadFile(path.join(__dirname, 'camera-setup.html'))
+  cameraSetupWindow.on('closed', () => { cameraSetupWindow = null })
+}
+
+ipcMain.handle('camera-setup-open-settings', () => shell.openExternal(macApprovalSettingsUrl()))
+ipcMain.handle('camera-setup-open-log', () => {
+  const file = path.join(app.getPath('logs'), 'virtual-camera.log')
+  return fs.existsSync(file) ? shell.openPath(file) : shell.openPath(app.getPath('logs'))
+})
+ipcMain.handle('camera-setup-close', () => cameraSetupWindow?.close())
+
+// Au lancement : si "ChapCam Camera" n'est pas encore exposee par macOS,
+// proposer l'activation (une seule fois par lancement).
+async function promptMacCameraSetupIfNeeded() {
+  if (process.platform !== 'darwin') return
+  try {
+    const state = await getVirtualCamera().getMacState()
+    if (state.status !== 'ready') openCameraSetupWindow()
+  } catch (e) {
+    log(`Camera setup check failed: ${e.message}`)
   }
 }
 
@@ -610,6 +636,9 @@ app.whenReady().then(() => {
   }
   
   createTray()
+
+  getVirtualCamera().onMacActivationNeeded = () => openCameraSetupWindow()
+  setTimeout(promptMacCameraSetupIfNeeded, isDev ? 6000 : 2500)
   
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -657,12 +686,7 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
 // Set app user model ID for Windows
 if (process.platform === 'win32') {
   app.setAppUserModelId('com.chapcam.desktop')
-  
-  // Also set the icon explicitly for the taskbar
-  const iconPath = path.join(__dirname, '../public/icons/icon-512.jpg')
-  if (fs.existsSync(iconPath)) {
-    app.setAsDefaultProtocolClient('chapcam')
-  }
+  app.setAsDefaultProtocolClient('chapcam')
 }
 
 log('Main process initialized')

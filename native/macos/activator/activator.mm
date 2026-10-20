@@ -67,7 +67,9 @@ static void FinalizePending(napi_env, void* data, void*) { delete static_cast<Pe
 }
 
 - (void)request:(OSSystemExtensionRequest*)request didFailWithError:(NSError*)error {
-  [self settle:false value:error.localizedDescription ?: @"Unknown system extension error"];
+  NSString* message = [NSString stringWithFormat:@"[%@ %ld] %@", error.domain ?: @"UnknownDomain", (long)error.code,
+                                                 error.localizedDescription ?: @"Unknown system extension error"];
+  [self settle:false value:message];
 }
 @end
 
