@@ -45,7 +45,7 @@ export const desktopReleases: DesktopRelease[] = [
     sourceCommit: "bccf1fa",
     sourceRun: "38969032116",
     signed: false,
-    status: "test",
+    status: "validated",
   },
   {
     id: "mac-arm64",
@@ -60,7 +60,7 @@ export const desktopReleases: DesktopRelease[] = [
     sourceCommit: "41d8b53",
     sourceRun: "39027065439",
     signed: true,
-    status: "test",
+    status: "validated",
   },
   {
     id: "mac-x64",
@@ -75,6 +75,6 @@ export const desktopReleases: DesktopRelease[] = [
     sourceCommit: "41d8b53",
     sourceRun: "39027065439",
     signed: true,
-    status: "test",
+    status: "validated",
   },
 ]
