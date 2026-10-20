@@ -38,29 +38,25 @@ function ensureScratch(w, h) {
   }
 }
 
-// Trouve la source a diffuser : priorite au tag explicite, sinon plus grand
-// canvas/video visible de la page.
+// Only the Lucy output element is ever streamed. There is deliberately no
+// fallback to "the largest video on the page": that picked the raw camera
+// whenever the transformed feed was not ready, so external apps received the
+// untransformed face. The page sets data-chapcam-live="false" while no
+// verified transformed frame is available; we then send black frames.
 function findSource() {
   const tagged = document.querySelector('[data-chapcam-output]')
-  if (tagged && isUsable(tagged)) return tagged
+  if (!tagged || !isUsable(tagged)) return null
+  if (tagged.dataset.chapcamLive === 'false') return null
+  if (tagged.tagName === 'VIDEO' && !tagged.srcObject) return null
+  return tagged
+}
 
-  let best = null
-  let bestArea = 0
-  const candidates = [
-    ...document.querySelectorAll('canvas'),
-    ...document.querySelectorAll('video'),
-  ]
-  for (const el of candidates) {
-    if (!isUsable(el)) continue
-    const w = el.videoWidth || el.width || el.clientWidth || 0
-    const h = el.videoHeight || el.height || el.clientHeight || 0
-    const area = w * h
-    if (area > bestArea) {
-      bestArea = area
-      best = el
-    }
-  }
-  return best
+function sendBlackFrame() {
+  ensureScratch(capture.width, capture.height)
+  capture.ctx.fillStyle = '#000000'
+  capture.ctx.fillRect(0, 0, capture.width, capture.height)
+  const img = capture.ctx.getImageData(0, 0, capture.width, capture.height)
+  ipcRenderer.send('vcam:frame', { width: capture.width, height: capture.height, buffer: img.data.buffer })
 }
 
 function isUsable(el) {
@@ -123,9 +119,13 @@ function tick() {
           }
         }
       }
-    } else if (!capture.missWarned) {
-      console.warn('[ChapCam][capture] aucune source video transformee trouvee')
-      capture.missWarned = true
+    } else {
+      sendBlackFrame()
+      capture.lastSentAt = now
+      if (!capture.missWarned) {
+        console.warn('[ChapCam][capture] aucun flux transforme Lucy disponible : image noire envoyee')
+        capture.missWarned = true
+      }
     }
   }
 
