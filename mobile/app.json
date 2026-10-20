@@ -33,7 +33,7 @@
           "image": "./assets/chapcam-symbol.png",
           "imageWidth": 160,
           "resizeMode": "contain",
-          "backgroundColor": "#000000"
+          "backgroundColor": "#070c18"
         }
       ],
       "expo-web-browser",

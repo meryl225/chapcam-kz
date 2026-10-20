@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { AccessibilityInfo, Animated, Easing, Image, StyleSheet, View } from 'react-native'
+import { AccessibilityInfo, Animated, Dimensions, Easing, Image, StyleSheet, View } from 'react-native'
 
 // Same asset, size and background as the native launch screen (app.json → expo-splash-screen),
 // so the hand-off from the static launch screen to this animated one is pixel-identical.
+// chapcam-symbol.png has symmetric transparent margins (glyph centre = image centre), so centring the image centres the ∞.
 const SYMBOL = require('../../assets/chapcam-symbol.png')
 const LOGO_SIZE = 160
-const BACKGROUND = '#000000'
+export const BOOT_BACKGROUND = '#070c18'
 
 // Centerline of the ∞ stroke, traced from chapcam-symbol.png (512×512) and normalised to 0–1.
 // Order: crossing → right loop (top, right end, bottom) → crossing → left loop (top, left end, bottom) → crossing,
@@ -17,13 +18,14 @@ const PATH_Y = [0.5068,0.48,0.4569,0.4378,0.4206,0.4042,0.3884,0.3739,0.3616,0.3
 const CIRCUIT_MS = 2600
 const LIGHT_FADE_IN_MS = 320
 const EXIT_FADE_MS = 220
-const TRAIL = Array.from({ length: 7 }, (_, i) => ({
-  lag: (i + 1) * 0.011,
-  size: 6.5 - i * 0.6,
-  opacity: 0.7 * (1 - (i + 1) / 8),
+const TRAIL_LENGTH = 12
+const TRAIL = Array.from({ length: TRAIL_LENGTH }, (_, i) => ({
+  lag: (i + 1) * 0.0085,
+  size: 6.5 - i * 0.38,
+  opacity: 0.75 * (1 - (i + 1) / (TRAIL_LENGTH + 1)),
 }))
 const HEAD_SIZE = 7
-const HALO_SIZE = 26
+const HALO_SIZE = 30
 
 const X_OUT = PATH_X.map((v) => v * LOGO_SIZE)
 const Y_OUT = PATH_Y.map((v) => v * LOGO_SIZE)
@@ -56,6 +58,23 @@ export function BootSplash({ exiting = false, onReady, onExited }) {
   const lightOpacity = useRef(new Animated.Value(0)).current
   const screenOpacity = useRef(new Animated.Value(1)).current
   const readySent = useRef(false)
+  const containerRef = useRef(null)
+  const [origin, setOrigin] = useState(null)
+  const [logoLoaded, setLogoLoaded] = useState(false)
+  const [screen, setScreen] = useState(() => Dimensions.get('screen'))
+
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', ({ screen: next }) => setScreen(next))
+    return () => sub?.remove?.()
+  }, [])
+
+  // The native launch screen centres the logo on the physical screen. Parent containers (safe areas, status/navigation
+  // bars) can start below y=0, so measure where this overlay really sits and centre against the screen, not the parent.
+  const measureOrigin = () => {
+    containerRef.current?.measureInWindow((x, y) => {
+      setOrigin({ x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 })
+    })
+  }
 
   const trailProgress = useRef(TRAIL.map((d) => Animated.modulo(Animated.add(progress, 1 - d.lag), 1))).current
 
@@ -75,14 +94,25 @@ export function BootSplash({ exiting = false, onReady, onExited }) {
     Animated.timing(screenOpacity, { toValue: 0, duration: EXIT_FADE_MS, easing: Easing.out(Easing.quad), useNativeDriver: true }).start(() => onExited?.())
   }, [exiting, screenOpacity, onExited])
 
-  const signalReady = () => {
-    if (readySent.current) return
+  // Release the native splash only once the logo is drawn at its final position, so it never visibly moves.
+  useEffect(() => {
+    if (!logoLoaded || !origin || readySent.current) return
     readySent.current = true
     onReady?.()
-  }
+  }, [logoLoaded, origin, onReady])
+
+  const logoPosition = origin
+    ? {
+        left: Math.round(screen.width / 2 - origin.x - LOGO_SIZE / 2),
+        top: Math.round(screen.height / 2 - origin.y - LOGO_SIZE / 2),
+      }
+    : styles.hidden
 
   return (
     <Animated.View
+      ref={containerRef}
+      onLayout={measureOrigin}
+      collapsable={false}
       pointerEvents={exiting ? 'none' : 'auto'}
       accessible
       accessibilityRole="progressbar"
@@ -90,8 +120,15 @@ export function BootSplash({ exiting = false, onReady, onExited }) {
       accessibilityState={{ busy: true }}
       style={[styles.screen, { opacity: screenOpacity }]}
     >
-      <View style={styles.logoBox}>
-        <Image source={SYMBOL} style={styles.logo} resizeMode="contain" fadeDuration={0} onLoad={signalReady} onError={signalReady} />
+      <View style={[styles.logoBox, logoPosition]}>
+        <Image
+          source={SYMBOL}
+          style={styles.logo}
+          resizeMode="contain"
+          fadeDuration={0}
+          onLoad={() => setLogoLoaded(true)}
+          onError={() => setLogoLoaded(true)}
+        />
         {reduceMotion ? null : (
           <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: lightOpacity }]}>
             {TRAIL.map((d, i) => (
@@ -113,17 +150,18 @@ export function BootSplash({ exiting = false, onReady, onExited }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: BACKGROUND, zIndex: 10 },
-  logoBox: { width: LOGO_SIZE, height: LOGO_SIZE },
+  screen: { ...StyleSheet.absoluteFillObject, backgroundColor: BOOT_BACKGROUND, zIndex: 10, elevation: 10 },
+  logoBox: { position: 'absolute', width: LOGO_SIZE, height: LOGO_SIZE },
+  hidden: { left: 0, top: 0, opacity: 0 },
   logo: { width: LOGO_SIZE, height: LOGO_SIZE },
   dot: {
     position: 'absolute',
     left: 0,
     top: 0,
-    backgroundColor: '#8f7dff',
-    shadowColor: '#5b6cff',
-    shadowOpacity: 0.9,
-    shadowRadius: 4,
+    backgroundColor: '#2f8bff',
+    shadowColor: '#1f6fff',
+    shadowOpacity: 0.95,
+    shadowRadius: 5,
     shadowOffset: { width: 0, height: 0 },
   },
   halo: {
@@ -133,10 +171,10 @@ const styles = StyleSheet.create({
     width: HALO_SIZE,
     height: HALO_SIZE,
     borderRadius: HALO_SIZE / 2,
-    backgroundColor: 'rgba(110, 92, 255, 0.22)',
-    shadowColor: '#6a5cff',
-    shadowOpacity: 0.8,
-    shadowRadius: 10,
+    backgroundColor: 'rgba(47, 139, 255, 0.24)',
+    shadowColor: '#2f8bff',
+    shadowOpacity: 0.9,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
   },
   head: {
@@ -146,8 +184,8 @@ const styles = StyleSheet.create({
     width: HEAD_SIZE,
     height: HEAD_SIZE,
     borderRadius: HEAD_SIZE / 2,
-    backgroundColor: '#eef1ff',
-    shadowColor: '#7f8cff',
+    backgroundColor: '#e6f2ff',
+    shadowColor: '#4da3ff',
     shadowOpacity: 1,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 0 },

@@ -50,7 +50,7 @@ export default function App() {
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <View style={styles.safe}>
-        <StatusBar style="dark" />
+        <StatusBar style="light" translucent backgroundColor="transparent" />
         {loading ? null : session?.user ? <AuthenticatedHome user={session.user} /> : <AuthScreen />}
         {bootVisible ? <BootSplash exiting={!loading} onReady={hideNativeSplash} onExited={handleBootExited} /> : null}
       </View>
