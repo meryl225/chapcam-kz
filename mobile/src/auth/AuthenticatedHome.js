@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { Activity, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, AppState, FlatList, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { Image } from 'expo-image'
 import { requireOptionalNativeModule } from 'expo-modules-core'
@@ -293,6 +293,10 @@ function HomeShell({ user }) {
 
   return (
     <View style={styles.root}>
+      {/* Under a full-screen tool, the tabs keep their state but their effects stop: the hero
+          carousel timer, the 400 ms on-screen polling and the looping expo-video players kept
+          running and re-rendering underneath the Live Swap camera surfaces on Android. */}
+      <Activity mode={overlay ? 'hidden' : 'visible'}>
       <View style={[styles.root, { paddingTop: insets.top }, overlay && styles.hidden]}>
         {tabPane('home', (
           <>
@@ -332,7 +336,8 @@ function HomeShell({ user }) {
         }} bottom={insets.bottom} />
         <QuickLaunchMenu visible={quickOpen && !overlay} bottom={insets.bottom} onClose={() => setQuickOpen(false)} onSelect={onQuickLaunch} />
       </View>
-      {overlay ? <View style={StyleSheet.absoluteFill}>{overlay}</View> : null}
+      </Activity>
+      {overlay ? <View style={[StyleSheet.absoluteFill, styles.overlay]}>{overlay}</View> : null}
       <AiDataConsentSheet visible={consentPromptOpen} onAccept={acceptAiConsent} onDecline={declineAiConsent} />
     </View>
   )
@@ -734,6 +739,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.bg },
   tabPane: { flex: 1 },
   hidden: { display: 'none' },
+  overlay: { backgroundColor: C.bg, zIndex: 10, elevation: 10 },
   flex: { flex: 1 },
   pressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
   content: { paddingBottom: 120 },
