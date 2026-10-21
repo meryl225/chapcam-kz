@@ -38,21 +38,18 @@ export const TOOL_MEDIA = {
   verify: { type: 'image', src: '/swap/poster-chapverify.png' },
 }
 
-const CREATOR_DANCE = require('../../assets/creator-dance-6632.mp4')
-const CREATOR_1466 = require('../../assets/creator-1466.mp4')
-const CREATOR_1469 = require('../../assets/creator-1469.mp4')
-const CREATOR_6637 = require('../../assets/creator-6637.mp4')
+// creator-6640 differs from the copy on chapcam.com, so it stays bundled; the five others are
+// byte-identical to /public/videos and stream from there (cached on disk) to keep ~10 MB out of the app.
 const CREATOR_6640 = require('../../assets/creator-6640.mp4')
-const CREATOR_1472 = require('../../assets/creator-1472.mp4')
 
 // Only the six videos attached for the Home "Pour toi" section.
 export const CREATOR_VIDEOS = [
-  ['creator-dance-6632', CREATOR_DANCE],
-  ['creator-1466', CREATOR_1466],
-  ['creator-1469', CREATOR_1469],
-  ['creator-6637', CREATOR_6637],
+  ['creator-dance-6632', '/videos/creator-6632.mp4'],
+  ['creator-1466', '/videos/creator-1466.mp4'],
+  ['creator-1469', '/videos/creator-1469.mp4'],
+  ['creator-6637', '/videos/creator-6637.mp4'],
   ['creator-6640', CREATOR_6640],
-  ['creator-1472', CREATOR_1472],
+  ['creator-1472', '/videos/creator-1472.mp4'],
 ].map(([key, src]) => ({ key, media: { type: 'video', src } }))
 
 // Flip to true to expose an unreleased tool on Android and iOS; its screens and APIs stay in the codebase.

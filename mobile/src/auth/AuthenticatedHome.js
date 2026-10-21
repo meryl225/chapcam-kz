@@ -12,7 +12,7 @@ import { creationIdFromResponse, registerForPushNotifications, unregisterPushTok
 import { getUserAvatarSource, resolveAvatarUrl } from '../lib/userAvatar'
 import { fetchAccountSummary } from '../lib/accountSummary'
 import { BRAND, C, COMING_SOON_TOOLS, CREATOR_VIDEOS, GAP, PAD, TOOL_MEDIA, asset, shadow } from '../ui/catalog'
-import { MediaView } from '../ui/ToolMedia'
+import { MediaView, videoSource } from '../ui/ToolMedia'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { ChapCamBrand } from '../ui/ChapCamBrand'
 import { ExploreScreen } from '../screens/ExploreScreen'
@@ -284,9 +284,12 @@ function HomeShell({ user }) {
 
   const tabPane = (key, content) =>
     visitedTabs.has(key) || tab === key ? (
-      <View key={key} style={[styles.tabPane, tab !== key && styles.hidden]}>
-        {content}
-      </View>
+      // Hidden tabs keep their state but their timers, polling and video players stop.
+      <Activity key={key} mode={tab === key ? 'visible' : 'hidden'}>
+        <View style={[styles.tabPane, tab !== key && styles.hidden]}>
+          {content}
+        </View>
+      </Activity>
     ) : null
 
   const isKnownTab = ['home', 'explore', 'create', 'creations', 'profile'].includes(tab)
@@ -591,7 +594,7 @@ const TrendsList = memo(function TrendsList({ onOpenTool, visible }) {
 })
 
 function TrendVideo({ src, playing, label }) {
-  const source = useMemo(() => (typeof src === 'string' ? asset(src).uri : src), [src])
+  const source = useMemo(() => videoSource(src), [src])
   const player = videoModule.useVideoPlayer(source, (p) => {
     p.loop = true
     p.muted = true
@@ -605,6 +608,8 @@ function TrendVideo({ src, playing, label }) {
       player={player}
       style={StyleSheet.absoluteFill}
       contentFit="cover"
+      // SurfaceView ignores the card's rounded clip on Android and bleeds into the neighbouring card while scrolling.
+      surfaceType="textureView"
       nativeControls={false}
       allowsPictureInPicture={false}
       accessibilityLabel={label}

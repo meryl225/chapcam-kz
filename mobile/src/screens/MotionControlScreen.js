@@ -89,7 +89,7 @@ async function pickMedia(mediaTypes) {
 
 function LoopVideo({ uri, style, controls = false }) {
   const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = !controls; p.play() })
-  return <VideoView player={player} style={style} contentFit="cover" nativeControls={controls} />
+  return <VideoView player={player} style={style} contentFit="cover" surfaceType="textureView" nativeControls={controls} />
 }
 
 function UploadCard({ label, hint, icon, item, onPick, onClear, disabled }) {

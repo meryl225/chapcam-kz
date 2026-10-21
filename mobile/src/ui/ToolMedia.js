@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Dimensions, Image, StyleSheet, View } from 'react-native'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { AppState, Dimensions, Image, StyleSheet, View } from 'react-native'
 import { requireOptionalNativeModule } from 'expo-modules-core'
 import { asset } from './catalog'
 import { ChapCamLoader } from './ChapCamLoader'
@@ -8,37 +8,109 @@ import { ChapCamLoader } from './ChapCamLoader'
 const video = requireOptionalNativeModule('ExpoVideo') ? require('expo-video') : null
 const CachedImage = requireOptionalNativeModule('ExpoImage') ? require('expo-image').Image : null
 
-const CHECK_MS = 400
+const CHECK_MS = 500
 const PRELOAD_MARGIN = 120
+// Each looping card holds a hardware decoder; mid-range Android devices only have a few,
+// and exhausting them stalls the UI thread (ANR) and lets frames from one card land in another.
+const MAX_PLAYING = 2
 
-// Polling measureInWindow works inside any vertical/horizontal scroller or hidden tab without per-screen wiring.
-function useOnScreen(ref) {
-  const [visible, setVisible] = useState(false)
-  useEffect(() => {
-    let alive = true
-    const check = () => {
-      ref.current?.measureInWindow((x, y, w, h) => {
-        if (!alive) return
-        const { width, height } = Dimensions.get('window')
-        const onScreen =
-          w > 0 && h > 0 &&
-          y + h > -PRELOAD_MARGIN && y < height + PRELOAD_MARGIN &&
-          x + w > 0 && x < width
-        setVisible((prev) => (prev === onScreen ? prev : onScreen))
-      })
-    }
-    check()
-    const id = setInterval(check, CHECK_MS)
-    return () => {
-      alive = false
-      clearInterval(id)
-    }
-  }, [ref])
-  return visible
+// One shared ticker measures every card in a single pass instead of one 400 ms interval per card.
+const watchers = new Set()
+let timerId = null
+let appActive = AppState.currentState === 'active' || AppState.currentState == null
+
+function applyMeasures(results) {
+  const playing = new Set(
+    results
+      .filter((r) => r.area > 0)
+      .sort((a, b) => b.area - a.area)
+      .slice(0, MAX_PLAYING)
+      .map((r) => r.watcher),
+  )
+  results.forEach((r) => r.watcher.update(r.near, r.keep, appActive && playing.has(r.watcher)))
 }
 
+function tick() {
+  if (!appActive || watchers.size === 0) return
+  const { width, height } = Dimensions.get('window')
+  const list = [...watchers]
+  const results = []
+  let pending = list.length
+  const done = () => {
+    pending -= 1
+    if (pending === 0) applyMeasures(results)
+  }
+  list.forEach((watcher) => {
+    const node = watcher.ref.current
+    if (!node) return done()
+    node.measureInWindow((x, y, w, h) => {
+      const sized = w > 0 && h > 0
+      const onX = x + w > 0 && x < width
+      const visW = Math.max(0, Math.min(x + w, width) - Math.max(x, 0))
+      const visH = Math.max(0, Math.min(y + h, height) - Math.max(y, 0))
+      results.push({
+        watcher,
+        near: sized && onX && y + h > -PRELOAD_MARGIN && y < height + PRELOAD_MARGIN,
+        // Keep the player alive within one screen of the viewport so quick back-and-forth scrolls do not rebuild it.
+        keep: sized && x + w > -width && x < width * 2 && y + h > -height && y < height * 2,
+        area: sized ? visW * visH : 0,
+      })
+      done()
+    })
+  })
+}
+
+function startTicker() {
+  if (timerId == null) timerId = setInterval(tick, CHECK_MS)
+}
+
+function stopTicker() {
+  if (timerId != null) clearInterval(timerId)
+  timerId = null
+}
+
+AppState.addEventListener('change', (state) => {
+  appActive = state === 'active'
+  if (appActive) {
+    startTicker()
+    tick()
+  } else {
+    stopTicker()
+    watchers.forEach((w) => w.pause())
+  }
+})
+
+const IDLE = { mounted: false, playing: false }
+
+// Works inside any vertical/horizontal scroller or hidden tab without per-screen wiring.
+function useViewport(ref) {
+  const [state, setState] = useState(IDLE)
+  useEffect(() => {
+    const watcher = {
+      ref,
+      update: (near, keep, playing) =>
+        setState((prev) => {
+          const mounted = near || (prev.mounted && keep)
+          return prev.mounted === mounted && prev.playing === playing ? prev : { mounted, playing }
+        }),
+      pause: () => setState((prev) => (prev.playing ? { ...prev, playing: false } : prev)),
+    }
+    watchers.add(watcher)
+    if (appActive) startTicker()
+    tick()
+    return () => {
+      watchers.delete(watcher)
+      if (watchers.size === 0) stopTicker()
+    }
+  }, [ref])
+  return state
+}
+
+// Remote demos are cached on disk by ExoPlayer/AVPlayer, so they download once instead of on every visit.
+export const videoSource = (src) => (typeof src === 'string' ? { uri: asset(src).uri, useCaching: true } : src)
+
 function LoopingVideo({ src, active, label }) {
-  const source = typeof src === 'string' ? asset(src).uri : src
+  const source = useMemo(() => videoSource(src), [src])
   const player = video.useVideoPlayer(source, (p) => {
     p.loop = true
     p.muted = true
@@ -102,15 +174,12 @@ const sourceKey = (src) => (typeof src === 'string' ? src : `asset-${String(src)
 
 function LazyVideo({ media, style, label }) {
   const ref = useRef(null)
-  const visible = useOnScreen(ref)
-  const [loaded, setLoaded] = useState(false)
-  useEffect(() => {
-    if (visible) setLoaded(true)
-  }, [visible])
+  const { mounted, playing } = useViewport(ref)
+  // Far off-screen the player is unmounted so its decoder and buffers are released; the poster stays underneath.
   return (
     <View ref={ref} style={[style, styles.clip]} collapsable={false} pointerEvents="none">
       <Still src={media.poster} label={label} />
-      {loaded ? <LoopingVideo key={sourceKey(media.src)} src={media.src} active={visible} label={label} /> : null}
+      {mounted ? <LoopingVideo key={sourceKey(media.src)} src={media.src} active={playing} label={label} /> : null}
     </View>
   )
 }

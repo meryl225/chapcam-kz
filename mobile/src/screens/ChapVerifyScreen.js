@@ -39,7 +39,7 @@ async function getToken() {
 
 function VideoPreview({ uri }) {
   const player = useVideoPlayer(uri, (p) => { p.loop = true; p.muted = true; p.play() })
-  return <VideoView player={player} style={styles.media} contentFit="contain" nativeControls={false} />
+  return <VideoView player={player} style={styles.media} contentFit="contain" surfaceType="textureView" nativeControls={false} />
 }
 
 export function ChapVerifyScreen({ onBack, topInset = 0 }) {
