@@ -21,13 +21,13 @@ const IOS_SUBSCRIPTION_IDS = [
   'com.chapcam.app.subscription.vipdebout.yearly',
 ]
 
-// Google Play : « abonnement:offre de base », alignes sur GOOGLE_PLAY_SUBSCRIPTIONS.
+// Identifiants d'abonnement Google Play, alignes sur GOOGLE_PLAY_SUBSCRIPTIONS.
 const ANDROID_SUBSCRIPTION_IDS = [
-  'chapcam_testeur:weekly',
-  'chapcam_starter:monthly',
-  'chapcam_premium:quarterly',
-  'chapcam_vippro:yearly',
-  'chapcam_vipdebout:yearly',
+  'chapcam_test_weekly',
+  'chapcam_starter_monthly',
+  'chapcam_premium_90days',
+  'chapcam_vip_pro_yearly',
+  'chapcam_vip_debout',
 ]
 
 export const SUBSCRIPTION_PRODUCT_IDS = IS_ANDROID ? ANDROID_SUBSCRIPTION_IDS : IOS_SUBSCRIPTION_IDS

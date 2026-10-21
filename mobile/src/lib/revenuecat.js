@@ -42,6 +42,9 @@ export async function logOutRevenueCat() {
   configuredFor = null
 }
 
+// Google Play renvoie « abonnement:offre de base » ; l'app raisonne par abonnement.
+const baseId = (identifier) => (IS_ANDROID && identifier ? String(identifier).split(':')[0] : identifier)
+
 // Produits Apple (prix localises) pour les ids demandes : d'abord l'offering
 // « sale », puis lecture directe des produits absents de l'offering.
 export async function loadStoreProducts(productIds, category, offeringId = OFFERING_ID) {
@@ -50,8 +53,8 @@ export async function loadStoreProducts(productIds, category, offeringId = OFFER
     const offerings = await Purchases.getOfferings()
     const offering = offerings?.all?.[offeringId] ?? offerings?.current
     for (const pkg of offering?.availablePackages ?? []) {
-      const id = pkg?.product?.identifier
-      if (productIds.includes(id)) byId[id] = { product: pkg.product, pkg }
+      const id = baseId(pkg?.product?.identifier)
+      if (productIds.includes(id) && !byId[id]) byId[id] = { product: pkg.product, pkg }
     }
   } catch {
     // Offering indisponible : lecture directe des produits ci-dessous.
@@ -65,7 +68,8 @@ export async function loadStoreProducts(productIds, category, offeringId = OFFER
       category === 'subs' ? PRODUCT_CATEGORY.SUBSCRIPTION : PRODUCT_CATEGORY.NON_SUBSCRIPTION,
     )
     for (const product of products ?? []) {
-      if (missing.includes(product.identifier)) byId[product.identifier] = { product, pkg: null }
+      const id = baseId(product.identifier)
+      if (missing.includes(id) && !byId[id]) byId[id] = { product, pkg: null }
     }
   }
   return byId

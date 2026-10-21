@@ -44,19 +44,18 @@ export const LIVESWAP_MINUTE_PACKS: { productId: string; androidProductId: strin
 
 // Abonnements Google Play : un abonnement par forfait, une offre de base
 // (base plan) par periode. Cote SDK Android l'identifiant vaut « abonnement:base ».
-export const GOOGLE_PLAY_SUBSCRIPTIONS: { subscriptionId: string; basePlanId: string; planId: PlanId }[] = [
-  { subscriptionId: 'chapcam_testeur', basePlanId: 'weekly', planId: 'testeur' },
-  { subscriptionId: 'chapcam_starter', basePlanId: 'monthly', planId: 'starter' },
-  { subscriptionId: 'chapcam_premium', basePlanId: 'quarterly', planId: 'premium' },
-  { subscriptionId: 'chapcam_vippro', basePlanId: 'yearly', planId: 'ultimate' },
-  { subscriptionId: 'chapcam_vipdebout', basePlanId: 'yearly', planId: 'vipdebout' },
+// Chaque abonnement correspond a un seul forfait ChapCam : toute offre de base
+// de l'abonnement active donc ce forfait.
+export const GOOGLE_PLAY_SUBSCRIPTIONS: { subscriptionId: string; planId: PlanId }[] = [
+  { subscriptionId: 'chapcam_test_weekly', planId: 'testeur' },
+  { subscriptionId: 'chapcam_starter_monthly', planId: 'starter' },
+  { subscriptionId: 'chapcam_premium_90days', planId: 'premium' },
+  { subscriptionId: 'chapcam_vip_pro_yearly', planId: 'ultimate' },
+  { subscriptionId: 'chapcam_vip_debout', planId: 'vipdebout' },
 ]
 
-export const androidSubscriptionProductId = (g: { subscriptionId: string; basePlanId: string }) => `${g.subscriptionId}:${g.basePlanId}`
-
 export function androidProductIdForPlan(planId: string) {
-  const entry = GOOGLE_PLAY_SUBSCRIPTIONS.find((g) => g.planId === planId)
-  return entry ? androidSubscriptionProductId(entry) : null
+  return GOOGLE_PLAY_SUBSCRIPTIONS.find((g) => g.planId === planId)?.subscriptionId ?? null
 }
 
 const storeProducts = (pack: { productId: string; androidProductId: string }): [string, Store][] => [
@@ -131,12 +130,18 @@ export const transactionKey = (store: Store, productId: string, entry: { store_t
 
 // Abonnement Google Play dans l'API v1 : cle = id d'abonnement, offre de base
 // dans product_plan_identifier (ou cle « abonnement:base » selon la config).
-function googleSubscription(subscriptions: Record<string, RcSubscription>, g: { subscriptionId: string; basePlanId: string }) {
-  const combined = subscriptions[androidSubscriptionProductId(g)]
-  if (combined?.store === 'play_store') return combined
-  const sub = subscriptions[g.subscriptionId]
-  if (sub?.store !== 'play_store') return undefined
-  return !sub.product_plan_identifier || sub.product_plan_identifier === g.basePlanId ? sub : undefined
+// Si plusieurs entrees existent (renouvellements, offres), on garde la plus
+// recente par date d'expiration.
+function googleSubscription(subscriptions: Record<string, RcSubscription>, g: { subscriptionId: string }) {
+  let best: RcSubscription | undefined
+  for (const [key, sub] of Object.entries(subscriptions)) {
+    if (sub?.store !== 'play_store') continue
+    if (key !== g.subscriptionId && !key.startsWith(`${g.subscriptionId}:`)) continue
+    const exp = sub.expires_date ? Date.parse(sub.expires_date) : 0
+    const bestExp = best?.expires_date ? Date.parse(best.expires_date) : -1
+    if (!best || exp > bestExp) best = sub
+  }
+  return best
 }
 
 // Un abonnement Apple appartient au compte Apple, pas au compte ChapCam. Quand
@@ -201,7 +206,7 @@ async function applySubscriptions(admin: Admin, userId: string, email: string, s
       return { productId, store: 'app_store' as const, sub: sub?.store === 'app_store' ? sub : undefined, plan: planForAppleProduct(productId) }
     }),
     ...GOOGLE_PLAY_SUBSCRIPTIONS.map((g) => ({
-      productId: androidSubscriptionProductId(g),
+      productId: g.subscriptionId,
       store: 'play_store' as const,
       sub: googleSubscription(subscriptions, g),
       plan: getPlan(g.planId) ?? null,
