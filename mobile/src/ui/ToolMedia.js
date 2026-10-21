@@ -52,6 +52,9 @@ function LoopingVideo({ src, active, label }) {
       player={player}
       style={StyleSheet.absoluteFill}
       contentFit="cover"
+      // Android's default SurfaceView renders in its own window, ignores the card's overflow/borderRadius clip
+      // and lags behind scrolling, so a neighbouring card's video bleeds into this one. TextureView is clipped like any view.
+      surfaceType="textureView"
       nativeControls={false}
       allowsPictureInPicture={false}
       accessibilityLabel={label}
@@ -73,7 +76,7 @@ function Still({ src, label }) {
           contentFit="cover"
           cachePolicy="memory-disk"
           transition={120}
-          recyclingKey={typeof src === 'string' ? src : undefined}
+          recyclingKey={sourceKey(src)}
           accessibilityLabel={label}
         />
       </>
@@ -94,6 +97,9 @@ function Still({ src, label }) {
   )
 }
 
+// A new source must get a new player instance, never reuse the previous card's player/surface.
+const sourceKey = (src) => (typeof src === 'string' ? src : `asset-${String(src)}`)
+
 function LazyVideo({ media, style, label }) {
   const ref = useRef(null)
   const visible = useOnScreen(ref)
@@ -102,9 +108,9 @@ function LazyVideo({ media, style, label }) {
     if (visible) setLoaded(true)
   }, [visible])
   return (
-    <View ref={ref} style={style} collapsable={false} pointerEvents="none">
+    <View ref={ref} style={[style, styles.clip]} collapsable={false} pointerEvents="none">
       <Still src={media.poster} label={label} />
-      {loaded ? <LoopingVideo src={media.src} active={visible} label={label} /> : null}
+      {loaded ? <LoopingVideo key={sourceKey(media.src)} src={media.src} active={visible} label={label} /> : null}
     </View>
   )
 }
@@ -122,4 +128,5 @@ export function MediaView({ media, style = StyleSheet.absoluteFill, label }) {
 
 const styles = StyleSheet.create({
   empty: { backgroundColor: '#1A1F45' },
+  clip: { overflow: 'hidden' },
 })
