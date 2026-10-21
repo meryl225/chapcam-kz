@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text, TextInput } from '../i18n/Text'
 import { API_URL } from '../lib/api'
 import { supabase } from '../lib/supabase'
 import { Ionicons } from '@expo/vector-icons'
@@ -7,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { C, PAD } from '../ui/catalog'
 import { useJetonsBalance } from '../lib/useJetonsBalance'
 import { fetchActivity } from '../lib/activity'
+import { getLocale } from '../i18n'
 
 const NAVY = '#0B1230'
 const BG = '#F5F7FF'
@@ -80,7 +82,7 @@ function dayLabel(date) {
   const diff = Math.round((startOf(new Date()) - startOf(date)) / 86400000)
   if (diff === 0) return 'Aujourd’hui'
   if (diff === 1) return 'Hier'
-  return date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: date.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' })
+  return date.toLocaleDateString(getLocale(), { weekday: 'long', day: 'numeric', month: 'long', year: date.getFullYear() === new Date().getFullYear() ? undefined : 'numeric' })
 }
 
 function groupByDay(items) {
@@ -96,7 +98,7 @@ function groupByDay(items) {
 }
 
 function formatJetons(value) {
-  return Math.abs(Number(value) || 0).toLocaleString('fr-FR')
+  return Math.abs(Number(value) || 0).toLocaleString(getLocale())
 }
 
 function Activity() {
@@ -137,7 +139,7 @@ function Activity() {
         <Text style={styles.dayLabel}>{group.label}</Text>
         <View style={styles.card}>
           {group.items.map((item, index) => {
-            const time = new Date(item.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+            const time = new Date(item.createdAt).toLocaleTimeString(getLocale(), { hour: '2-digit', minute: '2-digit' })
             const sign = item.amount < 0 ? '−' : '+'
             return (
               <View key={item.id} style={[styles.activityRow, index === group.items.length - 1 && styles.activityRowLast]} accessible accessibilityLabel={`${item.title}, ${sign}${formatJetons(item.amount)} Jetons, ${time}`}>
@@ -167,7 +169,7 @@ function Purchases({ subscription }) {
   const { jetons } = useJetonsBalance()
   const plan = subscription?.plan || 'Aucun forfait actif'
   return <>
-    <View style={styles.card}><Row icon="diamond-outline" label="Abonnement" value={plan} /><Row icon="wallet-outline" label="Solde actuel" value={`${jetons == null ? '—' : Number(jetons).toLocaleString('fr-FR')}${jetons == null ? '' : ' Jetons'}`} /><Row icon="calendar-outline" label="Prochain renouvellement" value={subscription?.expires_at || subscription?.end_date ? new Date(subscription.expires_at || subscription.end_date).toLocaleDateString('fr-FR') : '—'} /></View>
+    <View style={styles.card}><Row icon="diamond-outline" label="Abonnement" value={plan} /><Row icon="wallet-outline" label="Solde actuel" value={`${jetons == null ? '—' : Number(jetons).toLocaleString(getLocale())}${jetons == null ? '' : ' Jetons'}`} /><Row icon="calendar-outline" label="Prochain renouvellement" value={subscription?.expires_at || subscription?.end_date ? new Date(subscription.expires_at || subscription.end_date).toLocaleDateString(getLocale()) : '—'} /></View>
     <Text style={styles.note}>Les factures détaillées seront disponibles ici après chaque achat.</Text>
   </>
 }
@@ -176,7 +178,7 @@ function Subscription({ subscription }) {
   const plan = subscription?.plan || 'Aucun forfait actif'
   const date = subscription?.expires_at || subscription?.end_date
   return <>
-    <View style={styles.planCard}><Text style={styles.planEyebrow}>FORFAIT ACTUEL</Text><Text style={styles.planName}>{plan}</Text><Text style={styles.planStatus}>{subscription?.is_active === false ? 'Inactif' : 'Actif'}</Text>{date ? <Text style={styles.planDate}>Valable jusqu’au {new Date(date).toLocaleDateString('fr-FR')}</Text> : null}</View>
+    <View style={styles.planCard}><Text style={styles.planEyebrow}>FORFAIT ACTUEL</Text><Text style={styles.planName}>{plan}</Text><Text style={styles.planStatus}>{subscription?.is_active === false ? 'Inactif' : 'Actif'}</Text>{date ? <Text style={styles.planDate}>Valable jusqu’au {new Date(date).toLocaleDateString(getLocale())}</Text> : null}</View>
     <View style={styles.card}><Row icon="checkmark-circle-outline" label="Live Swap inclus" value="Selon ton forfait" /><Row icon="shield-checkmark-outline" label="Paiement sécurisé" value="Géré par ChapCam" /></View>
     <Text style={styles.note}>Pour modifier ton forfait ou annuler un renouvellement, contacte le support ChapCam.</Text>
   </>
@@ -303,7 +305,7 @@ function PersonalInfo({ user }) {
     setFeedback({ type: 'success', text: 'Informations enregistrées.' })
   }
 
-  const memberSince = user?.created_at ? new Date(user.created_at).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) : '—'
+  const memberSince = user?.created_at ? new Date(user.created_at).toLocaleDateString(getLocale(), { month: 'long', year: 'numeric' }) : '—'
 
   return <>
     <View style={styles.card}>

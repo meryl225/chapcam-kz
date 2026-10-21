@@ -1,5 +1,6 @@
 import React, { memo, useCallback, useMemo, useState } from 'react'
-import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { requireOptionalNativeModule } from 'expo-modules-core'
 import { useSafeVideoPlayer } from '../lib/useSafeVideoPlayer'
 import { Ionicons } from '@expo/vector-icons'

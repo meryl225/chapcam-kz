@@ -1,0 +1,420 @@
+Hello! I'm delighted to talk to you today.
+Thank you
+Thank you so much for everything, it really touches me.
+I love you
+I love you, and I'm thinking of you so much.
+Have a nice day
+I wish you a wonderful day!
+Kiss
+=
+Wink
+=
+Smile
+=
+Laugh
+=
+Wave hello
+=
+Touch hair
+=
+Peace sign
+=
+Nod
+=
+Send a heart
+=
+Thumbs up
+=
+Soft
+Natural
+Intense
+Calm
+Natural
+Energetic
+Replace photo
+Choose a photo
+Remove photo
+Choose another photo
+Choose a photo from the gallery
+Change photo
+A sharp, well-lit, front-facing face
+Photo examples
+Stop listening
+Listen to the voice
+Change voice
+Change
+Unable to load voices.
+Voices unavailable right now.
+Woman
+French voices
+Other voices
+Photo access
+To choose a photo, you can allow access to your photo library in Settings.
+Open Settings
+Preview
+First write the text the photo should say.
+Unable to generate the preview.
+=
+Preview unavailable
+Generation failed.
+Try again in a moment.
+My cloned voice
+Voices unavailable
+Loading…
+Sample recorded
+Recording required
+Back
+Make a photo talk with the voice of your choice.
+1 · YOUR PHOTO
+2 · YOUR TEXT
+Write the text the person will say…
+Text to speak
+Suggestion: {0}
+3 · VOICE
+Listen to my text with this voice
+Voice preview
+4 · CUSTOMIZE THE VIDEO
+Gestures
+Expressiveness
+Speech rate
+GENERATED VIDEO
+Generate video, {0} tokens
+Generate video
+Generating…
+Estimated cost: {0} Tokens
+The cost will be calculated from your text
+Choose a voice
+Done
+Available voices
+Clone my voice
+Record
+10 to 30 seconds
+of your voice (speak clearly, no background noise). Your voice is cloned only for this video and then deleted.
+Your voice sample
+Start over
+1 week
+1 month
+3 months
+1 year
+This screen is a preview. No purchase is made.
+ChapCam plans
+Choose the plan that fits your creations. Cancel anytime.
+Popular
+Subscribe to the {0} plan, {1}
+Subscribe
+The subscription renews automatically unless canceled at least 24 hours before the end of the current period, from your App Store account settings.
+Fast
+Precision
+Choose a video
+MP4, MOV or WebM · 60 s · 60 MB max
+Selected video
+Play video
+Replace video
+Delete video
+=
+Video access
+To choose a video, you can allow access to your videos in Settings.
+Video too large
+The video must be 60 MB or less.
+Video too long
+The video must be 60 seconds or less.
+Insufficient balance
+This translation costs {0} Tokens. Top up your Tokens.
+Unable to start the translation.
+Invalid translation response.
+The video couldn't be translated.
+Your Tokens have been refunded.
+Translation failed.
+Translate a video into another language
+1 · Source video
+2 · Target language
+Target language: {0}. Change
+Choose a language
+Target language
+Languages unavailable · Try again
+Advanced settings
+· Subtitles
+Translation mode
+Subtitles
+Add subtitles to the translated video
+Uploading video…
+Translating
+Translate video
+Maximum cost for 60 s, calculated from your video's actual length.
+Cost calculated for {0} s of video.
+{0} Tokens available.
+Translated video
+Hello!
+Thank you so much!
+I love you.
+Have a nice day!
+=
+Error {0}
+Unable to load voices or balance.
+Unable to load voices.
+2 • VOICE
+2 • TARGET VOICE
+Type or record, ChapCam speaks with the chosen voice.
+{0} voice message{1} left
+Loading balance…
+{0} Tokens per 15 s
+You've used all your included voice messages.
+Voice messages are included with a ChapCam subscription.
+Write a message
+Record my voice
+Loading voices…
+Pause the {0} preview
+Listen to a {0} preview
+=
+1 • YOUR MESSAGE
+Write the text the voice will say…
+Voice message text
+Add “{0}”
+3 • CUSTOMIZE
+Stability
+Lower = more expressive, higher = more consistent
+Similarity
+Fidelity to the voice timbre
+Style / expression
+Boosts the voice's expressiveness
+Speed
+Generating voice message…
+Generate voice message
+The cost is based on the actual audio length. No tokens are charged if it fails.
+RESULT
+Audio · {0}
+1 • YOUR RECORDING
+Your recording
+Restart recording
+Lower = more emotion and variation
+Resemblance to the target voice
+Boosts the target voice's style
+Noise reduction
+Transforming your voice…
+Transform my voice
+No tokens are charged if it fails.
+Record a message of up to {0} seconds to start.
+COMPARE THE RESULT
+Original voice
+Transformed voice · {0}
+=
+=
+Payment not completed
+Minutes added
+{0} Live Swap minutes have been added to your balance.
+Verifying
+Your {0} payment is recorded. Your minutes will be added in a few moments, or via “Restore purchases”.
+=
+Verification pending
+Your {0} payment is recorded, but we couldn't verify it. Your minutes will be added automatically, or via “Restore purchases”.
+Purchases verified
+{0} pending Live Swap minutes have been added to your balance.
+All your minute purchases are already credited to your account.
+Restore failed
+Unable to verify your purchases right now. Try again in a few moments.
+Add minutes
+Your Live Swap balance
+=
+{0} min
+Purchased minutes are added to your current balance. This isn't a subscription.
+Loading {0} top-ups…
+Buy {0} Live Swap minutes, {1}
+{0} minutes unavailable
++{0} minutes
+Unavailable
+Top-ups unavailable
+Buying minutes is available in the ChapCam app on iPhone.
+Unable to fetch top-ups from {0} right now. Check your connection and try again.
+One-time purchase charged to your {0} on confirmation. Minutes are added to your ChapCam account as soon as the purchase is validated.
+Restore purchases
+=
+Free
+1-day plan
+30-day plan
+90-day plan
+365-day plan
+Unable to open this link on this device.
+Settings unavailable
+Open Settings > ChapCam > Notifications on your iPhone.
+=
+Unable to save the photo.
+Photo not saved
+Unable to save the photo. Try again in a moment.
+Camera access
+Camera access isn't enabled for ChapCam. You can change this anytime in Settings > ChapCam.
+Photo access isn't enabled for ChapCam. You can change this anytime in Settings > ChapCam.
+Unable to remove the photo.
+Photo not removed
+Unable to remove the photo. Try again in a moment.
+Choose from my photos
+Take a photo
+Remove my photo
+Profile photo
+Sign out?
+You'll need to sign in again to access your studio.
+Deletion failed
+Unable to delete right now. Try again or contact contact@chapcam.com.
+Permanently delete your account?
+This will delete your ChapCam account and the associated personal data. This action can't be undone.
+Delete permanently
+Manage your account and benefits
+Account settings
+Change profile photo
+Choose a photo, take one or remove the current photo
+CHAPCAM ACCOUNT
+Get 5 free tokens
+My profile photo
+Tap the avatar to add your photo
+5 free tokens. Get 5 tokens by following ChapCam on TikTok, Instagram, Facebook and X.
+Your proof is pending verification.
+Get 5 tokens by following ChapCam on TikTok, Instagram, Facebook and X.
+Sign in again
+About Tokens
+Tokens are used by all ChapCam tools, except Live Swap.
+Available for all tools, except Live Swap.
+Buy tokens. Current balance: {0}
+Buy Tokens
+About Live Swap
+Live Swap minutes are included in your Live Swap plan and are separate from Tokens.
+minutes left
+No plan
+Time left in your plan.
+No Live Swap plan
+Add Live Swap minutes
++ Add minutes
+See Live Swap options
+Manage Live Swap
+My subscription: {0}
+My subscription
+Valid until {0}
+Your plan is active.
+Enjoy all ChapCam benefits with a plan that fits your needs.
+Open ChapCam plans with {0} payment
+Google Play
+Manage my subscription
+Discover plans
+Notifications
+Support
+Customer service
+Help & support
+=
+Report content
+Terms of use
+Language
+Deleting…
+Delete my account
+ChapCam
+Version
+The subscription on this {0} is already linked to another ChapCam account. Sign in to that account, or use another {1} to subscribe here.
+=
+Subscription activated
+Thank you! Your ChapCam plan is active and your profile is up to date.
+Subscription already in use
+Subscription canceled
+This purchase was refunded or canceled by {0}.
+until {0}
+Plan change scheduled
+Your {0} plan stays active{1}. {2} will activate the new plan at that renewal, and it will then be applied to your account automatically.
+Your {0} payment is recorded. Your plan will be activated in a few moments, or via “Restore purchases”.
+Your {0} payment is recorded, but we couldn't verify it. It will be validated automatically, or via “Restore purchases”.
+Purchases restored
+Your ChapCam subscription is active again.
+No purchases to restore
+No ChapCam purchase is linked to this {0}.
+No active subscription
+Your ChapCam subscriptions have expired or were canceled. Your purchased tokens are kept.
+Unable to restore purchases right now. Try again in a few moments.
+Choose the plan that fits your creations. Secure payment by {0}, cancel anytime.
+Loading {0} plans…
+Plans unavailable
+Subscriptions are available in the ChapCam app on iPhone.
+Unable to fetch plans from {0} right now. Check your connection and try again.
+Payment is charged to your {0} when the purchase is confirmed. The subscription renews automatically unless canceled at least 24 hours before the end of the current period, from {1}.
+Best value
+Unavailable on {0} right now
+{0} Live Swap
+{0} tokens
+Subscribe to {0}, {1}
+{0} unavailable
+=
+Purchase failed
+Try again in a few moments.
+Tokens added
+{0} tokens have been added to your balance.
+Your {0} payment is recorded. Your tokens will be added in a few moments, or via “Restore purchases”.
+Your {0} payment is recorded, but we couldn't verify it. Your tokens will be added automatically, or via “Restore purchases”.
+{0} pending tokens have been added to your balance.
+All your token purchases are already credited to your account.
+Add Tokens
+Your balance
+Tokens are used for ChapCam creation tools. They never expire.
+Loading {0} packs…
+Buy {0} tokens, {1}
+{0} tokens unavailable
+Packs unavailable
+Buying tokens is available in the ChapCam app on iPhone.
+Unable to fetch packs from {0} right now. Check your connection and try again.
+One-time purchase charged to your {0} on confirmation. Tokens are added to your ChapCam account as soon as the purchase is validated.
+Search for a tool, an effect, an idea…
+Search for a tool
+Filters
+Close filters
+Filter tools
+Reset
+No tools found
+Try another word or category.
+{0} Tokens{1}
+Image
+Audio
+Video
+Deepfake detected
+This content shows signs of AI manipulation.
+Authentic
+No signs of synthesis detected in this content.
+Inconclusive
+The analysis couldn't reach a clear verdict.
+Unsupported format
+Upload an image, an audio file or a video.
+File too large
+Max {0} MB for a {1} file.
+Photos
+Allow ChapCam to access your photos in Settings.
+The file couldn't be analyzed.
+No active plan. {0}
+Unable to start the analysis.
+Check your connection and try again.
+Check whether an image, a voice or a video is a deepfake.
+FILE TO CHECK
+Choose an image or a video
+Image or video
+Photo library
+Choose an audio file
+Files
+{0} · {1} · {2} MB max
+1. Upload
+A suspicious image, voice or video.
+2. AI analysis
+ChapVerify detects synthesis artifacts.
+3. Verdict
+Authentic or deepfake, with a confidence score.
+Preview of the file to check
+Uploading file…
+Analyzing…
+Detecting AI artifacts
+Remove file
+Uploading…
+Analyzing…
+Launch ChapVerify
+File analyzed securely, never shared.
+RECENT CHECKS
+Check another file
+Failed
+In progress
+Deepfake
+A slow camera move toward the face, a natural smile and hair moving in a light breeze.
+Session expired. Sign in again to continue.
+Remove: {0}
+A previous generation didn't complete: {0} tokens have been refunded to your balance.
+A finished Genjutsu video was recovered in My creations.
+Your Genjutsu video is ready. Find it in My creations.
+{0} Your tokens have been refunded to your balance.

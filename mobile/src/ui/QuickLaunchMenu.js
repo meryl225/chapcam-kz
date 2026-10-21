@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react'
-import { Animated, Easing, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Animated, Easing, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { requireOptionalNativeModule } from 'expo-modules-core'

@@ -1,14 +1,6 @@
 import React, { useRef, useState } from 'react'
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native'
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text, TextInput } from '../i18n/Text'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -18,6 +10,7 @@ import { ChapCamBrand } from '../ui/ChapCamBrand'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { API_URL } from '../lib/api'
 import { openInApp } from '../lib/openInApp'
+import { LANGUAGES, setLanguage, useLanguage } from '../i18n'
 
 const TERMS_URL = `${API_URL}/conditions`
 const PRIVACY_URL = `${API_URL}/confidentialite`
@@ -32,6 +25,7 @@ export function AuthScreen() {
 
 function AuthContent() {
   const insets = useSafeAreaInsets()
+  const language = useLanguage()
   const passwordRef = useRef(null)
   const [mode, setMode] = useState('signIn')
   const [email, setEmail] = useState('')
@@ -134,7 +128,27 @@ function AuthContent() {
             { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 24 },
           ]}
         >
-          <ChapCamBrand />
+          <View style={styles.brandTop}>
+            <ChapCamBrand />
+            <View style={styles.langSwitch} accessibilityRole="radiogroup">
+              {LANGUAGES.map((l) => {
+                const active = l.code === language
+                return (
+                  <Pressable
+                    key={l.code}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: active }}
+                    accessibilityLabel={l.label}
+                    hitSlop={6}
+                    onPress={() => setLanguage(l.code)}
+                    style={[styles.langOption, active && styles.langOptionActive]}
+                  >
+                    <Text style={[styles.langText, active && styles.langTextActive]}>{l.code.toUpperCase()}</Text>
+                  </Pressable>
+                )
+              })}
+            </View>
+          </View>
 
           <View style={styles.header}>
             <Text style={styles.title} accessibilityRole="header">{title}</Text>
@@ -316,6 +330,12 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { flexGrow: 1, paddingHorizontal: 22 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  brandTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  langSwitch: { flexDirection: 'row', padding: 3, borderRadius: 999, backgroundColor: C.line },
+  langOption: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  langOptionActive: { backgroundColor: C.ink },
+  langText: { fontSize: 13, fontWeight: '700', color: C.muted },
+  langTextActive: { color: C.bg },
   logo: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', ...shadow },
   wordmark: { color: C.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
   header: { marginTop: 40, marginBottom: 24, gap: 8 },

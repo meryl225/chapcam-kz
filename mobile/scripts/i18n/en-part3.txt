@@ -1,0 +1,417 @@
+Motion video
+Your video is {0} s long. Genjutsu requires a video of 4 to 30 seconds.
+Add an image and describe the motion you want.
+Add a motion video: Genjutsu transfers its motion onto your image.
+Insufficient balance: {0} Tokens required.
+Preparing the motion video…
+Unable to prepare the video.
+Uploading the motion video…
+Failed to upload the reference video.
+Genjutsu is preparing your animation…
+Generation failed (HTTP {0}).
+Generation started (1 to 3 min). The result will be saved in My creations.
+Transfer a video's motion onto your image.
+IMAGE AND MOTION
+Subject image
+JPG, PNG or WebP · required
+Motion video *
+Required · 4 to 30 seconds
+Motion video: {0} s
+DESCRIBE THE MOTION *
+E.g. The camera slowly moves forward…
+Describe the motion
+SETTINGS
+Smart enhancement
+Automatically optimizes the motion description.
+Motion presets
+Select up to {0} camera moves · {1}/{2}
+Hide
+See presets
+Output quality
+Video length
+30 s (max)
+Cost
+{0} Tokens
+{0} FCFA · {1} s
+Unavailable · Try again
+Rendering… you can leave this screen, the video will be saved in My creations.
+See in My creations
+Generating…
+Generate with Genjutsu
+Add an image and a motion video to continue.
+HD
+Full HD
+Fast, reliable rendering
+Pro
+Maximum detail & smoothness
+Image background
+Neon studio
+=
+Beach · sunset
+=
+Night street
+=
+Cinematic black
+=
+Nature / forest
+=
+Snow
+=
+Custom scene
+Video ready! Your Motion clip is saved in My creations.
+Generation refused.
+The video couldn't be generated.
+Your tokens have been refunded.
+Invalid format
+JPG, PNG or WebP only.
+Max 10 MB.
+Max 30 MB (a 10 s video is light).
+The reference video must be {0} s or less (yours is {1} s). Trim it and try again.
+=
+Add the person's photo to start.
+Add a reference video, a prompt, a scene or a preset.
+Preparing the reference video…
+Uploading the reference video…
+Failed to upload the reference video.
+=
+=
+Launching Motion Control…
+Insufficient balance.
+Image or video rejected by moderation.
+Unable to start the motion transfer.
+Motion Control started: your reference video is being processed. The result will be saved in My creations.
+Motion Control
+Animate an image with controlled motion.
+IMAGE AND REFERENCE
+Subject image *
+JPG, PNG or WebP · 10 MB max
+Reference video
+Optional · {0} s max
+Motion transfer mode: the character in your image will reproduce the motion of the reference video. The generated clip lasts as long as the reference{0}, {1} s maximum.
+Add a reference video ({0} s max) to transfer its motion, or leave it empty and describe the motion in the prompt for a simple animation.
+SCENE
+Describe the setting (e.g. a Paris rooftop at dusk)
+Custom scene
+Describe the motion or behavior you want…
+Prompt
+Enhance
+Automatically optimizes your prompt.
+Motion library
+Up to {0} presets · {1}/{2}
+See
+Rendering model
+ChapCam Motion Control
+Export quality
+Length
+Same as the reference video · {0} s max
+Set by the rendering model
+{0} FCFA
+Rendering… you can leave this screen, the video will be saved in My creations.
+Generate · {0} Tokens
+Add a subject image to continue.
+Back to home
+Ideas to recreate
+Play inspiration video {0}
+Close video
+=
+=
+Videos
+Images
+Creation
+Update the app to use this action.
+No video URL for this creation.
+Video only available as a stream (HLS): no MP4 file to download.
+=
+Invalid file received ({0} bytes).
+Download failed
+Video saved to Photos
+Photos access denied
+Allow ChapCam to add videos in Settings > ChapCam > Photos.
+Settings
+Unable to save to Photos
+Sharing failed
+Delete this creation?
+The file will be permanently deleted from your account.
+Delete
+Download
+Share
+1 creation
+{0} creations
+Close search
+Search
+Filter by tool
+Search for a creation
+All
+Remove filter
+Session expired
+Unable to connect
+Sign in again to find your creations.
+No creations match.
+Long press for more options
+Video · AI
+Options for {0}
+Close
+All tools
+Close player
+Report
+My creations · {0}
+No creations yet
+Your videos generated with ChapCam tools will appear here.
+Start creating
+None
+Beach
+=
+Studio
+=
+City at night
+=
+Office
+=
+Space
+=
+Forest
+=
+Cinema
+=
+Neon
+=
+Anime
+=
+Black & white
+=
+Painting
+=
+Vintage
+=
+=
+=
+≈ {0} min left
+≈ {0} s left
+{0} min left
+{0} s left
+Plan inactive or not enough minutes. Open “Plans” to subscribe.
+A swap is already running on this account. Close it and try again in a minute.
+Daily limit reached. Try again tomorrow.
+The Live Swap service is unavailable. Try again in a moment.
+Premium plan required
+Effects and backgrounds are available from the Premium plan.
+Later
+See plans
+Unable to open the camera.
+Session stopped in the background.
+Session opened on another device.
+Not enough points.
+Out of points. Top up to continue.
+Confirm you have the rights to this face to start.
+The camera is still starting. Try again.
+Plan required
+Your plan is inactive or your Live Swap minutes are used up.
+The AI engine isn't returning video. Check your internet connection and try again.
+Connection to the AI engine lost.
+Session ended by the server.
+Unable to connect to the AI engine. Try again in a moment.
+{0} The face remains usable for this session.
+Face
+Unable to open your photos. Check access in Settings.
+This face is unavailable right now. Try again.
+Unable to delete this face. Try again.
+Face in use
+Stop the transformation or select another face before deleting it.
+Delete these faces?
+Delete this face?
+Do you really want to delete these {0} faces?
+Do you really want to delete this face?
+Use this face
+Remove from favorites
+Add to favorites
+Delete face
+This face is unavailable right now. Choose another one.
+Unable to save your favorites. Try again.
+ChapCam {0}
+Manage faces
+Turn off mirror effect
+Turn on mirror effect
+Plans and minutes
+Allow camera
+Start Live Swap
+Choose a face
+No active plan, see plans
+Plans
+More options
+Switch to back camera
+Switch to front camera
+Screen light
+Framing guide
+Import
+Effects
+Effects and backgrounds
+Effects and backgrounds, Premium plan only
+Imported face
+ChapCam avatar
+Each live second costs 2 points.
+Stopping session…
+Preparing session…
+Queue: position {0}
+Starting transformation…
+Reconnecting…
+Connecting to the ChapCam engine…
+Receiving transformed video…
+Transformed video. Tap to show controls.
+Connecting
+Exit Live Swap
+Live, {0}
+LIVE
+Stop Live Swap
+Cancel Live Swap
+Stop
+Source face
+Background
+Effect
+Unable to apply this choice. Try again.
+Live Swap uses the camera to show your live preview.
+Camera access isn't enabled for ChapCam. You can change this anytime in your phone's Settings.
+Continue
+Retry Live Swap
+Selected photos and videos
+Camera footage
+Voice recordings
+Sharing your data with AI services
+Your consent is required before first use.
+How our AI services use your data
+Some ChapCam features require temporarily sending your photos, videos, camera footage or voice recordings to third-party technology providers to generate the requested content.
+Data sent
+Why this data is used
+Creating, transforming, translating and generating content with ChapCam AI tools.
+Your data is never sold or used for advertising. You can withdraw your consent at any time by deleting your account from your Profile.
+Learn more about our subprocessors
+Saving…
+I agree
+Decline
+The audio file is no longer available. Generate it again.
+=
+Download voice message
+Pause
+Listen
+Ready to play
+Back to start
+Popular languages
+All languages
+{0}, {1} variants
+{0} variants
+Search for a language or country
+Unable to load languages right now.
+Loading available languages…
+No language found.
+=
+Close menu
+CREATE
+I confirm I have the necessary rights and permissions to use this content.
+Identity theft
+Scam or fraud
+Cybercrime
+Misinformation / misleading deepfake
+Harm to reputation or privacy
+Non-consensual intimate content
+Other
+Prohibited on ChapCam: identity theft or fraud, using someone else's face or voice without their consent, misleading or illegal content.
+Usage policy
+Confirmation required to continue.
+Content generated by artificial intelligence
+AI-generated
+Report abuse
+Sign in again to send a report.
+=
+Unable to send. Try again in a moment.
+Report sent
+Thank you. Our team will review this content.
+Report
+Your report is sent to the ChapCam moderation team.
+Reason
+Details
+Describe the problem…
+Report details
+Send report
+TikTok
+=
+Instagram
+Facebook
+Unable to open {0} on this device.
+Access denied
+Allow access to your photos in Settings > ChapCam to attach your screenshots.
+=
+=
+Screenshots too large. Try again with smaller screenshots.
+Unable to send right now.
+Proof sent
+Your request is pending verification. The 5 tokens will be added once it's approved.
+=
+Social bonus
+Unable to send right now. Try again in a moment.
+Your proof is pending verification. The 5 tokens will be added once it's approved.
+Follow ChapCam on all 4 networks, then send your screenshots. Offered once per account.
+Got it
+Your previous proof wasn't approved. You can send a new one.
+Follow ChapCam on {0}
+Opened
+Follow
+Screenshots
+Show that you follow ChapCam on each network.
+Remove this screenshot
+Add screenshots
+Submit my proof
+Message sent
+Thank you. ChapCam customer service will reply by email.
+Describe your request, our team will reply by email.
+How can we help you?
+Message for customer service
+Send
+{0}. Coming soon
+Coming soon
+LIVE
+French
+Women
+Men
+Search (name, language, accent)…
+No voices match your search.
+Pause {0}
+Listen to {0}
+Choose {0}
+Chosen voice
+Search for a voice (name, language, accent)…
+Chosen voice:
+Chosen
+Choose
+Stop preview
+Listen to a preview
+Recording too short
+Speak for at least {0} seconds.
+Microphone
+Allow ChapCam to use the microphone in Settings.
+Unable to start recording.
+Stop recording
+Start recording
+Tap to record
+Select the imported faces to delete. ChapCam avatars can't be deleted.
+You haven't imported any faces.
+Deselect all
+Select all
+Delete ({0})
+Search for a face
+Faces
+Favorites
+Import your own face
+Add
+Saving face
+No faces match.
+Long press a face to add it to your favorites.
+All
+Translate your video into 190+ languages
+Change your voice or create one from text
+Voice Swap
+Change your voice in real time
+Voice Translator
+Translate your voice live
+=
+=
+Something went wrong
+ChapCam ran into an error on this screen. Your creations and balance aren't affected.

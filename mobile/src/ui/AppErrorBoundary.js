@@ -1,5 +1,6 @@
 import React from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
+import { Text } from '../i18n/Text'
 
 // In a release build an uncaught render error closes the app ("ChapCam a cessé").
 // This keeps the process alive, logs the real error and lets the user remount the tree.

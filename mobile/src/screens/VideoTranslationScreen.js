@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Alert, LayoutAnimation, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, LayoutAnimation, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import * as ImagePicker from 'expo-image-picker'
 import { requestLibraryAccess, launchLibrary } from '../lib/mediaAccess'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -14,6 +15,7 @@ import { AiBadge, ReportAbuseButton, RightsConsent } from '../ui/Safety'
 import { LanguagePickerSheet } from '../ui/LanguagePickerSheet'
 import { describeLanguage } from '../lib/translationLanguages'
 import { callPlayer } from '../lib/useSafeVideoPlayer'
+import { getLocale } from '../i18n'
 
 const MAX_SECONDS = 60
 const MAX_BYTES = 60 * 1024 * 1024
@@ -29,7 +31,7 @@ const translationJetons = (seconds, mode) => {
   return Math.max(1, Math.ceil(round4(providerUsd * MARGIN_MULTIPLIER) * JETONS_PER_USD))
 }
 const perSecondLabel = (mode) =>
-  (translationJetons(MAX_SECONDS, mode) / MAX_SECONDS).toLocaleString('fr-FR', { maximumFractionDigits: 1 })
+  (translationJetons(MAX_SECONDS, mode) / MAX_SECONDS).toLocaleString(getLocale(), { maximumFractionDigits: 1 })
 
 const MODES = [
   { id: 'speed', label: 'Rapide' },
@@ -157,7 +159,7 @@ export function VideoTranslationScreen({ onBack }) {
   const translate = async () => {
     if (!video?.uri || !language || busy || !rightsOk) return
     if (credits !== null && credits < cost) {
-      return Alert.alert('Solde insuffisant', `Cette traduction coûte ${cost.toLocaleString('fr-FR')} Jetons. Recharge tes Jetons.`)
+      return Alert.alert('Solde insuffisant', `Cette traduction coûte ${cost.toLocaleString(getLocale())} Jetons. Recharge tes Jetons.`)
     }
     setStatus('uploading'); setResult(null); setError('')
     try {
@@ -274,13 +276,13 @@ export function VideoTranslationScreen({ onBack }) {
               <Ionicons name="language" size={20} color={C.white} />
               <Text style={styles.ctaText}>Traduire la vidéo</Text>
               <Ionicons name="arrow-forward" size={18} color={C.white} />
-              <View style={styles.costPill}><Text style={styles.costPillText}>{`${videoSeconds === null ? '≤ ' : ''}${cost.toLocaleString('fr-FR')} J`}</Text></View>
+              <View style={styles.costPill}><Text style={styles.costPillText}>{`${videoSeconds === null ? '≤ ' : ''}${cost.toLocaleString(getLocale())} J`}</Text></View>
             </LinearGradient>
           </Pressable>
         )}
         <Text style={styles.footnote}>
           {videoSeconds === null ? 'Coût maximal pour 60 s, calculé selon la durée réelle de ta vidéo.' : `Coût calculé pour ${Math.ceil(videoSeconds)} s de vidéo.`}
-          {credits !== null ? ` ${credits.toLocaleString('fr-FR')} Jetons disponibles.` : ''}
+          {credits !== null ? ` ${credits.toLocaleString(getLocale())} Jetons disponibles.` : ''}
         </Text>
 
         {result ? <View style={styles.result}><Text style={styles.section}>Vidéo traduite</Text><AiBadge /><ResultPreview uri={result} />{Platform.OS !== 'ios' ? <ReportAbuseButton contentUrl={result} context="Traduction de Vidéo" /> : null}</View> : null}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import * as ImagePicker from 'expo-image-picker'
 import { requestLibraryAccess, launchLibrary } from '../lib/mediaAccess'
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'

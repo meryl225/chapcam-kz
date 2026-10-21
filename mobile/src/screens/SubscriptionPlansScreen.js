@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
@@ -17,6 +18,7 @@ import {
 } from '../lib/revenuecat'
 import { BRAND, C, PAD } from '../ui/catalog'
 import { openInApp } from '../lib/openInApp'
+import { getLocale } from '../i18n'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const LINKS = {
@@ -107,7 +109,7 @@ export function SubscriptionPlansScreen({ user, onBack, onPurchased }) {
         // Apple traite l'achat comme un changement de forfait dans le meme groupe :
         // le nouveau forfait ne demarre qu'au prochain renouvellement.
         const { name, expiresAt } = currentPlan(result, productId, state.plans)
-        const until = expiresAt ? ` jusqu'au ${new Date(expiresAt).toLocaleDateString('fr-FR')}` : ''
+        const until = expiresAt ? ` jusqu'au ${new Date(expiresAt).toLocaleDateString(getLocale())}` : ''
         onPurchasedRef.current?.()
         Alert.alert(
           'Changement de forfait programmé',

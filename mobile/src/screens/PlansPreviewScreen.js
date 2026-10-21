@@ -1,7 +1,8 @@
 // TEMPORARY: static screen used only for App Store Connect review screenshots.
 // It never calls RevenueCat/StoreKit and never starts a purchase. Remove after review.
 import React from 'react'
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'

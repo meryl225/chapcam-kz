@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text, TextInput } from '../i18n/Text'
 import * as ImagePicker from 'expo-image-picker'
 import { requestLibraryAccess, launchLibrary } from '../lib/mediaAccess'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'

@@ -1,5 +1,6 @@
 import React, { Activity, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, AppState, BackHandler, FlatList, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Alert, AppState, BackHandler, FlatList, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { Image } from 'expo-image'
 import { requireOptionalNativeModule } from 'expo-modules-core'
 import { AI_CONSENT_KEY, AiDataConsentSheet, hasAiDataConsent } from '../ui/AiDataConsent'
@@ -34,6 +35,7 @@ import { TokenPacksScreen } from '../screens/TokenPacksScreen'
 import { LiveSwapMinutesScreen } from '../screens/LiveSwapMinutesScreen'
 import { PlansPreviewScreen } from '../screens/PlansPreviewScreen'
 import { QuickLaunchMenu } from '../ui/QuickLaunchMenu'
+import { getLocale } from '../i18n'
 
 const INK_DEEP = '#0B1233'
 const JETONS_LOGO = require('../../assets/jetons-logo.png')
@@ -434,7 +436,7 @@ const Header = memo(function Header({ user, jetons, jetonsLoading, avatarUrl, on
             <View style={styles.creditIcon}>
               <Image source={JETONS_LOGO} style={styles.creditIconImage} contentFit="contain" cachePolicy="memory-disk" accessibilityIgnoresInvertColors />
             </View>
-            <Text style={styles.creditText}>{jetons.toLocaleString('fr-FR')}</Text>
+            <Text style={styles.creditText}>{jetons.toLocaleString(getLocale())}</Text>
           </View>
         ) : jetonsLoading ? (
           <View style={[styles.creditPill, styles.creditSkeleton]} accessible accessibilityLabel="Chargement des jetons" />

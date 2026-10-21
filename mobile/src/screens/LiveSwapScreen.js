@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { AccessibilityInfo, Alert, Animated, AppState, BackHandler, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { AccessibilityInfo, Alert, Animated, AppState, BackHandler, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
 import * as NavigationBar from 'expo-navigation-bar'

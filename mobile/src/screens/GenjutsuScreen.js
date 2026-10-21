@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native'
+import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native'
+import { Text, TextInput } from '../i18n/Text'
 import * as ImagePicker from 'expo-image-picker'
 import { requestLibraryAccess, launchLibrary } from '../lib/mediaAccess'
 import { Ionicons } from '@expo/vector-icons'
@@ -10,6 +11,7 @@ import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { useJetonsBalance } from '../lib/useJetonsBalance'
 import { API_URL, friendlyError } from '../lib/api'
 import { RightsConsent } from '../ui/Safety'
+import { getLocale } from '../i18n'
 
 
 // Same rules and options as app/dashboard/genjutsu/page.tsx + lib/tool-costs.ts.
@@ -215,7 +217,7 @@ export function GenjutsuScreen({ onBack, onOpenCreations, topInset = 0 }) {
       return
     }
     if (balance.jetons !== null && balance.jetons < cost) {
-      setMessage({ tone: 'error', text: `Solde insuffisant : ${cost.toLocaleString('fr-FR')} Jetons requis.` })
+      setMessage({ tone: 'error', text: `Solde insuffisant : ${cost.toLocaleString(getLocale())} Jetons requis.` })
       return
     }
 
@@ -361,15 +363,15 @@ export function GenjutsuScreen({ onBack, onOpenCreations, topInset = 0 }) {
           <View style={styles.costRow}>
             <View>
               <Text style={styles.costLabel}>Coût</Text>
-              <Text style={styles.costValue}>{`${cost.toLocaleString('fr-FR')} Jetons`}</Text>
-              <Text style={styles.costSub}>{`${(cost * FCFA_PER_JETON).toLocaleString('fr-FR')} FCFA · ${duration} s`}</Text>
+              <Text style={styles.costValue}>{`${cost.toLocaleString(getLocale())} Jetons`}</Text>
+              <Text style={styles.costSub}>{`${(cost * FCFA_PER_JETON).toLocaleString(getLocale())} FCFA · ${duration} s`}</Text>
             </View>
             <View style={styles.balanceBox}>
               <Text style={styles.costLabel}>Ton solde</Text>
               {balance.loading ? (
                 <ChapCamLoader size="small" />
               ) : balance.jetons !== null ? (
-                <Text style={styles.balanceValue}>{`${balance.jetons.toLocaleString('fr-FR')} Jetons`}</Text>
+                <Text style={styles.balanceValue}>{`${balance.jetons.toLocaleString(getLocale())} Jetons`}</Text>
               ) : (
                 <Pressable onPress={balance.reload} accessibilityRole="button"><Text style={styles.balanceError}>Indisponible · Réessayer</Text></Pressable>
               )}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native'
+import { Text, TextInput } from '../i18n/Text'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { apiJson, friendlyError } from '../lib/api'

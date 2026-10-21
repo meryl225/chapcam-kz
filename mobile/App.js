@@ -9,6 +9,7 @@ import { clearAccountSummaryCache } from './src/lib/accountSummary'
 import { AuthScreen } from './src/auth/AuthScreen'
 import { AuthenticatedHome } from './src/auth/AuthenticatedHome'
 import { AppErrorBoundary } from './src/ui/AppErrorBoundary'
+import { useLanguage } from './src/i18n'
 
 // Keep the static native launch screen up until BootSplash has drawn the identical logo,
 // then BootSplash animates the light until the session is known.
@@ -17,6 +18,8 @@ SplashScreen.preventAutoHideAsync().catch(() => {})
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  // Re-render the whole tree when the language changes; navigation state lives in AuthenticatedHome and is kept.
+  useLanguage()
 
   useEffect(() => {
     let mounted = true

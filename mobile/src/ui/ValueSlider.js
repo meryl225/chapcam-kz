@@ -1,5 +1,6 @@
 import React, { useRef } from 'react'
-import { PanResponder, StyleSheet, Text, View } from 'react-native'
+import { PanResponder, StyleSheet, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { C } from './catalog'
 
 export function ValueSlider({ label, value, min = 0, max = 1, step = 0.05, display, hint, onChange, accent = C.violet }) {

@@ -1,22 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
-  ActionSheetIOS,
-  Alert,
-  FlatList,
-  Image,
-  Linking,
-  Modal,
-  Platform,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  Share,
-  StyleSheet,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
-} from 'react-native'
+import { ActionSheetIOS, Alert, FlatList, Image, Linking, Modal, Platform, Pressable, RefreshControl, ScrollView, Share, StyleSheet, useWindowDimensions, View } from 'react-native'
+import { Text, TextInput } from '../i18n/Text'
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
 import { Ionicons } from '@expo/vector-icons'
@@ -28,6 +12,7 @@ import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { API_URL } from '../lib/api'
 import { useSafeVideoPlayer } from '../lib/useSafeVideoPlayer'
 import { AiBadge, ReportAbuseSheet } from '../ui/Safety'
+import { getLocale } from '../i18n'
 
 // Native modules are optional so an older dev build without them still runs:
 // the affected action falls back instead of crashing.
@@ -52,7 +37,7 @@ const KIND_FILTERS = [
 ]
 
 const metaFor = (item) => TOOL_META[item.tool] || { label: 'Création', icon: 'film', kind: 'video' }
-const dateFormatter = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+const dateFormatter = new Intl.DateTimeFormat(getLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
 const formatDate = (iso) => {
   const d = new Date(iso)
   return Number.isNaN(d.getTime()) ? '' : dateFormatter.format(d)

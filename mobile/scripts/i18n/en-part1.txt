@@ -1,0 +1,450 @@
+Enter your account email address.
+=
+If an account exists with this address, you'll receive an email with a link to choose a new password. Remember to check your spam folder.
+Unable to send the email right now. Check your connection and try again.
+Enter a valid email and a password of at least 6 characters.
+You must accept the Terms of Use and the Privacy Policy to create an account.
+Confirm your email address before signing in.
+Unable to sign in with these credentials.
+Account created. Check your email to confirm your address.
+Forgot password
+Welcome
+Create your account
+Enter your email: we'll send you a link to choose a new password.
+Sign in to your ChapCam account.
+One account for your AI tools, your credits and your subscription.
+Send link
+Sign in
+Create account
+5 free tokens. Create your account and automatically get 5 welcome tokens.
+5 free tokens
+Create your account and automatically get 5 welcome tokens.
+Email
+name@example.com
+Password
+Forgot password?
+At least 6 characters
+Hide password
+Show password
+I accept the Terms of Use and the Privacy Policy
+Required to create an account
+I accept the
+Terms of Use
+and the
+Privacy Policy
+Back to sign in
+New to ChapCam?
+Already have an account?
+Create an account
+Live
+Swap faces in real time.
+Launch Live Swap
+Photos to Video
+Bring your photos to life.
+Explore tools
+Genjutsu
+Cinematic portraits.
+Live Swap
+Real time
+Animate your images
+Animate your photo into a video
+Cinematic face
+Animated portrait
+Neon studio
+Pro voice-over
+=
+=
+Error
+Unable to save your consent. Check your connection and try again.
+Trending
+Effects of the moment
+For you
+Ideas to recreate
+{0} tokens available
+Loading tokens
+My profile
+See all: {0}
+See all
+Create
+My creations
+{0} · {1} credits
+No active plan
+Sign out
+This screen is coming in the next step.
+Home
+Explore
+Creations
+Profile
+=
+=
+=
+=
+=
+Session expired. Sign in again to see your balances.
+Unable to connect. Check your internet connection.
+Balances unavailable{0}.
+Session expired. Sign in again.
+=
+An error occurred.
+An error occurred. Try again in a moment.
+Unable to connect. Check your internet connection and try again.
+Link unavailable
+Unable to open this page right now.
+=
+Afrikaans
+Albanian
+Amharic
+Arabic
+Armenian
+Azerbaijani
+Bengali
+Basque
+Belarusian
+Bosnian
+Bulgarian
+Burmese
+Catalan
+Chinese
+Croatian
+Czech
+Danish
+Dutch
+English
+Estonian
+Filipino
+Finnish
+French
+Galician
+Georgian
+German
+Greek
+Gujarati
+Haitian Creole
+Hebrew
+Hindi
+Hungarian
+Icelandic
+Indonesian
+Irish
+Italian
+Japanese
+Javanese
+Kannada
+Kazakh
+Khmer
+Konkani
+Korean
+Lao
+Latin
+Latvian
+Lithuanian
+Luxembourgish
+Macedonian
+Maithili
+Malagasy
+Malay
+Malayalam
+Maltese
+Marathi
+Mongolian
+Nepali
+Norwegian
+Odia
+Pashto
+Persian
+Polish
+Portuguese
+Punjabi
+Romanian
+Russian
+Serbian
+Sindhi
+Sinhala
+Slovak
+Slovenian
+Somali
+Spanish
+Sundanese
+Swahili
+Swedish
+Tamil
+Telugu
+Thai
+Turkish
+Ukrainian
+Urdu
+Uzbek
+Vietnamese
+Welsh
+Zulu
+Mandarin
+Bokmål
+Nynorsk
+Bangla
+South Africa
+Albania
+Ethiopia
+Algeria
+Bahrain
+Egypt
+Iraq
+Jordan
+Kuwait
+Lebanon
+Libya
+Morocco
+Oman
+Qatar
+Saudi Arabia
+Syria
+Tunisia
+United Arab Emirates
+International
+Yemen
+Armenia
+Azerbaijan
+Bangladesh
+Belarus
+India
+Bosnia and Herzegovina
+Bulgaria
+Myanmar
+Croatia
+Czechia
+Denmark
+Belgium
+Netherlands
+Australia
+Canada
+Hong Kong
+Ireland
+Kenya
+New Zealand
+Nigeria
+Philippines
+Singapore
+Tanzania
+United Kingdom
+United States
+Estonia
+Cebuano
+Finland
+France
+Switzerland
+Georgia
+Austria
+Germany
+Greece
+Haiti
+Israel
+Hungary
+Iceland
+Indonesia
+Italy
+Japan
+Kazakhstan
+Cambodia
+Korea
+Laos
+Vatican
+Latvia
+Lithuania
+Luxembourg
+North Macedonia
+Madagascar
+Malaysia
+Malta
+Mongolia
+Nepal
+Norway
+Afghanistan
+Iran
+Poland
+Brazil
+Portugal
+Romania
+Russia
+Serbia
+Sri Lanka
+Slovakia
+Slovenia
+Somalia
+Argentina
+Bolivia
+Chile
+Colombia
+Costa Rica
+Cuba
+Dominican Republic
+Ecuador
+El Salvador
+Equatorial Guinea
+Guatemala
+Honduras
+Latin America
+Mexico
+Nicaragua
+Panama
+Paraguay
+Peru
+Puerto Rico
+Spain
+Uruguay
+Venezuela
+Sweden
+Thailand
+Turkey
+Ukraine
+Pakistan
+Uzbekistan
+Vietnam
+Latin script
+simplified
+Cantonese
+Jilu Mandarin
+Northeastern Mandarin
+Southwestern Mandarin
+Taiwanese Mandarin
+Wu
+Zhongyuan Mandarin (Henan)
+Zhongyuan Mandarin (Shaanxi)
+Standard
+=
+=
+=
+=
+=
+=
+=
+=
+=
+=
+=
+=
+Preview unavailable right now. Check your connection and try again.
+Unable to play the preview. Try again in a moment.
+Google
+Google account
+Apple
+Apple account
+=
+=
+=
+=
+=
+Catalog unavailable
+per {0}
+every {0} {1}
+=
+Unable to connect to {0}. Check your connection and try again.
+This product isn't available on {0} right now.
+The payment is awaiting approval. It will be confirmed automatically as soon as {0} approves it.
+In-app purchases aren't allowed on this device.
+This product is already active on your {0}. Use “Restore purchases”.
+The {0} payment didn't go through. No amount was charged if the purchase wasn't confirmed.
+HTTP error {0}
+=
+Blonde
+Brunette
+Man
+Otter
+Baby
+=
+=
+=
+=
+=
+Network error. Try again.
+=
+=
+=
+=
+=
+Action unavailable
+This action couldn't be completed. ChapCam stays open, you can try again.
+=
+Import failed
+The gallery couldn't open. Try again in a moment.
+The camera couldn't open. Check the permission in Settings.
+The file couldn't be selected. Try again in a moment.
+=
+=
+=
+Recent activity
+See your latest ChapCam usage here.
+Purchases and invoices
+View your purchases and find your receipts.
+Subscription management
+Manage your Live Swap plan and its benefits.
+Security and privacy
+Protect access to your ChapCam account.
+Personal information
+This information stays private and is only used for your ChapCam account.
+Back to profile
+Today
+Yesterday
+Loading activity…
+Activity unavailable
+Session expired. Sign in again to see your activity.
+Check your connection and try again.
+Try again
+Used
+Added / refunded
+{0}, {1}{2} Tokens, {3}
+Balance {0}
+Amounts in Tokens. The last 50 transactions are shown.
+Your activity will appear here
+Your creations and usage will be grouped in an easy-to-read history.
+Subscription
+Current balance
+Tokens
+Next renewal
+Detailed invoices will be available here after each purchase.
+CURRENT PLAN
+Inactive
+Active
+Valid until
+Live Swap included
+Depending on your plan
+Secure payment
+Managed by ChapCam
+To change your plan or cancel a renewal, contact ChapCam support.
+Email sent. Open the link you received to choose a new password. Remember to check your spam folder.
+Unable to send right now. Check your connection and try again.
+Sign out of all devices?
+You'll be signed out of ChapCam on this iPhone and on all your other devices.
+Cancel
+Sign out
+Sign-in email
+Change my password
+Sign out of all devices
+Your personal data stays private. The privacy policy and account deletion are available from your profile.
+Invalid number. Example: +225 07 00 00 00 00
+Unable to save. Check your connection and try again.
+Information saved.
+First name
+Last name
+Phone
+Country
+City
+Member since
+Save
+The email address is used to sign in and can't be changed here.
+Motion
+Animate your photo in 3D
+Video Translation
+190+ languages
+Voice Message
+Change your voice or create one
+ChapVerify
+Detect deepfakes
+Choose your tool and start creating.
+Launch Live Swap, swap faces in real time
+Swap faces in real time
+Launch
+Quick start
+Creation tools
+Good photo example: sharp, front-facing face
+Good photo example: well-lit face
+Photo to avoid: blurry image
+Hello

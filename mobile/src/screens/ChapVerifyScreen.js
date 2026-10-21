@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Alert, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import * as ImagePicker from 'expo-image-picker'
 import { requestLibraryAccess, launchLibrary, pickDocument } from '../lib/mediaAccess'
 import * as DocumentPicker from 'expo-document-picker'

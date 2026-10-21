@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text, TextInput } from '../i18n/Text'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { BRAND, C } from './catalog'

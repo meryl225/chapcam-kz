@@ -2,6 +2,7 @@ import 'react-native-gesture-handler'
 import { registerRootComponent } from 'expo'
 import { installCrashGuard } from './src/lib/crashGuard'
 import './src/lib/formDataFiles'
+import './src/i18n/patchAlert'
 import App from './App'
 
 installCrashGuard()

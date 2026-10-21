@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, View } from 'react-native'
+import { Text, TextInput } from '../i18n/Text'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { C } from './catalog'

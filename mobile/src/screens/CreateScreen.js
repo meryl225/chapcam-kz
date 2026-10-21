@@ -1,5 +1,6 @@
 import React from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { BRAND, C, GAP, PAD, TOOLS, shadow } from '../ui/catalog'

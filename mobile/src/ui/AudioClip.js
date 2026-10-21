@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { ActivityIndicator, Alert, Pressable, Share, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Pressable, Share, StyleSheet, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { Ionicons } from '@expo/vector-icons'
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio'
 import { File, Paths } from 'expo-file-system'

@@ -1,5 +1,6 @@
 import React from 'react'
-import { Image, StyleSheet, Text, View } from 'react-native'
+import { Image, StyleSheet, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { C } from './catalog'
 
 // Transparent, uncropped export of the website's /public/chapcam-mark.png, centered on a square canvas.

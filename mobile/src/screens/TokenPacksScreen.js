@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -14,12 +15,13 @@ import {
 } from '../lib/revenuecat'
 import { useJetonsBalance } from '../lib/useJetonsBalance'
 import { BRAND, C, PAD } from '../ui/catalog'
+import { getLocale } from '../i18n'
 
 const BG = '#F5F7FF'
 const NAVY = '#0B1230'
 const MUTED_ON_DARK = '#AEB8DA'
 
-const formatJetons = (value) => Number(value).toLocaleString('fr-FR')
+const formatJetons = (value) => Number(value).toLocaleString(getLocale())
 
 export function TokenPacksScreen({ user, onBack, onPurchased }) {
   const insets = useSafeAreaInsets()

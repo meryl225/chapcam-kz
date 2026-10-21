@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react'
-import { ActionSheetIOS, ActivityIndicator, Alert, Image, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActionSheetIOS, ActivityIndicator, Alert, Image, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native'
+import { Text } from '../i18n/Text'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as ImagePicker from 'expo-image-picker'
 import { requestLibraryAccess, launchCamera, launchLibrary } from '../lib/mediaAccess'
@@ -17,6 +18,7 @@ import { ReportAbuseSheet } from '../ui/Safety'
 import { SupportSheet } from '../ui/SupportSheet'
 import { SocialBonusSheet } from '../ui/SocialBonusSheet'
 import { openInApp } from '../lib/openInApp'
+import { getLocale, LANGUAGES, setLanguage, useLanguage } from '../i18n'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 const DANGER = '#E5484D'
@@ -52,14 +54,14 @@ const formatDate = (value) => {
   if (!value) return null
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  return date.toLocaleDateString(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
 const formatMemberSince = (value) => {
   if (!value) return null
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return null
-  return date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  return date.toLocaleDateString(getLocale(), { month: 'long', year: 'numeric' })
 }
 
 const open = async (url) => {
@@ -108,6 +110,14 @@ function useAccountSummary() {
 export function ProfileScreen({ user, subscription, loading, refreshing, onRefresh, onOpenAccountDetail, onOpenPlans, onOpenTokens, onOpenMinutes }) {
   const account = useAccountSummary()
   const insets = useSafeAreaInsets()
+  const language = useLanguage()
+  const chooseLanguage = useCallback(() => {
+    // Language names stay in their own language so each user recognizes theirs.
+    Alert.alert('Langue', '', [
+      ...LANGUAGES.map((l) => ({ text: (l.code === language ? '✓ ' : '') + l.label, onPress: () => setLanguage(l.code) })),
+      { text: 'Annuler', style: 'cancel' },
+    ])
+  }, [language])
   const [avatarFailed, setAvatarFailed] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [reporting, setReporting] = useState(false)
@@ -447,7 +457,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
           ) : jetonsError || jetonsBalance === null ? (
             <Text style={styles.balanceUnavailable}>Indisponible</Text>
           ) : (
-            <Text style={styles.balanceValue} numberOfLines={1} adjustsFontSizeToFit>{jetonsBalance.toLocaleString('fr-FR')}</Text>
+            <Text style={styles.balanceValue} numberOfLines={1} adjustsFontSizeToFit>{jetonsBalance.toLocaleString(getLocale())}</Text>
           )}
           <Text style={styles.balanceHint}>Disponible pour tous les outils, hors Live Swap.</Text>
           <View style={styles.flexFill} />
@@ -586,7 +596,7 @@ onPress={onOpenPlans}
         ) : null}
         <Row icon="document-text-outline" tint={C.violet} label="Conditions d'utilisation" onPress={() => openInApp(LINKS.terms)} />
         <Row icon="lock-closed-outline" tint={C.blue} label="Politique de confidentialité" onPress={() => openInApp(LINKS.privacy)} />
-        <Row icon="language-outline" tint={C.violet} label="Langue" value="Français" />
+        <Row icon="language-outline" tint={C.violet} label="Langue" value={LANGUAGES.find((l) => l.code === language)?.label} onPress={chooseLanguage} />
       </View>
       {Platform.OS === 'ios' ? (
         <>

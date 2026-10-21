@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
-import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { Modal, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native'
+import { Text, TextInput } from '../i18n/Text'
 import { Ionicons } from '@expo/vector-icons'
 import { C, CATEGORIES, GAP, PAD, TOOLS, normalize } from '../ui/catalog'
 import { ToolCard } from '../ui/ToolCard'
