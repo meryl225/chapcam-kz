@@ -11,9 +11,10 @@ const CachedImage = requireOptionalNativeModule('ExpoImage') ? require('expo-ima
 
 const CHECK_MS = 500
 const PRELOAD_MARGIN = 120
-// Each looping card holds a hardware decoder; mid-range Android devices only have a few,
-// and exhausting them stalls the UI thread (ANR) and lets frames from one card land in another.
-const MAX_PLAYING = 2
+// Cards within PRELOAD_MARGIN already hold a mounted (decoder-backed) player whether playing or paused,
+// so this cap only bounds simultaneous decoding work. It must cover the six-tile "Pour toi" grid, which fits
+// on one screen; with 2, four tiles stayed frozen on their first frame. Far cards are still unmounted.
+const MAX_PLAYING = 6
 
 // One shared ticker measures every card in a single pass instead of one 400 ms interval per card.
 const watchers = new Set()
