@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { ActionSheetIOS, ActivityIndicator, Alert, Image, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as ImagePicker from 'expo-image-picker'
-import { requestLibraryAccess } from '../lib/mediaAccess'
+import { requestLibraryAccess, launchCamera, launchLibrary } from '../lib/mediaAccess'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -184,8 +184,8 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
     }
     const options = { mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.7 }
     const result = source === 'camera'
-      ? await ImagePicker.launchCameraAsync({ ...options, cameraType: ImagePicker.CameraType.front })
-      : await ImagePicker.launchImageLibraryAsync(options)
+      ? await launchCamera({ ...options, cameraType: ImagePicker.CameraType.front })
+      : await launchLibrary(options)
     if (!result.canceled && result.assets?.[0]) await uploadAvatar(result.assets[0])
   }
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { requestLibraryAccess } from '../lib/mediaAccess'
+import { requestLibraryAccess, launchLibrary } from '../lib/mediaAccess'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -16,6 +16,7 @@ import { VoiceRecorder } from '../ui/VoiceRecorder'
 import { AudioClip } from '../ui/AudioClip'
 import { API_URL, friendlyError } from '../lib/api'
 import { AiBadge, ReportAbuseButton, RightsConsent } from '../ui/Safety'
+import { callPlayer } from '../lib/useSafeVideoPlayer'
 
 const MAX_SCRIPT_CHARS = 420
 const CHARS_PER_SECOND = 14
@@ -225,7 +226,7 @@ export function PhotoVideoScreen({ onBack }) {
   const canGenerate = !!photo?.uri && scriptOk && voiceOk && !busy
   const ready = canGenerate && rightsOk
 
-  const stopAudio = () => { if (playing) player.pause(); setPlaying(false) }
+  const stopAudio = () => { if (playing) callPlayer(player, 'pause'); setPlaying(false) }
 
   const choosePhoto = async () => {
     const permission = await requestLibraryAccess()
@@ -235,7 +236,7 @@ export function PhotoVideoScreen({ onBack }) {
         { text: 'Ouvrir les Réglages', onPress: () => Linking.openSettings() },
       ])
     }
-    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: false, quality: 0.9 })
+    const picked = await launchLibrary({ mediaTypes: ['images'], allowsEditing: false, quality: 0.9 })
     const selected = picked.assets?.[0]
     if (!picked.canceled && selected?.uri) setPhoto(selected)
   }
@@ -246,8 +247,8 @@ export function PhotoVideoScreen({ onBack }) {
     if (playing) return stopAudio()
     const uri = voiceMode === 'clone' ? voiceSample : selectedVoice?.previewUrl
     if (!uri) return
-    player.replace({ uri })
-    player.play()
+    callPlayer(player, 'replace', { uri })
+    callPlayer(player, 'play')
     setPlaying(true)
   }
 

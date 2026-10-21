@@ -6,6 +6,7 @@ import * as NavigationBar from 'expo-navigation-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
+import { launchLibrary } from '../lib/mediaAccess'
 import Constants from 'expo-constants'
 import { BRAND, C, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
@@ -398,7 +399,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
 
   const pickFace = async () => {
     try {
-      const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8, base64: true })
+      const res = await launchLibrary({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8, base64: true })
       const asset = res.assets?.[0]
       if (res.canceled || !asset?.uri || !asset.base64) return
       const picked = { uri: asset.uri, base64: asset.base64, source: 'upload' }

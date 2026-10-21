@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio'
 import { File, Paths } from 'expo-file-system'
 import { C } from './catalog'
+import { callPlayer } from '../lib/useSafeVideoPlayer'
 
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
@@ -52,9 +53,9 @@ function Player({ uri, label, accent, downloadName }) {
   const player = useAudioPlayer(uri)
   const status = useAudioPlayerStatus(player)
   const toggle = () => {
-    if (status.playing) return player.pause()
+    if (status.playing) return callPlayer(player, 'pause')
     if (status.duration > 0 && status.currentTime >= status.duration - 0.1) player.seekTo(0)
-    player.play()
+    callPlayer(player, 'play')
   }
   const progress = status.duration > 0 ? Math.min(1, status.currentTime / status.duration) : 0
   return (

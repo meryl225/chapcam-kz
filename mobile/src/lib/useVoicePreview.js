@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from 'expo-audio'
 import { supabase } from './supabase'
 import { API_URL } from './api'
+import { callPlayer } from './useSafeVideoPlayer'
 
 const LOAD_TIMEOUT_MS = 12000
 
@@ -32,7 +33,7 @@ export function useVoicePreview() {
   useEffect(() => {
     if (!activeId || paused || status.playing) return undefined
     const timer = setTimeout(() => {
-      player.pause()
+      callPlayer(player, 'pause')
       setActiveId(null)
       setError('Aperçu indisponible pour le moment. Vérifie ta connexion et réessaie.')
     }, LOAD_TIMEOUT_MS)
@@ -40,7 +41,7 @@ export function useVoicePreview() {
   }, [activeId, paused, status.playing, player])
 
   const stop = useCallback(() => {
-    player.pause()
+    callPlayer(player, 'pause')
     setActiveId(null)
     setPaused(false)
   }, [player])
@@ -50,23 +51,23 @@ export function useVoicePreview() {
     setError(null)
     if (activeId === voice.id) {
       if (status.playing) {
-        player.pause()
+        callPlayer(player, 'pause')
         setPaused(true)
       } else {
         if (status.duration > 0 && status.currentTime >= status.duration - 0.1) player.seekTo(0)
-        player.play()
+        callPlayer(player, 'play')
         setPaused(false)
       }
       return
     }
-    player.pause()
+    callPlayer(player, 'pause')
     setActiveId(voice.id)
     setPaused(false)
     try {
       // Without this, the iOS silent switch mutes previews entirely.
       await setAudioModeAsync({ playsInSilentMode: true }).catch(() => {})
-      player.replace({ uri: `${API_URL}/api/voice/preview/${encodeURIComponent(voice.id)}`, headers: await authHeaders() })
-      player.play()
+      callPlayer(player, 'replace', { uri: `${API_URL}/api/voice/preview/${encodeURIComponent(voice.id)}`, headers: await authHeaders() })
+      callPlayer(player, 'play')
     } catch {
       setActiveId(null)
       setError('Lecture de l’aperçu impossible. Réessaie dans un instant.')

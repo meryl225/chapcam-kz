@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Alert, LayoutAnimation, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { requestLibraryAccess } from '../lib/mediaAccess'
+import { requestLibraryAccess, launchLibrary } from '../lib/mediaAccess'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -13,6 +13,7 @@ import { API_URL, friendlyError } from '../lib/api'
 import { AiBadge, ReportAbuseButton, RightsConsent } from '../ui/Safety'
 import { LanguagePickerSheet } from '../ui/LanguagePickerSheet'
 import { describeLanguage } from '../lib/translationLanguages'
+import { callPlayer } from '../lib/useSafeVideoPlayer'
 
 const MAX_SECONDS = 60
 const MAX_BYTES = 60 * 1024 * 1024
@@ -55,8 +56,8 @@ function SourceVideoCard({ video, onChoose, onRemove, disabled }) {
     )
   }
   const play = () => {
-    if (player.playing) player.pause()
-    else player.play()
+    if (player.playing) callPlayer(player, 'pause')
+    else callPlayer(player, 'play')
   }
   return (
     <View style={styles.card}>
@@ -137,7 +138,7 @@ export function VideoTranslationScreen({ onBack }) {
         [{ text: 'Annuler', style: 'cancel' }, { text: 'Ouvrir les Réglages', onPress: () => Linking.openSettings() }],
       )
     }
-    const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['videos'], allowsEditing: false })
+    const picked = await launchLibrary({ mediaTypes: ['videos'], allowsEditing: false })
     const selected = picked.assets?.[0]
     if (picked.canceled || !selected?.uri) return
     if (selected.fileSize && selected.fileSize > MAX_BYTES) return Alert.alert('Vidéo trop volumineuse', 'La vidéo doit faire 60 Mo maximum.')

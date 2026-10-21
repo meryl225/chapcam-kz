@@ -34,6 +34,18 @@ export function useSafeVideoPlayer(videoModule, source, setup) {
   return player
 }
 
+// expo-video and expo-audio players are native shared objects: once released (screen closed, source
+// swapped, tab hidden) any method call throws synchronously, which inside an onPress closes the release app.
+export function callPlayer(player, method, ...args) {
+  if (!player) return undefined
+  try {
+    return player[method](...args)
+  } catch (error) {
+    console.warn(`[player] ${method} failed`, error?.message)
+    return undefined
+  }
+}
+
 export function setPlayerPlaying(player, playing) {
   if (!player) return
   try {

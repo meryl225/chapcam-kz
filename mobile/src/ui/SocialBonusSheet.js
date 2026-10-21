@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { requestLibraryAccess } from '../lib/mediaAccess'
+import { requestLibraryAccess, launchLibrary } from '../lib/mediaAccess'
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -51,7 +51,7 @@ export function SocialBonusSheet({ visible, status, onClose, onSubmitted }) {
       return
     }
     const remaining = MAX_PROOFS - proofs.length
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await launchLibrary({
       mediaTypes: ['images'],
       allowsMultipleSelection: true,
       selectionLimit: remaining,

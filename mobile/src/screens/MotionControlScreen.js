@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
-import { requestLibraryAccess } from '../lib/mediaAccess'
+import { requestLibraryAccess, launchLibrary } from '../lib/mediaAccess'
 import { Ionicons } from '@expo/vector-icons'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { supabase } from '../lib/supabase'
@@ -83,7 +83,7 @@ async function pickMedia(mediaTypes) {
     Alert.alert('Photos', 'Autorise ChapCam à accéder à tes photos dans Réglages.')
     return null
   }
-  const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes, allowsEditing: false, quality: 0.9 })
+  const result = await launchLibrary({ mediaTypes, allowsEditing: false, quality: 0.9 })
   return result.canceled ? null : result.assets?.[0] ?? null
 }
 

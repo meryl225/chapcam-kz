@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio'
 import { C, normalize } from './catalog'
+import { callPlayer } from '../lib/useSafeVideoPlayer'
 
 // voices: [{ id, name, meta, previewUrl, group }]
 export function VoicePicker({ voices, selectedId, onSelect, accent = C.blue }) {
@@ -36,12 +37,12 @@ export function VoicePicker({ voices, selectedId, onSelect, accent = C.blue }) {
   const preview = (voice) => {
     if (!voice.previewUrl) return
     if (previewId === voice.id) {
-      player.pause()
+      callPlayer(player, 'pause')
       setPreviewId(null)
       return
     }
-    player.replace({ uri: voice.previewUrl })
-    player.play()
+    callPlayer(player, 'replace', { uri: voice.previewUrl })
+    callPlayer(player, 'play')
     setPreviewId(voice.id)
   }
 
