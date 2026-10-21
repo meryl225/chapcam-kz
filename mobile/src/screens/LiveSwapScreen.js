@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { AccessibilityInfo, Alert, Animated, AppState, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { AccessibilityInfo, Alert, Animated, AppState, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
+import * as NavigationBar from 'expo-navigation-bar'
 import { Ionicons } from '@expo/vector-icons'
 import { useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
@@ -23,6 +24,8 @@ const MODEL = 'lucy-2.5'
 const ERROR = '#E5484D'
 const STAGE = '#050816'
 const CONTROLS_IDLE_MS = 2500
+const IMMERSIVE_DELAY_MS = 1000
+const FIRST_FRAME_TIMEOUT_MS = 35000
 const FADE_MS = 220
 const PILL_ICON = '#B9A6FF'
 const GLASS = 'rgba(20,22,34,0.62)'
@@ -102,6 +105,8 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
   const [notice, setNotice] = useState(null)
   const [localStream, setLocalStream] = useState(null)
   const [remoteStream, setRemoteStream] = useState(null)
+  const [connState, setConnState] = useState(null)
+  const [queuePosition, setQueuePosition] = useState(null)
   const [elapsed, setElapsed] = useState(0)
   const [points, setPoints] = useState(null)
 
@@ -193,6 +198,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     endingRef.current = true
     clearTimers()
     const session = sessionRef.current
+    if (session) clearTimeout(session.firstFrameTimer)
     sessionRef.current = null
     setPhase('stopping')
     try {
@@ -200,6 +206,8 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     } catch {}
     clientRef.current = null
     setRemoteStream(null)
+    setConnState(null)
+    setQueuePosition(null)
 
     if (session) {
       const seconds = Math.floor((Date.now() - (session.liveAt ?? Date.now())) / 1000)
@@ -260,6 +268,8 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
   const goLive = () => {
     const session = sessionRef.current
     if (!session || session.liveAt) return
+    clearTimeout(session.firstFrameTimer)
+    setQueuePosition(null)
     session.liveAt = Date.now()
     session.startedAt = new Date().toISOString()
     setPhase('live')
@@ -319,6 +329,12 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
       if (sessionRef.current !== session) return
 
       setPhase('connecting')
+      setConnState('connecting')
+      session.firstFrameTimer = setTimeout(() => {
+        if (sessionRef.current === session && !session.liveAt) {
+          stop({ tone: 'error', retry: true, text: 'Le moteur IA ne renvoie pas de vidéo. Vérifie ta connexion internet puis réessaie.' })
+        }
+      }, FIRST_FRAME_TIMEOUT_MS)
       const { createDecartClient, models } = loadDecart()
       const client = await createDecartClient({ apiKey: res.body.token }).realtime.connect(localRef.current, {
         model: models.realtime(MODEL),
@@ -338,16 +354,23 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
         if (prompt) client.set({ image: face.base64, prompt, enhance: true }).catch(() => setLook({ background: 'none', effect: 'none' }))
       }
       client.on('connectionChange', (state) => {
+        if (sessionRef.current !== session) return
+        setConnState(state)
         if (state === 'generating') onGenerating()
-        if (state === 'disconnected' && sessionRef.current === session) stop({ tone: 'error', text: 'Connexion perdue.' })
+        if (state === 'disconnected') stop({ tone: 'error', retry: true, text: 'Connexion perdue avec le moteur IA.' })
+      })
+      client.on('queuePosition', (qp) => {
+        if (sessionRef.current === session && !session.liveAt) setQueuePosition(qp?.position ?? null)
       })
       client.on('sessionEnded', () => stop({ tone: 'info', text: 'Session terminée par le serveur.' }))
       client.on('error', () => {
-        if (!session.liveAt) stop({ tone: 'error', text: 'Connexion impossible. Réessaie dans un instant.' })
+        if (!session.liveAt) stop({ tone: 'error', retry: true, text: 'Connexion au moteur IA impossible. Réessaie dans un instant.' })
       })
-      if (client.getConnectionState() === 'generating') onGenerating()
+      const current = client.getConnectionState()
+      setConnState(current)
+      if (current === 'generating') onGenerating()
     } catch {
-      stop({ tone: 'error', text: 'Connexion impossible. Réessaie dans un instant.' })
+      stop({ tone: 'error', retry: true, text: 'Connexion au moteur IA impossible. Réessaie dans un instant.' })
     }
   }
 
@@ -401,9 +424,9 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
   if (inSession) {
     return (
       <ImmersiveSession
-        originalStream={localStream}
         transformedStream={live ? remoteStream : null}
-        mirrored={facing === 'front' && mirror}
+        connState={connState}
+        queuePosition={queuePosition}
         phase={phase}
         elapsed={elapsed}
         face={face}
@@ -517,7 +540,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
 
       {notice ? (
         <View style={[styles.idleNotice, { top: topInset + 72 }]} pointerEvents="box-none">
-          <Notice notice={notice} onDismiss={() => setNotice(null)} />
+          <Notice notice={notice} onDismiss={() => setNotice(null)} onRetry={notice.retry ? start : undefined} />
         </View>
       ) : null}
 
@@ -594,10 +617,8 @@ function SideAction({ icon, label, dot, onPress, accessibilityLabel }) {
   )
 }
 
-function ImmersiveSession({ originalStream, transformedStream, mirrored, phase, elapsed, face, planLabel, remaining, topInset, bottomInset, onStop, onBack, effectsUnlocked, look, onApplyLook, onOpenPlans }) {
-  const { width, height } = useWindowDimensions()
-  const landscape = width > height
-  const [visible, setVisible] = useState(false)
+function ImmersiveSession({ transformedStream, connState, queuePosition, phase, elapsed, face, planLabel, remaining, topInset, bottomInset, onStop, onBack, effectsUnlocked, look, onApplyLook, onOpenPlans }) {
+  const [visible, setVisible] = useState(true)
   const [effectsOpen, setEffectsOpen] = useState(false)
   const [pinned, setPinned] = useState(false)
   const opacity = useRef(new Animated.Value(0)).current
@@ -605,8 +626,22 @@ function ImmersiveSession({ originalStream, transformedStream, mirrored, phase, 
 
   const live = phase === 'live'
   const stopping = phase === 'stopping'
-  const busyText =
-    phase === 'preparing' ? 'Préparation…' : phase === 'connecting' ? 'Connexion…' : stopping ? 'Arrêt…' : live && !transformedStream ? 'Réception de la vidéo transformée…' : null
+  const hasFrame = live && Boolean(transformedStream)
+  const busyText = stopping
+    ? 'Arrêt de la session…'
+    : phase === 'preparing'
+      ? 'Préparation de la session…'
+      : phase === 'connecting'
+        ? queuePosition
+          ? `File d’attente : position ${queuePosition}`
+          : connState === 'connected'
+            ? 'Démarrage de la transformation…'
+            : connState === 'reconnecting'
+              ? 'Reconnexion…'
+              : 'Connexion au moteur ChapCam…'
+        : live && !transformedStream
+          ? 'Réception de la vidéo transformée…'
+          : null
 
   // VoiceOver users cannot discover controls hidden behind a tap, so keep them on screen.
   useEffect(() => {
@@ -632,9 +667,31 @@ function ImmersiveSession({ originalStream, transformedStream, mirrored, phase, 
 
   useEffect(() => () => clearTimeout(hideTimer.current), [])
 
+  // Controls stay up while connecting; the 1s countdown only starts once the first transformed frame is on screen.
+  useEffect(() => {
+    clearTimeout(hideTimer.current)
+    if (!hasFrame) {
+      setVisible(true)
+      return
+    }
+    hideTimer.current = setTimeout(() => setVisible(false), IMMERSIVE_DELAY_MS)
+  }, [hasFrame])
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return
+    NavigationBar.setVisibilityAsync(shown ? 'visible' : 'hidden').catch(() => {})
+  }, [shown])
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return
+    return () => {
+      NavigationBar.setVisibilityAsync('visible').catch(() => {})
+    }
+  }, [])
+
   const reveal = () => {
     setVisible(true)
-    scheduleHide()
+    if (hasFrame) scheduleHide()
   }
 
   const openEffects = () => {
@@ -651,7 +708,7 @@ function ImmersiveSession({ originalStream, transformedStream, mirrored, phase, 
   }
 
   const toggle = () => {
-    if (visible) {
+    if (visible && hasFrame) {
       clearTimeout(hideTimer.current)
       setVisible(false)
     } else {
@@ -664,35 +721,25 @@ function ImmersiveSession({ originalStream, transformedStream, mirrored, phase, 
       <StatusBar hidden={!shown} animated style="light" />
 
       <Pressable
-        style={[styles.split, { paddingTop: landscape ? 0 : topInset + 64, paddingBottom: landscape ? 0 : bottomInset + 150 }]}
+        style={StyleSheet.absoluteFill}
         onPress={toggle}
-        accessible={false}
+        accessibilityRole="button"
+        accessibilityLabel={hasFrame ? 'Vidéo transformée. Touche pour afficher les commandes.' : 'Connexion en cours'}
       >
-        <View style={styles.pane} accessible accessibilityLabel="Caméra originale, sans transformation">
-          {originalStream ? (
-            <RTCView streamURL={originalStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" mirror={mirrored} zOrder={0} />
-          ) : (
-            <View style={styles.paneEmpty}><ChapCamLoader size="small" /></View>
-          )}
-          <View style={styles.paneTag} pointerEvents="none">
-            <Text style={styles.paneTagText}>Original</Text>
+        {hasFrame ? (
+          <RTCView streamURL={transformedStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" zOrder={0} />
+        ) : null}
+        {busyText ? (
+          <View style={styles.connecting} pointerEvents="none" accessibilityLiveRegion="polite">
+            {face && !hasFrame ? (
+              <View style={styles.connectingFace}>
+                <Image source={{ uri: face.uri }} style={StyleSheet.absoluteFill} />
+              </View>
+            ) : null}
+            <ChapCamLoader size="large" />
+            <Text style={styles.connectingText}>{busyText}</Text>
           </View>
-        </View>
-
-        <View style={styles.pane} accessible accessibilityLabel="Caméra ChapCam, résultat transformé">
-          {transformedStream ? (
-            <RTCView streamURL={transformedStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" zOrder={0} />
-          ) : null}
-          {busyText ? (
-            <View style={styles.busy} pointerEvents="none" accessibilityLiveRegion="polite">
-              <ChapCamLoader size={landscape ? 'large' : 'small'} />
-              <Text style={styles.busyText}>{busyText}</Text>
-            </View>
-          ) : null}
-          <View style={[styles.paneTag, styles.paneTagBrand]} pointerEvents="none">
-            <Text style={styles.paneTagText}>ChapCam</Text>
-          </View>
-        </View>
+        ) : null}
       </Pressable>
 
       <Animated.View style={[StyleSheet.absoluteFill, { opacity }]} pointerEvents={shown ? 'box-none' : 'none'}>
@@ -857,13 +904,27 @@ function PermissionState({ loading, canAskAgain, onPress }) {
   )
 }
 
-function Notice({ notice, onDismiss }) {
+function Notice({ notice, onDismiss, onRetry }) {
   if (!notice) return null
   const failed = notice.tone === 'error'
   return (
     <View style={[styles.notice, failed && styles.noticeError]} accessibilityLiveRegion="polite">
       <Ionicons name={failed ? 'alert-circle' : 'checkmark-circle'} size={18} color={failed ? ERROR : C.blue} />
       <Text style={styles.noticeText}>{notice.text}</Text>
+      {onRetry ? (
+        <Pressable
+          onPress={() => {
+            onDismiss()
+            onRetry()
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Réessayer Live Swap"
+          hitSlop={8}
+          style={({ pressed }) => [styles.retryBtn, pressed && styles.pressed]}
+        >
+          <Text style={styles.retryText}>Réessayer</Text>
+        </Pressable>
+      ) : null}
       <Pressable onPress={onDismiss} accessibilityRole="button" accessibilityLabel="Fermer" hitSlop={10}>
         <Ionicons name="close" size={18} color={C.muted} />
       </Pressable>
@@ -924,12 +985,11 @@ const styles = StyleSheet.create({
   sideLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   sideLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '600' },
   sideDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.violet },
-  split: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', gap: 4 },
-  pane: { flex: 1, overflow: 'hidden', backgroundColor: '#0B1026' },
-  paneEmpty: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  paneTag: { position: 'absolute', top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.55)' },
-  paneTagBrand: { backgroundColor: 'rgba(123,77,255,0.85)' },
-  paneTagText: { color: C.white, fontSize: 13, fontWeight: '700' },
+  connecting: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 18, paddingHorizontal: 32 },
+  connectingFace: { width: 112, height: 112, borderRadius: 56, overflow: 'hidden', borderWidth: 3, borderColor: C.violet, marginBottom: 6 },
+  connectingText: { color: 'rgba(255,255,255,0.9)', fontSize: 16, fontWeight: '600', textAlign: 'center', letterSpacing: 0.2 },
+  retryBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 999, backgroundColor: C.blue },
+  retryText: { color: C.white, fontSize: 13, fontWeight: '700' },
   busy: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: 'rgba(5,8,22,0.45)' },
   busyText: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600', letterSpacing: 0.2 },
   scrimTop: { position: 'absolute', top: 0, left: 0, right: 0 },
