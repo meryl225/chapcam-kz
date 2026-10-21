@@ -13,7 +13,8 @@ import { supabase } from '../lib/supabase'
 import { loadDecart, mediaDevices, newSessionId, RTCView } from '../lib/realtime'
 import { AiBadge, RightsConsent } from '../ui/Safety'
 import { FaceLibrary } from '../ui/FaceLibrary'
-import { getFavoriteIds, loadPresetFace, saveFavoriteIds } from '../lib/liveSwapPresets'
+import { ActionSheet, ManageFacesSheet } from '../ui/FaceSheets'
+import { deleteUserFaces, forgetUserFace, getFavoriteIds, listUserFaces, loadPresetFace, loadUserFace, saveFavoriteIds, uploadUserFace } from '../lib/liveSwapPresets'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 
@@ -98,7 +99,11 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
   const [facing, setFacing] = useState('front')
   const [mirror, setMirror] = useState(true)
   const [face, setFace] = useState(null)
-  const [customFace, setCustomFace] = useState(null)
+  const [userFaces, setUserFaces] = useState([])
+  const [pendingFace, setPendingFace] = useState(null)
+  const [faceMenu, setFaceMenu] = useState(null)
+  const [manageOpen, setManageOpen] = useState(false)
+  const [optionsOpen, setOptionsOpen] = useState(false)
   const [loadingPresetId, setLoadingPresetId] = useState(null)
   const [favorites, setFavorites] = useState([])
   const [phase, setPhase] = useState('idle')
@@ -165,9 +170,26 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
       .catch(() => {})
   }, [])
 
-  useEffect(() => {
+  // Re-read the account's faces and favorites when the app comes back to the foreground,
+  // so additions/deletions made on another device (Android or iOS) show up without a restart.
+  const syncLibrary = useCallback(() => {
     getFavoriteIds().then(setFavorites).catch(() => {})
+    listUserFaces()
+      .then((faces) => {
+        setUserFaces(faces)
+        const keys = new Set(faces.map((f) => f.key))
+        setFace((current) => (current?.userFaceKey && !keys.has(current.userFaceKey) && !sessionRef.current ? null : current))
+      })
+      .catch(() => {})
   }, [])
+
+  useEffect(() => {
+    syncLibrary()
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') syncLibrary()
+    })
+    return () => sub.remove()
+  }, [syncLibrary])
 
   useEffect(() => {
     if (!granted || inSession) return undefined
@@ -378,15 +400,81 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     try {
       const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8, base64: true })
       const asset = res.assets?.[0]
-      if (!res.canceled && asset?.uri && asset.base64) {
-        const picked = { uri: asset.uri, base64: asset.base64, source: 'upload' }
-        setCustomFace(picked)
-        setFace(picked)
+      if (res.canceled || !asset?.uri || !asset.base64) return
+      const picked = { uri: asset.uri, base64: asset.base64, source: 'upload' }
+      setPendingFace(picked)
+      setFace(picked)
+      try {
+        const saved = await uploadUserFace(asset.base64)
+        setUserFaces((list) => [saved, ...list.filter((f) => f.key !== saved.key)])
+        setFace((current) => (current === picked ? { ...picked, userFaceKey: saved.key } : current))
+      } catch (error) {
+        setNotice({ tone: 'error', text: `${error.message} Le visage reste utilisable pour cette session.` })
+      } finally {
+        setPendingFace(null)
       }
     } catch {
       Alert.alert('Visage', "Impossible d'ouvrir tes photos. Vérifie l'accès dans Réglages.")
     }
   }
+
+  const selectUserFace = async (userFace) => {
+    if (loadingPresetId) return
+    setLoadingPresetId(userFace.key)
+    try {
+      setFace(await loadUserFace(userFace))
+      setNotice(null)
+    } catch {
+      setNotice({ tone: 'error', text: 'Ce visage est indisponible pour le moment. Réessaie.' })
+      syncLibrary()
+    } finally {
+      setLoadingPresetId(null)
+    }
+  }
+
+  const removeUserFaces = async (keys) => {
+    try {
+      await deleteUserFaces(keys.map((k) => k.slice(2)))
+      keys.forEach(forgetUserFace)
+      setUserFaces((list) => list.filter((f) => !keys.includes(f.key)))
+      setFavorites((list) => list.filter((k) => !keys.includes(k)))
+      setFace((current) => (current?.userFaceKey && keys.includes(current.userFaceKey) ? null : current))
+      return true
+    } catch (error) {
+      setNotice({ tone: 'error', text: error.message || 'Impossible de supprimer ce visage. Réessaie.' })
+      return false
+    }
+  }
+
+  // Resolves to true once the user confirms; also blocks deleting a face used by a running transformation.
+  const confirmDelete = (keys) =>
+    new Promise((resolve) => {
+      if (sessionRef.current && face?.userFaceKey && keys.includes(face.userFaceKey)) {
+        Alert.alert('Visage en cours d’utilisation', 'Arrête la transformation ou sélectionne un autre visage avant de le supprimer.')
+        return resolve(false)
+      }
+      Alert.alert(
+        keys.length > 1 ? 'Supprimer ces visages ?' : 'Supprimer ce visage ?',
+        keys.length > 1 ? `Voulez-vous vraiment supprimer ces ${keys.length} visages ?` : 'Voulez-vous vraiment supprimer ce visage ?',
+        [
+          { text: 'Annuler', style: 'cancel', onPress: () => resolve(false) },
+          { text: 'Supprimer', style: 'destructive', onPress: () => resolve(true) },
+        ],
+        { cancelable: true, onDismiss: () => resolve(false) },
+      )
+    })
+
+  const deleteWithConfirm = async (keys) => ((await confirmDelete(keys)) ? removeUserFaces(keys) : false)
+
+  const faceMenuActions = faceMenu
+    ? [
+        { label: 'Utiliser ce visage', icon: 'checkmark-circle-outline', onPress: () => (faceMenu.kind === 'user' ? selectUserFace(faceMenu.face) : selectPreset(faceMenu.face)) },
+        favorites.includes(faceMenu.key)
+          ? { label: 'Retirer des favoris', icon: 'heart-dislike-outline', onPress: () => toggleFavorite(faceMenu.key) }
+          : { label: 'Ajouter aux favoris', icon: 'heart-outline', onPress: () => toggleFavorite(faceMenu.key) },
+        ...(faceMenu.kind === 'user' ? [{ label: 'Supprimer le visage', icon: 'trash-outline', destructive: true, onPress: () => deleteWithConfirm([faceMenu.key]) }] : []),
+      ]
+    : []
 
   const selectPreset = async (preset) => {
     if (loadingPresetId) return
@@ -444,12 +532,12 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     )
   }
 
-  const showMenu = () =>
-    Alert.alert('Live Swap', 'Choisis un visage, cadre-toi bien dans la lumière puis lance la session. Chaque seconde en direct coûte 2 points.', [
-      ...(facing === 'front' ? [{ text: mirror ? 'Désactiver l\u2019effet miroir' : 'Activer l\u2019effet miroir', onPress: () => setMirror((m) => !m) }] : []),
-      ...(onOpenPlans ? [{ text: 'Forfaits et minutes', onPress: onOpenPlans }] : []),
-      { text: 'Fermer', style: 'cancel' },
-    ])
+  const showMenu = () => setOptionsOpen(true)
+  const optionActions = [
+    { label: 'Gérer les visages', icon: 'people-outline', onPress: () => setManageOpen(true) },
+    ...(facing === 'front' ? [{ label: mirror ? 'Désactiver l\u2019effet miroir' : 'Activer l\u2019effet miroir', icon: 'swap-horizontal-outline', onPress: () => setMirror((m) => !m) }] : []),
+    ...(onOpenPlans ? [{ label: 'Forfaits et minutes', icon: 'card-outline', onPress: onOpenPlans }] : []),
+  ]
 
   const ctaLabel = !granted ? (canAskAgain ? 'Autoriser la caméra' : 'Ouvrir les Réglages') : face ? 'Démarrer Live Swap' : 'Choisir un visage'
   const minutesLabel = points !== null ? formatMinutesPill(points) : null
@@ -549,14 +637,16 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
 
         <FaceLibrary
           face={face}
-          customFace={customFace}
+          userFaces={userFaces}
+          pendingFace={pendingFace}
           loadingId={loadingPresetId}
           favorites={favorites}
           size={compact ? 58 : 68}
           onSelectPreset={selectPreset}
-          onSelectCustom={() => setFace(customFace)}
+          onSelectUser={selectUserFace}
           onImport={pickFace}
           onToggleFavorite={toggleFavorite}
+          onFaceMenu={setFaceMenu}
         />
 
         <View style={styles.actions}>
@@ -597,6 +687,18 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
           onClose={() => setIdleEffectsOpen(false)}
         />
       ) : null}
+
+      <ActionSheet
+        visible={Boolean(faceMenu)}
+        title={faceMenu?.kind === 'user' ? 'Visage importé' : faceMenu?.label}
+        subtitle={faceMenu?.kind === 'preset' ? 'Avatar ChapCam' : undefined}
+        image={faceMenu?.uri}
+        actions={faceMenuActions}
+        bottomInset={bottomInset}
+        onClose={() => setFaceMenu(null)}
+      />
+      <ActionSheet visible={optionsOpen} title="Live Swap" subtitle="Chaque seconde en direct coûte 2 points." actions={optionActions} bottomInset={bottomInset} onClose={() => setOptionsOpen(false)} />
+      <ManageFacesSheet visible={manageOpen} faces={userFaces} bottomInset={bottomInset} onClose={() => setManageOpen(false)} onDelete={deleteWithConfirm} />
     </View>
   )
 }

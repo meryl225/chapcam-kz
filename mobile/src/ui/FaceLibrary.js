@@ -17,7 +17,7 @@ function Avatar({ uri, label, selected, loading, favorite, onPress, onLongPress,
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ selected, busy: loading }}
-      accessibilityHint={onLongPress ? 'Appui long pour ajouter ou retirer des favoris' : undefined}
+      accessibilityHint={onLongPress ? 'Appui long pour plus d\u2019options' : undefined}
       style={{ width: outer + 6, height: outer + 6, alignItems: 'center', justifyContent: 'center' }}
     >
       {selected ? (
@@ -51,7 +51,7 @@ function Avatar({ uri, label, selected, loading, favorite, onPress, onLongPress,
   )
 }
 
-export function FaceLibrary({ face, customFace, loadingId, favorites, onSelectPreset, onSelectCustom, onImport, onToggleFavorite, size = 68 }) {
+export function FaceLibrary({ face, userFaces, pendingFace, loadingId, favorites, onSelectPreset, onSelectUser, onImport, onToggleFavorite, onFaceMenu, size = 68 }) {
   const [tab, setTab] = useState('all')
   const [searching, setSearching] = useState(false)
   const [query, setQuery] = useState('')
@@ -60,7 +60,10 @@ export function FaceLibrary({ face, customFace, loadingId, favorites, onSelectPr
   const presets = (tab === 'favorites' ? PRESET_FACES.filter((p) => favorites.includes(p.id)) : PRESET_FACES).filter(
     (p) => !q || p.label.toLowerCase().includes(q),
   )
+  const mine = q ? [] : tab === 'favorites' ? userFaces.filter((f) => favorites.includes(f.key)) : userFaces
   const selectedPreset = face?.source === 'preset' ? face.presetId : null
+  const selectedKey = selectedPreset ?? face?.userFaceKey ?? null
+  const showPending = tab === 'all' && !q && pendingFace && face === pendingFace
 
   const closeSearch = () => {
     setSearching(false)
@@ -100,14 +103,14 @@ export function FaceLibrary({ face, customFace, loadingId, favorites, onSelectPr
               ))}
             </View>
             <View style={styles.flex} />
-            {selectedPreset ? (
+            {selectedKey ? (
               <Pressable
-                onPress={() => onToggleFavorite(selectedPreset)}
+                onPress={() => onToggleFavorite(selectedKey)}
                 accessibilityRole="button"
-                accessibilityLabel={favorites.includes(selectedPreset) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                accessibilityLabel={favorites.includes(selectedKey) ? 'Retirer des favoris' : 'Ajouter aux favoris'}
                 hitSlop={10}
               >
-                <Ionicons name={favorites.includes(selectedPreset) ? 'heart' : 'heart-outline'} size={20} color={favorites.includes(selectedPreset) ? C.violet : DARK.text} />
+                <Ionicons name={favorites.includes(selectedKey) ? 'heart' : 'heart-outline'} size={20} color={favorites.includes(selectedKey) ? C.violet : DARK.text} />
               </Pressable>
             ) : null}
             <Pressable onPress={() => setSearching(true)} accessibilityRole="button" accessibilityLabel="Rechercher un visage" hitSlop={10}>
@@ -125,9 +128,21 @@ export function FaceLibrary({ face, customFace, loadingId, favorites, onSelectPr
           <Text style={styles.addLabel}>Ajouter</Text>
         </Pressable>
 
-        {tab === 'all' && customFace && !q ? (
-          <Avatar uri={customFace.uri} label="Mon visage" size={size} selected={face?.source === 'upload'} onPress={onSelectCustom} />
-        ) : null}
+        {showPending ? <Avatar uri={pendingFace.uri} label="Visage en cours d’enregistrement" size={size} selected loading /> : null}
+
+        {mine.map((f) => (
+          <Avatar
+            key={f.key}
+            uri={f.url}
+            label="Visage importé"
+            size={size}
+            selected={selectedKey === f.key}
+            loading={loadingId === f.key}
+            favorite={favorites.includes(f.key)}
+            onPress={() => onSelectUser(f)}
+            onLongPress={() => onFaceMenu({ kind: 'user', key: f.key, uri: f.url, face: f })}
+          />
+        ))}
 
         {presets.map((p) => (
           <Avatar
@@ -139,11 +154,11 @@ export function FaceLibrary({ face, customFace, loadingId, favorites, onSelectPr
             loading={loadingId === p.id}
             favorite={favorites.includes(p.id)}
             onPress={() => onSelectPreset(p)}
-            onLongPress={() => onToggleFavorite(p.id)}
+            onLongPress={() => onFaceMenu({ kind: 'preset', key: p.id, uri: p.url, label: p.label, face: p })}
           />
         ))}
 
-        {presets.length === 0 ? (
+        {presets.length === 0 && mine.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyText}>
               {q ? 'Aucun visage ne correspond.' : 'Appuie longuement sur un visage pour l\u2019ajouter à tes favoris.'}

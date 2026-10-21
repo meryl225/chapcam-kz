@@ -1,3 +1,4 @@
+import Constants from 'expo-constants'
 import { supabase } from './supabase'
 
 // Portraits extracted from the reference sheet (no ring, check mark or glow), hosted
@@ -50,7 +51,55 @@ const FAVORITES_KEY = 'liveswap_favorites'
 export async function getFavoriteIds() {
   const { data } = await supabase.auth.getUser()
   const ids = data?.user?.user_metadata?.[FAVORITES_KEY]
-  return Array.isArray(ids) ? ids.filter((id) => PRESET_FACES.some((p) => p.id === id)) : []
+  return Array.isArray(ids) ? ids.filter((id) => typeof id === 'string' && (id.startsWith('u:') || PRESET_FACES.some((p) => p.id === id))) : []
+}
+
+const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
+
+async function facesRequest(method, body) {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) throw new Error('Session expirée. Reconnecte-toi.')
+  const res = await fetch(`${WEB_URL}/api/mobile/live-faces`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Erreur réseau. Réessaie.')
+  return json
+}
+
+// Imported faces are keyed `u:<uuid>` everywhere in the UI and in favorites, so they can never collide with presets.
+const toUserFace = (f) => ({ key: `u:${f.id}`, id: f.id, url: f.url, createdAt: f.createdAt })
+
+export async function listUserFaces() {
+  const { faces } = await facesRequest('GET')
+  return (faces ?? []).map(toUserFace)
+}
+
+export async function uploadUserFace(base64) {
+  const { face } = await facesRequest('POST', { base64 })
+  return toUserFace(face)
+}
+
+export async function deleteUserFaces(ids) {
+  await facesRequest('DELETE', { ids })
+}
+
+export async function loadUserFace(userFace) {
+  if (cache.has(userFace.key)) return cache.get(userFace.key)
+  const res = await fetch(userFace.url)
+  if (!res.ok) throw new Error(`face ${res.status}`)
+  const blob = await res.blob()
+  if (!blob.size || blob.size > 3 * 1024 * 1024) throw new Error('face size')
+  const face = { uri: userFace.url, base64: await blobToBase64(blob), userFaceKey: userFace.key, source: 'upload' }
+  cache.set(userFace.key, face)
+  return face
+}
+
+export function forgetUserFace(key) {
+  cache.delete(key)
 }
 
 export async function saveFavoriteIds(ids) {
