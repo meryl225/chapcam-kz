@@ -4,7 +4,7 @@ import { Text } from '../i18n/Text'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { IAP_SUPPORTED, IS_ANDROID, STORE, TOKEN_PRODUCT_IDS, fetchIosCatalog, skuOf } from '../lib/iap'
+import { IAP_SUPPORTED, IS_ANDROID, STORE, TOKENS_OFFERING_ID, TOKEN_PRODUCT_IDS, fetchIosCatalog, skuOf } from '../lib/iap'
 import {
   ensureRevenueCat,
   isCancelled,
@@ -41,7 +41,7 @@ export function TokenPacksScreen({ user, onBack, onPurchased }) {
     try {
       await ensureRevenueCat(user.id)
       const [products, catalog] = await Promise.all([
-        loadStoreProducts(TOKEN_PRODUCT_IDS, 'consumable'),
+        loadStoreProducts(TOKEN_PRODUCT_IDS, 'consumable', TOKENS_OFFERING_ID),
         fetchIosCatalog(),
       ])
       const anyAvailable = catalog.tokenPacks.some((pack) => products[skuOf(pack)])

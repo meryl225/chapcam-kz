@@ -38,6 +38,8 @@ export const TOKEN_PRODUCT_IDS = IS_ANDROID
   ? ['chapcam_tokens_100', 'chapcam_tokens_250', 'chapcam_tokens_500', 'chapcam_tokens_1000']
   : ['com.chapcam.app.tokens.100', 'com.chapcam.app.tokens.250', 'com.chapcam.app.tokens.500', 'com.chapcam.app.tokens.1000']
 
+export const TOKENS_OFFERING_ID = 'chapcam_tokens'
+
 export const MINUTES_OFFERING_ID = 'liveswap_minutes'
 
 export const MINUTE_PRODUCT_IDS = IS_ANDROID
