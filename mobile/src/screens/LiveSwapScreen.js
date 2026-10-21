@@ -399,11 +399,11 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
   }
 
   if (inSession) {
-    const sessionStream = live ? remoteStream : localStream
     return (
       <ImmersiveSession
-        stream={sessionStream}
-        mirrored={sessionStream === localStream && facing === 'front' && mirror}
+        originalStream={localStream}
+        transformedStream={live ? remoteStream : null}
+        mirrored={facing === 'front' && mirror}
         phase={phase}
         elapsed={elapsed}
         face={face}
@@ -594,7 +594,9 @@ function SideAction({ icon, label, dot, onPress, accessibilityLabel }) {
   )
 }
 
-function ImmersiveSession({ stream, mirrored, phase, elapsed, face, planLabel, remaining, topInset, bottomInset, onStop, onBack, effectsUnlocked, look, onApplyLook, onOpenPlans }) {
+function ImmersiveSession({ originalStream, transformedStream, mirrored, phase, elapsed, face, planLabel, remaining, topInset, bottomInset, onStop, onBack, effectsUnlocked, look, onApplyLook, onOpenPlans }) {
+  const { width, height } = useWindowDimensions()
+  const landscape = width > height
   const [visible, setVisible] = useState(false)
   const [effectsOpen, setEffectsOpen] = useState(false)
   const [pinned, setPinned] = useState(false)
@@ -604,7 +606,7 @@ function ImmersiveSession({ stream, mirrored, phase, elapsed, face, planLabel, r
   const live = phase === 'live'
   const stopping = phase === 'stopping'
   const busyText =
-    phase === 'preparing' ? 'Préparation…' : phase === 'connecting' ? 'Connexion…' : stopping ? 'Arrêt…' : live && !stream ? 'Réception de la vidéo transformée…' : null
+    phase === 'preparing' ? 'Préparation…' : phase === 'connecting' ? 'Connexion…' : stopping ? 'Arrêt…' : live && !transformedStream ? 'Réception de la vidéo transformée…' : null
 
   // VoiceOver users cannot discover controls hidden behind a tap, so keep them on screen.
   useEffect(() => {
@@ -661,18 +663,37 @@ function ImmersiveSession({ stream, mirrored, phase, elapsed, face, planLabel, r
     <View style={styles.stage}>
       <StatusBar hidden={!shown} animated style="light" />
 
-      <Pressable style={StyleSheet.absoluteFill} onPress={toggle} accessible={false}>
-        {stream ? (
-          <RTCView streamURL={stream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" mirror={mirrored} zOrder={0} />
-        ) : null}
-      </Pressable>
-
-      {busyText ? (
-        <View style={styles.busy} pointerEvents="none" accessibilityLiveRegion="polite">
-          <ChapCamLoader size="large" />
-          <Text style={styles.busyText}>{busyText}</Text>
+      <Pressable
+        style={[styles.split, { paddingTop: landscape ? 0 : topInset + 64, paddingBottom: landscape ? 0 : bottomInset + 150 }]}
+        onPress={toggle}
+        accessible={false}
+      >
+        <View style={styles.pane} accessible accessibilityLabel="Caméra originale, sans transformation">
+          {originalStream ? (
+            <RTCView streamURL={originalStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" mirror={mirrored} zOrder={0} />
+          ) : (
+            <View style={styles.paneEmpty}><ChapCamLoader size="small" /></View>
+          )}
+          <View style={styles.paneTag} pointerEvents="none">
+            <Text style={styles.paneTagText}>Original</Text>
+          </View>
         </View>
-      ) : null}
+
+        <View style={styles.pane} accessible accessibilityLabel="Caméra ChapCam, résultat transformé">
+          {transformedStream ? (
+            <RTCView streamURL={transformedStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" zOrder={0} />
+          ) : null}
+          {busyText ? (
+            <View style={styles.busy} pointerEvents="none" accessibilityLiveRegion="polite">
+              <ChapCamLoader size={landscape ? 'large' : 'small'} />
+              <Text style={styles.busyText}>{busyText}</Text>
+            </View>
+          ) : null}
+          <View style={[styles.paneTag, styles.paneTagBrand]} pointerEvents="none">
+            <Text style={styles.paneTagText}>ChapCam</Text>
+          </View>
+        </View>
+      </Pressable>
 
       <Animated.View style={[StyleSheet.absoluteFill, { opacity }]} pointerEvents={shown ? 'box-none' : 'none'}>
         <LinearGradient colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0)']} style={[styles.scrimTop, { height: topInset + 120 }]} pointerEvents="none" />
@@ -903,6 +924,12 @@ const styles = StyleSheet.create({
   sideLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   sideLabel: { color: 'rgba(255,255,255,0.9)', fontSize: 14, fontWeight: '600' },
   sideDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.violet },
+  split: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', gap: 4 },
+  pane: { flex: 1, overflow: 'hidden', backgroundColor: '#0B1026' },
+  paneEmpty: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  paneTag: { position: 'absolute', top: 10, left: 10, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.55)' },
+  paneTagBrand: { backgroundColor: 'rgba(123,77,255,0.85)' },
+  paneTagText: { color: C.white, fontSize: 13, fontWeight: '700' },
   busy: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: 'rgba(5,8,22,0.45)' },
   busyText: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600', letterSpacing: 0.2 },
   scrimTop: { position: 'absolute', top: 0, left: 0, right: 0 },

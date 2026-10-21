@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Alert, LayoutAnimation, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import { requestLibraryAccess } from '../lib/mediaAccess'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -128,7 +129,7 @@ export function VideoTranslationScreen({ onBack }) {
   useEffect(() => { loadInfo() }, [])
 
   const chooseVideo = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    const permission = await requestLibraryAccess()
     if (!permission.granted) {
       return Alert.alert(
         'Accès aux vidéos',

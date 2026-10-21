@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { ActivityIndicator, Alert, Image, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import { requestLibraryAccess } from '../lib/mediaAccess'
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -40,7 +41,7 @@ export function SocialBonusSheet({ visible, status, onClose, onSubmitted }) {
   }
 
   const pickProofs = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    const permission = await requestLibraryAccess()
     if (!permission.granted) {
       Alert.alert(
         'Accès refusé',

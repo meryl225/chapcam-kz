@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import { requestLibraryAccess } from '../lib/mediaAccess'
 import * as DocumentPicker from 'expo-document-picker'
 import Constants from 'expo-constants'
 import { Ionicons } from '@expo/vector-icons'
@@ -91,7 +92,7 @@ export function ChapVerifyScreen({ onBack, topInset = 0 }) {
   }
 
   const pickFromLibrary = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    const permission = await requestLibraryAccess()
     if (!permission.granted) return Alert.alert('Photos', 'Autorise ChapCam à accéder à tes photos dans Réglages.')
     const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images', 'videos'], allowsEditing: false, quality: 1 })
     const asset = picked.canceled ? null : picked.assets?.[0]

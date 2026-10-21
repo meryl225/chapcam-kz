@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { ActionSheetIOS, ActivityIndicator, Alert, Image, Linking, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as ImagePicker from 'expo-image-picker'
+import { requestLibraryAccess } from '../lib/mediaAccess'
 import { Ionicons } from '@expo/vector-icons'
 import Constants from 'expo-constants'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -170,7 +171,7 @@ export function ProfileScreen({ user, subscription, loading, refreshing, onRefre
   const pickAvatar = async (source) => {
     const permission = source === 'camera'
       ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync()
+      : await requestLibraryAccess()
     if (!permission.granted) {
       Alert.alert(
         source === 'camera' ? 'Accès à la caméra' : 'Accès aux photos',

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Image, KeyboardAvoidingView, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
+import { requestLibraryAccess } from '../lib/mediaAccess'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -227,7 +228,7 @@ export function PhotoVideoScreen({ onBack }) {
   const stopAudio = () => { if (playing) player.pause(); setPlaying(false) }
 
   const choosePhoto = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    const permission = await requestLibraryAccess()
     if (!permission.granted) {
       return Alert.alert('Accès aux photos', 'Pour choisir une photo, tu peux autoriser l’accès à ta photothèque dans les Réglages.', [
         { text: 'Annuler', style: 'cancel' },
