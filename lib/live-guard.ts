@@ -18,10 +18,11 @@ export async function cancelSubscription(userId: string): Promise<number> {
   const admin = createAdminClient()
   const { data } = await admin.from('subscriptions').select('points').eq('user_id', userId).maybeSingle()
   const topup = await getTopupPoints(userId, Number(data?.points) || 0)
-  await admin
+  const { error } = await admin
     .from('subscriptions')
-    .update({ points: topup, is_active: false, plan: 'free' })
+    .update({ points: topup, points_remaining: topup, is_active: false, plan: 'free', updated_at: new Date().toISOString() })
     .eq('user_id', userId)
+  if (error) console.error('[LiveGuard] Annulation forfait expire echouee:', error.message)
   if (topup > 0) await setTopupPoints(userId, topup).catch(() => {})
   return topup
 }

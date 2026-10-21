@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { pointsPerSecond } from '@/lib/swap-pricing'
 import { trackGPUUsage } from '@/lib/rate-limit'
 import { cancelSubscription, claimLiveSession, releaseLiveSession } from '@/lib/live-guard'
-import { getTopupPoints } from '@/lib/liveswap-topup'
+import { getTopupPoints, setTopupPoints } from '@/lib/liveswap-topup'
 
 export async function POST(request: NextRequest) {
   try {
@@ -56,10 +56,15 @@ export async function POST(request: NextRequest) {
         const refund = Math.max(0, Math.floor(reservation.points_used))
         const { data: subscription } = await admin
           .from('subscriptions')
-          .select('id, points')
+          .select('id, points, is_active, expires_at')
           .eq('user_id', user.id)
           .single()
         if (subscription) {
+          const expired = subscription.expires_at ? new Date(subscription.expires_at).getTime() < Date.now() : false
+          if (expired || !subscription.is_active) {
+            const topup = await getTopupPoints(user.id, subscription.points || 0)
+            await setTopupPoints(user.id, topup + refund).catch(() => {})
+          }
           await admin
             .from('subscriptions')
             .update({
@@ -215,7 +220,7 @@ export async function POST(request: NextRequest) {
     // Recuperer les points actuels (scope au user authentifie)
     const { data: subscription, error: fetchError } = await admin
       .from('subscriptions')
-      .select('id, points, max_points, plan')
+      .select('id, points, max_points, plan, is_active, expires_at')
       .eq('user_id', user.id)
       .single()
 
@@ -227,10 +232,21 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
-    const currentPoints = subscription.points || 0
+    // Forfait expire ou inactif : seules les minutes de recharge sont utilisables.
+    // Le debit doit alors aussi diminuer le registre de recharge, sinon le solde
+    // affiche (min(recharge, total)) ne bouge jamais tant que le total reste eleve.
+    const expired = subscription.expires_at ? new Date(subscription.expires_at).getTime() < Date.now() : false
+    const topupOnly = expired || !subscription.is_active
+    let currentPoints = subscription.points || 0
+    let topupBefore: number | null = null
+    if (topupOnly) {
+      topupBefore = expired ? await cancelSubscription(user.id) : await getTopupPoints(user.id, currentPoints)
+      if (expired) currentPoints = topupBefore
+    }
+    const spendable = topupBefore ?? currentPoints
 
     // Si le solde est deja a zero, rien a deduire : le swap doit s'arreter.
-    if (currentPoints <= 0) {
+    if (spendable <= 0) {
       return NextResponse.json({
         success: false,
         error: 'Points insuffisants',
@@ -242,9 +258,10 @@ export async function POST(request: NextRequest) {
     // Deduire ce qui est demande, mais jamais plus que le solde disponible.
     // Ainsi le client consomme TOUS ses points jusqu'a epuisement, sans
     // gaspiller le dernier palier incomplet.
-    const pointsDeducted = Math.min(points, currentPoints)
+    const pointsDeducted = Math.min(points, spendable)
     const newPoints = currentPoints - pointsDeducted
-    const depleted = newPoints <= 0
+    const remaining = spendable - pointsDeducted
+    const depleted = remaining <= 0
 
     const { error: updateError } = await admin
       .from('subscriptions')
@@ -263,6 +280,12 @@ export async function POST(request: NextRequest) {
         success: false, 
         error: 'Erreur mise a jour points'
       }, { status: 500 })
+    }
+
+    if (topupBefore !== null) {
+      await setTopupPoints(user.id, remaining).catch((e) =>
+        console.error('[Points] Mise a jour recharge echouee:', e?.message),
+      )
     }
 
     // === Upsert "heartbeat" de la session ===
@@ -335,9 +358,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      previousPoints: currentPoints,
+      previousPoints: spendable,
       pointsDeducted,
-      currentPoints: newPoints,
+      currentPoints: remaining,
       maxPoints: subscription.max_points || 0,
       // Signale au client que le solde est epuise -> il doit couper le swap.
       depleted,

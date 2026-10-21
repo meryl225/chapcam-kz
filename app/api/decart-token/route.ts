@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveWatermarkForUser, getDecartApiKeyCandidates } from '@/lib/watermark'
 import { checkLiveAccess, claimLiveSession, releaseLiveSession } from '@/lib/live-guard'
 import { trackGPUUsage } from '@/lib/rate-limit'
+import { getTopupPoints, setTopupPoints } from '@/lib/liveswap-topup'
 import { RESERVATION_SECONDS, RESERVATION_POINTS } from '@/lib/swap-pricing'
 
 export const runtime = 'nodejs'
@@ -295,18 +296,22 @@ export async function GET(request: Request) {
         const admin = createAdminClient()
         const { data: sub } = await admin
           .from('subscriptions')
-          .select('id, points')
+          .select('id, points, is_active, expires_at')
           .eq('user_id', user.id)
           .single()
         if (sub) {
           const current = sub.points || 0
+          const expired = sub.expires_at ? new Date(sub.expires_at).getTime() < Date.now() : false
+          const topupOnly = expired || !sub.is_active
+          const topup = topupOnly ? await getTopupPoints(user.id, current) : null
           // Ne jamais debiter plus que le solde disponible.
-          const reserve = Math.min(RESERVATION_POINTS, current)
+          const reserve = Math.min(RESERVATION_POINTS, topup ?? current)
           if (reserve > 0) {
             await admin
               .from('subscriptions')
               .update({ points: current - reserve, updated_at: new Date().toISOString() })
               .eq('id', sub.id)
+            if (topup !== null) await setTopupPoints(user.id, topup - reserve)
           }
           const nowIso = new Date().toISOString()
           await admin.from('swap_sessions').insert({
