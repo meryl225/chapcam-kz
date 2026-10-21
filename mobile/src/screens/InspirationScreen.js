@@ -1,6 +1,7 @@
 import React, { memo, useCallback, useMemo, useState } from 'react'
 import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { requireOptionalNativeModule } from 'expo-modules-core'
+import { useSafeVideoPlayer } from '../lib/useSafeVideoPlayer'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Image } from 'expo-image'
@@ -86,10 +87,11 @@ function FullscreenPlayer({ media, onClose }) {
 
 function PlayerVideo({ src }) {
   const source = useMemo(() => (typeof src === 'string' ? asset(src).uri : src), [src])
-  const player = videoModule.useVideoPlayer(source, (p) => {
+  const player = useSafeVideoPlayer(videoModule, source, (p) => {
     p.loop = true
     p.play()
   })
+  if (!player) return null
   return (
     <videoModule.VideoView
       player={player}

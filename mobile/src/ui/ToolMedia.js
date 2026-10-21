@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { AppState, Dimensions, Image, StyleSheet, View } from 'react-native'
 import { requireOptionalNativeModule } from 'expo-modules-core'
 import { asset } from './catalog'
+import { setPlayerPlaying, useSafeVideoPlayer } from '../lib/useSafeVideoPlayer'
 import { ChapCamLoader } from './ChapCamLoader'
 
 // expo-video needs a native rebuild; older dev clients fall back to the production poster.
@@ -111,14 +112,14 @@ export const videoSource = (src) => (typeof src === 'string' ? { uri: asset(src)
 
 function LoopingVideo({ src, active, label }) {
   const source = useMemo(() => videoSource(src), [src])
-  const player = video.useVideoPlayer(source, (p) => {
+  const player = useSafeVideoPlayer(video, source, (p) => {
     p.loop = true
     p.muted = true
   })
   useEffect(() => {
-    if (active) player.play()
-    else player.pause()
+    setPlayerPlaying(player, active)
   }, [active, player])
+  if (!player) return null
   return (
     <video.VideoView
       player={player}

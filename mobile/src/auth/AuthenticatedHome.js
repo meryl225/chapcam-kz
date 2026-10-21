@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Notifications from 'expo-notifications'
 import { supabase } from '../lib/supabase'
+import { setPlayerPlaying, useSafeVideoPlayer } from '../lib/useSafeVideoPlayer'
 import { creationIdFromResponse, registerForPushNotifications, unregisterPushToken } from '../lib/pushNotifications'
 import { getUserAvatarSource, resolveAvatarUrl } from '../lib/userAvatar'
 import { fetchAccountSummary } from '../lib/accountSummary'
@@ -205,7 +206,8 @@ function HomeShell({ user }) {
       setConsentPromptOpen(true)
       return
     }
-    setOpenTool(key)
+    // A second tap landing before the first tool has mounted must not swap it out mid-initialisation.
+    setOpenTool((current) => current ?? key)
   }, [aiConsented])
 
   const declineAiConsent = () => {
@@ -595,14 +597,14 @@ const TrendsList = memo(function TrendsList({ onOpenTool, visible }) {
 
 function TrendVideo({ src, playing, label }) {
   const source = useMemo(() => videoSource(src), [src])
-  const player = videoModule.useVideoPlayer(source, (p) => {
+  const player = useSafeVideoPlayer(videoModule, source, (p) => {
     p.loop = true
     p.muted = true
   })
   useEffect(() => {
-    if (playing) player.play()
-    else player.pause()
+    setPlayerPlaying(player, playing)
   }, [playing, player])
+  if (!player) return null
   return (
     <videoModule.VideoView
       player={player}

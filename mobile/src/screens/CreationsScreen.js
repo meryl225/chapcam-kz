@@ -26,6 +26,7 @@ import { supabase } from '../lib/supabase'
 import { BRAND, C, GAP, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { API_URL } from '../lib/api'
+import { useSafeVideoPlayer } from '../lib/useSafeVideoPlayer'
 import { AiBadge, ReportAbuseSheet } from '../ui/Safety'
 
 // Native modules are optional so an older dev build without them still runs:
@@ -622,12 +623,13 @@ function ViewerContent({ item, busy, onClose, onDownload, onShare, onDelete }) {
 }
 
 function FullVideo({ uri, poster, onDuration }) {
-  const player = video.useVideoPlayer(uri, (p) => {
+  const player = useSafeVideoPlayer(video, uri, (p) => {
     p.loop = false
     p.play()
   })
   const reported = useRef(false)
   useEffect(() => {
+    if (!player) return undefined
     const sub = player.addListener('statusChange', ({ status }) => {
       if (status === 'readyToPlay' && !reported.current) {
         reported.current = true

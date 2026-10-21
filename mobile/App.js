@@ -8,6 +8,7 @@ import { supabase } from './src/lib/supabase'
 import { clearAccountSummaryCache } from './src/lib/accountSummary'
 import { AuthScreen } from './src/auth/AuthScreen'
 import { AuthenticatedHome } from './src/auth/AuthenticatedHome'
+import { AppErrorBoundary } from './src/ui/AppErrorBoundary'
 
 // Keep the static native launch screen up until BootSplash has drawn the identical logo,
 // then BootSplash animates the light until the session is known.
@@ -51,7 +52,9 @@ export default function App() {
     <SafeAreaProvider initialMetrics={initialWindowMetrics}>
       <View style={styles.safe}>
         <StatusBar style="light" translucent backgroundColor="transparent" />
-        {loading ? null : session?.user ? <AuthenticatedHome user={session.user} /> : <AuthScreen />}
+        <AppErrorBoundary>
+          {loading ? null : session?.user ? <AuthenticatedHome user={session.user} /> : <AuthScreen />}
+        </AppErrorBoundary>
         {bootVisible ? <BootSplash exiting={!loading} onReady={hideNativeSplash} onExited={handleBootExited} /> : null}
       </View>
     </SafeAreaProvider>
