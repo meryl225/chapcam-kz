@@ -41,7 +41,7 @@ export const TOKEN_PRODUCT_IDS = IS_ANDROID
 export const MINUTES_OFFERING_ID = 'liveswap_minutes'
 
 export const MINUTE_PRODUCT_IDS = IS_ANDROID
-  ? ['chapcam_liveswap_5min', 'chapcam_liveswap_15min', 'chapcam_liveswap_25min']
+  ? ['chapcam_minutes_5', 'chapcam_minutes_15', 'chapcam_minutes_25']
   : ['com.chapcam.app.liveswap.minutes.5', 'com.chapcam.app.liveswap.minutes.15', 'com.chapcam.app.liveswap.minutes.25']
 
 // Contenu des forfaits et packs (sans prix : ils viennent du store via RevenueCat).

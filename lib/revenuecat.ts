@@ -37,9 +37,9 @@ export const LIVESWAP_MINUTES_OFFERING = 'liveswap_minutes'
 const LIVESWAP_POINTS_PER_SECOND = 2
 
 export const LIVESWAP_MINUTE_PACKS: { productId: string; androidProductId: string; packageId: string; minutes: number }[] = [
-  { productId: 'com.chapcam.app.liveswap.minutes.5', androidProductId: 'chapcam_liveswap_5min', packageId: 'liveswap_5min', minutes: 5 },
-  { productId: 'com.chapcam.app.liveswap.minutes.15', androidProductId: 'chapcam_liveswap_15min', packageId: 'liveswap_15min', minutes: 15 },
-  { productId: 'com.chapcam.app.liveswap.minutes.25', androidProductId: 'chapcam_liveswap_25min', packageId: 'liveswap_25min', minutes: 25 },
+  { productId: 'com.chapcam.app.liveswap.minutes.5', androidProductId: 'chapcam_minutes_5', packageId: 'liveswap_5min', minutes: 5 },
+  { productId: 'com.chapcam.app.liveswap.minutes.15', androidProductId: 'chapcam_minutes_15', packageId: 'liveswap_15min', minutes: 15 },
+  { productId: 'com.chapcam.app.liveswap.minutes.25', androidProductId: 'chapcam_minutes_25', packageId: 'liveswap_25min', minutes: 25 },
 ]
 
 // Abonnements Google Play : un abonnement par forfait, une offre de base
