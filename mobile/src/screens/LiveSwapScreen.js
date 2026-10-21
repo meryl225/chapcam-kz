@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { AccessibilityInfo, Alert, Animated, AppState, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { AccessibilityInfo, Alert, Animated, AppState, BackHandler, Image, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
 import * as NavigationBar from 'expo-navigation-bar'
@@ -504,10 +504,30 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
   const askCamera = () => (canAskAgain ? requestPermission() : Linking.openSettings())
 
 
+  const exitingRef = useRef(false)
   const exitSession = async () => {
-    await stop(null)
-    onBack()
+    // Back arrow and Android back can both fire: stop and bill the session once, leave once.
+    if (exitingRef.current) return
+    exitingRef.current = true
+    try {
+      await stop(null)
+    } finally {
+      onBack()
+    }
   }
+  const exitSessionRef = useRef(exitSession)
+  exitSessionRef.current = exitSession
+
+  // Registered after the app-level handler, so Android calls it first: during a session, back
+  // stops the stream and camera cleanly before closing the tool instead of unmounting mid-call.
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !inSession) return undefined
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      exitSessionRef.current()
+      return true
+    })
+    return () => sub.remove()
+  }, [inSession])
 
   if (inSession) {
     return (

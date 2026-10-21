@@ -1,5 +1,5 @@
 import React, { Activity, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, AppState, FlatList, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { Alert, AppState, BackHandler, FlatList, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { Image } from 'expo-image'
 import { requireOptionalNativeModule } from 'expo-modules-core'
 import { AI_CONSENT_KEY, AiDataConsentSheet, hasAiDataConsent } from '../ui/AiDataConsent'
@@ -214,6 +214,8 @@ function HomeShell({ user }) {
     setConsentPromptOpen(false)
     setPendingTool(null)
   }
+  const declineAiConsentRef = useRef(declineAiConsent)
+  declineAiConsentRef.current = declineAiConsent
 
   const acceptAiConsent = async () => {
     const { error } = await supabase.auth.updateUser({ data: { [AI_CONSENT_KEY]: new Date().toISOString() } })
@@ -237,31 +239,35 @@ function HomeShell({ user }) {
   }, [tab])
 
   let overlay = null
+  let closeOverlay = null
+  const closeTool = () => setOpenTool(null)
   if (plansOpen) {
-    const closePlans = () => {
+    closeOverlay = () => {
       setPlansOpen(false)
       loadAccount()
     }
-    overlay = <SubscriptionPlansScreen user={user} onBack={closePlans} onPurchased={loadAccount} />
+    overlay = <SubscriptionPlansScreen user={user} onBack={closeOverlay} onPurchased={loadAccount} />
   } else if (plansPreviewOpen) {
-    overlay = <PlansPreviewScreen onBack={() => setPlansPreviewOpen(false)} />
+    closeOverlay = () => setPlansPreviewOpen(false)
+    overlay = <PlansPreviewScreen onBack={closeOverlay} />
   } else if (tokensOpen) {
-    const closeTokens = () => {
+    closeOverlay = () => {
       setTokensOpen(false)
       loadAccount()
     }
-    overlay = <TokenPacksScreen user={user} onBack={closeTokens} onPurchased={loadAccount} />
+    overlay = <TokenPacksScreen user={user} onBack={closeOverlay} onPurchased={loadAccount} />
   } else if (minutesOpen) {
-    const closeMinutes = () => {
+    closeOverlay = () => {
       setMinutesOpen(false)
       loadAccount()
     }
-    overlay = <LiveSwapMinutesScreen user={user} onBack={closeMinutes} onPurchased={loadAccount} />
+    overlay = <LiveSwapMinutesScreen user={user} onBack={closeOverlay} onPurchased={loadAccount} />
   } else if (accountDetail) {
-    overlay = <AccountDetailScreen type={accountDetail} onBack={() => setAccountDetail(null)} subscription={subscription} user={user} />
+    closeOverlay = () => setAccountDetail(null)
+    overlay = <AccountDetailScreen type={accountDetail} onBack={closeOverlay} subscription={subscription} user={user} />
   } else if (openTool === 'live') {
     // The Live Swap debits subscriptions.points: refetch so Home and Profile show the new balance.
-    const closeLiveSwap = () => {
+    closeOverlay = () => {
       setOpenTool(null)
       loadAccount()
     }
@@ -269,20 +275,50 @@ function HomeShell({ user }) {
       setOpenTool(null)
       setPlansOpen(true)
     }
-    overlay = <LiveSwapScreen onBack={closeLiveSwap} onOpenPlans={openPlansFromLive} topInset={insets.top} bottomInset={insets.bottom} subscription={loading ? undefined : subscription} />
+    overlay = <LiveSwapScreen onBack={closeOverlay} onOpenPlans={openPlansFromLive} topInset={insets.top} bottomInset={insets.bottom} subscription={loading ? undefined : subscription} />
   } else if (openTool === 'photo-video') {
-    overlay = <PhotoVideoScreen onBack={() => setOpenTool(null)} />
+    closeOverlay = closeTool
+    overlay = <PhotoVideoScreen onBack={closeTool} />
   } else if (openTool === 'voice') {
-    overlay = <VoiceMessageScreen onBack={() => setOpenTool(null)} />
+    closeOverlay = closeTool
+    overlay = <VoiceMessageScreen onBack={closeTool} />
   } else if (openTool === 'genjutsu') {
-    overlay = <GenjutsuScreen onBack={() => setOpenTool(null)} onOpenCreations={() => { setOpenTool(null); setTab('creations') }} topInset={insets.top} />
+    closeOverlay = closeTool
+    overlay = <GenjutsuScreen onBack={closeTool} onOpenCreations={() => { setOpenTool(null); setTab('creations') }} topInset={insets.top} />
   } else if (openTool === 'motion') {
-    overlay = <MotionControlScreen onBack={() => setOpenTool(null)} onOpenCreations={() => { setOpenTool(null); setTab('creations') }} topInset={insets.top} />
+    closeOverlay = closeTool
+    overlay = <MotionControlScreen onBack={closeTool} onOpenCreations={() => { setOpenTool(null); setTab('creations') }} topInset={insets.top} />
   } else if (openTool === 'translate') {
-    overlay = <VideoTranslationScreen onBack={() => setOpenTool(null)} />
+    closeOverlay = closeTool
+    overlay = <VideoTranslationScreen onBack={closeTool} />
   } else if (openTool === 'verify') {
-    overlay = <ChapVerifyScreen onBack={() => setOpenTool(null)} topInset={insets.top} />
+    closeOverlay = closeTool
+    overlay = <ChapVerifyScreen onBack={closeTool} topInset={insets.top} />
+  } else if (openTool) {
+    // Unknown key: never leave a blank overlay with no way back.
+    closeOverlay = closeTool
   }
+
+  // The app navigates with state, not a navigator, so nothing consumed the Android back press and
+  // the system finished the activity from inside any tool. One handler resolves it in priority order;
+  // screens that need their own step (e.g. an active Live Swap session) register a later handler,
+  // which BackHandler calls first.
+  const backStateRef = useRef(null)
+  backStateRef.current = { closeOverlay, quickOpen, ideasOpen, tab, consentPromptOpen }
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      const s = backStateRef.current
+      if (s.consentPromptOpen) { declineAiConsentRef.current?.(); return true }
+      if (s.quickOpen) { setQuickOpen(false); return true }
+      if (s.closeOverlay) { s.closeOverlay(); return true }
+      if (s.ideasOpen) { setIdeasOpen(false); return true }
+      if (s.tab !== 'home') { setTab('home'); return true }
+      // On Home root, let Android background the app as usual (it is not killed on Android 12+).
+      return false
+    })
+    return () => sub.remove()
+  }, [])
 
   const tabPane = (key, content) =>
     visitedTabs.has(key) || tab === key ? (
