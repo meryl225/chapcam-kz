@@ -55,7 +55,15 @@ export const CREATOR_VIDEOS = [
   ['creator-1472', CREATOR_1472],
 ].map(([key, src]) => ({ key, media: { type: 'video', src } }))
 
-export const TOOLS = [
+// Flip to true to expose an unreleased tool on Android and iOS; its screens and APIs stay in the codebase.
+export const MOBILE_FEATURE_FLAGS = {
+  'voice-swap': false,
+  'voice-translator': false,
+}
+
+const isToolEnabledOnMobile = (tool) => MOBILE_FEATURE_FLAGS[tool.key] !== false
+
+export const ALL_TOOLS = [
   { key: 'live', title: 'Live Swap', copy: 'Change de visage en temps réel', media: TOOL_MEDIA.live, live: true, categories: ['video', 'face'] },
   { key: 'photo-video', title: 'Photos en Vidéo', copy: 'Anime ta photo en vidéo', media: TOOL_MEDIA['photo-video'], categories: ['image', 'video'] },
   { key: 'genjutsu', title: 'Genjutsu', copy: 'Anime tes images', media: TOOL_MEDIA.genjutsu, categories: ['image', 'video'] },
@@ -67,7 +75,14 @@ export const TOOLS = [
   { key: 'voice-translator', title: 'Voice Translator', copy: 'Traduis ta voix en direct', media: TOOL_MEDIA.translate, categories: ['audio'], comingSoon: true },
 ]
 
-export const COMING_SOON_TOOLS = new Set(TOOLS.filter((t) => t.comingSoon).map((t) => t.key))
+export const TOOLS = ALL_TOOLS.filter(isToolEnabledOnMobile)
+
+export const MOBILE_DISABLED_TOOLS = new Set(ALL_TOOLS.filter((t) => !isToolEnabledOnMobile(t)).map((t) => t.key))
+
+export const COMING_SOON_TOOLS = new Set([
+  ...ALL_TOOLS.filter((t) => t.comingSoon).map((t) => t.key),
+  ...MOBILE_DISABLED_TOOLS,
+])
 
 export const normalize = (value) =>
   value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
