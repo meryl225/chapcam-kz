@@ -170,6 +170,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Camera access
   getCameraAccess: () => ipcRenderer.invoke('get-camera-access'),
   requestCameraAccess: () => ipcRenderer.invoke('request-camera-access'),
+  listPhysicalCameras: () => ipcRenderer.invoke('list-physical-cameras'),
 
   // App info
   getAppVersion: () => ipcRenderer.invoke('get-app-version'),

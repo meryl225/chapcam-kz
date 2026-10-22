@@ -585,6 +585,34 @@ ipcMain.handle('request-camera-access', async () => {
   return systemPreferences.getMediaAccessStatus('camera')
 })
 
+// Liste des webcams MATERIELLES vues par Windows (Gestionnaire de peripheriques).
+// Les cameras virtuelles (ChapCam Camera, OBS...) sont des pilotes logiciels :
+// elles n'ont pas d'identifiant USB/PCI/ACPI et sont donc exclues.
+ipcMain.handle('list-physical-cameras', () => {
+  if (process.platform !== 'win32') return []
+  const script =
+    "Get-PnpDevice -Class Camera,Image -PresentOnly -ErrorAction SilentlyContinue | " +
+    "Where-Object { $_.InstanceId -match '^(USB|PCI|ACPI|HID)\\\\' -or $_.InstanceId -match 'VID_' } | " +
+    "ForEach-Object { $_.FriendlyName }"
+  return new Promise((resolve) => {
+    let out = ''
+    let done = false
+    const finish = (names) => { if (!done) { done = true; resolve(names) } }
+    try {
+      const ps = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { windowsHide: true })
+      const timer = setTimeout(() => { try { ps.kill() } catch {} finish([]) }, 5000)
+      ps.stdout.on('data', (d) => { out += d.toString() })
+      ps.on('error', () => { clearTimeout(timer); finish([]) })
+      ps.on('close', () => {
+        clearTimeout(timer)
+        finish(out.split(/\r?\n/).map((s) => s.trim().toLowerCase()).filter((s) => s && !/chapcam/.test(s)))
+      })
+    } catch {
+      finish([])
+    }
+  })
+})
+
 ipcMain.handle('get-app-version', () => {
   return app.getVersion()
 })

@@ -12,6 +12,8 @@ export interface CameraDevice {
   isVirtual: boolean
   isChapCam: boolean
   isInfrared: boolean
+  /** Materiel reel confirme (identifiant USB dans le nom ou peripherique Windows PnP). */
+  isPhysical: boolean
 }
 
 const STORAGE_KEY = 'chapcam.camera.sourceDeviceId'
@@ -19,19 +21,45 @@ export const CAMERA_CHANGED_EVENT = 'chapcam:camera-changed'
 
 const CHAPCAM_PATTERN = /chapcam/i
 const VIRTUAL_PATTERN =
-  /virtual|obs|manycam|xsplit|snap camera|splitcam|droidcam|ndi|camo|mmhmm|nvidia broadcast|e2esoft|vcam|youcam|unity video capture|screen capture/i
+  /virtual|\bobs\b|manycam|xsplit|snap camera|splitcam|droidcam|\bndi\b|\bcamo\b|mmhmm|nvidia broadcast|e2esoft|\bvcam\b|youcam|unity video capture|screen capture|iriun|epoccam|ivcam|camtwist|vmix|streamlabs|elgato virtual|webcamoid|avatarify/i
 const INFRARED_PATTERN = /\bir\b|infrared|infrarouge|depth|windows hello/i
-const PHYSICAL_HINT_PATTERN = /hd|webcam|camera|cam[eé]ra|integrated|int[eé]gr[eé]e|usb|facetime|logitech|hp|lenovo|dell|asus|acer|realtek|chicony|azurewave|sunplus/i
+// Chromium ajoute "(vid:pid)" au nom des webcams USB/integrees : ex. "HP HD Camera (04f2:b6ab)".
+// Les cameras virtuelles (pilotes logiciels) n'ont jamais cet identifiant materiel.
+const USB_ID_PATTERN = /\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i
+const PHYSICAL_HINT_PATTERN = /\bhd\b|webcam|camera|cam[eé]ra|integrated|int[eé]gr[eé]e|\busb\b|facetime|logitech|\bhp\b|lenovo|dell|asus|acer|realtek|chicony|azurewave|sunplus|microdia|quanta|bison|syntek|razer|creative/i
 
-function describe(info: MediaDeviceInfo): CameraDevice {
+/** Noms des cameras materielles connues de Windows (API Electron, absente sur le web). */
+let nativePhysicalNames: string[] | null = null
+
+async function loadNativePhysicalNames(): Promise<string[]> {
+  if (nativePhysicalNames) return nativePhysicalNames
+  const api = (window as unknown as { electronAPI?: { listPhysicalCameras?: () => Promise<string[]> } }).electronAPI
+  try {
+    nativePhysicalNames = api?.listPhysicalCameras ? ((await api.listPhysicalCameras()) ?? []) : []
+  } catch {
+    nativePhysicalNames = []
+  }
+  return nativePhysicalNames
+}
+
+const normalize = (s: string) => s.replace(USB_ID_PATTERN, '').trim().toLowerCase()
+
+function describe(info: MediaDeviceInfo, native: string[]): CameraDevice {
   const label = info.label || ''
   const isChapCam = CHAPCAM_PATTERN.test(label)
+  const isInfrared = INFRARED_PATTERN.test(label)
+  const name = normalize(label)
+  const inNative = !!name && native.some(n => n && (name === n || name.startsWith(n) || n.startsWith(name)))
+  const hasUsbId = USB_ID_PATTERN.test(label)
+  // Sur Windows, une camera absente de la liste materielle est un pilote logiciel.
+  const notInHardwareList = native.length > 0 && !!label && !inNative && !hasUsbId
   return {
     deviceId: info.deviceId,
     label,
     isChapCam,
-    isVirtual: isChapCam || VIRTUAL_PATTERN.test(label),
-    isInfrared: INFRARED_PATTERN.test(label),
+    isInfrared,
+    isPhysical: !isChapCam && !isInfrared && (hasUsbId || inNative),
+    isVirtual: isChapCam || VIRTUAL_PATTERN.test(label) || notInHardwareList,
   }
 }
 
@@ -39,8 +67,15 @@ export function isUsableSource(cam: CameraDevice | undefined | null): boolean {
   return !!cam && !cam.isChapCam
 }
 
+/** La selection automatique ne prend QUE des webcams physiques couleur. */
 function isAutoCandidate(cam: CameraDevice): boolean {
   return !cam.isVirtual && !cam.isInfrared
+}
+
+function autoRank(cam: CameraDevice): number {
+  if (cam.isPhysical) return 0
+  if (PHYSICAL_HINT_PATTERN.test(cam.label)) return 1
+  return 2
 }
 
 export class CameraSourceError extends Error {
@@ -94,8 +129,8 @@ function hasMediaDevices() {
 }
 
 async function enumerate(): Promise<CameraDevice[]> {
-  const all = await navigator.mediaDevices.enumerateDevices()
-  return all.filter(d => d.kind === 'videoinput' && d.deviceId).map(describe)
+  const [all, native] = await Promise.all([navigator.mediaDevices.enumerateDevices(), loadNativePhysicalNames()])
+  return all.filter(d => d.kind === 'videoinput' && d.deviceId).map(d => describe(d, native))
 }
 
 /**
@@ -118,16 +153,26 @@ export async function listCameras(unlockLabels = false): Promise<CameraDevice[]>
 /** Webcam physique couleur choisie automatiquement (ex. "HP HD Camera"). */
 export function pickAutoCamera(cams: CameraDevice[]): CameraDevice | null {
   const candidates = cams.filter(isAutoCandidate)
-  if (candidates.length === 0) return cams.find(c => !c.isChapCam && !c.isInfrared) ?? null
-  return candidates.find(c => PHYSICAL_HINT_PATTERN.test(c.label)) ?? candidates[0]
+  if (candidates.length === 0) return null
+  return [...candidates].sort((a, b) => autoRank(a) - autoRank(b))[0]
 }
 
-/** Camera qui sera reellement utilisee : choix memorise si valide, sinon auto. */
+/**
+ * Camera qui sera reellement utilisee : choix manuel memorise (jamais ChapCam
+ * Camera), sinon la webcam physique automatique.
+ */
 export function resolveSourceCamera(cams: CameraDevice[]): CameraDevice | null {
   const saved = getSavedCameraId()
   const savedCam = saved ? cams.find(c => c.deviceId === saved) : undefined
   if (isUsableSource(savedCam)) return savedCam!
   return pickAutoCamera(cams)
+}
+
+function isTrackRejected(stream: MediaStream, manual: boolean): boolean {
+  const label = trackLabel(stream)
+  if (CHAPCAM_PATTERN.test(label)) return true
+  // En automatique, on refuse aussi toute camera virtuelle qui aurait repondu.
+  return !manual && VIRTUAL_PATTERN.test(label)
 }
 
 export interface SourceCameraOptions {
@@ -169,15 +214,24 @@ export async function openSourceCamera(opts: SourceCameraOptions = {}): Promise<
     throw new CameraSourceError('only-virtual', 'Seule la caméra virtuelle ChapCam Camera est détectée. Branche ou active ta webcam physique : ChapCam Camera sert uniquement à diffuser le résultat.')
   }
 
+  const labelsKnown = cams.every(c => c.label)
+  if (labelsKnown && !opts.deviceId && !getSavedCameraId() && !cams.some(isAutoCandidate)) {
+    throw new CameraSourceError('only-virtual', "Aucune webcam physique détectée : seules des caméras virtuelles ou infrarouges sont présentes. Branche ou active la webcam de l'ordinateur, ou choisis une caméra dans Paramètres > Caméra.")
+  }
+
+  const savedId = getSavedCameraId()
+  const manualIds = new Set<string>()
+  if (opts.deviceId) manualIds.add(opts.deviceId)
+  else if (savedId) manualIds.add(savedId)
+
   const ordered: CameraDevice[] = []
   const push = (c: CameraDevice | null | undefined) => {
     if (c && isUsableSource(c) && !ordered.some(o => o.deviceId === c.deviceId)) ordered.push(c)
   }
   if (opts.deviceId) push(cams.find(c => c.deviceId === opts.deviceId))
   else push(resolveSourceCamera(cams))
-  cams.filter(isAutoCandidate).forEach(push)
-  cams.forEach(c => { if (!c.isInfrared) push(c) })
-  cams.forEach(push)
+  // Repli automatique : uniquement les webcams physiques couleur, les plus sures d'abord.
+  if (!opts.deviceId) [...cams].filter(isAutoCandidate).sort((a, b) => autoRank(a) - autoRank(b)).forEach(push)
 
   let lastError: unknown = null
   for (const cam of ordered) {
@@ -186,7 +240,7 @@ export async function openSourceCamera(opts: SourceCameraOptions = {}): Promise<
         video: buildVideo(opts, cam.deviceId),
         audio: opts.audio ?? false,
       })
-      if (CHAPCAM_PATTERN.test(trackLabel(stream))) {
+      if (isTrackRejected(stream, manualIds.has(cam.deviceId))) {
         stream.getTracks().forEach(t => t.stop())
         continue
       }
@@ -205,7 +259,7 @@ export async function openSourceCamera(opts: SourceCameraOptions = {}): Promise<
   // en refusant explicitement ChapCam Camera si c'est elle qui repond.
   if (ordered.length === 0) {
     const stream = await navigator.mediaDevices.getUserMedia({ video: buildVideo(opts), audio: opts.audio ?? false })
-    if (!CHAPCAM_PATTERN.test(trackLabel(stream))) return stream
+    if (!isTrackRejected(stream, false)) return stream
     stream.getTracks().forEach(t => t.stop())
     throw new CameraSourceError('only-virtual', 'ChapCam Camera ne peut pas être utilisée comme source. Choisis ta webcam physique dans Paramètres > Caméra.')
   }
