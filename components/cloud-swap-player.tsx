@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useCloudSwap } from '@/hooks/use-cloud-swap'
+import { openSourceCamera } from '@/lib/camera-devices'
 import { 
   detectHardwareCapabilities, 
   determineProcessingMode,
@@ -147,13 +148,10 @@ export function CloudSwapPlayer({
 
   const startCamera = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: processingMode === 'local' && hardware?.gpuTier === 'high' ? 1920 : 1280 },
-          height: { ideal: processingMode === 'local' && hardware?.gpuTier === 'high' ? 1080 : 720 },
-          frameRate: { ideal: stats.fps || 25 }
-        },
-        audio: false
+      const stream = await openSourceCamera({
+        width: processingMode === 'local' && hardware?.gpuTier === 'high' ? 1920 : 1280,
+        height: processingMode === 'local' && hardware?.gpuTier === 'high' ? 1080 : 720,
+        frameRate: stats.fps || 25,
       })
       
       if (videoRef.current) {

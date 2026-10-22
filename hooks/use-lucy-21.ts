@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { openSourceCamera, cameraErrorMessage } from '@/lib/camera-devices'
 // NOTE : le SDK Decart (@decartai/sdk) embarque tout le pipeline temps reel
 // WebRTC/WebCodecs, ce qui alourdit fortement le bundle. Il etait importe
 // statiquement ici, donc inclus dans le chunk INITIAL de la page Live Swap :
@@ -249,23 +250,9 @@ export function useLucy21() {
           // resolution "ideale" pour degrader proprement si la camera ne suit pas.
           const camWidth = useHd ? 1920 : 1280
           const camHeight = useHd ? 1080 : 720
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: camWidth },
-              height: { ideal: camHeight },
-              frameRate: { ideal: 30 },
-            },
-          })
-        } catch (camError: any) {
-          if (camError.name === 'NotAllowedError') {
-            throw new Error('Acces camera refuse. Autorise ChapCam a acceder a ta camera dans les parametres du navigateur.')
-          } else if (camError.name === 'NotFoundError') {
-            throw new Error('Aucune camera detectee. Connecte une webcam et reessaie.')
-          } else if (camError.name === 'NotReadableError') {
-            throw new Error('Camera deja utilisee par une autre application. Ferme les autres apps utilisant la camera.')
-          } else {
-            throw new Error('Impossible de demarrer la camera: ' + camError.message)
-          }
+          stream = await openSourceCamera({ width: camWidth, height: camHeight, frameRate: 30 })
+        } catch (camError) {
+          throw new Error(cameraErrorMessage(camError))
         }
       }
 

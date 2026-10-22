@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { openSourceCamera, cameraErrorMessage } from '@/lib/camera-devices'
 
 export type LiveStatus =
   | 'idle'
@@ -287,17 +288,14 @@ export function useLiveFaceSwap(): UseLiveFaceSwapReturn {
       //    ensuite, la camera reste affichee et on montre l'erreur reelle au
       //    lieu d'un ecran noir muet.
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-          audio: false,
-        })
+        const stream = await openSourceCamera({ width: 1280, height: 720 })
         streamRef.current = stream
         if (videoRef.current) {
           videoRef.current.srcObject = stream
           await videoRef.current.play().catch(() => {})
         }
-      } catch {
-        setError('Acces a la camera refuse. Autorisez la webcam pour continuer.')
+      } catch (camError) {
+        setError(cameraErrorMessage(camError))
         setStatus('error')
         cleanup()
         return

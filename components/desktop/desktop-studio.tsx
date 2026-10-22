@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { openSourceCamera } from '@/lib/camera-devices'
 import {
   UserRound,
   Camera,
@@ -92,7 +93,7 @@ export function DesktopStudio() {
 
   const startCamera = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      const stream = await openSourceCamera()
       streamRef.current = stream
       if (videoRef.current) {
         videoRef.current.srcObject = stream
