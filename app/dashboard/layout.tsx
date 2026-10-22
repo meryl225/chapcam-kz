@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getRequestGeo } from '@/lib/geo'
 import { DashboardSidebar, PlanGuardBanner } from '@/components/dashboard/sidebar'
 import { TelegramSupport } from '@/components/telegram-support'
+import { ElectronMenuBridge } from '@/components/desktop/electron-menu-bridge'
 import { resolveWatermarkForUser } from '@/lib/watermark'
 
 /*
@@ -119,6 +120,8 @@ export default async function DashboardLayout({
           {children}
         </div>
       </main>
+
+      <ElectronMenuBridge />
 
       {/* Telegram Support Button */}
       <TelegramSupport />

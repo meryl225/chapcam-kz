@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { openSourceCamera } from '@/lib/camera-devices'
 
 export type SwapStatus = 'idle' | 'connecting' | 'processing' | 'error'
 
@@ -55,14 +56,7 @@ export function useRunPodSwap(config: UseRunPodSwapConfig) {
       setError(null)
 
       // Get camera stream
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 },
-        },
-        audio: false,
-      })
+      const stream = await openSourceCamera({ width: 1280, height: 720, frameRate: 30 })
 
       streamRef.current = stream
 

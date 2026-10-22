@@ -10,6 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import { ChangeEmailDialog } from '@/components/settings/change-email-dialog'
 import { ChangePasswordDialog } from '@/components/settings/change-password-dialog'
 import { DeleteAccountDialog } from '@/components/settings/delete-account-dialog'
+import { CameraSettings } from '@/components/settings/camera-settings'
 import { resolveActivePlan, type ActivePlan, type SubscriptionRow } from '@/components/settings/plan-utils'
 
 type Dialog = 'email' | 'password' | 'delete' | null
@@ -28,25 +29,29 @@ export default function SettingsPage() {
     const supabase = createClient()
     let cancelled = false
 
+    // Any thrown error used to leave the page stuck on "Chargement" forever,
+    // which looked like the Paramètres button never opening.
     const load = async () => {
-      const { data: { user: current } } = await supabase.auth.getUser()
-      if (cancelled) return
-      if (!current) {
-        setLoading(false)
-        return
-      }
-      setUser(current)
-      setPendingEmail(current.new_email ?? '')
+      try {
+        const { data: { user: current } } = await supabase.auth.getUser()
+        if (cancelled) return
+        if (!current) return
+        setUser(current)
+        setPendingEmail(current.new_email ?? '')
 
-      const { data, error } = await supabase
-        .from('subscriptions')
-        .select('plan, is_active, status, expires_at, end_date')
-        .eq('user_id', current.id)
-        .maybeSingle()
-      if (cancelled) return
-      if (error) setPlanError(true)
-      else setPlan(resolveActivePlan(data as SubscriptionRow | null))
-      setLoading(false)
+        const { data, error } = await supabase
+          .from('subscriptions')
+          .select('plan, is_active, status, expires_at, end_date')
+          .eq('user_id', current.id)
+          .maybeSingle()
+        if (cancelled) return
+        if (error) setPlanError(true)
+        else setPlan(resolveActivePlan(data as SubscriptionRow | null))
+      } catch {
+        if (!cancelled) setPlanError(true)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
     }
 
     load()
@@ -168,6 +173,8 @@ export default function SettingsPage() {
             </div>
           </div>
         </section>
+
+        <CameraSettings />
 
         {/* Notifications */}
         <section className="rounded-3xl border border-hairline bg-card p-5 sm:p-8">

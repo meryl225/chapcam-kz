@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { openSourceCamera } from '@/lib/camera-devices'
 
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected' | 'error'
 
@@ -78,13 +79,11 @@ export function useLucySwap({
       const model = models.realtime('lucy-2.5')
 
       // Get camera stream
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const stream = await openSourceCamera({
         audio: true,
-        video: {
-          frameRate: model.fps,
-          width: model.width,
-          height: model.height,
-        },
+        frameRate: Number(model.fps),
+        width: model.width,
+        height: model.height,
       })
 
       streamRef.current = stream
