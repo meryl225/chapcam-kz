@@ -72,10 +72,12 @@ function isAutoCandidate(cam: CameraDevice): boolean {
   return !cam.isVirtual && !cam.isInfrared
 }
 
+const FRONT_PATTERN = /front|avant|frontale|facetime|user|selfie/i
+
 function autoRank(cam: CameraDevice): number {
-  if (cam.isPhysical) return 0
-  if (PHYSICAL_HINT_PATTERN.test(cam.label)) return 1
-  return 2
+  const tier = cam.isPhysical ? 0 : PHYSICAL_HINT_PATTERN.test(cam.label) ? 1 : 2
+  // Sur telephone, la camera frontale passe avant la camera arriere.
+  return tier * 2 + (FRONT_PATTERN.test(cam.label) ? 0 : 1)
 }
 
 export class CameraSourceError extends Error {
@@ -93,7 +95,7 @@ export function cameraErrorMessage(err: unknown): string {
   switch (e?.name) {
     case 'NotAllowedError':
     case 'SecurityError':
-      return "Accès à la caméra refusé. Autorise ChapCam dans Paramètres Windows > Confidentialité > Caméra, puis réessaie."
+      return "Accès à la caméra refusé. Autorise la caméra pour ChapCam (réglages du navigateur, ou Paramètres Windows > Confidentialité > Caméra), puis réessaie."
     case 'NotFoundError':
     case 'DevicesNotFoundError':
       return 'Aucune webcam détectée. Branche une webcam ou choisis-en une autre dans Paramètres > Caméra.'
@@ -137,15 +139,22 @@ async function enumerate(): Promise<CameraDevice[]> {
  * Liste les cameras. Sans autorisation prealable, le navigateur cache les noms :
  * avec `unlockLabels`, on ouvre brievement une camera pour les obtenir.
  */
+let lastUnlockError: unknown = null
+
 export async function listCameras(unlockLabels = false): Promise<CameraDevice[]> {
   if (!hasMediaDevices()) return []
+  lastUnlockError = null
   let cams = await enumerate()
-  if (unlockLabels && cams.length > 0 && cams.every(c => !c.label)) {
+  // Safari iOS renvoie des cameras sans deviceId ni nom avant autorisation :
+  // la liste parait vide, il faut donc demander l'acces pour la remplir.
+  if (unlockLabels && (cams.length === 0 || cams.every(c => !c.label))) {
     try {
-      const tmp = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+      const tmp = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
       tmp.getTracks().forEach(t => t.stop())
       cams = await enumerate()
-    } catch {}
+    } catch (err) {
+      lastUnlockError = err
+    }
   }
   return cams
 }
@@ -190,6 +199,7 @@ function buildVideo(opts: SourceCameraOptions, deviceId?: string): MediaTrackCon
   if (opts.height) video.height = { ideal: opts.height }
   if (opts.frameRate) video.frameRate = { ideal: opts.frameRate }
   if (deviceId) video.deviceId = { exact: deviceId }
+  else video.facingMode = 'user'
   return video
 }
 
@@ -208,6 +218,13 @@ export async function openSourceCamera(opts: SourceCameraOptions = {}): Promise<
 
   const cams = await listCameras(true)
   if (cams.length === 0) {
+    const name = (lastUnlockError as { name?: string } | null)?.name
+    if (lastUnlockError && name !== 'NotFoundError' && name !== 'DevicesNotFoundError') {
+      throw new CameraSourceError(
+        name === 'NotAllowedError' || name === 'SecurityError' ? 'denied' : 'unknown',
+        cameraErrorMessage(lastUnlockError),
+      )
+    }
     throw new CameraSourceError('not-found', 'Aucune webcam détectée. Branche une webcam puis réessaie.')
   }
   if (cams.every(c => c.label) && !cams.some(c => !c.isChapCam)) {
