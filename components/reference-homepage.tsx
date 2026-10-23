@@ -7,6 +7,7 @@ import { useState } from "react"
 import { CreatorVideoStrip } from "@/components/creator-video-strip"
 import { HomeCommunityShowcase } from "@/components/home-community-showcase"
 import { HomeDesktopDownloads } from "@/components/home-desktop-downloads"
+import { HomeMobileApps } from "@/components/home-mobile-apps"
 import { HomepageFaq } from "@/components/homepage-faq"
 import { HomepageAbout } from "@/components/homepage-about"
 import { HomepageFooter } from "@/components/homepage-footer"
@@ -108,6 +109,8 @@ export function ReferenceHomepage() {
             <div className="absolute right-[4%] top-[24%] flex flex-col items-center gap-1 opacity-65"><i className="size-2 rounded-full bg-[#38bdf8]" /><i className="size-3 rounded-full border border-white/60 bg-white/20" /><i className="size-1.5 rounded-full bg-[#7c3aed]" /></div>
           </div>
           <div className="relative z-20 max-w-xl px-5 pb-7 pt-8 sm:px-10 sm:pb-10 sm:pt-12 lg:max-w-[42%] lg:px-10 lg:py-24 xl:px-12"><span className="inline-flex items-center gap-2 rounded-full border border-[#4ec7f1]/40 bg-white/55 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide text-[#087bad]"><Sparkles className="h-3.5 w-3.5" />{t("L'IA au service de ta créativité")}</span><h1 className="mt-5 text-[2.75rem] font-black leading-[.96] tracking-[-.06em] text-[#071a42] sm:text-6xl lg:text-[4.25rem]">{t("Crée")} <span className="bg-gradient-to-r from-[#079ded] to-[#7654e8] bg-clip-text text-transparent">{t("sans limites.")}</span></h1><p className="mt-5 max-w-xs text-sm leading-6 text-[#405675]">{t("Première plateforme d’IA dédiée aux transformations en temps réel et à la génération de vidéos full body Swap.")}</p><Link href="/auth/sign-up" className="mt-6 inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#0ea5e9] to-[#7c3aed] px-6 py-3.5 text-sm font-bold text-white shadow-[0_14px_28px_-12px_rgba(37,99,235,.75)]">{t("Commencer gratuitement")} <ChevronRight className="h-4 w-4" /></Link><div className="mt-6 flex flex-wrap gap-x-4 gap-y-2 text-[11px] font-medium text-[#526986]"><span>{t("Accès immédiat")}</span><span>{t("Outils IA créatifs")}</span></div></div><div className="relative h-[17rem] border-t border-white/60 bg-[#07111f] sm:h-[25rem] lg:absolute lg:inset-y-0 lg:right-0 lg:h-full lg:w-[58%] lg:border-t-0 lg:border-l lg:border-white/50"><div className="pointer-events-none absolute inset-y-0 left-0 z-10 hidden w-1/4 bg-gradient-to-r from-[#dceeff]/70 to-transparent lg:block" /><video src="/videos/img-1467.mp4" autoPlay muted loop playsInline preload="metadata" className="h-full w-full object-contain object-center" aria-label={t("Démonstration ChapCam")} /></div></section>
+
+        <HomeMobileApps />
 
         <HomeDesktopDownloads />
 
