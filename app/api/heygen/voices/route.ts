@@ -16,44 +16,50 @@ export async function GET() {
       return NextResponse.json({ error: "Non autorise" }, { status: 401 })
     }
 
-    // Timeout : HeyGen renvoie ~2500 voix (payload lourd). On borne l'appel
-    // pour ne jamais bloquer la fonction serverless.
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 12_000)
-    let res: Response
-    try {
-      res = await fetch("https://api.heygen.com/v2/voices", {
-        headers: { "X-Api-Key": apiKey },
-        signal: controller.signal,
-      })
-    } finally {
-      clearTimeout(timeout)
-    }
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: `HeyGen a repondu ${res.status}.`, voices: [] },
-        { status: 502 },
-      )
-    }
-
-    const json = await res.json().catch(() => null)
-    const voices = (json?.data?.voices || []) as Array<{
+    type HeygenVoice = {
       voice_id: string
       name: string
       language: string
       gender: string
-      preview_audio?: string
-    }>
-
-    // On ne garde que le francais et l'anglais (pertinent pour ChapCam) et on
-    // limite le nombre : payload leger + menu utilisable cote client.
-    const rank = (lang: string) => {
-      const l = (lang || "").toLowerCase()
-      if (l.includes("french") || l.includes("franc")) return 0
-      if (l.includes("english")) return 1
-      return 2
+      preview_audio_url?: string | null
     }
+
+    // API v3 : filtre de langue cote HeyGen (FR puis EN), appels bornes dans le temps.
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 12_000)
+    let lists: Array<{ ok: boolean; status: number; voices: HeygenVoice[] }>
+    try {
+      lists = await Promise.all(
+        ["French", "English"].map(async (language) => {
+          const res = await fetch(`https://api.heygen.com/v3/voices?type=public&language=${language}&limit=100`, {
+            headers: { "X-Api-Key": apiKey },
+            signal: controller.signal,
+          })
+          const json = await res.json().catch(() => null)
+          return { ok: res.ok, status: res.status, voices: (json?.data || []) as HeygenVoice[] }
+        }),
+      )
+    } finally {
+      clearTimeout(timeout)
+    }
+
+    if (lists.every((l) => !l.ok)) {
+      return NextResponse.json(
+        { error: `HeyGen a repondu ${lists[0].status}.`, voices: [] },
+        { status: 502 },
+      )
+    }
+
+    const rankById = new Map<string, number>()
+    const voices: HeygenVoice[] = []
+    lists.forEach((list, rank) => {
+      for (const v of list.voices) {
+        if (!v.voice_id || rankById.has(v.voice_id)) continue
+        rankById.set(v.voice_id, rank)
+        voices.push(v)
+      }
+    })
+    const rank = (v: HeygenVoice) => rankById.get(v.voice_id) ?? 2
 
     // Certaines entrees HeyGen ont un "name" qui est en fait un nom de fichier
     // brut (ex: "1860cfb5-....mov") ou un UUID : on les ecarte pour un menu propre.
@@ -65,29 +71,22 @@ export async function GET() {
       return true
     }
 
+    const toClient = (v: HeygenVoice) => ({
+      voice_id: v.voice_id,
+      name: v.name,
+      language: v.language,
+      gender: v.gender,
+      preview: v.preview_audio_url || null,
+    })
+
     const filtered = voices
-      .filter((v) => v.voice_id && rank(v.language) < 2 && isReadableName(v.name))
-      .map((v) => ({
-        voice_id: v.voice_id,
-        name: v.name,
-        language: v.language,
-        gender: v.gender,
-        preview: v.preview_audio || null,
-      }))
-      .sort((a, b) => rank(a.language) - rank(b.language) || a.name.localeCompare(b.name))
+      .filter((v) => isReadableName(v.name))
+      .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
       .slice(0, 80)
+      .map(toClient)
 
     // Repli : si aucune voix FR/EN, on renvoie les premieres voix disponibles.
-    const result =
-      filtered.length > 0
-        ? filtered
-        : voices.slice(0, 40).map((v) => ({
-            voice_id: v.voice_id,
-            name: v.name,
-            language: v.language,
-            gender: v.gender,
-            preview: v.preview_audio || null,
-          }))
+    const result = filtered.length > 0 ? filtered : voices.slice(0, 40).map(toClient)
 
     return NextResponse.json({ success: true, voices: result })
   } catch (error) {

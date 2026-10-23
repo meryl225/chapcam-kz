@@ -4,6 +4,7 @@ import { reserveJetons, creditJetons } from "@/lib/jetons"
 import { estimatePhotoVideoPriceUsd, PROVIDER_MARGIN_MULTIPLIER } from "@/lib/tool-costs"
 import { logToolUsage } from "@/lib/tool-usage"
 import { saveVideoHistory, finalizeCompletedVideo, listProcessingGenerations } from "@/lib/video-history"
+import { extensionForContentType, getHeygenVideo, uploadHeygenAsset } from "@/lib/heygen"
 
 // Le clonage de voix HeyGen est ASYNCHRONE (~30-90s de traitement). On attend
 // que le clone soit "complete" avant de creer la video, donc la requete peut
@@ -26,7 +27,6 @@ function estimateSeconds(script: string): number {
 }
 
 const HEYGEN_API = "https://api.heygen.com"
-const HEYGEN_UPLOAD = "https://upload.heygen.com/v1/asset"
 
 function getApiKey(): string | null {
   return process.env.HEYGEN_API_KEY || null
@@ -184,20 +184,15 @@ export async function POST(request: NextRequest) {
     // 1) Upload de la photo vers HeyGen -> asset_id
     const contentType = file.type === "image/png" ? "image/png" : "image/jpeg"
     const bytes = Buffer.from(await file.arrayBuffer())
-    const uploadRes = await fetch(HEYGEN_UPLOAD, {
-      method: "POST",
-      headers: { "X-Api-Key": apiKey, "Content-Type": contentType },
-      body: bytes,
-    })
-    const uploadJson = await uploadRes.json().catch(() => null)
-    const assetId = uploadJson?.data?.id
-    if (!uploadRes.ok || !assetId) {
+    const photoUpload = await uploadHeygenAsset(apiKey, bytes, contentType, `photo.${extensionForContentType(contentType)}`)
+    if (!photoUpload.ok) {
       await refundReservation("photo_upload_failed")
       return NextResponse.json(
-        { error: `Echec de l'upload de la photo vers HeyGen.`, detail: uploadJson?.message || uploadJson?.msg || "" },
+        { error: `Echec de l'upload de la photo vers HeyGen.`, detail: photoUpload.message },
         { status: 502 },
       )
     }
+    const assetId = photoUpload.assetId
 
     // 1bis) Clonage de voix jetable (si un echantillon vocal est fourni).
     let effectiveVoiceId = voiceId
@@ -217,21 +212,16 @@ export async function POST(request: NextRequest) {
           { status: 400 },
         )
       }
-      const audioUpload = await fetch(HEYGEN_UPLOAD, {
-        method: "POST",
-        headers: { "X-Api-Key": apiKey, "Content-Type": audioType },
-        body: audioBytes,
-      })
-      const audioJson = await audioUpload.json().catch(() => null)
-      const audioAssetId = audioJson?.data?.id
-      if (!audioUpload.ok || !audioAssetId) {
-        console.error("[v0] Clone: echec upload audio", audioUpload.status, JSON.stringify(audioJson))
+      const audioUpload = await uploadHeygenAsset(apiKey, audioBytes, audioType, `voice.${extensionForContentType(audioType)}`)
+      if (!audioUpload.ok) {
+        console.error("[PhotoVideo] Clone: echec upload audio", audioUpload.status, audioUpload.message)
         await refundReservation("audio_upload_failed")
         return NextResponse.json(
-          { error: "Echec de l'upload de l'echantillon vocal.", detail: audioJson?.message || audioJson?.msg || `HTTP ${audioUpload.status}` },
+          { error: "Echec de l'upload de l'echantillon vocal.", detail: audioUpload.message },
           { status: 502 },
         )
       }
+      const audioAssetId = audioUpload.assetId
       const cloneRes = await fetch(`${HEYGEN_API}/v3/voices/clone`, {
         method: "POST",
         headers: { "X-Api-Key": apiKey, "Content-Type": "application/json" },
@@ -468,12 +458,7 @@ export async function GET(request: NextRequest) {
       let stillProcessing = 0
       for (const job of batch) {
         try {
-          const r = await fetch(
-            `${HEYGEN_API}/v1/video_status.get?video_id=${encodeURIComponent(job.providerRef)}`,
-            { headers: { "X-Api-Key": apiKey } },
-          )
-          const j = await r.json().catch(() => null)
-          const d = j?.data || {}
+          const d = await getHeygenVideo(apiKey, job.providerRef)
           if (d.status === "completed" && d.video_url) {
             await finalizeCompletedVideo({
               userId: user.id,
@@ -523,11 +508,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "video_id requis" }, { status: 400 })
     }
 
-    const res = await fetch(`${HEYGEN_API}/v1/video_status.get?video_id=${encodeURIComponent(videoId)}`, {
-      headers: { "X-Api-Key": apiKey },
-    })
-    const json = await res.json().catch(() => null)
-    const data = json?.data || {}
+    const data = await getHeygenVideo(apiKey, videoId)
 
     // Video terminee (ou echouee) : supprimer le clone jetable pour liberer un
     // slot HeyGen (limite de 10 voix clonees par compte).
@@ -579,8 +560,8 @@ export async function GET(request: NextRequest) {
       status: effectiveStatus,
       video_url: outUrl,
       thumbnail_url: data.thumbnail_url || null,
-      duration: data.duration || null,
-      error: data.error || null,
+      duration: data.duration,
+      error: data.failure_message,
     })
   } catch (error) {
     console.error("[HeyGen Status Error]", error)

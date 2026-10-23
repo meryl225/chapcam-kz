@@ -6,6 +6,7 @@ import {
   type VideoTool,
 } from '@/lib/video-history'
 import { repairVideoRow } from '@/lib/video-history-repair'
+import { getHeygenVideo } from '@/lib/heygen'
 
 // ============================================================
 // Reconciliation SERVEUR des generations "Studio Photo en Video" (HeyGen).
@@ -25,7 +26,6 @@ import { repairVideoRow } from '@/lib/video-history-repair'
 // chargement de la page et du webhook.
 // ============================================================
 
-const HEYGEN_API = 'https://api.heygen.com'
 // Au-dela de ce delai sans statut exploitable, on debloque le job en echec.
 const STUCK_MS = 30 * 60 * 1000
 
@@ -52,12 +52,7 @@ export async function reconcileProcessingPhotoVideos(
 
   for (const job of pending) {
     try {
-      const r = await fetch(
-        `${HEYGEN_API}/v1/video_status.get?video_id=${encodeURIComponent(job.providerRef)}`,
-        { headers: { 'X-Api-Key': apiKey } },
-      )
-      const j = await r.json().catch(() => null)
-      const d = j?.data || {}
+      const d = await getHeygenVideo(apiKey, job.providerRef)
 
       if (d.status === 'completed' && d.video_url) {
         await finalizeCompletedVideo({

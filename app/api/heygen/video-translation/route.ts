@@ -5,6 +5,7 @@ import { creditJetons, getJetonsBalance, reserveJetons } from "@/lib/jetons"
 import { readMediaDurationSeconds } from "@/lib/media-duration"
 import { estimateTranslationPriceUsd, PROVIDER_MARGIN_MULTIPLIER, usdToDisplayJetons } from "@/lib/tool-costs"
 import { logToolUsage } from "@/lib/tool-usage"
+import { extensionForContentType, uploadHeygenAsset } from "@/lib/heygen"
 import {
   saveVideoHistory,
   finalizeCompletedVideo,
@@ -22,7 +23,6 @@ import {
 export const maxDuration = 300
 
 const HEYGEN_API = "https://api.heygen.com"
-const HEYGEN_UPLOAD = "https://upload.heygen.com/v1/asset"
 const MAX_VIDEO = 60 * 1024 * 1024 // 60 Mo (une video <=60s en 720p reste legere)
 
 function getApiKey(): string | null {
@@ -207,19 +207,14 @@ export async function POST(request: NextRequest) {
 
     // 1) Upload de la video vers HeyGen -> asset_id.
     const contentType = file.type || "video/mp4"
-    const uploadRes = await fetch(HEYGEN_UPLOAD, {
-      method: "POST",
-      headers: { "X-Api-Key": apiKey, "Content-Type": contentType },
-      body: bytes,
-    })
-    const uploadJson = await uploadRes.json().catch(() => null)
-    const assetId = uploadJson?.data?.id
-    if (!uploadRes.ok || !assetId) {
+    const videoUpload = await uploadHeygenAsset(apiKey, bytes, contentType, `video.${extensionForContentType(contentType)}`)
+    if (!videoUpload.ok) {
       return NextResponse.json(
-        { error: "Echec de l'upload de la video vers HeyGen.", detail: uploadJson?.error?.message || "" },
+        { error: "Echec de l'upload de la video vers HeyGen.", detail: videoUpload.message },
         { status: 502 },
       )
     }
+    const assetId = videoUpload.assetId
 
     // 2) Lancer la traduction (1 langue).
     const payload: Record<string, unknown> = {

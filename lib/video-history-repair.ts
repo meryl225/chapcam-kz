@@ -1,6 +1,7 @@
 import 'server-only'
 import { finalizeCompletedVideo, type VideoTool } from '@/lib/video-history'
 import { getMotionTask } from '@/lib/kling'
+import { getHeygenVideo } from '@/lib/heygen'
 
 // ============================================================
 // Auto-reparation de l'historique video.
@@ -104,14 +105,8 @@ async function fetchFreshUrl(
     const apiKey = process.env.HEYGEN_API_KEY
     if (!apiKey) return null
     if (tool === 'photo_video') {
-      const res = await fetch(
-        `${HEYGEN_API}/v1/video_status.get?video_id=${encodeURIComponent(ref)}`,
-        { headers: { 'X-Api-Key': apiKey } },
-      )
-      if (!res.ok) return null
-      const json = await res.json().catch(() => null)
-      const data = json?.data || {}
-      return data.status === 'completed' ? data.video_url || null : null
+      const data = await getHeygenVideo(apiKey, ref)
+      return data.status === 'completed' ? data.video_url : null
     }
     if (tool === 'translation') {
       const res = await fetch(
