@@ -455,6 +455,13 @@ export default function AdminPaymentsPage() {
               Abonnements Google Play
             </Link>
             <Link
+              href="/admin/manual-credits"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#ffb300]/40 bg-[#1a1405] px-4 py-2.5 text-sm font-medium text-[#ffb300] transition-colors hover:border-[#ffb300] hover:text-white"
+            >
+              <Smartphone className="h-4 w-4" />
+              Crédits manuels
+            </Link>
+            <Link
               href="/admin/live-minutes"
               className="inline-flex items-center gap-2 rounded-xl border border-[#00d4ff]/40 bg-[#0a1620] px-4 py-2.5 text-sm font-medium text-[#00d4ff] transition-colors hover:border-[#00d4ff] hover:text-white"
             >
