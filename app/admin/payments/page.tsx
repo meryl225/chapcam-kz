@@ -448,6 +448,13 @@ export default function AdminPaymentsPage() {
               Abonnements Apple
             </Link>
             <Link
+              href="/admin/google-subscriptions"
+              className="inline-flex items-center gap-2 rounded-xl border border-[#00ff88]/40 bg-[#0d2018] px-4 py-2.5 text-sm font-medium text-[#00ff88] transition-colors hover:border-[#00ff88] hover:text-white"
+            >
+              <Smartphone className="h-4 w-4" />
+              Abonnements Google Play
+            </Link>
+            <Link
               href="/admin/live-minutes"
               className="inline-flex items-center gap-2 rounded-xl border border-[#00d4ff]/40 bg-[#0a1620] px-4 py-2.5 text-sm font-medium text-[#00d4ff] transition-colors hover:border-[#00d4ff] hover:text-white"
             >
