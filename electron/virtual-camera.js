@@ -357,7 +357,9 @@ class VirtualCamera {
     const avCameras = registration === 'activated' ? await readAvFoundationCameras() : null
     const avVisible = !!avCameras && avCameras.includes(DEVICE_DESCRIPTION)
     const extensionRunning = await isMacExtensionRunning()
-    const deviceVisible = cmioVisible
+    // Telegram/Zoom rely on AVFoundation: if macOS lists the camera there, start
+    // streaming even when the helper's CoreMediaIO probe is late to see it.
+    const deviceVisible = cmioVisible || (avVisible && cameraAccess !== 'denied')
     const state = {
       ...base, ...parts, registration, registrationRaw: raw, deviceVisible,
       cmioVisible, cmioDevices, avVisible, avCameras, extensionRunning, cameraAccess,

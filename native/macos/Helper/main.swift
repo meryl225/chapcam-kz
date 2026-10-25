@@ -3,6 +3,7 @@
 //
 //   chapcam-vcam-mac probe              exit 0 when the camera is visible
 //   chapcam-vcam-mac stream W H FPS     read W*H*4 byte BGRA frames (top-down)
+import AVFoundation
 import CoreMedia
 import CoreMediaIO
 import CoreVideo
@@ -68,6 +69,19 @@ func useInternalCMIOThread() {
         CMIOObjectID(kCMIOObjectSystemObject), &addr, 0, nil,
         UInt32(MemoryLayout<CFRunLoop?>.size), &runLoop)
     if status != noErr { log("kCMIOHardwarePropertyRunLoop: \(status)") }
+}
+
+// CoreMediaIO only lists camera-extension devices in a process once AVFoundation
+// has discovered them (same approach as Apple's CMIO sample client and OBS).
+func discoverExtensionCameras() {
+    let types: [AVCaptureDevice.DeviceType]
+    if #available(macOS 14.0, *) {
+        types = [.external, .builtInWideAngleCamera]
+    } else {
+        types = [.externalUnknown, .builtInWideAngleCamera]
+    }
+    let session = AVCaptureDevice.DiscoverySession(deviceTypes: types, mediaType: .video, position: .unspecified)
+    log("AVFoundation: \(session.devices.map { $0.localizedName }.joined(separator: " | "))")
 }
 
 func deviceNames() -> [String] {
@@ -186,6 +200,7 @@ func stream(width: Int, height: Int, fps: Int) -> Int32 {
 }
 
 useInternalCMIOThread()
+discoverExtensionCameras()
 
 let args = CommandLine.arguments
 switch args.count > 1 ? args[1] : "" {
