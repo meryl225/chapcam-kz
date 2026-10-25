@@ -515,6 +515,7 @@ class VirtualCamera {
       if (this.proc.stdin.writableLength > buf.length * 2) return
       this.proc.stdin.write(Buffer.from(buf))
       this._frames++
+      if (this._frames === 1) log(`Premiere image envoyee a ${this.deviceName}`)
     } catch (e) {
       this._lastError = e.message
     }
@@ -528,8 +529,21 @@ function getVirtualCamera() {
 }
 
 function setupVirtualCameraIPC() {
-  ipcMain.handle('virtual-camera-start', async (_e, options) => getVirtualCamera().start(options || {}))
-  ipcMain.handle('virtual-camera-stop', async () => getVirtualCamera().stop())
+  // The web UI starts the camera through this handler, not the menu: the
+  // renderer capture loop must be started too, otherwise the helper runs with
+  // no frames and apps only receive the extension's placeholder (black) image.
+  ipcMain.handle('virtual-camera-start', async (e, options) => {
+    const status = await getVirtualCamera().start(options || {})
+    if (status.isRunning && !e.sender.isDestroyed()) {
+      const vc = getVirtualCamera()
+      e.sender.send('vcam:start', { width: vc.width, height: vc.height, fps: vc.fps })
+    }
+    return status
+  })
+  ipcMain.handle('virtual-camera-stop', async (e) => {
+    if (!e.sender.isDestroyed()) e.sender.send('vcam:stop')
+    return getVirtualCamera().stop()
+  })
   ipcMain.handle('virtual-camera-status', async () => getVirtualCamera().getStatus())
   ipcMain.handle('virtual-camera-mac-state', async () =>
     process.platform === 'darwin' ? getVirtualCamera().getMacState() : { platform: process.platform, status: 'unsupported' },
