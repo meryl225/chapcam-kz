@@ -25,10 +25,10 @@ export type DesktopRelease = {
   status: DesktopReleaseStatus
 }
 
-const RELEASE_TAG = "desktop-v1.0.2"
+const RELEASE_TAG = "desktop-v1.0.3"
 const BASE = `https://github.com/meryl225/chapcam-kz/releases/download/${RELEASE_TAG}`
 
-export const DESKTOP_VERSION = "1.0.2"
+export const DESKTOP_VERSION = "1.0.3"
 
 export const desktopReleases: DesktopRelease[] = [
   {
@@ -37,8 +37,8 @@ export const desktopReleases: DesktopRelease[] = [
     title: "Windows",
     compatibility: "Windows 11 x64",
     format: "EXE",
-    fileName: "ChapCam-Setup-1.0.2-x64.exe",
-    url: `${BASE}/ChapCam-Setup-1.0.2-x64.exe`,
+    fileName: "ChapCam-Setup-1.0.3-x64.exe",
+    url: `${BASE}/ChapCam-Setup-1.0.3-x64.exe`,
     sizeBytes: 322304138,
     sha256: "e80cc4c810a6ab4e0732355f4a4ed67528e542241296b4115f5a18451d283fae",
     sourceCommit: "6f88e7dc",
@@ -52,8 +52,8 @@ export const desktopReleases: DesktopRelease[] = [
     title: "Mac Apple Silicon",
     compatibility: "Mac M1, M2, M3, M4 et modèles ultérieurs",
     format: "DMG",
-    fileName: "ChapCam-1.0.2-arm64.dmg",
-    url: `${BASE}/ChapCam-1.0.2-arm64.dmg`,
+    fileName: "ChapCam-1.0.3-arm64.dmg",
+    url: `${BASE}/ChapCam-1.0.3-arm64.dmg`,
     sizeBytes: 376819879,
     sha256: "e3a08d86c3ec28fd51a087218f3a1f9640ec1574b8b473c6746f2a4b53665fca",
     sourceCommit: "6f88e7dc",
@@ -67,8 +67,8 @@ export const desktopReleases: DesktopRelease[] = [
     title: "Mac Intel",
     compatibility: "Mac avec processeur Intel",
     format: "DMG",
-    fileName: "ChapCam-1.0.2-x64.dmg",
-    url: `${BASE}/ChapCam-1.0.2-x64.dmg`,
+    fileName: "ChapCam-1.0.3-x64.dmg",
+    url: `${BASE}/ChapCam-1.0.3-x64.dmg`,
     sizeBytes: 382888314,
     sha256: "c6addf0772adf7cf62c7df65a1aa25d522392ccc8b803cd1e9bf8695cc15be54",
     sourceCommit: "6f88e7dc",
