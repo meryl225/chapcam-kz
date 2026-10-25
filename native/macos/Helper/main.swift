@@ -7,7 +7,8 @@
 //   chapcam-vcam-mac verify             read the camera output like a video app and
 //                                       print "verify frames=N real=R placeholder=P"
 //
-// Exit codes: 3 camera not found, 4 no frame read back, 5 extension stopped consuming.
+// Exit codes: 3 camera not found, 4 no frame read back, 5 extension stopped consuming,
+// 7 extension never started its sink stream.
 import AVFoundation
 import CoreMedia
 import CoreMediaIO
@@ -111,21 +112,62 @@ struct Camera {
     let sink: CMIOStreamID
 }
 
+// Localized stream names declared in CameraExtension/Provider.swift.
+let sourceStreamName = "ChapCam Camera"
+let sinkStreamName = "ChapCam Camera Input"
+
+func hasDiagnostics(_ device: CMIODeviceID) -> Bool {
+    var addr = address(0x6364_6961) // 'cdia'
+    return CMIOObjectHasProperty(device, &addr)
+}
+
+// CoreMediaIO directions are seen from the host, like audio devices:
+//   1 = input  -> frames flow out of the device to the app = extension `.source`
+//   0 = output -> frames flow from the app into the device = extension `.sink`
+// Versions up to 1.0.4 had these swapped, so the helper started and filled the
+// source (what Telegram reads) instead of the sink: the extension never called
+// startSink (ext_starts=0), never received a frame (ext_rx=0), the queue filled
+// with waiting images and the helper exited with code 5 (EPIPE on the app side).
+func pickStreams(_ device: CMIODeviceID) -> Camera? {
+    let streams = objectIDs(kCMIODevicePropertyStreams, of: device)
+    let described = streams.map { "\($0):\(name(of: $0) ?? "?"):dir=\(direction(of: $0).map(String.init) ?? "?")" }
+    let sink = streams.first(where: { name(of: $0) == sinkStreamName })
+        ?? streams.first(where: { direction(of: $0) == 0 })
+    let source = streams.first(where: { name(of: $0) == sourceStreamName && $0 != sink })
+        ?? streams.first(where: { direction(of: $0) == 1 && $0 != sink })
+    guard let sinkID = sink, let sourceID = source, sinkID != sourceID else {
+        log("streams invalides sur le peripherique \(device): \(described.joined(separator: ", "))")
+        return nil
+    }
+    log("streams device=\(device) source=\(sourceID) sink=\(sinkID) [\(described.joined(separator: ", "))]")
+    return Camera(device: device, source: sourceID, sink: sinkID)
+}
+
 func findCamera(timeout: TimeInterval) -> Camera? {
     let deadline = Date().addingTimeInterval(timeout)
     repeat {
-        for device in objectIDs(kCMIOHardwarePropertyDevices, of: CMIOObjectID(kCMIOObjectSystemObject))
-        where isChapCam(device) {
-            let streams = objectIDs(kCMIODevicePropertyStreams, of: device)
-            // Direction 0 = output (what video apps read), 1 = input (sink).
-            let sink = streams.first(where: { direction(of: $0) == 1 }) ?? (streams.count > 1 ? streams[1] : nil)
-            let source = streams.first(where: { direction(of: $0) == 0 }) ?? streams.first
-            if let sink = sink, let source = source {
-                return Camera(device: device, source: source, sink: sink)
-            }
+        let candidates = objectIDs(kCMIOHardwarePropertyDevices, of: CMIOObjectID(kCMIOObjectSystemObject))
+            .filter(isChapCam)
+        // A superseded extension (e.g. 1.0.3 "en attente de desinstallation")
+        // can still publish a device until reboot: use the current one, which
+        // is the one exposing the diagnostics property.
+        let ordered = candidates.filter(hasDiagnostics) + candidates.filter { !hasDiagnostics($0) }
+        if candidates.count > 1 {
+            log("plusieurs ChapCam Camera: \(candidates.map { "\($0)\(hasDiagnostics($0) ? "(actuelle)" : "(ancienne)")" }.joined(separator: " "))")
+        }
+        for device in ordered {
+            if let camera = pickStreams(device) { return camera }
         }
         RunLoop.current.run(until: Date().addingTimeInterval(0.25))
     } while Date() < deadline
+    return nil
+}
+
+func extensionCounter(_ device: CMIODeviceID, _ key: String) -> Int? {
+    for pair in extensionDiagnostics(device).split(separator: " ") {
+        let parts = pair.split(separator: "=", maxSplits: 1)
+        if parts.count == 2, parts[0] == "ext_\(key)" { return Int(parts[1]) }
+    }
     return nil
 }
 
@@ -207,12 +249,30 @@ func stream(width: Int, height: Int, fps: Int) -> Int32 {
         return 1
     }
     log("sink queue capacity=\(CMSimpleQueueGetCapacity(queue)) camera-access=\(cameraAuthorization())")
+    let startsBefore = extensionCounter(camera.device, "starts")
     let startStatus = CMIODeviceStartStream(camera.device, camera.sink)
     guard startStatus == noErr else {
         log("CMIODeviceStartStream failed: \(startStatus)")
         return 1
     }
     defer { CMIODeviceStopStream(camera.device, camera.sink) }
+
+    // CMIODeviceStartStream returning noErr is not proof: require the extension
+    // itself to report that its sink started, otherwise fail loudly (code 7).
+    if let before = startsBefore {
+        let deadline = Date().addingTimeInterval(3)
+        var started = false
+        while Date() < deadline {
+            if let now = extensionCounter(camera.device, "starts"), now > before { started = true; break }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+        guard started else {
+            log("sink-not-started: l'extension n'a pas demarre son flux d'entree. extension \(extensionDiagnostics(camera.device))")
+            return 7
+        }
+    } else {
+        log("extension sans diagnostics (ancienne version chargee) : redemarre le Mac")
+    }
     log("extension \(extensionDiagnostics(camera.device))")
 
     var pool: CVPixelBufferPool?

@@ -288,6 +288,7 @@ class VirtualCamera {
   _health() {
     const now = Date.now()
     if (!this._wanted) return { state: 'stopped', healthy: false, message: 'Camera virtuelle arretee.' }
+    if (this._fatal) return { state: 'failed', healthy: false, message: this._fatal }
     if (this._restartTimer || (!this.proc && this._wanted)) {
       return { state: 'reconnecting', healthy: false, message: 'Reconnexion a ChapCam Camera...' }
     }
@@ -432,6 +433,7 @@ class VirtualCamera {
     this.height = options.height || DEFAULT.height
     this.fps = options.fps || DEFAULT.fps
     this._lastError = null
+    this._fatal = null
 
     if (this.isRunning) return this.getStatus()
 
@@ -491,6 +493,16 @@ class VirtualCamera {
   // Helper died while the camera is wanted: reconnect with backoff.
   _scheduleReconnect(code) {
     if (!this._wanted || this._restartTimer) return
+    // No endless retry loop hiding a broken pipeline: code 7 (sink never
+    // started) is deterministic, and 4 failed attempts in a row is a real fault.
+    if (code === 7 || this._restartAttempts >= 4) {
+      this._fatal = code === 7
+        ? 'L\'extension ChapCam Camera n\'a pas demarre son flux d\'entree (sink-not-started). Ouvre le Journal pour le detail.'
+        : `Le flux vers ChapCam Camera echoue en boucle (code ${code}). Ouvre le Journal pour le detail.`
+      this._lastError = this._fatal
+      log(`Reconnexion abandonnee: ${this._fatal}`)
+      return
+    }
     this._restartAttempts++
     const delay = Math.min(15000, 1000 * 2 ** Math.min(this._restartAttempts, 4))
     log(`Reconnexion dans ${delay / 1000}s (tentative ${this._restartAttempts}, code ${code})`)
@@ -691,6 +703,8 @@ class VirtualCamera {
           this._helperStats = { ...parseKeyValues(line), at: Date.now() }
           this._lastStatsLine = `${line} entree=${this._input.fps}`
           const stats = this._helperStats
+          // Only a frame confirmed by the extension counts as a recovered stream.
+          if (stats.ext_fresh === 1) this._restartAttempts = 0
           // Log every 10 s, plus whenever the extension-side picture changes.
           const changed = !previous || (previous.ext_rx > 0) !== (stats.ext_rx > 0) ||
             previous.ext_issue !== stats.ext_issue || previous.ext_sink !== stats.ext_sink
@@ -699,7 +713,6 @@ class VirtualCamera {
         }
         if (line.startsWith('connected ')) {
           this._connected = true
-          this._restartAttempts = 0
           this._scheduleVerify(3000)
         }
         log(`helper: ${line}`)
