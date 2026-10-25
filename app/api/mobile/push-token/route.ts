@@ -27,14 +27,17 @@ export async function POST(request: NextRequest) {
   const user = await authenticate(request)
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401, headers: NO_STORE })
 
-  const pushToken = await readPushToken(request)
+  const body = (await request.json().catch(() => ({}))) as { token?: unknown; platform?: unknown }
+  const pushToken = isExpoPushToken(body.token) ? body.token : null
   if (!pushToken) return NextResponse.json({ error: 'Token invalide' }, { status: 400, headers: NO_STORE })
+  // Older iOS builds do not send a platform.
+  const platform = body.platform === 'android' ? 'android' : 'ios'
 
   // Token is the key: a device that switches account is reassigned to the new user.
   const { error } = await createAdminClient()
     .from('push_tokens')
     .upsert(
-      { token: pushToken, user_id: user.id, platform: 'ios', updated_at: new Date().toISOString() },
+      { token: pushToken, user_id: user.id, platform, updated_at: new Date().toISOString() },
       { onConflict: 'token' },
     )
   if (error) {

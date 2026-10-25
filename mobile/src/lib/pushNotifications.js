@@ -22,7 +22,15 @@ function easProjectId() {
 // Asks only while the iOS permission is still undetermined: a refusal is final
 // and is never re-prompted. Returns the Expo token once saved on the server.
 export async function registerForPushNotifications() {
-  if (Platform.OS !== 'ios' || !Device.isDevice) return null
+  if ((Platform.OS !== 'ios' && Platform.OS !== 'android') || !Device.isDevice) return null
+
+  if (Platform.OS === 'android') {
+    // Android 13+ only shows the permission prompt once a channel exists.
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'ChapCam',
+      importance: Notifications.AndroidImportance.HIGH,
+    })
+  }
 
   let { status } = await Notifications.getPermissionsAsync()
   if (status === 'undetermined') {
@@ -36,11 +44,17 @@ export async function registerForPushNotifications() {
   const projectId = easProjectId()
   if (!projectId) return null
 
-  const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId })
+  // Android throws here until the FCM credentials are configured in EAS.
+  let token
+  try {
+    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data
+  } catch {
+    return null
+  }
   const response = await apiFetch('/api/mobile/push-token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token }),
+    body: JSON.stringify({ token, platform: Platform.OS }),
   })
   if (!response.ok) return null
   registeredToken = token
