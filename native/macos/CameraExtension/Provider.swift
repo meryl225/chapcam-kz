@@ -1,4 +1,6 @@
+import CoreGraphics
 import CoreMediaIO
+import CoreText
 import CoreVideo
 import Foundation
 import IOKit.audio
@@ -12,6 +14,10 @@ let kWidth: Int32 = 1280
 let kHeight: Int32 = 720
 let kDeviceName = "ChapCam Camera"
 let kStaleAfterNs: UInt64 = 1_500_000_000
+
+// The waiting image keeps this exact BGRA color in its corners so
+// `chapcam-vcam-mac verify` can tell it apart from real ChapCam frames.
+let kPlaceholderBGRA: (b: UInt8, g: UInt8, r: UInt8) = (0x3D, 0x1A, 0x12)
 
 private func hostTimeNs(_ time: CMTime) -> UInt64 {
     UInt64(max(0, time.seconds) * Double(NSEC_PER_SEC))
@@ -35,8 +41,10 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
     private var sinkRunning = false
 
     private var videoDescription: CMFormatDescription!
-    private var placeholderPool: CVPixelBufferPool?
+    private var bufferPool: CVPixelBufferPool?
     private var placeholder: CVPixelBuffer?
+    private var receivedFrames: UInt64 = 0
+    private var rejectedFrames: UInt64 = 0
 
     init(localizedName: String) {
         super.init()
@@ -62,7 +70,8 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
             kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_32BGRA,
             kCVPixelBufferIOSurfacePropertiesKey: [:] as NSDictionary,
         ]
-        CVPixelBufferPoolCreate(kCFAllocatorDefault, nil, poolAttributes, &placeholderPool)
+        let poolOptions: NSDictionary = [kCVPixelBufferPoolMinimumBufferCountKey: 6]
+        CVPixelBufferPoolCreate(kCFAllocatorDefault, poolOptions, poolAttributes, &bufferPool)
 
         let frameDuration = CMTime(value: 1, timescale: Int32(kFrameRate))
         let format = CMIOExtensionStreamFormat(
@@ -150,14 +159,11 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
         var pixelBuffer = latestBuffer
         let fresh = pixelBuffer != nil && nowNs &- latestBufferAt < kStaleAfterNs
         lock.unlock()
-        if !fresh { pixelBuffer = blackFrame() }
+        if !fresh { pixelBuffer = waitingFrame() }
         guard let buffer = pixelBuffer else { return }
 
-        var format: CMFormatDescription?
-        CMVideoFormatDescriptionCreateForImageBuffer(
-            allocator: kCFAllocatorDefault, imageBuffer: buffer, formatDescriptionOut: &format)
-        guard let formatDescription = format else { return }
-
+        // Every buffer comes from our own pool, so it always matches the
+        // advertised format; clients such as Telegram drop mismatched samples.
         var timing = CMSampleTimingInfo(
             duration: CMTime(value: 1, timescale: Int32(kFrameRate)),
             presentationTimeStamp: now,
@@ -167,27 +173,110 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
         let status = CMSampleBufferCreateReadyWithImageBuffer(
             allocator: kCFAllocatorDefault,
             imageBuffer: buffer,
-            formatDescription: formatDescription,
+            formatDescription: videoDescription,
             sampleTiming: &timing,
             sampleBufferOut: &sampleBuffer
         )
-        guard status == noErr, let sample = sampleBuffer else { return }
+        guard status == noErr, let sample = sampleBuffer else {
+            vcamLog.error("CMSampleBufferCreateReadyWithImageBuffer failed: \(status, privacy: .public)")
+            return
+        }
         sourceStream.stream.send(sample, discontinuity: [], hostTimeInNanoseconds: nowNs)
     }
 
-    private func blackFrame() -> CVPixelBuffer? {
-        if let placeholder = placeholder { return placeholder }
-        guard let pool = placeholderPool else { return nil }
+    private func makePoolBuffer() -> CVPixelBuffer? {
+        guard let pool = bufferPool else { return nil }
         var buffer: CVPixelBuffer?
-        guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &buffer) == kCVReturnSuccess,
-              let pixelBuffer = buffer else { return nil }
-        CVPixelBufferLockBaseAddress(pixelBuffer, [])
-        if let base = CVPixelBufferGetBaseAddress(pixelBuffer) {
-            let bytes = CVPixelBufferGetBytesPerRow(pixelBuffer) * CVPixelBufferGetHeight(pixelBuffer)
-            let pixels = base.bindMemory(to: UInt32.self, capacity: bytes / 4)
-            for i in 0..<(bytes / 4) { pixels[i] = 0xFF10_1010 }
+        guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pool, &buffer) == kCVReturnSuccess else {
+            return nil
         }
-        CVPixelBufferUnlockBaseAddress(pixelBuffer, [])
+        return buffer
+    }
+
+    // Copies a frame pushed by the helper into a buffer owned by the extension.
+    private func copyIntoPool(_ source: CVPixelBuffer) -> CVPixelBuffer? {
+        guard CVPixelBufferGetPixelFormatType(source) == kCVPixelFormatType_32BGRA,
+              CVPixelBufferGetWidth(source) == Int(kWidth),
+              CVPixelBufferGetHeight(source) == Int(kHeight),
+              let destination = makePoolBuffer() else { return nil }
+
+        CVPixelBufferLockBaseAddress(source, .readOnly)
+        CVPixelBufferLockBaseAddress(destination, [])
+        defer {
+            CVPixelBufferUnlockBaseAddress(destination, [])
+            CVPixelBufferUnlockBaseAddress(source, .readOnly)
+        }
+        guard let from = CVPixelBufferGetBaseAddress(source),
+              let to = CVPixelBufferGetBaseAddress(destination) else { return nil }
+        let fromStride = CVPixelBufferGetBytesPerRow(source)
+        let toStride = CVPixelBufferGetBytesPerRow(destination)
+        let rowBytes = Int(kWidth) * 4
+        if fromStride == toStride {
+            memcpy(to, from, toStride * Int(kHeight))
+        } else {
+            for y in 0..<Int(kHeight) { memcpy(to + y * toStride, from + y * fromStride, rowBytes) }
+        }
+        return destination
+    }
+
+    // Shown while no ChapCam frame arrives, so a video app displays an
+    // explicit status instead of a black image.
+    private func waitingFrame() -> CVPixelBuffer? {
+        if let placeholder = placeholder { return placeholder }
+        guard let pixelBuffer = makePoolBuffer() else { return nil }
+        CVPixelBufferLockBaseAddress(pixelBuffer, [])
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, []) }
+        guard let base = CVPixelBufferGetBaseAddress(pixelBuffer) else { return nil }
+        let width = Int(kWidth)
+        let height = Int(kHeight)
+        let stride = CVPixelBufferGetBytesPerRow(pixelBuffer)
+
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
+        if let context = CGContext(
+            data: base, width: width, height: height, bitsPerComponent: 8, bytesPerRow: stride,
+            space: colorSpace, bitmapInfo: bitmapInfo)
+        {
+            context.setFillColor(
+                red: CGFloat(kPlaceholderBGRA.r) / 255, green: CGFloat(kPlaceholderBGRA.g) / 255,
+                blue: CGFloat(kPlaceholderBGRA.b) / 255, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+
+            let lines: [(String, CGFloat, CGFloat)] = [
+                ("ChapCam Camera", 64, 1.0),
+                ("En attente du flux ChapCam", 36, 0.85),
+                ("Ouvre ChapCam et lance le Live Swap", 26, 0.6),
+            ]
+            var y = CGFloat(height) / 2 + 70
+            for (text, size, alpha) in lines {
+                let font = CTFontCreateUIFontForLanguage(.system, size, nil)
+                    ?? CTFontCreateWithName("Helvetica" as CFString, size, nil)
+                let attributes: [NSAttributedString.Key: Any] = [
+                    NSAttributedString.Key(kCTFontAttributeName as String): font,
+                    NSAttributedString.Key(kCTForegroundColorAttributeName as String):
+                        CGColor(red: 1, green: 1, blue: 1, alpha: alpha),
+                ]
+                let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))
+                let lineWidth = CTLineGetTypographicBounds(line, nil, nil, nil)
+                context.textPosition = CGPoint(x: (CGFloat(width) - CGFloat(lineWidth)) / 2, y: y)
+                CTLineDraw(line, context)
+                y -= size + 30
+            }
+        }
+
+        // Pin the sentinel color in all four corners (2x2 px).
+        for (cx, cy) in [(0, 0), (width - 2, 0), (0, height - 2), (width - 2, height - 2)] {
+            for dy in 0..<2 {
+                let row = base.advanced(by: (cy + dy) * stride).assumingMemoryBound(to: UInt8.self)
+                for dx in 0..<2 {
+                    let p = row.advanced(by: (cx + dx) * 4)
+                    p[0] = kPlaceholderBGRA.b
+                    p[1] = kPlaceholderBGRA.g
+                    p[2] = kPlaceholderBGRA.r
+                    p[3] = 0xFF
+                }
+            }
+        }
         placeholder = pixelBuffer
         return pixelBuffer
     }
@@ -219,10 +308,23 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
             guard let self = self else { return }
             if let sampleBuffer = sampleBuffer, let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
                 let nowNs = hostTimeNs(CMClockGetTime(CMClockGetHostTimeClock()))
+                let copy = self.copyIntoPool(imageBuffer)
                 self.lock.lock()
-                self.latestBuffer = imageBuffer
-                self.latestBufferAt = nowNs
+                if let copy = copy {
+                    self.latestBuffer = copy
+                    self.latestBufferAt = nowNs
+                    self.receivedFrames &+= 1
+                } else {
+                    self.rejectedFrames &+= 1
+                }
+                let received = self.receivedFrames
+                let rejected = self.rejectedFrames
                 self.lock.unlock()
+                if received == 1 { vcamLog.notice("First ChapCam frame received from helper") }
+                if copy == nil && (rejected == 1 || rejected % 300 == 0) {
+                    vcamLog.error(
+                        "Rejected frame \(CVPixelBufferGetWidth(imageBuffer), privacy: .public)x\(CVPixelBufferGetHeight(imageBuffer), privacy: .public) (expected 1280x720 BGRA), total \(rejected, privacy: .public)")
+                }
                 self.sinkStream.stream.notifyScheduledOutputChanged(
                     CMIOExtensionScheduledOutput(sequenceNumber: sequenceNumber, hostTimeInNanoseconds: nowNs))
             }

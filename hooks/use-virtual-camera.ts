@@ -75,7 +75,7 @@ export function useVirtualCamera() {
         ?.status?.()
         .then((s) => { const n = normalizeStatus(s); if (active && n) setState(n) })
         .catch(() => {})
-    }, 3000)
+    }, 2000)
 
     return () => {
       active = false
@@ -99,5 +99,12 @@ export function useVirtualCamera() {
     if (n) setState(n)
   }, [])
 
-  return { state, available, start, stop }
+  const restart = useCallback(async () => {
+    const api = getElectronAPI()
+    if (typeof api?.virtualCamera?.restart !== 'function') return
+    const n = normalizeStatus(await api.virtualCamera.restart())
+    if (n) setState(n)
+  }, [])
+
+  return { state, available, start, stop, restart }
 }

@@ -3,6 +3,11 @@
 //
 //   chapcam-vcam-mac probe              exit 0 when the camera is visible
 //   chapcam-vcam-mac stream W H FPS     read W*H*4 byte BGRA frames (top-down)
+//                                       and print "stats ..." on stderr every second
+//   chapcam-vcam-mac verify             read the camera output like a video app and
+//                                       print "verify frames=N real=R placeholder=P"
+//
+// Exit codes: 3 camera not found, 4 no frame read back, 5 extension stopped consuming.
 import AVFoundation
 import CoreMedia
 import CoreMediaIO
@@ -100,20 +105,66 @@ func direction(of stream: CMIOStreamID) -> UInt32? {
     return status == noErr ? value : nil
 }
 
-func findCamera(timeout: TimeInterval) -> (device: CMIODeviceID, sink: CMIOStreamID)? {
+struct Camera {
+    let device: CMIODeviceID
+    let source: CMIOStreamID
+    let sink: CMIOStreamID
+}
+
+func findCamera(timeout: TimeInterval) -> Camera? {
     let deadline = Date().addingTimeInterval(timeout)
     repeat {
         for device in objectIDs(kCMIOHardwarePropertyDevices, of: CMIOObjectID(kCMIOObjectSystemObject))
         where isChapCam(device) {
             let streams = objectIDs(kCMIODevicePropertyStreams, of: device)
-            // Direction 1 = input to the device, i.e. the sink stream.
-            if let sink = streams.first(where: { direction(of: $0) == 1 }) ?? (streams.count > 1 ? streams[1] : nil) {
-                return (device, sink)
+            // Direction 0 = output (what video apps read), 1 = input (sink).
+            let sink = streams.first(where: { direction(of: $0) == 1 }) ?? (streams.count > 1 ? streams[1] : nil)
+            let source = streams.first(where: { direction(of: $0) == 0 }) ?? streams.first
+            if let sink = sink, let source = source {
+                return Camera(device: device, source: source, sink: sink)
             }
         }
         RunLoop.current.run(until: Date().addingTimeInterval(0.25))
     } while Date() < deadline
     return nil
+}
+
+// True when at least one process (Telegram, Zoom...) reads ChapCam Camera.
+func isRunningSomewhere(_ device: CMIODeviceID) -> Bool {
+    var addr = address(kCMIODevicePropertyDeviceIsRunningSomewhere)
+    var value: UInt32 = 0
+    var used: UInt32 = 0
+    let status = CMIOObjectGetPropertyData(device, &addr, 0, nil, UInt32(MemoryLayout<UInt32>.size), &used, &value)
+    return status == noErr && value != 0
+}
+
+final class StreamCounters {
+    private let lock = NSLock()
+    private var received = 0
+    private var enqueued = 0
+    private var queueFull = 0
+    private var failed = 0
+
+    func add(received r: Int = 0, enqueued e: Int = 0, queueFull q: Int = 0, failed f: Int = 0) {
+        lock.lock()
+        received += r
+        enqueued += e
+        queueFull += q
+        failed += f
+        lock.unlock()
+    }
+
+    func drain() -> (received: Int, enqueued: Int, queueFull: Int, failed: Int) {
+        lock.lock()
+        defer {
+            received = 0
+            enqueued = 0
+            queueFull = 0
+            failed = 0
+            lock.unlock()
+        }
+        return (received, enqueued, queueFull, failed)
+    }
 }
 
 func readExact(_ pointer: UnsafeMutableRawPointer, _ count: Int) -> Bool {
@@ -161,14 +212,41 @@ func stream(width: Int, height: Int, fps: Int) -> Int32 {
     let rowBytes = width * 4
     var frame = [UInt8](repeating: 0, count: rowBytes * height)
     let frameDuration = CMTime(value: 1, timescale: CMTimeScale(max(1, fps)))
-    log("Streaming \(width)x\(height) vers \(deviceName)")
+    log("connected \(width)x\(height) -> \(deviceName)")
+
+    // Stats run on their own timer so they keep coming when ChapCam sends nothing.
+    let counters = StreamCounters()
+    var stalledSeconds = 0
+    let statsTimer = DispatchSource.makeTimerSource(queue: DispatchQueue(label: "com.chapcam.vcam.stats"))
+    statsTimer.schedule(deadline: .now() + 1, repeating: 1)
+    statsTimer.setEventHandler {
+        let s = counters.drain()
+        let readers = isRunningSomewhere(camera.device) ? 1 : 0
+        log("stats in=\(s.received) enq=\(s.enqueued) full=\(s.queueFull) err=\(s.failed) readers=\(readers)")
+        // The extension drains the sink queue as soon as it runs. A queue that
+        // stays full means the extension was replaced or stopped: reconnect.
+        stalledSeconds = (s.enqueued == 0 && s.queueFull > 0) ? stalledSeconds + 1 : 0
+        if stalledSeconds >= 5 {
+            log("Extension camera ne consomme plus les images, reconnexion")
+            CMIODeviceStopStream(camera.device, camera.sink)
+            exit(5)
+        }
+    }
+    statsTimer.resume()
 
     while frame.withUnsafeMutableBytes({ readExact($0.baseAddress!, $0.count) }) {
-        if CMSimpleQueueGetCount(queue) >= CMSimpleQueueGetCapacity(queue) { continue }
+        counters.add(received: 1)
+        if CMSimpleQueueGetCount(queue) >= CMSimpleQueueGetCapacity(queue) {
+            counters.add(queueFull: 1)
+            continue
+        }
 
         var pixelBuffer: CVPixelBuffer?
         guard CVPixelBufferPoolCreatePixelBuffer(kCFAllocatorDefault, pixelPool, &pixelBuffer) == kCVReturnSuccess,
-              let buffer = pixelBuffer else { continue }
+              let buffer = pixelBuffer else {
+            counters.add(failed: 1)
+            continue
+        }
         CVPixelBufferLockBaseAddress(buffer, [])
         if let destination = CVPixelBufferGetBaseAddress(buffer) {
             let destinationStride = CVPixelBufferGetBytesPerRow(buffer)
@@ -193,10 +271,72 @@ func stream(width: Int, height: Int, fps: Int) -> Int32 {
         guard CMSampleBufferCreateReadyWithImageBuffer(
             allocator: kCFAllocatorDefault, imageBuffer: buffer, formatDescription: formatDescription,
             sampleTiming: &timing, sampleBufferOut: &sampleBuffer) == noErr,
-            let sample = sampleBuffer else { continue }
-        CMSimpleQueueEnqueue(queue, element: Unmanaged.passRetained(sample).toOpaque())
+            let sample = sampleBuffer else {
+            counters.add(failed: 1)
+            continue
+        }
+        let element = Unmanaged.passRetained(sample)
+        if CMSimpleQueueEnqueue(queue, element: element.toOpaque()) == noErr {
+            counters.add(enqueued: 1)
+        } else {
+            element.release()
+            counters.add(queueFull: 1)
+        }
     }
+    statsTimer.cancel()
     return 0
+}
+
+// Reads ChapCam Camera's output exactly like a video app would, and checks
+// whether it carries real ChapCam frames or the extension's waiting image.
+func verify(seconds: Double) -> Int32 {
+    guard let camera = findCamera(timeout: 10) else {
+        print("verify frames=0 real=0 placeholder=0 error=not-found")
+        return 3
+    }
+    var queueRef: Unmanaged<CMSimpleQueue>?
+    let queueStatus = CMIOStreamCopyBufferQueue(camera.source, { _, _, _ in }, nil, &queueRef)
+    guard queueStatus == noErr, let queue = queueRef?.takeRetainedValue() else {
+        print("verify frames=0 real=0 placeholder=0 error=queue-\(queueStatus)")
+        return 1
+    }
+    let startStatus = CMIODeviceStartStream(camera.device, camera.source)
+    guard startStatus == noErr else {
+        print("verify frames=0 real=0 placeholder=0 error=start-\(startStatus)")
+        return 1
+    }
+    defer { CMIODeviceStopStream(camera.device, camera.source) }
+
+    var frames = 0
+    var real = 0
+    var placeholder = 0
+    var size = ""
+    let deadline = Date().addingTimeInterval(seconds)
+    while Date() < deadline {
+        guard let element = CMSimpleQueueDequeue(queue) else {
+            usleep(10_000)
+            continue
+        }
+        let sample = Unmanaged<CMSampleBuffer>.fromOpaque(element).takeRetainedValue()
+        guard let image = CMSampleBufferGetImageBuffer(sample) else { continue }
+        frames += 1
+        let width = CVPixelBufferGetWidth(image)
+        let height = CVPixelBufferGetHeight(image)
+        size = "\(width)x\(height)"
+        CVPixelBufferLockBaseAddress(image, .readOnly)
+        if let base = CVPixelBufferGetBaseAddress(image) {
+            let stride = CVPixelBufferGetBytesPerRow(image)
+            let corners = [(0, 0), (width - 1, 0), (0, height - 1), (width - 1, height - 1)]
+            let isPlaceholder = corners.allSatisfy { x, y in
+                let p = base.advanced(by: y * stride + x * 4).assumingMemoryBound(to: UInt8.self)
+                return p[0] == 0x3D && p[1] == 0x1A && p[2] == 0x12
+            }
+            if isPlaceholder { placeholder += 1 } else { real += 1 }
+        }
+        CVPixelBufferUnlockBaseAddress(image, .readOnly)
+    }
+    print("verify frames=\(frames) real=\(real) placeholder=\(placeholder) size=\(size)")
+    return frames > 0 ? 0 : 4
 }
 
 useInternalCMIOThread()
@@ -211,7 +351,9 @@ case "probe", "status":
     exit(found ? 0 : 3)
 case "stream" where args.count >= 5:
     exit(stream(width: Int(args[2]) ?? 1280, height: Int(args[3]) ?? 720, fps: Int(args[4]) ?? 30))
+case "verify":
+    exit(verify(seconds: args.count > 2 ? Double(args[2]) ?? 2.5 : 2.5))
 default:
-    log("usage: chapcam-vcam-mac probe | stream W H FPS")
+    log("usage: chapcam-vcam-mac probe | stream W H FPS | verify [SECONDS]")
     exit(1)
 }
