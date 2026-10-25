@@ -67,15 +67,31 @@ export function VirtualCameraIndicator({ className = '' }: { className?: string 
             {pending ? 'ChapCam Camera en connexion' : 'Flux non diffusé'}
           </p>
           <p className="text-[11px] leading-snug text-muted-foreground text-pretty">{stream.message}</p>
+          {!pending && stream.extension && (
+            <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+              {`extension : reçu ${stream.extension.received ?? '?'} · refusé ${stream.extension.rejected ?? '?'} · erreurs ${stream.extension.errors ?? '?'} · entrée ${stream.extension.sinkRunning ? 'active' : 'inactive'}`}
+            </p>
+          )}
         </div>
         {!pending && (
-          <button
-            type="button"
-            onClick={() => restart()}
-            className="shrink-0 rounded-md border border-amber-500/40 px-2 py-1 text-[11px] font-semibold text-amber-500 hover:bg-amber-500/10"
-          >
-            Redémarrer
-          </button>
+          <div className="flex shrink-0 flex-col gap-1">
+            <button
+              type="button"
+              onClick={() => restart()}
+              className="rounded-md border border-amber-500/40 px-2 py-1 text-[11px] font-semibold text-amber-500 hover:bg-amber-500/10"
+            >
+              Redémarrer
+            </button>
+            {stream.logPath && (
+              <button
+                type="button"
+                onClick={() => window.electronAPI?.virtualCamera.openLog?.()}
+                className="rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:bg-muted"
+              >
+                Journal
+              </button>
+            )}
+          </div>
         )}
       </div>
     )
