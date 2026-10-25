@@ -181,6 +181,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     start: (opts) => ipcRenderer.invoke('virtual-camera-start', opts),
     stop: () => ipcRenderer.invoke('virtual-camera-stop'),
     status: () => ipcRenderer.invoke('virtual-camera-status'),
+    restart: () => ipcRenderer.invoke('virtual-camera-restart'),
+    verify: () => ipcRenderer.invoke('virtual-camera-verify'),
   },
 
   // Evenement : le main demande d'activer/desactiver la camera virtuelle

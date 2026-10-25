@@ -1,6 +1,6 @@
 'use client'
 
-import { Video, VideoOff, AlertTriangle, Download } from 'lucide-react'
+import { Video, VideoOff, AlertTriangle, Download, RefreshCw } from 'lucide-react'
 import { useVirtualCamera } from '@/hooks/use-virtual-camera'
 
 /**
@@ -8,7 +8,7 @@ import { useVirtualCamera } from '@/hooks/use-virtual-camera'
  * S'affiche uniquement dans l'app de bureau (Electron). Sur le web, rien n'est rendu.
  */
 export function VirtualCameraIndicator({ className = '' }: { className?: string }) {
-  const { state, available } = useVirtualCamera()
+  const { state, available, restart } = useVirtualCamera()
 
   // Hors app de bureau : la camera virtuelle n'existe pas, on n'affiche rien.
   if (!available) return null
@@ -46,7 +46,42 @@ export function VirtualCameraIndicator({ className = '' }: { className?: string 
     )
   }
 
-  // Cas 3 : active
+  // Cas 3 : lancee mais flux pas (encore) confirme cote applications
+  const stream = state.stream
+  if (state.running && stream && !stream.healthy) {
+    const pending = ['connecting', 'reconnecting', 'checking'].includes(stream.state)
+    return (
+      <div
+        role="status"
+        className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${
+          pending ? 'border-hairline bg-muted' : 'border-amber-500/30 bg-amber-500/10'
+        } ${className}`}
+      >
+        {pending ? (
+          <RefreshCw className="h-4 w-4 shrink-0 animate-spin text-muted-foreground" />
+        ) : (
+          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500" />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className={`text-xs font-semibold ${pending ? 'text-foreground' : 'text-amber-500'}`}>
+            {pending ? 'ChapCam Camera en connexion' : 'Flux non diffusé'}
+          </p>
+          <p className="text-[11px] leading-snug text-muted-foreground text-pretty">{stream.message}</p>
+        </div>
+        {!pending && (
+          <button
+            type="button"
+            onClick={() => restart()}
+            className="shrink-0 rounded-md border border-amber-500/40 px-2 py-1 text-[11px] font-semibold text-amber-500 hover:bg-amber-500/10"
+          >
+            Redémarrer
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  // Cas 4 : active et verifiee
   if (state.running) {
     return (
       <div
@@ -60,7 +95,9 @@ export function VirtualCameraIndicator({ className = '' }: { className?: string 
         <div className="min-w-0">
           <p className="text-xs font-semibold text-primary">ChapCam Camera active</p>
           <p className="truncate text-[11px] text-muted-foreground">
-            {state.width}×{state.height} · {state.fps} fps · visible dans OBS, Zoom, Meet…
+            {stream
+              ? `${stream.inputFps} img/s · ${stream.appsReading ? 'diffusé vers les applications' : 'prête pour Telegram, Zoom, Meet…'}`
+              : `${state.width}×${state.height} · ${state.fps} fps · visible dans OBS, Zoom, Meet…`}
           </p>
         </div>
       </div>

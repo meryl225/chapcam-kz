@@ -123,14 +123,36 @@ function readMacRegistration() {
       const states = lines.map((l) => (l.match(/\[([^\]]+)\]\s*$/) || [])[1] || '')
       const pick = (needle) => states.find((s) => s.includes(needle))
       const state = pick('activated enabled') || pick('waiting for user') || pick('activated') || states[0]
+      const activeLine = lines.find((l) => l.includes(`[${state}]`)) || lines[0]
+      const versionMatch = activeLine.match(/\(([^/)]+)\/([^)]+)\)/)
+      const installedVersion = versionMatch ? `${versionMatch[1]}/${versionMatch[2]}` : null
       let registration = 'unknown'
       if (state === 'activated enabled') registration = 'activated'
       else if (state.includes('waiting for user')) registration = 'waiting-for-user'
       else if (state.includes('activated disabled')) registration = 'disabled'
       else if (state.includes('terminat') || state.includes('uninstall')) registration = 'not-installed'
-      resolve({ registration, raw: lines.join('\n').replace(/\b[A-Z0-9]{10}\b/g, '<TEAM>') })
+      resolve({ registration, installedVersion, raw: lines.join('\n').replace(/\b[A-Z0-9]{10}\b/g, '<TEAM>') })
     })
   })
+}
+
+// "1.0.3/57" read from the extension embedded in ChapCam.app.
+function readBundledExtensionVersion() {
+  try {
+    const plist = fs.readFileSync(path.join(macExtensionBundlePath(), 'Contents', 'Info.plist'), 'utf8')
+    const value = (key) => (plist.match(new RegExp(`<key>${key}</key>\\s*<string>([^<]+)</string>`)) || [])[1]
+    const short = value('CFBundleShortVersionString')
+    const build = value('CFBundleVersion')
+    return short && build ? `${short}/${build}` : null
+  } catch (_) {
+    return null
+  }
+}
+
+function parseKeyValues(line) {
+  const out = {}
+  for (const [, key, value] of line.matchAll(/(\w+)=(\S+)/g)) out[key] = /^-?\d+$/.test(value) ? Number(value) : value
+  return out
 }
 
 // Verification independante du helper : liste des cameras vue par AVFoundation,
@@ -217,6 +239,112 @@ class VirtualCamera {
     this._lastError = null
     this._frames = 0
     this._macActivated = false
+    // Stream health: frames from the UI, helper counters, and read-back checks.
+    this._wanted = false
+    this._connected = false
+    this._startedAt = 0
+    this._inFrames = 0
+    this._wrongSize = 0
+    this._input = { fps: 0, wrongSize: 0, lastAt: 0 }
+    this._helperStats = null
+    this._verify = null
+    this._restartAttempts = 0
+    this._restartTimer = null
+    this._verifyTimer = null
+    this._rateTimer = null
+  }
+
+  _startRateTimer() {
+    if (this._rateTimer) return
+    this._rateTimer = setInterval(() => {
+      const now = Date.now()
+      this._input = {
+        fps: this._inFrames,
+        wrongSize: this._wrongSize,
+        lastAt: this._inFrames > 0 ? now : this._input.lastAt,
+      }
+      this._inFrames = 0
+      this._wrongSize = 0
+      const health = this._health()
+      if (health.state !== this._lastHealthState) {
+        this._lastHealthState = health.state
+        log(`Flux: ${health.state} (${health.message})`)
+      }
+    }, 1000)
+  }
+
+  _stopTimers() {
+    clearInterval(this._rateTimer)
+    clearTimeout(this._restartTimer)
+    clearTimeout(this._verifyTimer)
+    this._rateTimer = this._restartTimer = this._verifyTimer = null
+  }
+
+  /**
+   * Real stream state, never inferred from "helper launched":
+   *   stopped | connecting | reconnecting | no-source | wrong-size | blocked |
+   *   checking | placeholder | no-output | ok
+   */
+  _health() {
+    const now = Date.now()
+    if (!this._wanted) return { state: 'stopped', healthy: false, message: 'Camera virtuelle arretee.' }
+    if (this._restartTimer || (!this.proc && this._wanted)) {
+      return { state: 'reconnecting', healthy: false, message: 'Reconnexion a ChapCam Camera...' }
+    }
+    if (!this._connected) return { state: 'connecting', healthy: false, message: 'Connexion a ChapCam Camera...' }
+    const warm = now - this._startedAt > 3000
+    if (warm && this._input.wrongSize > 0 && this._input.fps === this._input.wrongSize) {
+      return { state: 'wrong-size', healthy: false, message: `Images ignorees : format different de ${this.width}x${this.height}.` }
+    }
+    if (warm && now - (this._input.lastAt || this._startedAt) > 2500) {
+      return { state: 'no-source', healthy: false, message: 'Aucune image transformee recue. Lance le Live Swap : la camera ChapCam doit etre visible dans l\'app.' }
+    }
+    const stats = this._helperStats
+    if (stats && now - stats.at < 3000 && stats.enq === 0 && stats.full > 0) {
+      return { state: 'blocked', healthy: false, message: 'L\'extension camera ne recoit plus les images. Reconnexion automatique...' }
+    }
+    if (process.platform !== 'darwin') {
+      return warm
+        ? { state: 'ok', healthy: true, message: `Diffusion active (${this._input.fps} img/s).` }
+        : { state: 'checking', healthy: false, message: 'Verification du flux...' }
+    }
+    const verify = this._verify
+    if (!verify || verify.at < this._startedAt) {
+      return { state: 'checking', healthy: false, message: 'Verification de ce que recoivent les applications...' }
+    }
+    if (verify.real > 0) {
+      return { state: 'ok', healthy: true, message: `Diffusion verifiee : les applications recoivent l'image ChapCam (${this._input.fps} img/s).` }
+    }
+    if (verify.placeholder > 0) {
+      return { state: 'placeholder', healthy: false, message: 'Les applications recoivent l\'ecran d\'attente : les images n\'atteignent pas l\'extension. Clique "Redemarrer".' }
+    }
+    return { state: 'no-output', healthy: false, message: 'ChapCam Camera ne produit aucune image. Clique "Redemarrer" ou redemarre le Mac.' }
+  }
+
+  _scheduleVerify(delayMs) {
+    clearTimeout(this._verifyTimer)
+    if (process.platform !== 'darwin' || !this._wanted) return
+    this._verifyTimer = setTimeout(() => this.verifyOutput().catch(() => {}), delayMs)
+  }
+
+  /** Reads ChapCam Camera's output like Telegram would (macOS only). */
+  async verifyOutput() {
+    if (process.platform !== 'darwin') return this._verify
+    const helper = helperPath()
+    if (!helper || this._verifying) return this._verify
+    this._verifying = true
+    try {
+      const { code, output } = await runHelper(helper, ['verify', '2.5'])
+      const line = output.split('\n').find((l) => l.startsWith('verify ')) || ''
+      const result = { ...parseKeyValues(line), code, at: Date.now() }
+      this._verify = { frames: result.frames || 0, real: result.real || 0, placeholder: result.placeholder || 0, size: result.size || null, error: result.error || null, code, at: result.at }
+      log(`Verification sortie: frames=${this._verify.frames} reelles=${this._verify.real} attente=${this._verify.placeholder} ${this._verify.size || ''} code=${code}${this._verify.error ? ` erreur=${this._verify.error}` : ''}`)
+    } finally {
+      this._verifying = false
+      // Re-check often while unhealthy, rarely once verified.
+      if (this._wanted) this._scheduleVerify(this._verify && this._verify.real > 0 ? 30000 : 8000)
+    }
+    return this._verify
   }
 
   getStatus() {
@@ -234,6 +362,7 @@ class VirtualCamera {
         this.getMacState().catch((e) => log(`Etat macOS illisible: ${e.message}`))
       }
     }
+    const health = this._health()
     return {
       running: this.isRunning,
       driverInstalled: available,
@@ -246,6 +375,14 @@ class VirtualCamera {
       available,
       error,
       mac,
+      stream: {
+        ...health,
+        inputFps: this._input.fps,
+        outputFps: this._helperStats ? this._helperStats.enq : null,
+        appsReading: this._helperStats ? this._helperStats.readers === 1 : null,
+        verify: this._verify,
+        restarts: this._restartAttempts,
+      },
     }
   }
 
@@ -270,7 +407,11 @@ class VirtualCamera {
       else if (process.platform === 'linux') await this.startLinux()
       else throw new Error(`Plateforme non supportee: ${process.platform}`)
       this.isRunning = true
+      this._wanted = true
       this._frames = 0
+      this._startedAt = Date.now()
+      this._restartAttempts = 0
+      this._startRateTimer()
       log(`Demarree (${this.deviceName} ${this.width}x${this.height}@${this.fps})`)
     } catch (error) {
       this._lastError = error.message
@@ -281,18 +422,60 @@ class VirtualCamera {
   }
 
   stop() {
-    if (this.proc) {
-      try {
-        this.proc.stdin && this.proc.stdin.end()
-      } catch (_) {}
-      try {
-        this.proc.kill()
-      } catch (_) {}
-      this.proc = null
-    }
+    this._wanted = false
+    this._stopTimers()
+    this._killHelper()
     this.isRunning = false
+    this._connected = false
     log('Arretee')
     return this.getStatus()
+  }
+
+  _killHelper() {
+    const proc = this.proc
+    this.proc = null
+    if (!proc) return
+    proc.removeAllListeners('close')
+    try {
+      proc.stdin && proc.stdin.end()
+    } catch (_) {}
+    try {
+      proc.kill()
+    } catch (_) {}
+  }
+
+  /** Stops and reconnects the native stream (button "Redemarrer"). */
+  async restart() {
+    const options = { width: this.width, height: this.height, fps: this.fps }
+    this.stop()
+    this._verify = null
+    this._helperStats = null
+    if (process.platform === 'darwin') this._macUpgradeTried = false
+    return this.start(options)
+  }
+
+  // Helper died while the camera is wanted: reconnect with backoff.
+  _scheduleReconnect(code) {
+    if (!this._wanted || this._restartTimer) return
+    this._restartAttempts++
+    const delay = Math.min(15000, 1000 * 2 ** Math.min(this._restartAttempts, 4))
+    log(`Reconnexion dans ${delay / 1000}s (tentative ${this._restartAttempts}, code ${code})`)
+    this._restartTimer = setTimeout(async () => {
+      this._restartTimer = null
+      if (!this._wanted) return
+      try {
+        if (process.platform === 'darwin') {
+          const state = await this.getMacState()
+          if (state.status !== 'ready') throw new Error(state.message)
+        }
+        const helper = helperPath()
+        if (!helper) throw new Error('Composant camera absent.')
+        this.spawnHelper(helper)
+      } catch (error) {
+        this._lastError = error.message
+        this._scheduleReconnect('erreur')
+      }
+    }, delay)
   }
 
   // Windows 11 : source Media Foundation enregistree a l'installation.
@@ -350,7 +533,17 @@ class VirtualCamera {
       cameraAccess = macCameraAccess()
     }
 
-    const { registration, raw } = await readMacRegistration()
+    const { registration, installedVersion, raw } = await readMacRegistration()
+    const bundledVersion = readBundledExtensionVersion()
+    // macOS keeps running the previously approved extension until ChapCam asks
+    // for a replacement, so an app update alone never updates the camera.
+    const extensionOutdated = registration === 'activated' && !!installedVersion && !!bundledVersion &&
+      installedVersion !== bundledVersion
+    if (extensionOutdated && !this._macUpgradeTried && !this._macActivating) {
+      this._macUpgradeTried = true
+      log(`Extension camera ${installedVersion} remplacee par ${bundledVersion}`)
+      setImmediate(() => this.activateMac({ force: true }).catch((e) => log(`Mise a jour extension: ${e.message}`)))
+    }
     const probe = await runHelper(helper, ['probe'])
     const cmioVisible = probe.code === 0
     const cmioDevices = (probe.output.match(/devices: (.*)/) || [])[1] || ''
@@ -362,6 +555,7 @@ class VirtualCamera {
     const deviceVisible = cmioVisible || (avVisible && cameraAccess !== 'denied')
     const state = {
       ...base, ...parts, registration, registrationRaw: raw, deviceVisible,
+      installedVersion, bundledVersion, extensionOutdated,
       cmioVisible, cmioDevices, avVisible, avCameras, extensionRunning, cameraAccess,
     }
     this._logMacDiagnostics(state)
@@ -387,7 +581,8 @@ class VirtualCamera {
   }
 
   _logMacDiagnostics(state) {
-    const summary = `registration=${state.registration} cmio=${state.cmioVisible} av=${state.avVisible} ` +
+    const summary = `registration=${state.registration} installed=${state.installedVersion} bundled=${state.bundledVersion} ` +
+      `cmio=${state.cmioVisible} av=${state.avVisible} ` +
       `extensionProcess=${state.extensionRunning} cameraAccess=${state.cameraAccess} ` +
       `cmioDevices=[${state.cmioDevices}] avCameras=[${(state.avCameras || []).join(' | ')}]`
     if (summary !== this._lastMacSummary) {
@@ -408,9 +603,10 @@ class VirtualCamera {
   }
 
   /** Soumet OSSystemExtensionRequest puis renvoie l'etat reel mesure. */
-  async activateMac() {
+  async activateMac({ force = false } = {}) {
     const current = await this.getMacState()
-    if (['missing', 'move-to-applications', 'ready'].includes(current.status)) return current
+    if (['missing', 'move-to-applications'].includes(current.status)) return current
+    if (current.status === 'ready' && !force && !current.extensionOutdated) return current
     if (this._macActivating) return current
 
     this._macActivating = true
@@ -441,20 +637,48 @@ class VirtualCamera {
   }
 
   spawnHelper(helper) {
-    this.proc = spawn(helper, ['stream', String(this.width), String(this.height), String(this.fps)], {
+    this._connected = process.platform !== 'darwin'
+    this._helperStats = null
+    const proc = spawn(helper, ['stream', String(this.width), String(this.height), String(this.fps)], {
       stdio: ['pipe', 'ignore', 'pipe'],
     })
-    this.proc.stderr.on('data', (d) => log(`helper: ${String(d).trim()}`))
-    this.proc.on('error', (e) => {
+    this.proc = proc
+    let pending = ''
+    let statsLines = 0
+    proc.stderr.on('data', (d) => {
+      pending += String(d)
+      const lines = pending.split('\n')
+      pending = lines.pop()
+      for (const raw of lines) {
+        const line = raw.trim()
+        if (!line) continue
+        if (line.startsWith('stats ')) {
+          this._helperStats = { ...parseKeyValues(line), at: Date.now() }
+          // One line every 10 s is enough for the log file.
+          if (statsLines++ % 10 === 0) log(`helper: ${line} entree=${this._input.fps}`)
+          continue
+        }
+        if (line.startsWith('connected ')) {
+          this._connected = true
+          this._restartAttempts = 0
+          this._scheduleVerify(3000)
+        }
+        log(`helper: ${line}`)
+      }
+    })
+    proc.stdin.on('error', (e) => log(`Pipe helper: ${e.message}`))
+    proc.on('error', (e) => {
       this._lastError = e.message
       log(`Erreur process: ${e.message}`)
-      this.isRunning = false
     })
-    this.proc.on('close', (code) => {
+    proc.on('close', (code) => {
+      if (this.proc !== proc) return
       log(`Flux termine (code ${code})`)
       if (code === 3) this._lastError = 'Camera "ChapCam Camera" introuvable sur le systeme.'
-      this.isRunning = false
       this.proc = null
+      this._connected = false
+      this._helperStats = null
+      this._scheduleReconnect(code)
     })
   }
 
@@ -488,8 +712,13 @@ class VirtualCamera {
    * BGRA top-down ; Linux (ffmpeg) prend le RGBA tel quel.
    */
   writeFrame(rgba, width, height) {
-    if (!this.isRunning || !this.proc || !this.proc.stdin || this.proc.stdin.destroyed) return
-    if (width !== this.width || height !== this.height) return
+    if (!this.isRunning) return
+    this._inFrames++
+    if (width !== this.width || height !== this.height) {
+      this._wrongSize++
+      return
+    }
+    if (!this.proc || !this.proc.stdin || this.proc.stdin.destroyed) return
     const bytes = width * height * 4
     if (!rgba || rgba.length < bytes) return
 
@@ -543,6 +772,18 @@ function setupVirtualCameraIPC() {
   ipcMain.handle('virtual-camera-stop', async (e) => {
     if (!e.sender.isDestroyed()) e.sender.send('vcam:stop')
     return getVirtualCamera().stop()
+  })
+  ipcMain.handle('virtual-camera-restart', async (e) => {
+    const status = await getVirtualCamera().restart()
+    if (status.isRunning && !e.sender.isDestroyed()) {
+      const vc = getVirtualCamera()
+      e.sender.send('vcam:start', { width: vc.width, height: vc.height, fps: vc.fps })
+    }
+    return status
+  })
+  ipcMain.handle('virtual-camera-verify', async () => {
+    await getVirtualCamera().verifyOutput()
+    return getVirtualCamera().getStatus()
   })
   ipcMain.handle('virtual-camera-status', async () => getVirtualCamera().getStatus())
   ipcMain.handle('virtual-camera-mac-state', async () =>

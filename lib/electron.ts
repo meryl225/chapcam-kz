@@ -7,6 +7,21 @@ export interface VirtualCameraState {
   height?: number
   fps?: number
   error?: string | null
+  stream?: VirtualCameraStream
+  }
+
+export type VirtualCameraStreamState =
+  | 'stopped' | 'connecting' | 'reconnecting' | 'no-source' | 'wrong-size'
+  | 'blocked' | 'checking' | 'placeholder' | 'no-output' | 'ok'
+
+export interface VirtualCameraStream {
+  state: VirtualCameraStreamState
+  healthy: boolean
+  message: string
+  inputFps: number
+  outputFps: number | null
+  appsReading: boolean | null
+  restarts: number
 }
 
 // Contrat de l'API Voice Swap (defini dans lib/voice-swap.ts) expose par le
@@ -29,6 +44,7 @@ export interface ElectronAPI {
     start: (opts?: { width?: number; height?: number; fps?: number }) => Promise<VirtualCameraState>
     stop: () => Promise<VirtualCameraState>
     status: () => Promise<VirtualCameraState>
+ restart?: () => Promise<VirtualCameraState>
   }
   onVirtualCameraState: (callback: (state: VirtualCameraState) => void) => void
   
