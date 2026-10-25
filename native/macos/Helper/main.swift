@@ -129,6 +129,23 @@ func findCamera(timeout: TimeInterval) -> Camera? {
     return nil
 }
 
+// Counters published by the extension (custom property 'cdia', see Provider.swift),
+// e.g. "rx=120 rej=0 err=0 auth=1 starts=1 sink=1 src=1 real=118 wait=40 fresh=1 issue=none".
+// Returned with an "ext_" prefix so the app can parse it next to the helper stats.
+func extensionDiagnostics(_ device: CMIODeviceID) -> String {
+    var addr = address(0x6364_6961) // 'cdia'
+    guard CMIOObjectHasProperty(device, &addr) else { return "ext_diag=unsupported" }
+    var value: Unmanaged<CFString>?
+    var used: UInt32 = 0
+    let size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+    let status = withUnsafeMutablePointer(to: &value) {
+        CMIOObjectGetPropertyData(device, &addr, 0, nil, size, &used, $0)
+    }
+    guard status == noErr, let cf = value else { return "ext_diag=error-\(status)" }
+    let text = cf.takeRetainedValue() as String
+    return text.split(separator: " ").map { "ext_\($0)" }.joined(separator: " ")
+}
+
 // True when at least one process (Telegram, Zoom...) reads ChapCam Camera.
 func isRunningSomewhere(_ device: CMIODeviceID) -> Bool {
     var addr = address(kCMIODevicePropertyDeviceIsRunningSomewhere)
@@ -189,12 +206,14 @@ func stream(width: Int, height: Int, fps: Int) -> Int32 {
         log("CMIOStreamCopyBufferQueue failed: \(queueStatus)")
         return 1
     }
+    log("sink queue capacity=\(CMSimpleQueueGetCapacity(queue)) camera-access=\(cameraAuthorization())")
     let startStatus = CMIODeviceStartStream(camera.device, camera.sink)
     guard startStatus == noErr else {
         log("CMIODeviceStartStream failed: \(startStatus)")
         return 1
     }
     defer { CMIODeviceStopStream(camera.device, camera.sink) }
+    log("extension \(extensionDiagnostics(camera.device))")
 
     var pool: CVPixelBufferPool?
     let poolAttributes: NSDictionary = [
@@ -206,6 +225,18 @@ func stream(width: Int, height: Int, fps: Int) -> Int32 {
     CVPixelBufferPoolCreate(kCFAllocatorDefault, nil, poolAttributes, &pool)
     guard let pixelPool = pool else {
         log("CVPixelBufferPoolCreate failed")
+        return 1
+    }
+
+    // Same description as the extension's advertised format: one created from
+    // the image buffer carries extra extensions (row bytes, color tags) that do
+    // not match the sink's active format.
+    var sinkFormat: CMFormatDescription?
+    CMVideoFormatDescriptionCreate(
+        allocator: kCFAllocatorDefault, codecType: kCVPixelFormatType_32BGRA,
+        width: Int32(width), height: Int32(height), extensions: nil, formatDescriptionOut: &sinkFormat)
+    guard let formatDescription = sinkFormat else {
+        log("CMVideoFormatDescriptionCreate failed")
         return 1
     }
 
@@ -222,7 +253,8 @@ func stream(width: Int, height: Int, fps: Int) -> Int32 {
     statsTimer.setEventHandler {
         let s = counters.drain()
         let readers = isRunningSomewhere(camera.device) ? 1 : 0
-        log("stats in=\(s.received) enq=\(s.enqueued) full=\(s.queueFull) err=\(s.failed) readers=\(readers)")
+        log("stats in=\(s.received) enq=\(s.enqueued) full=\(s.queueFull) err=\(s.failed) readers=\(readers) " +
+            extensionDiagnostics(camera.device))
         // The extension drains the sink queue as soon as it runs. A queue that
         // stays full means the extension was replaced or stopped: reconnect.
         stalledSeconds = (s.enqueued == 0 && s.queueFull > 0) ? stalledSeconds + 1 : 0
@@ -258,10 +290,6 @@ func stream(width: Int, height: Int, fps: Int) -> Int32 {
         }
         CVPixelBufferUnlockBaseAddress(buffer, [])
 
-        var format: CMFormatDescription?
-        CMVideoFormatDescriptionCreateForImageBuffer(
-            allocator: kCFAllocatorDefault, imageBuffer: buffer, formatDescriptionOut: &format)
-        guard let formatDescription = format else { continue }
         var timing = CMSampleTimingInfo(
             duration: frameDuration,
             presentationTimeStamp: CMClockGetTime(CMClockGetHostTimeClock()),
@@ -287,8 +315,101 @@ func stream(width: Int, height: Int, fps: Int) -> Int32 {
     return 0
 }
 
-// Reads ChapCam Camera's output exactly like a video app would, and checks
-// whether it carries real ChapCam frames or the extension's waiting image.
+func cameraAuthorization() -> String {
+    switch AVCaptureDevice.authorizationStatus(for: .video) {
+    case .authorized: return "authorized"
+    case .denied: return "denied"
+    case .restricted: return "restricted"
+    case .notDetermined: return "not-determined"
+    @unknown default: return "unknown"
+    }
+}
+
+func isPlaceholderPixel(_ p: UnsafePointer<UInt8>) -> Bool {
+    abs(Int(p[0]) - Int(kPlaceholder.b)) <= 6 && abs(Int(p[1]) - Int(kPlaceholder.g)) <= 6 &&
+        abs(Int(p[2]) - Int(kPlaceholder.r)) <= 6
+}
+
+// Must match kPlaceholderBGRA in CameraExtension/Provider.swift.
+let kPlaceholder: (b: UInt8, g: UInt8, r: UInt8) = (0x3D, 0x1A, 0x12)
+
+final class FrameProbe: NSObject, AVCaptureVideoDataOutputSampleBufferDelegate {
+    private let lock = NSLock()
+    private(set) var frames = 0
+    private(set) var real = 0
+    private(set) var placeholder = 0
+    private(set) var size = ""
+
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard let image = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+        let width = CVPixelBufferGetWidth(image)
+        let height = CVPixelBufferGetHeight(image)
+        CVPixelBufferLockBaseAddress(image, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(image, .readOnly) }
+        guard CVPixelBufferGetPixelFormatType(image) == kCVPixelFormatType_32BGRA,
+              let base = CVPixelBufferGetBaseAddress(image) else { return }
+        let stride = CVPixelBufferGetBytesPerRow(image)
+        let corners = [(0, 0), (width - 1, 0), (0, height - 1), (width - 1, height - 1)]
+        let waiting = corners.allSatisfy { x, y in
+            isPlaceholderPixel(base.advanced(by: y * stride + x * 4).assumingMemoryBound(to: UInt8.self))
+        }
+        lock.lock()
+        frames += 1
+        if waiting { placeholder += 1 } else { real += 1 }
+        size = "\(width)x\(height)"
+        lock.unlock()
+    }
+
+    func summary() -> String {
+        lock.lock()
+        defer { lock.unlock() }
+        return "frames=\(frames) real=\(real) placeholder=\(placeholder) size=\(size)"
+    }
+}
+
+// Reads ChapCam Camera through AVFoundation, the API Telegram, FaceTime and
+// Zoom use, so the result matches what those apps actually display.
+func verifyWithAVFoundation(seconds: Double) -> Int32? {
+    let types: [AVCaptureDevice.DeviceType]
+    if #available(macOS 14.0, *) {
+        types = [.external]
+    } else {
+        types = [.externalUnknown]
+    }
+    let devices = AVCaptureDevice.DiscoverySession(deviceTypes: types, mediaType: .video, position: .unspecified).devices
+    guard let device = devices.first(where: { $0.uniqueID.uppercased() == deviceUID || $0.localizedName == deviceName }) else {
+        log("verify: ChapCam Camera absent d'AVFoundation")
+        return nil
+    }
+    let access = cameraAuthorization()
+    guard access == "authorized" else {
+        print("verify frames=0 real=0 placeholder=0 error=camera-\(access) via=avfoundation")
+        return 6
+    }
+    let session = AVCaptureSession()
+    guard let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
+        print("verify frames=0 real=0 placeholder=0 error=input via=avfoundation")
+        return 1
+    }
+    session.addInput(input)
+    let output = AVCaptureVideoDataOutput()
+    output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+    output.alwaysDiscardsLateVideoFrames = true
+    let probe = FrameProbe()
+    output.setSampleBufferDelegate(probe, queue: DispatchQueue(label: "com.chapcam.vcam.verify"))
+    guard session.canAddOutput(output) else {
+        print("verify frames=0 real=0 placeholder=0 error=output via=avfoundation")
+        return 1
+    }
+    session.addOutput(output)
+    session.startRunning()
+    RunLoop.current.run(until: Date().addingTimeInterval(seconds))
+    session.stopRunning()
+    print("verify \(probe.summary()) via=avfoundation")
+    return probe.frames > 0 ? 0 : 4
+}
+
+// Fallback: reads the output stream through the CoreMediaIO C API.
 func verify(seconds: Double) -> Int32 {
     guard let camera = findCamera(timeout: 10) else {
         print("verify frames=0 real=0 placeholder=0 error=not-found")
@@ -335,7 +456,7 @@ func verify(seconds: Double) -> Int32 {
         }
         CVPixelBufferUnlockBaseAddress(image, .readOnly)
     }
-    print("verify frames=\(frames) real=\(real) placeholder=\(placeholder) size=\(size)")
+    print("verify frames=\(frames) real=\(real) placeholder=\(placeholder) size=\(size) via=cmio")
     return frames > 0 ? 0 : 4
 }
 
@@ -352,8 +473,16 @@ case "probe", "status":
 case "stream" where args.count >= 5:
     exit(stream(width: Int(args[2]) ?? 1280, height: Int(args[3]) ?? 720, fps: Int(args[4]) ?? 30))
 case "verify":
-    exit(verify(seconds: args.count > 2 ? Double(args[2]) ?? 2.5 : 2.5))
+    let seconds = args.count > 2 ? Double(args[2]) ?? 2.5 : 2.5
+    exit(verifyWithAVFoundation(seconds: seconds) ?? verify(seconds: seconds))
+case "diag":
+    guard let camera = findCamera(timeout: 8) else {
+        print("diag error=not-found")
+        exit(3)
+    }
+    print("diag camera-access=\(cameraAuthorization()) readers=\(isRunningSomewhere(camera.device) ? 1 : 0) \(extensionDiagnostics(camera.device))")
+    exit(0)
 default:
-    log("usage: chapcam-vcam-mac probe | stream W H FPS | verify [SECONDS]")
+    log("usage: chapcam-vcam-mac probe | stream W H FPS | verify [SECONDS] | diag")
     exit(1)
 }

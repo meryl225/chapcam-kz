@@ -19,6 +19,10 @@ let kStaleAfterNs: UInt64 = 1_500_000_000
 // `chapcam-vcam-mac verify` can tell it apart from real ChapCam frames.
 let kPlaceholderBGRA: (b: UInt8, g: UInt8, r: UInt8) = (0x3D, 0x1A, 0x12)
 
+// Custom device property ('cdia') read by `chapcam-vcam-mac` to see, from the
+// extension itself, whether frames pushed into the sink actually arrive.
+let kDiagnosticsProperty = CMIOExtensionProperty(rawValue: "4cc_cdia_glob_0000")
+
 private func hostTimeNs(_ time: CMTime) -> UInt64 {
     UInt64(max(0, time.seconds) * Double(NSEC_PER_SEC))
 }
@@ -45,6 +49,15 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
     private var placeholder: CVPixelBuffer?
     private var receivedFrames: UInt64 = 0
     private var rejectedFrames: UInt64 = 0
+    private var consumeErrors: UInt64 = 0
+    private var sinkAuthorizations: UInt64 = 0
+    private var sinkStarts: UInt64 = 0
+    private var sentReal: UInt64 = 0
+    private var sentPlaceholder: UInt64 = 0
+    private var lastIssue = "none"
+    // Bumped on every sink start so a previous consume loop exits instead of
+    // running concurrently with the new one.
+    private var consumeGeneration: UInt64 = 0
 
     init(localizedName: String) {
         super.init()
@@ -104,10 +117,25 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
         }
     }
 
-    var availableProperties: Set<CMIOExtensionProperty> { [.deviceTransportType, .deviceModel] }
+    var availableProperties: Set<CMIOExtensionProperty> { [.deviceTransportType, .deviceModel, kDiagnosticsProperty] }
+
+    // "rx=.. rej=.. err=.. auth=.. starts=.. sink=0|1 src=.. real=.. wait=.. fresh=0|1 issue=..."
+    func diagnostics() -> String {
+        let nowNs = hostTimeNs(CMClockGetTime(CMClockGetHostTimeClock()))
+        lock.lock()
+        defer { lock.unlock() }
+        let fresh = latestBuffer != nil && nowNs &- latestBufferAt < kStaleAfterNs
+        return "rx=\(receivedFrames) rej=\(rejectedFrames) err=\(consumeErrors) auth=\(sinkAuthorizations) " +
+            "starts=\(sinkStarts) sink=\(sinkRunning ? 1 : 0) src=\(streamingCounter) " +
+            "real=\(sentReal) wait=\(sentPlaceholder) fresh=\(fresh ? 1 : 0) issue=\(lastIssue)"
+    }
 
     func deviceProperties(forProperties properties: Set<CMIOExtensionProperty>) throws -> CMIOExtensionDeviceProperties {
         let deviceProperties = CMIOExtensionDeviceProperties(dictionary: [:])
+        if properties.contains(kDiagnosticsProperty) {
+            deviceProperties.setPropertyState(
+                CMIOExtensionPropertyState(value: diagnostics() as NSString), forProperty: kDiagnosticsProperty)
+        }
         if properties.contains(.deviceTransportType) {
             deviceProperties.transportType = kIOAudioDeviceTransportTypeVirtual
         }
@@ -158,6 +186,7 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
         lock.lock()
         var pixelBuffer = latestBuffer
         let fresh = pixelBuffer != nil && nowNs &- latestBufferAt < kStaleAfterNs
+        if fresh { sentReal &+= 1 } else { sentPlaceholder &+= 1 }
         lock.unlock()
         if !fresh { pixelBuffer = waitingFrame() }
         guard let buffer = pixelBuffer else { return }
@@ -195,10 +224,17 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
 
     // Copies a frame pushed by the helper into a buffer owned by the extension.
     private func copyIntoPool(_ source: CVPixelBuffer) -> CVPixelBuffer? {
-        guard CVPixelBufferGetPixelFormatType(source) == kCVPixelFormatType_32BGRA,
-              CVPixelBufferGetWidth(source) == Int(kWidth),
-              CVPixelBufferGetHeight(source) == Int(kHeight),
-              let destination = makePoolBuffer() else { return nil }
+        let format = CVPixelBufferGetPixelFormatType(source)
+        let width = CVPixelBufferGetWidth(source)
+        let height = CVPixelBufferGetHeight(source)
+        guard format == kCVPixelFormatType_32BGRA, width == Int(kWidth), height == Int(kHeight) else {
+            setIssue("format-\(format)-\(width)x\(height)")
+            return nil
+        }
+        guard let destination = makePoolBuffer() else {
+            setIssue("pool-exhausted")
+            return nil
+        }
 
         CVPixelBufferLockBaseAddress(source, .readOnly)
         CVPixelBufferLockBaseAddress(destination, [])
@@ -283,29 +319,62 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
 
     // MARK: Sink stream (frames pushed by chapcam-vcam-mac)
 
+    private func setIssue(_ issue: String) {
+        lock.lock()
+        let changed = lastIssue != issue
+        lastIssue = issue
+        lock.unlock()
+        if changed { vcamLog.error("Sink issue: \(issue, privacy: .public)") }
+    }
+
     func sinkAuthorized(_ client: CMIOExtensionClient) {
         lock.lock()
         sinkClient = client
+        sinkAuthorizations &+= 1
         lock.unlock()
+        vcamLog.notice("Sink client authorized: pid \(client.pid, privacy: .public)")
     }
 
     func startSink() {
         lock.lock()
         let client = sinkClient
         sinkRunning = client != nil
+        sinkStarts &+= 1
+        consumeGeneration &+= 1
+        let generation = consumeGeneration
         lock.unlock()
-        if let client = client { consume(from: client) }
+        guard let client = client else {
+            setIssue("sink-start-without-client")
+            return
+        }
+        vcamLog.notice("Sink started for pid \(client.pid, privacy: .public)")
+        consume(from: client, generation: generation)
     }
 
     func stopSink() {
         lock.lock()
         sinkRunning = false
+        consumeGeneration &+= 1
         lock.unlock()
+        vcamLog.notice("Sink stopped")
     }
 
-    private func consume(from client: CMIOExtensionClient) {
-        sinkStream.stream.consumeSampleBuffer(from: client) { [weak self] sampleBuffer, sequenceNumber, _, _, _ in
+    private func consume(from client: CMIOExtensionClient, generation: UInt64) {
+        sinkStream.stream.consumeSampleBuffer(from: client) { [weak self] sampleBuffer, sequenceNumber, _, _, error in
             guard let self = self else { return }
+            if let error = error {
+                self.lock.lock()
+                self.consumeErrors &+= 1
+                let count = self.consumeErrors
+                self.lock.unlock()
+                if count == 1 || count % 300 == 0 {
+                    vcamLog.error("consumeSampleBuffer error (\(count, privacy: .public)): \(error.localizedDescription, privacy: .public)")
+                }
+                self.setIssue("consume-\((error as NSError).code)")
+            }
+            if let sampleBuffer = sampleBuffer, CMSampleBufferGetImageBuffer(sampleBuffer) == nil {
+                self.setIssue("sample-without-image")
+            }
             if let sampleBuffer = sampleBuffer, let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
                 let nowNs = hostTimeNs(CMClockGetTime(CMClockGetHostTimeClock()))
                 let copy = self.copyIntoPool(imageBuffer)
@@ -330,13 +399,15 @@ final class ChapCamDeviceSource: NSObject, CMIOExtensionDeviceSource {
             }
 
             self.lock.lock()
-            let running = self.sinkRunning
+            let running = self.sinkRunning && self.consumeGeneration == generation
             self.lock.unlock()
             guard running else { return }
             if sampleBuffer == nil {
-                self.timerQueue.asyncAfter(deadline: .now() + .milliseconds(5)) { self.consume(from: client) }
+                self.timerQueue.asyncAfter(deadline: .now() + .milliseconds(5)) {
+                    self.consume(from: client, generation: generation)
+                }
             } else {
-                self.consume(from: client)
+                self.consume(from: client, generation: generation)
             }
         }
     }

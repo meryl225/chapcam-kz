@@ -12,7 +12,7 @@
  *        --stdin BGRA--> helper natif --> "ChapCam Camera" --> Zoom/Teams/Meet/OBS
  */
 
-const { ipcMain, app, BrowserWindow, systemPreferences } = require('electron')
+const { ipcMain, app, BrowserWindow, systemPreferences, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { spawn, execFile } = require('child_process')
@@ -308,7 +308,30 @@ class VirtualCamera {
         ? { state: 'ok', healthy: true, message: `Diffusion active (${this._input.fps} img/s).` }
         : { state: 'checking', healthy: false, message: 'Verification du flux...' }
     }
+    // Each hop measured separately: renderer -> main -> helper -> sink -> extension.
+    const fresh = stats && now - stats.at < 3000
+    if (warm && fresh && this._input.fps > 0 && stats.in === 0) {
+      return { state: 'helper-starved', healthy: false, message: 'Les images ne parviennent pas au composant natif (pipe bloque). Clique "Redemarrer".' }
+    }
+    if (fresh && stats.ext_diag === 'unsupported') {
+      return { state: 'extension-outdated', healthy: false, message: 'Une ancienne version de l\'extension camera tourne encore. Redemarre le Mac pour charger la nouvelle.' }
+    }
+    if (fresh && stats.ext_fresh === 1) {
+      return { state: 'ok', healthy: true, message: `Diffusion verifiee : l'extension recoit les images ChapCam (${this._input.fps} img/s).` }
+    }
+    if (warm && fresh && stats.ext_rej > 0) {
+      return { state: 'ext-rejected', healthy: false, message: `L'extension refuse les images (${stats.ext_issue}).` }
+    }
+    if (warm && fresh && now - this._startedAt > 5000 && typeof stats.ext_rx === 'number' && stats.ext_rx === 0) {
+      const why = stats.ext_sink === 0
+        ? 'le flux d\'entree de l\'extension n\'est pas demarre'
+        : `aucune image recue (${stats.ext_issue || 'raison inconnue'})`
+      return { state: 'sink-dropped', healthy: false, message: `Le composant natif envoie ${stats.enq} img/s mais l'extension n'en recoit aucune : ${why}.` }
+    }
     const verify = this._verify
+    if (verify && verify.error && String(verify.error).startsWith('camera-')) {
+      return { state: 'no-permission', healthy: false, message: 'ChapCam n\'a pas acces a la camera. Reglages Systeme > Confidentialite et securite > Camera : active ChapCam.' }
+    }
     if (!verify || verify.at < this._startedAt) {
       return { state: 'checking', healthy: false, message: 'Verification de ce que recoivent les applications...' }
     }
@@ -382,6 +405,17 @@ class VirtualCamera {
         appsReading: this._helperStats ? this._helperStats.readers === 1 : null,
         verify: this._verify,
         restarts: this._restartAttempts,
+        extension: this._helperStats
+          ? {
+              received: this._helperStats.ext_rx ?? null,
+              rejected: this._helperStats.ext_rej ?? null,
+              errors: this._helperStats.ext_err ?? null,
+              sinkRunning: this._helperStats.ext_sink === 1,
+              issue: this._helperStats.ext_issue ?? this._helperStats.ext_diag ?? null,
+            }
+          : null,
+        diagnostic: this._lastStatsLine || null,
+        logPath: macLogPath(),
       },
     }
   }
@@ -653,9 +687,14 @@ class VirtualCamera {
         const line = raw.trim()
         if (!line) continue
         if (line.startsWith('stats ')) {
+          const previous = this._helperStats
           this._helperStats = { ...parseKeyValues(line), at: Date.now() }
-          // One line every 10 s is enough for the log file.
-          if (statsLines++ % 10 === 0) log(`helper: ${line} entree=${this._input.fps}`)
+          this._lastStatsLine = `${line} entree=${this._input.fps}`
+          const stats = this._helperStats
+          // Log every 10 s, plus whenever the extension-side picture changes.
+          const changed = !previous || (previous.ext_rx > 0) !== (stats.ext_rx > 0) ||
+            previous.ext_issue !== stats.ext_issue || previous.ext_sink !== stats.ext_sink
+          if (changed || statsLines++ % 10 === 0) log(`helper: ${this._lastStatsLine}`)
           continue
         }
         if (line.startsWith('connected ')) {
@@ -786,6 +825,11 @@ function setupVirtualCameraIPC() {
     return getVirtualCamera().getStatus()
   })
   ipcMain.handle('virtual-camera-status', async () => getVirtualCamera().getStatus())
+  ipcMain.handle('virtual-camera-open-log', async () => {
+    const file = macLogPath()
+    if (!file) return false
+    return (await shell.openPath(file)) === ''
+  })
   ipcMain.handle('virtual-camera-mac-state', async () =>
     process.platform === 'darwin' ? getVirtualCamera().getMacState() : { platform: process.platform, status: 'unsupported' },
   )
