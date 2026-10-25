@@ -57,7 +57,7 @@ codesign --verify --strict --verbose=2 "$EXT"
 
 echo "==> Frame helper"
 compile_universal "$BUILD/chapcam-vcam-mac" "$ROOT/Helper/main.swift" \
-  -framework CoreMediaIO -framework CoreMedia -framework CoreVideo
+  -framework AVFoundation -framework CoreMediaIO -framework CoreMedia -framework CoreVideo
 
 echo "==> Activation addon (Electron ${ELECTRON_VERSION})"
 for arch in arm64 x64; do
