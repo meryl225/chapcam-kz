@@ -43,11 +43,17 @@ export function tokenPackPrice(productId: string | null | undefined) {
 export const LIVESWAP_MINUTES_OFFERING = 'liveswap_minutes'
 const LIVESWAP_POINTS_PER_SECOND = 2
 
-export const LIVESWAP_MINUTE_PACKS: { productId: string; androidProductId: string; packageId: string; minutes: number }[] = [
-  { productId: 'com.chapcam.app.liveswap.minutes.5', androidProductId: 'chapcam_minutes_5', packageId: 'liveswap_5min', minutes: 5 },
-  { productId: 'com.chapcam.app.liveswap.minutes.15', androidProductId: 'chapcam_minutes_15', packageId: 'liveswap_15min', minutes: 15 },
-  { productId: 'com.chapcam.app.liveswap.minutes.25', androidProductId: 'chapcam_minutes_25', packageId: 'liveswap_25min', minutes: 25 },
+// price = prix catalogue en F CFA, utilise pour le journal admin.
+export const LIVESWAP_MINUTE_PACKS: { productId: string; androidProductId: string; packageId: string; minutes: number; price: number }[] = [
+  { productId: 'com.chapcam.app.liveswap.minutes.5', androidProductId: 'chapcam_minutes_5', packageId: 'liveswap_5min', minutes: 5, price: 9000 },
+  { productId: 'com.chapcam.app.liveswap.minutes.15', androidProductId: 'chapcam_minutes_15', packageId: 'liveswap_15min', minutes: 15, price: 24000 },
+  { productId: 'com.chapcam.app.liveswap.minutes.25', androidProductId: 'chapcam_minutes_25', packageId: 'liveswap_25min', minutes: 25, price: 42000 },
 ]
+
+export function minutePackPrice(productId: string | null | undefined) {
+  if (!productId) return null
+  return LIVESWAP_MINUTE_PACKS.find((p) => p.productId === productId || p.androidProductId === productId)?.price ?? null
+}
 
 // Abonnements Google Play : un abonnement par forfait, une offre de base
 // (base plan) par periode. Cote SDK Android l'identifiant vaut « abonnement:base ».
@@ -406,7 +412,7 @@ async function applyMinutePacks(admin: Admin, userId: string, email: string, sub
         transactionId: token,
         email,
         productId: productId,
-        amount: 0,
+        amount: pack.price,
         creditKind: 'minutes',
         userLinked: true,
         status: 'completed',
