@@ -24,12 +24,19 @@ const STORE_PREFIX: Record<Store, string> = { app_store: 'apple', play_store: 'g
 
 // productId = identifiant App Store, androidProductId = identifiant Google Play.
 // Les deux catalogues sont distincts : aucun identifiant Apple n'est reutilise.
-export const TOKEN_PACKS: { productId: string; androidProductId: string; jetons: number }[] = [
-  { productId: 'com.chapcam.app.tokens.100', androidProductId: 'chapcam_tokens_100', jetons: 100 },
-  { productId: 'com.chapcam.app.tokens.250', androidProductId: 'chapcam_tokens_250', jetons: 250 },
-  { productId: 'com.chapcam.app.tokens.500', androidProductId: 'chapcam_tokens_500', jetons: 500 },
-  { productId: 'com.chapcam.app.tokens.1000', androidProductId: 'chapcam_tokens_1000', jetons: 1000 },
+// price = prix catalogue en F CFA (meme grille que JETONS_OFFERS), utilise
+// pour le journal admin : le montant reel encaisse par le store n'est pas fourni.
+export const TOKEN_PACKS: { productId: string; androidProductId: string; jetons: number; price: number }[] = [
+  { productId: 'com.chapcam.app.tokens.100', androidProductId: 'chapcam_tokens_100', jetons: 100, price: 1000 },
+  { productId: 'com.chapcam.app.tokens.250', androidProductId: 'chapcam_tokens_250', jetons: 250, price: 2500 },
+  { productId: 'com.chapcam.app.tokens.500', androidProductId: 'chapcam_tokens_500', jetons: 500, price: 5000 },
+  { productId: 'com.chapcam.app.tokens.1000', androidProductId: 'chapcam_tokens_1000', jetons: 1000, price: 10000 },
 ]
+
+export function tokenPackPrice(productId: string | null | undefined) {
+  if (!productId) return null
+  return TOKEN_PACKS.find((p) => p.productId === productId || p.androidProductId === productId)?.price ?? null
+}
 
 // Recharges Live Swap (consommables, offering RevenueCat dedie). Le
 // nombre de minutes vient UNIQUEMENT de ce tableau, jamais du client.
@@ -328,7 +335,7 @@ async function applyTokenPacks(admin: Admin, userId: string, email: string, subs
           transactionId: token,
           email,
           productId,
-          amount: 0,
+          amount: pack.price,
           creditKind: 'jetons',
           userLinked: true,
           status: 'completed',

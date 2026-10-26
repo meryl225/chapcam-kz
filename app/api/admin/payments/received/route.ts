@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isAdminRequest } from '@/lib/admin-auth'
+import { tokenPackPrice } from '@/lib/revenuecat'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -88,7 +89,7 @@ export async function GET() {
         id: r.id,
         email: r.email,
         productId: r.product_id,
-        amount: Number(r.amount) || 0,
+        amount: Number(r.amount) || (r.credit_kind === 'jetons' ? tokenPackPrice(r.product_id) ?? 0 : 0),
         token: r.token,
         transactionId: r.transaction_id,
         fullName: r.raw?.full_name ?? null,
