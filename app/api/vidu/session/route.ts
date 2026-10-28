@@ -77,8 +77,19 @@ export async function POST(request: Request) {
     await releaseLiveSession(user.id, sessionId)
     const status = err instanceof ViduApiError ? err.status : 500
     console.error(`[Vidu] session creation failed user=${user.id} status=${status}`, err)
-    return NextResponse.json({ error: LIVE_SWAP_GENERIC_ERROR, code: `vidu_${status}` }, { status: 502 })
+    return NextResponse.json(
+      { error: LIVE_SWAP_GENERIC_ERROR, code: `vidu_${status}`, detail: describeError(err) },
+      { status: 502 },
+    )
   }
+}
+
+// Message technique sans secret (la cle Vidu n'apparait jamais dans ces messages).
+function describeError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err).slice(0, 300)
+  const cause = err.cause as { code?: string; message?: string } | undefined
+  const causeText = cause ? ` | cause: ${cause.code ?? cause.message ?? String(cause)}` : ''
+  return `${err.name}: ${err.message}${causeText}`.slice(0, 300)
 }
 
 // Fin de session : libere le verrou et renvoie la duree facturee par Vidu.

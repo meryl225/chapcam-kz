@@ -217,7 +217,7 @@ export function useViduSwap() {
       const data = await res.json().catch(() => null)
       if (!res.ok || !data) {
         if (data?.error && data.error !== LIVE_SWAP_GENERIC_ERROR) throw new UserFacingError(data.error)
-        throw new Error(`session HTTP ${res.status}${data?.code ? ` ${data.code}` : ''}`)
+        throw new Error(`session HTTP ${res.status}${data?.code ? ` ${data.code}` : ''}${data?.detail ? ` - ${data.detail}` : ''}`)
       }
       const session = data as ViduSessionResponse
       step = 'signaling'
