@@ -163,7 +163,10 @@ export function useViduSwap() {
 
     if (session) {
       const query = new URLSearchParams({ sessionId: session.sessionId, liveId: session.liveId })
-      void fetch(`/api/vidu/session?${query}`, { method: 'DELETE', keepalive: true }).catch(() => {})
+      void fetch(`/api/vidu/session?${query}`, { method: 'DELETE', keepalive: true })
+        .then((r) => r.json())
+        .then((d) => console.info(`[live-swap][STEP] SESSION_STOPPED reason=${reason} billed=${d?.live?.billedSeconds ?? 'unknown'}s close_reason=${d?.live?.closeReason ?? 'unknown'}`))
+        .catch(() => {})
     }
 
     setIsPreviewing(false)
@@ -221,6 +224,7 @@ export function useViduSwap() {
         socket.onopen = () => {
           opened = true
           console.info(`[live-swap] WS OPEN live_id=${liveId} after=${sinceCreate()}ms`)
+          mark('WS_CONNECTED')
           init()
         }
         socket.onmessage = (event) => {
@@ -268,8 +272,15 @@ export function useViduSwap() {
         }
       })
 
+    const testStart = performance.now()
+    let lastStep = 'NONE'
+    const mark = (name: string, extra = '') => {
+      lastStep = name
+      console.info(`[live-swap][STEP] ${name} t=${Math.round(performance.now() - testStart)}ms ${extra}`.trim())
+    }
     // Each stage gets a code so a failure shows (and logs) exactly where it broke.
     let step = 'sdk'
+    let createdLiveId: string | null = null
     try {
       await loadAliRtcSdk()
       step = 'avatar'
@@ -308,7 +319,9 @@ export function useViduSwap() {
       sessionRef.current = { liveId: session.liveId, connId, renderUid: session.renderUid, sessionId }
       const createdAt = performance.now()
       const sinceCreate = () => Math.round(performance.now() - createdAt)
+      createdLiveId = session.liveId
       console.info(`[live-swap] SESSION CREATED live_id=${session.liveId} render_uid=${session.renderUid} secret_len=${session.clientSecret?.length ?? 0}`)
+      mark('SESSION_CREATED', `live_id=${session.liveId}`)
 
       // Official S2-Editing order: create -> WS -> successful conn_init_ack (re-send every 2s on
       // NOT_READY) -> init AliRTC -> joinChannel -> preview + publish -> subscribe render_uid camera.
@@ -319,21 +332,31 @@ export function useViduSwap() {
       console.info(`[live-swap] WS CONNECT live_id=${session.liveId} url=${session.wsUrl} params=${[...query.keys()].join(',')}`)
       await waitForConnInitAck(socket, session.liveId, sinceCreate)
       console.info(`[live-swap] CONN_INIT_ACK live_id=${session.liveId} after=${sinceCreate()}ms`)
+      mark('CONN_INIT_ACK / SESSION_READY')
 
       step = 'rtc_init'
+      mark('RTC_ENGINE_START')
       window.AliRtcEngine!.setLogLevel(0)
       const engine = window.AliRtcEngine!.getInstance()
       engineRef.current = engine
+      mark('RTC_ENGINE_READY')
+      engine.on('remoteTrackAvailableNotify', (userId: string, audioTrack: number, videoTrack: number) => {
+        if (userId === sessionRef.current?.renderUid && videoTrack > 0) {
+          mark('REMOTE_STREAM_PUBLISHED', `user=${userId} video=${videoTrack} audio=${audioTrack}`)
+        }
+      })
       engine.on('videoSubscribeStateChanged', (userId: string, oldState: number, newState: number, _interval: number, channelId: string) => {
         const isRender = userId === sessionRef.current?.renderUid
         console.info(`[live-swap] RTC videoSubscribeStateChanged user=${userId} ${oldState}->${newState} channel=${channelId} render=${isRender}`)
         if (newState !== 3 || !isRender) return
+        mark('REMOTE_STREAM_SUBSCRIBED', `user=${userId}`)
         if (!remoteVideoRef.current) {
           console.error('[live-swap] remote stream subscribed but the Chapcam video element is not mounted')
           return
         }
         void callOptional(engine, 'setRemoteViewConfig', remoteVideoRef.current, userId, 1)
         remoteVideoRef.current.play().catch(() => {})
+        mark('REMOTE_VIDEO_ATTACHED')
         timersRef.current.forEach((t) => window.clearTimeout(t))
         timersRef.current = []
         setIsConnecting(false)
@@ -369,12 +392,15 @@ export function useViduSwap() {
       await callOptional(engine, 'setDefaultPublishLocalVideoStream', true)
       await callOptional(engine, 'setDefaultSubscribeAllRemoteAudioStreams', true)
       await callOptional(engine, 'setDefaultSubscribeAllRemoteVideoStreams', true)
+      mark('RTC_SDK_READY')
       step = 'rtc_join'
       const rtc = session.rtc as ViduSessionResponse['rtc'] & { app_id?: string; channel_id?: string }
       console.info(`[live-swap] RTC JOIN app_id=${rtc.app_id ?? '?'} channel_id=${rtc.channel_id ?? '?'} user_id=${rtc.user_id} token_len=${rtc.token?.length ?? 0}`)
+      mark('RTC_JOIN_REQUESTED')
       await engine.joinChannel(rtc.token, rtc.user_id)
       setConnectionState('rtc_joined')
       console.info(`[live-swap] RTC JOINED live_id=${session.liveId} after=${sinceCreate()}ms`)
+      mark('RTC_JOIN_SUCCESS')
 
       step = 'rtc_publish'
       if (localVideoRef.current) await callOptional(engine, 'setLocalViewConfig', localVideoRef.current, 1)
@@ -399,8 +425,13 @@ export function useViduSwap() {
     } catch (err) {
       const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
       console.error(`[live-swap] connect failed at step=${step}`, err)
+      console.error(`[live-swap][STEP] FAILED last_success=${lastStep} failed_code=${step} error="${detail}"`)
       const report = new URLSearchParams({ sessionId, failedStep: step, detail: detail.slice(0, 300) })
-      void fetch(`/api/vidu/session?${report}`, { method: 'DELETE', keepalive: true }).catch(() => {})
+      if (createdLiveId) report.set('liveId', createdLiveId)
+      void fetch(`/api/vidu/session?${report}`, { method: 'DELETE', keepalive: true })
+        .then((r) => r.json())
+        .then((d) => console.info(`[live-swap][STEP] SESSION_STOPPED billed=${d?.live?.billedSeconds ?? 'unknown'}s close_reason=${d?.live?.closeReason ?? 'unknown'}`))
+        .catch(() => {})
 
       const denied = err instanceof DOMException && err.name === 'NotAllowedError'
       const message = err instanceof UserFacingError ? err.message : `${LIVE_SWAP_GENERIC_ERROR} (code : ${step})`
