@@ -415,7 +415,7 @@ export function useLucy21() {
       realtimeClient.on('error', (sdkError: any) => {
         console.error('[v0] Decart realtime error:', sdkError)
         if (!firstFrameRef.current) {
-          setError(sdkError?.message || 'Decart n\'a pas pu produire le flux vidéo.')
+          setError('Impossible de démarrer Live Swap. Veuillez réessayer.')
         }
       })
       realtimeClient.on('diagnostic', (diagnostic: any) => {
@@ -455,7 +455,7 @@ export function useLucy21() {
       // previent l'utilisateur, sans jamais l'avoir facture pour l'ecran noir.
       connectTimeoutRef.current = setTimeout(() => {
         if (!firstFrameRef.current) {
-          setError("Decart n'a renvoye aucune image. Aucun point ne sera conserve.")
+          setError("Live Swap n'a renvoyé aucune image. Aucun point ne sera conservé.")
           options?.onNoOutput?.(options?.sessionId)
           disconnect('no-remote-frame-timeout')
         }

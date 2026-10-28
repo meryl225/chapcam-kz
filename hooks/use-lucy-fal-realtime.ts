@@ -147,7 +147,7 @@ export function useLucyFalRealtime({
 
         onError: (err: any) => {
           console.error('[v0] Lucy realtime error:', err)
-          setError(err.message || 'Erreur de connexion Lucy')
+          setError('Impossible de démarrer Live Swap. Veuillez réessayer.')
           setIsConnected(false)
           setIsConnecting(false)
         },
@@ -169,7 +169,7 @@ export function useLucyFalRealtime({
 
     } catch (err: any) {
       console.error('[v0] Failed to connect:', err)
-      setError(err.message || 'Impossible de se connecter a Lucy')
+      setError('Impossible de démarrer Live Swap. Veuillez réessayer.')
       setIsConnecting(false)
     }
   }, [referenceImageUrl, sendFrame, onPointsDeducted])

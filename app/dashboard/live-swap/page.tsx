@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock, ChevronDown, Smartphone, Film, Upload, Disc3, Trash2 } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
+import { useViduSwap, type ViduEditingType } from '@/hooks/use-vidu-swap'
+import { LIVE_SWAP_EDITING_TYPE, LIVE_SWAP_PROVIDER } from '@/lib/live-swap-provider'
 import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
 import { pointsPerSecond, POINTS_PER_SECOND_SD, POINTS_PER_SECOND_HD } from '@/lib/swap-pricing'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
@@ -159,6 +161,11 @@ export default function DashboardPage() {
   try { sessionStorage.removeItem('chapcam_liveswap_chunk_reload') } catch {}
   }, [])
 
+  const viduEditingType: ViduEditingType = LIVE_SWAP_EDITING_TYPE
+  const lucySwap = useLucy21()
+  const viduSwap = useViduSwap()
+  const activeSwap = LIVE_SWAP_PROVIDER === 'vidu' ? viduSwap : lucySwap
+
   const {
     isConnected,
     isConnecting,
@@ -181,7 +188,7 @@ export default function DashboardPage() {
     startRecording,
     stopRecording,
     clearRecording,
-  } = useLucy21()
+  } = activeSwap
 
   // Quand le swap n'est plus actif, on met en pause la video importee (qui
   // tourne en boucle en arriere-plan pendant le swap) pour liberer les ressources.
@@ -611,6 +618,7 @@ export default function DashboardPage() {
       codec: videoCodec || undefined,
       sourceStream,
       sessionId: sessionIdRef.current ?? undefined,
+      editingType: viduEditingType,
       // Le serveur a debite le warmup a l'emission du token : on decremente le
       // solde local pour que l'affichage reste juste avant le 1er heartbeat.
   onReserved: (reservedPoints) => {
@@ -1475,6 +1483,10 @@ export default function DashboardPage() {
 
           {settingsOpen && (
           <>
+          <p className="text-xs font-medium text-foreground/60">
+            {t('Transformation du visage et du corps entier')}
+          </p>
+
           {/* Qualite de rendu */}
           <div>
             <p className="mb-2 text-xs font-medium text-foreground/60">{t('Qualité de rendu')}</p>

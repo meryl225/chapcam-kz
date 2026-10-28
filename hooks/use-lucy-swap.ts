@@ -65,12 +65,12 @@ export function useLucySwap({
       // Get API key securely from server
       const tokenRes = await fetch('/api/decart-token')
       if (!tokenRes.ok) {
-        throw new Error('Impossible de récupérer la clé API Decart')
+        throw new Error('Impossible de démarrer Live Swap. Veuillez réessayer.')
       }
       const { apiKey } = await tokenRes.json()
 
       if (!apiKey) {
-        throw new Error('Clé API Decart manquante')
+        throw new Error('Impossible de démarrer Live Swap. Veuillez réessayer.')
       }
 
       // Dynamically import Decart SDK
