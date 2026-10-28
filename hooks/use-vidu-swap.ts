@@ -198,19 +198,29 @@ export function useViduSwap() {
     setElapsedSeconds(0)
     seqRef.current = 1
 
+    // Each stage gets a code so a failure shows (and logs) exactly where it broke.
+    let step = 'sdk'
     try {
-      const [image] = await Promise.all([imageToDataUri(avatarImageUrl), loadAliRtcSdk()])
+      await loadAliRtcSdk()
+      step = 'avatar'
+      const image = await imageToDataUri(avatarImageUrl)
+      step = 'browser_support'
       const support = await window.AliRtcEngine!.isSupported()
       if (!support.support) throw new UserFacingError(`Navigateur non compatible (${support.reason ?? 'WebRTC'}).`)
 
+      step = 'session'
       const res = await fetch('/api/vidu/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, image, editingType }),
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok || !data) throw new UserFacingError(data?.error || LIVE_SWAP_GENERIC_ERROR)
+      if (!res.ok || !data) {
+        if (data?.error && data.error !== LIVE_SWAP_GENERIC_ERROR) throw new UserFacingError(data.error)
+        throw new Error(`session HTTP ${res.status}${data?.code ? ` ${data.code}` : ''}`)
+      }
       const session = data as ViduSessionResponse
+      step = 'signaling'
       const connId = newConnId()
       sessionRef.current = { liveId: session.liveId, connId, renderUid: session.renderUid, sessionId }
 
@@ -220,7 +230,7 @@ export function useViduSwap() {
       socketRef.current = socket
 
       await new Promise<void>((resolve, reject) => {
-        const timeout = window.setTimeout(() => reject(new Error(LIVE_SWAP_GENERIC_ERROR)), CONN_INIT_TIMEOUT_MS)
+        const timeout = window.setTimeout(() => reject(new Error('conn_init_ack timeout')), CONN_INIT_TIMEOUT_MS)
         timersRef.current.push(timeout)
         let acked = false
         const init = () => sendSignal(1, { conn_init: { version: 1 } })
@@ -235,7 +245,7 @@ export function useViduSwap() {
             } else if (ack.error_code === 'NOT_READY') {
               setConnectionState('warming_up')
             } else {
-              reject(new Error(LIVE_SWAP_GENERIC_ERROR))
+              reject(new Error(`conn_init_ack ${ack.error_code ?? 'unknown'} ${ack.error_msg ?? ''}`.trim()))
             }
           }
           if (msg?.type === 14 && msg?.payload?.switch_prompt_ack && !msg.payload.switch_prompt_ack.success) {
@@ -246,13 +256,14 @@ export function useViduSwap() {
             void teardown('server_hangup')
           }
         }
-        socket.onclose = () => {
-          if (!acked) reject(new Error(LIVE_SWAP_GENERIC_ERROR))
+        socket.onclose = (event) => {
+          if (!acked) reject(new Error(`ws closed ${event.code} ${event.reason}`.trim()))
           else if (sessionRef.current) void teardown('closed')
         }
       })
 
       // 2. Media: publish the camera and render only the edited stream (render_uid).
+      step = 'rtc_join'
       const engine = window.AliRtcEngine!.getInstance()
       engineRef.current = engine
       engine.on('videoSubscribeStateChanged', (userId: string, _old: number, newState: number) => {
@@ -280,6 +291,7 @@ export function useViduSwap() {
       await callOptional(engine, 'setDefaultSubscribeAllRemoteAudioStreams', false)
       await callOptional(engine, 'setDefaultSubscribeAllRemoteVideoStreams', true)
       await engine.joinChannel(session.rtc.token, session.rtc.user_id)
+      step = 'camera'
       if (localVideoRef.current) await callOptional(engine, 'setLocalViewConfig', localVideoRef.current, 1)
       await callOptional(engine, 'startPreview', 1)
       await callOptional(engine, 'publishLocalVideoStream', true)
@@ -293,9 +305,13 @@ export function useViduSwap() {
       }, OUTPUT_TIMEOUT_MS)
       timersRef.current.push(noOutput)
     } catch (err) {
-      console.error('[live-swap] connect failed', err)
-      const message = err instanceof UserFacingError ? err.message : LIVE_SWAP_GENERIC_ERROR
+      const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
+      console.error(`[live-swap] connect failed at step=${step}`, err)
+      const report = new URLSearchParams({ sessionId, failedStep: step, detail: detail.slice(0, 300) })
+      void fetch(`/api/vidu/session?${report}`, { method: 'DELETE', keepalive: true }).catch(() => {})
+
       const denied = err instanceof DOMException && err.name === 'NotAllowedError'
+      const message = err instanceof UserFacingError ? err.message : `${LIVE_SWAP_GENERIC_ERROR} (code : ${step})`
       fail(denied ? "Acces a la camera refuse. Autorise-le dans ton navigateur." : message)
     }
   }, [fail, sendSignal, teardown])

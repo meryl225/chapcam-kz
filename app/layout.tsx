@@ -66,6 +66,7 @@ export default function RootLayout({
             theme sombre (defaultTheme="dark", enableSystem=false), donc ces valeurs
             sont toujours correctes. */}
         <style
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html:
               // -- Base : fond sombre + police sans-serif + reset marges.
