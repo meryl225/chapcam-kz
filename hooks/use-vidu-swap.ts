@@ -88,6 +88,7 @@ export function useViduSwap() {
   const [error, setError] = useState<string | null>(null)
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [cameraEnabled, setCameraEnabled] = useState(true)
+  const [isPreviewing, setIsPreviewing] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null)
   const [connectionQuality] = useState<string | null>(null)
@@ -165,6 +166,7 @@ export function useViduSwap() {
       void fetch(`/api/vidu/session?${query}`, { method: 'DELETE', keepalive: true }).catch(() => {})
     }
 
+    setIsPreviewing(false)
     setIsConnected(false)
     setIsConnecting(false)
     setConnectionState(reason === 'manual' ? 'idle' : reason)
@@ -217,6 +219,41 @@ export function useViduSwap() {
       const support = await window.AliRtcEngine!.isSupported()
       if (!support.support) throw new UserFacingError(`Navigateur non compatible (${support.reason ?? 'WebRTC'}).`)
 
+      // 1. Camera preview first: the user sees herself right away and permission is
+      // granted before any billed session exists.
+      step = 'camera'
+      const engine = window.AliRtcEngine!.getInstance()
+      engineRef.current = engine
+      engine.on('videoSubscribeStateChanged', (userId: string, _old: number, newState: number) => {
+        if (newState !== 3 || userId !== sessionRef.current?.renderUid || !remoteVideoRef.current) return
+        void callOptional(engine, 'setRemoteViewConfig', remoteVideoRef.current, userId, 1)
+        remoteVideoRef.current.play().catch(() => {})
+        timersRef.current.forEach((t) => window.clearTimeout(t))
+        timersRef.current = []
+        setIsConnecting(false)
+        setIsConnected(true)
+        setConnectionState('connected')
+        if (!elapsedTimerRef.current) {
+          elapsedTimerRef.current = window.setInterval(() => setElapsedSeconds((s) => s + 1), 1000)
+        }
+      })
+      engine.on('remoteUserOffLineNotify', (userId: string) => {
+        if (userId === sessionRef.current?.renderUid) fail('Live Swap a été interrompu. Veuillez réessayer.')
+      })
+      engine.on('bye', () => fail('Connexion Live Swap perdue. Veuillez réessayer.'))
+      engine.on('authInfoExpired', () => fail('Session Live Swap expirée. Veuillez réessayer.'))
+
+      await callOptional(engine, 'setChannelProfile', 'communication')
+      await callOptional(engine, 'setDefaultPublishLocalAudioStream', false)
+      await callOptional(engine, 'setDefaultPublishLocalVideoStream', true)
+      await callOptional(engine, 'setDefaultSubscribeAllRemoteAudioStreams', false)
+      await callOptional(engine, 'setDefaultSubscribeAllRemoteVideoStreams', true)
+      if (localVideoRef.current) await callOptional(engine, 'setLocalViewConfig', localVideoRef.current, 1)
+      await callOptional(engine, 'startPreview', 1)
+      setCameraEnabled(true)
+      setIsPreviewing(true)
+      console.info('[live-swap] CAMERA PREVIEW started')
+
       step = 'session'
       const res = await fetch('/api/vidu/session', {
         method: 'POST',
@@ -229,13 +266,20 @@ export function useViduSwap() {
         throw new Error(`session HTTP ${res.status}${data?.code ? ` ${data.code}` : ''}${data?.detail ? ` - ${data.detail}` : ''}`)
       }
       const session = data as ViduSessionResponse
-      step = 'signaling'
       const connId = newConnId()
       sessionRef.current = { liveId: session.liveId, connId, renderUid: session.renderUid, sessionId }
       const createdAt = performance.now()
       console.info(`[live-swap] SESSION CREATED live_id=${session.liveId} secret_len=${session.clientSecret?.length ?? 0}`)
 
-      // 1. Signalling: only the ephemeral client_secret is used, never the API key.
+      // 2. Media before signalling: Vidu's render worker hangs up (render_close) right after
+      // conn_init_ack when no camera stream is being pushed yet.
+      step = 'rtc_join'
+      await engine.joinChannel(session.rtc.token, session.rtc.user_id)
+      await callOptional(engine, 'publishLocalVideoStream', true)
+      console.info(`[live-swap] RTC PUBLISHED live_id=${session.liveId} after=${Math.round(performance.now() - createdAt)}ms`)
+
+      // 3. Signalling: only the ephemeral client_secret is used, never the API key.
+      step = 'signaling'
       const query = new URLSearchParams({ live_id: session.liveId, conn_id: connId, client_secret: session.clientSecret })
       const socket = new WebSocket(`${session.wsUrl}?${query}`)
       socketRef.current = socket
@@ -298,41 +342,6 @@ export function useViduSwap() {
           } else if (sessionRef.current) void teardown('closed')
         }
       })
-
-      // 2. Media: publish the camera and render only the edited stream (render_uid).
-      step = 'rtc_join'
-      const engine = window.AliRtcEngine!.getInstance()
-      engineRef.current = engine
-      engine.on('videoSubscribeStateChanged', (userId: string, _old: number, newState: number) => {
-        if (newState !== 3 || userId !== sessionRef.current?.renderUid || !remoteVideoRef.current) return
-        void callOptional(engine, 'setRemoteViewConfig', remoteVideoRef.current, userId, 1)
-        remoteVideoRef.current.play().catch(() => {})
-        timersRef.current.forEach((t) => window.clearTimeout(t))
-        timersRef.current = []
-        setIsConnecting(false)
-        setIsConnected(true)
-        setConnectionState('connected')
-        if (!elapsedTimerRef.current) {
-          elapsedTimerRef.current = window.setInterval(() => setElapsedSeconds((s) => s + 1), 1000)
-        }
-      })
-      engine.on('remoteUserOffLineNotify', (userId: string) => {
-        if (userId === sessionRef.current?.renderUid) fail('Live Swap a été interrompu. Veuillez réessayer.')
-      })
-      engine.on('bye', () => fail('Connexion Live Swap perdue. Veuillez réessayer.'))
-      engine.on('authInfoExpired', () => fail('Session Live Swap expirée. Veuillez réessayer.'))
-
-      await callOptional(engine, 'setChannelProfile', 'communication')
-      await callOptional(engine, 'setDefaultPublishLocalAudioStream', false)
-      await callOptional(engine, 'setDefaultPublishLocalVideoStream', true)
-      await callOptional(engine, 'setDefaultSubscribeAllRemoteAudioStreams', false)
-      await callOptional(engine, 'setDefaultSubscribeAllRemoteVideoStreams', true)
-      await engine.joinChannel(session.rtc.token, session.rtc.user_id)
-      step = 'camera'
-      if (localVideoRef.current) await callOptional(engine, 'setLocalViewConfig', localVideoRef.current, 1)
-      await callOptional(engine, 'startPreview', 1)
-      await callOptional(engine, 'publishLocalVideoStream', true)
-      setCameraEnabled(true)
 
       const noOutput = window.setTimeout(() => {
         if (!elapsedTimerRef.current) {
@@ -417,6 +426,7 @@ export function useViduSwap() {
     updateAvatar,
     setLivePrompt,
     cameraEnabled,
+    isPreviewing,
     toggleCamera,
     isRecording,
     recordedUrl,

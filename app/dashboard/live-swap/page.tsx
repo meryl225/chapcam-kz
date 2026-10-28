@@ -946,7 +946,7 @@ export default function DashboardPage() {
                   className="h-full w-full object-cover"
                   style={{ transform: 'scaleX(-1)' }}
                 />
-                {!isConnected && (
+                {!isConnected && !(LIVE_SWAP_PROVIDER === 'vidu' && viduSwap.isPreviewing) && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-text-faint">
                     <Camera className="mb-2 h-12 w-12 opacity-50" />
                     <p className="text-sm">{t('Caméra inactive')}</p>
