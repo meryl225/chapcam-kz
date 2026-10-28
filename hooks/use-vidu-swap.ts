@@ -102,6 +102,8 @@ export function useViduSwap() {
   const socketRef = useRef<WebSocket | null>(null)
   const sessionRef = useRef<{ liveId: string; connId: string; renderUid: string; sessionId: string } | null>(null)
   const seqRef = useRef(1)
+  // Set synchronously so a second click during the avatar/session fetch cannot start a parallel attempt.
+  const startingRef = useRef(false)
   const editingTypeRef = useRef<ViduEditingType>('subject_replacement')
   const timersRef = useRef<number[]>([])
   const elapsedTimerRef = useRef<number | null>(null)
@@ -139,7 +141,10 @@ export function useViduSwap() {
       }))
     }
     socketRef.current = null
-    if (socket) window.setTimeout(() => { try { socket.close() } catch {} }, 300)
+    if (socket) {
+      console.info(`[live-swap] WS CLOSE requested by client reason=${reason} live_id=${session?.liveId ?? 'none'} readyState=${socket.readyState}`)
+      window.setTimeout(() => { try { socket.close() } catch {} }, 300)
+    }
 
     const engine = engineRef.current
     engineRef.current = null
@@ -184,11 +189,15 @@ export function useViduSwap() {
       [key: string]: unknown
     },
   ) => {
-    if (engineRef.current || socketRef.current) return
+    if (startingRef.current || engineRef.current || socketRef.current) {
+      console.warn('[live-swap] connect ignored: an attempt is already running')
+      return
+    }
     if (options?.sourceStream) {
       setError("Live Swap fonctionne uniquement avec la caméra en direct pour l'instant.")
       return
     }
+    startingRef.current = true
     const sessionId = options?.sessionId ?? newConnId()
     const editingType = options?.editingType ?? 'subject_replacement'
     editingTypeRef.current = editingType
@@ -223,11 +232,15 @@ export function useViduSwap() {
       step = 'signaling'
       const connId = newConnId()
       sessionRef.current = { liveId: session.liveId, connId, renderUid: session.renderUid, sessionId }
+      const createdAt = performance.now()
+      console.info(`[live-swap] SESSION CREATED live_id=${session.liveId} secret_len=${session.clientSecret?.length ?? 0}`)
 
       // 1. Signalling: only the ephemeral client_secret is used, never the API key.
       const query = new URLSearchParams({ live_id: session.liveId, conn_id: connId, client_secret: session.clientSecret })
       const socket = new WebSocket(`${session.wsUrl}?${query}`)
       socketRef.current = socket
+      console.info(`[live-swap] WS CONNECT live_id=${session.liveId} url=${session.wsUrl} params=${[...query.keys()].join(',')}`)
+      const sinceCreate = () => Math.round(performance.now() - createdAt)
 
       await new Promise<void>((resolve, reject) => {
         const timeout = window.setTimeout(() => reject(new Error('conn_init_ack timeout')), CONN_INIT_TIMEOUT_MS)
@@ -237,7 +250,11 @@ export function useViduSwap() {
         let notReadyRetries = 0
         let lastSignal = 'none'
         const init = () => sendSignal(1, { conn_init: { version: 1 } })
-        socket.onopen = () => { opened = true; init() }
+        socket.onopen = () => {
+          opened = true
+          console.info(`[live-swap] WS OPEN live_id=${session.liveId} after=${sinceCreate()}ms`)
+          init()
+        }
         socket.onmessage = (event) => {
           let msg: any
           try { msg = JSON.parse(event.data) } catch { return }
@@ -265,12 +282,17 @@ export function useViduSwap() {
               reject(new Error(`vidu hangup before ack: ${reason}`))
               return
             }
+            if (socketRef.current !== socket) return
             console.error(`[live-swap] vidu hangup: ${reason}`)
             setError('Session Live Swap terminée.')
             void teardown('server_hangup')
           }
         }
         socket.onclose = (event) => {
+          const current = socketRef.current === socket
+          console.info(`[live-swap] WS CLOSE live_id=${session.liveId} code=${event.code} opened=${opened} acked=${acked} current=${current} after=${sinceCreate()}ms`)
+          // A socket replaced or torn down by the client must not tear down the newer session.
+          if (!current && acked) return
           if (!acked) {
             reject(new Error(`ws closed ${event.code}${event.reason ? ` ${event.reason}` : ''} opened=${opened} notReady=${notReadyRetries} last=${lastSignal}`))
           } else if (sessionRef.current) void teardown('closed')
@@ -328,6 +350,8 @@ export function useViduSwap() {
       const denied = err instanceof DOMException && err.name === 'NotAllowedError'
       const message = err instanceof UserFacingError ? err.message : `${LIVE_SWAP_GENERIC_ERROR} (code : ${step})`
       fail(denied ? "Acces a la camera refuse. Autorise-le dans ton navigateur." : message)
+    } finally {
+      startingRef.current = false
     }
   }, [fail, sendSignal, teardown])
 
