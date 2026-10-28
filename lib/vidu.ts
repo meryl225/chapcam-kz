@@ -1,4 +1,5 @@
 import 'server-only'
+import { createHash } from 'node:crypto'
 
 // Cle Vidu "overseas" (vda_...) : elle n'est valide que sur api.vidu.com.
 export const VIDU_API_BASE = 'https://api.vidu.com'
@@ -52,7 +53,25 @@ export class ViduApiError extends Error {
   }
 }
 
+// Resume du payload sans l'image ni la cle : suffit pour comparer deux requetes.
+export function describeViduPayload(imageDataUri: string, editingType: ViduEditingType) {
+  const mime = imageDataUri.slice(5, imageDataUri.indexOf(';'))
+  const base64 = imageDataUri.slice(imageDataUri.indexOf(',') + 1)
+  const bytes = Math.floor((base64.length * 3) / 4) - (base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0)
+  return {
+    endpoint: `${VIDU_API_BASE}/live/s_editing/realtime`,
+    keys: ['image_url', 'editing_type'],
+    editing_type: editingType,
+    mime,
+    bytes,
+    mb: Number((bytes / 1048576).toFixed(3)),
+    sha256_8: createHash('sha256').update(base64).digest('hex').slice(0, 8),
+  }
+}
+
 export async function createViduSession(imageDataUri: string, editingType: ViduEditingType): Promise<ViduSession> {
+  const payloadSummary = describeViduPayload(imageDataUri, editingType)
+  console.log('[Vidu] create session payload', JSON.stringify(payloadSummary))
   const res = await fetch(`${VIDU_API_BASE}/live/s_editing/realtime`, {
     method: 'POST',
     headers: { Authorization: `Token ${apiKey()}`, 'Content-Type': 'application/json' },
@@ -61,8 +80,12 @@ export async function createViduSession(imageDataUri: string, editingType: ViduE
   })
   const text = await res.text()
   if (!res.ok) {
-    console.error('[Vidu] create session failed', res.status, text.slice(0, 300))
-    throw new ViduApiError(`Vidu create failed (${res.status}): ${text.slice(0, 200)}`, res.status)
+    console.error('[Vidu] create session failed', res.status, text.slice(0, 1000), JSON.stringify(payloadSummary))
+    const { mime, bytes, mb, sha256_8 } = payloadSummary
+    throw new ViduApiError(
+      `Vidu create failed (${res.status}): ${text.slice(0, 200)} | payload ${editingType} ${mime} ${bytes}B (${mb}MB) sha=${sha256_8}`,
+      res.status,
+    )
   }
   const body = JSON.parse(text)
   if (!body?.live?.id || !body?.rtc?.token || !body?.client_secret || !body?.render_uid) {
