@@ -262,7 +262,13 @@ export function useViduSwap() {
       })
       const data = await res.json().catch(() => null)
       if (!res.ok || !data) {
-        if (data?.error && data.error !== LIVE_SWAP_GENERIC_ERROR) throw new UserFacingError(data.error)
+        if (typeof data?.detail === 'string' && data.detail.includes('AuditSubmitIllegal')) {
+  console.error('[live-swap] Vidu content check rejected the avatar:', data.detail)
+  throw new UserFacingError(
+  "Vidu a refusé la photo de cet avatar (contrôle de contenu). Choisis un autre avatar, de préférence une photo nette d'un visage de face, puis réessaie.",
+  )
+  }
+  if (data?.error && data.error !== LIVE_SWAP_GENERIC_ERROR) throw new UserFacingError(data.error)
         throw new Error(`session HTTP ${res.status}${data?.code ? ` ${data.code}` : ''}${data?.detail ? ` - ${data.detail}` : ''}`)
       }
       const session = data as ViduSessionResponse
