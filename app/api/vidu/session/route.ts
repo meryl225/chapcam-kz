@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { LIVE_SWAP_GENERIC_ERROR } from '@/lib/live-swap-provider'
 import { createClient } from '@/lib/supabase/server'
 import { checkLiveAccess, claimLiveSession, releaseLiveSession } from '@/lib/live-guard'
 import { trackGPUUsage } from '@/lib/rate-limit'
@@ -75,13 +76,8 @@ export async function POST(request: Request) {
   } catch (err) {
     await releaseLiveSession(user.id, sessionId)
     const status = err instanceof ViduApiError ? err.status : 500
-    const msg =
-      status === 401 || status === 403
-        ? 'Service Vidu indisponible (cle API refusee).'
-        : status === 402
-          ? 'Credits Vidu epuises. Contacte le support.'
-          : 'Impossible de demarrer la session Vidu. Reessaie dans un instant.'
-    return NextResponse.json({ error: msg }, { status: status >= 500 ? 502 : status })
+    console.error(`[Vidu] session creation failed user=${user.id} status=${status}`, err)
+    return NextResponse.json({ error: LIVE_SWAP_GENERIC_ERROR }, { status: 502 })
   }
 }
 

@@ -248,7 +248,7 @@ export async function GET(request: Request) {
         detail,
       })
       return NextResponse.json(
-        { error: 'decart_session_creation_failed', detail },
+        { error: 'Impossible de démarrer Live Swap. Veuillez réessayer.', code: 'session_creation_failed' },
         { status: lastDecartStatus && lastDecartStatus >= 400 ? lastDecartStatus : 502 },
       )
     }

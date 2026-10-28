@@ -1,6 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { LIVE_SWAP_GENERIC_ERROR } from '@/lib/live-swap-provider'
+
+// Only these messages are shown verbatim; any other (SDK/provider) error becomes the generic one.
+class UserFacingError extends Error {}
 
 const ALIRTC_SDK_URL = 'https://g.alicdn.com/apsara-media-box/imp-web-rtc/7.1.9/aliyun-rtc-sdk.js'
 const CONN_INIT_TIMEOUT_MS = 120_000
@@ -42,10 +46,10 @@ function loadAliRtcSdk(): Promise<void> {
       const script = document.createElement('script')
       script.src = ALIRTC_SDK_URL
       script.async = true
-      script.onload = () => (window.AliRtcEngine ? resolve() : reject(new Error('SDK AliRTC introuvable')))
+      script.onload = () => (window.AliRtcEngine ? resolve() : reject(new Error(LIVE_SWAP_GENERIC_ERROR)))
       script.onerror = () => {
         sdkPromise = null
-        reject(new Error('Impossible de charger le moteur video Vidu (reseau bloque ?).'))
+        reject(new UserFacingError('Impossible de charger Live Swap. Vérifie ta connexion internet.'))
       }
       document.head.appendChild(script)
     })
@@ -56,7 +60,7 @@ function loadAliRtcSdk(): Promise<void> {
 // Downscales the reference to a JPEG data URI so it stays well under Vidu's 4 MB cap.
 async function imageToDataUri(url: string): Promise<string> {
   const res = await fetch(url)
-  if (!res.ok) throw new Error("Impossible de charger l'image de l'avatar.")
+  if (!res.ok) throw new UserFacingError("Impossible de charger l'image de l'avatar.")
   const bitmap = await createImageBitmap(await res.blob())
   const scale = Math.min(1, REFERENCE_MAX_SIDE / Math.max(bitmap.width, bitmap.height))
   const canvas = document.createElement('canvas')
@@ -182,7 +186,7 @@ export function useViduSwap() {
   ) => {
     if (engineRef.current || socketRef.current) return
     if (options?.sourceStream) {
-      setError("Le moteur Vidu fonctionne uniquement avec la camera en direct pour l'instant.")
+      setError("Live Swap fonctionne uniquement avec la caméra en direct pour l'instant.")
       return
     }
     const sessionId = options?.sessionId ?? newConnId()
@@ -197,7 +201,7 @@ export function useViduSwap() {
     try {
       const [image] = await Promise.all([imageToDataUri(avatarImageUrl), loadAliRtcSdk()])
       const support = await window.AliRtcEngine!.isSupported()
-      if (!support.support) throw new Error(`Navigateur non compatible (${support.reason ?? 'WebRTC'}).`)
+      if (!support.support) throw new UserFacingError(`Navigateur non compatible (${support.reason ?? 'WebRTC'}).`)
 
       const res = await fetch('/api/vidu/session', {
         method: 'POST',
@@ -205,7 +209,7 @@ export function useViduSwap() {
         body: JSON.stringify({ sessionId, image, editingType }),
       })
       const data = await res.json().catch(() => null)
-      if (!res.ok || !data) throw new Error(data?.error || 'Impossible de demarrer la session Vidu.')
+      if (!res.ok || !data) throw new UserFacingError(data?.error || LIVE_SWAP_GENERIC_ERROR)
       const session = data as ViduSessionResponse
       const connId = newConnId()
       sessionRef.current = { liveId: session.liveId, connId, renderUid: session.renderUid, sessionId }
@@ -216,7 +220,7 @@ export function useViduSwap() {
       socketRef.current = socket
 
       await new Promise<void>((resolve, reject) => {
-        const timeout = window.setTimeout(() => reject(new Error('Le moteur Vidu ne repond pas. Reessaie.')), CONN_INIT_TIMEOUT_MS)
+        const timeout = window.setTimeout(() => reject(new Error(LIVE_SWAP_GENERIC_ERROR)), CONN_INIT_TIMEOUT_MS)
         timersRef.current.push(timeout)
         let acked = false
         const init = () => sendSignal(1, { conn_init: { version: 1 } })
@@ -231,19 +235,19 @@ export function useViduSwap() {
             } else if (ack.error_code === 'NOT_READY') {
               setConnectionState('warming_up')
             } else {
-              reject(new Error(`Initialisation Vidu refusee (${ack.error_code ?? 'inconnue'}).`))
+              reject(new Error(LIVE_SWAP_GENERIC_ERROR))
             }
           }
           if (msg?.type === 14 && msg?.payload?.switch_prompt_ack && !msg.payload.switch_prompt_ack.success) {
-            setError(`Changement d'avatar refuse (${msg.payload.switch_prompt_ack.error_code ?? 'erreur'}).`)
+            setError("Impossible de changer d'avatar. Veuillez réessayer.")
           }
           if (msg?.type === 6) {
-            setError('Session Vidu terminee par le serveur.')
+            setError('Session Live Swap terminée.')
             void teardown('server_hangup')
           }
         }
         socket.onclose = () => {
-          if (!acked) reject(new Error('Connexion Vidu interrompue.'))
+          if (!acked) reject(new Error(LIVE_SWAP_GENERIC_ERROR))
           else if (sessionRef.current) void teardown('closed')
         }
       })
@@ -265,10 +269,10 @@ export function useViduSwap() {
         }
       })
       engine.on('remoteUserOffLineNotify', (userId: string) => {
-        if (userId === sessionRef.current?.renderUid) fail('Le rendu Vidu a ete interrompu.')
+        if (userId === sessionRef.current?.renderUid) fail('Live Swap a été interrompu. Veuillez réessayer.')
       })
-      engine.on('bye', () => fail('Connexion video Vidu perdue.'))
-      engine.on('authInfoExpired', () => fail('Session Vidu expiree.'))
+      engine.on('bye', () => fail('Connexion Live Swap perdue. Veuillez réessayer.'))
+      engine.on('authInfoExpired', () => fail('Session Live Swap expirée. Veuillez réessayer.'))
 
       await callOptional(engine, 'setChannelProfile', 'communication')
       await callOptional(engine, 'setDefaultPublishLocalAudioStream', false)
@@ -284,12 +288,13 @@ export function useViduSwap() {
       const noOutput = window.setTimeout(() => {
         if (!elapsedTimerRef.current) {
           options?.onNoOutput?.(sessionId)
-          fail("Vidu n'a produit aucune image. Reessaie dans un instant.")
+          fail("Live Swap n'a produit aucune image. Veuillez réessayer.")
         }
       }, OUTPUT_TIMEOUT_MS)
       timersRef.current.push(noOutput)
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erreur Vidu inconnue.'
+      console.error('[live-swap] connect failed', err)
+      const message = err instanceof UserFacingError ? err.message : LIVE_SWAP_GENERIC_ERROR
       const denied = err instanceof DOMException && err.name === 'NotAllowedError'
       fail(denied ? "Acces a la camera refuse. Autorise-le dans ton navigateur." : message)
     }
