@@ -233,17 +233,25 @@ export function useViduSwap() {
         const timeout = window.setTimeout(() => reject(new Error('conn_init_ack timeout')), CONN_INIT_TIMEOUT_MS)
         timersRef.current.push(timeout)
         let acked = false
+        let opened = false
+        let notReadyRetries = 0
+        let lastSignal = 'none'
         const init = () => sendSignal(1, { conn_init: { version: 1 } })
-        socket.onopen = init
+        socket.onopen = () => { opened = true; init() }
         socket.onmessage = (event) => {
           let msg: any
           try { msg = JSON.parse(event.data) } catch { return }
+          lastSignal = `type=${msg?.type} ${Object.keys(msg?.payload ?? {}).join(',')}`
           const ack = msg?.payload?.conn_init_ack
           if (msg?.type === 2 && ack) {
             if (ack.success) {
               if (!acked) { acked = true; window.clearTimeout(timeout); resolve() }
             } else if (ack.error_code === 'NOT_READY') {
+              // The render worker is still warming up: Vidu expects conn_init to be resent with backoff.
               setConnectionState('warming_up')
+              notReadyRetries += 1
+              const retry = window.setTimeout(init, Math.min(2000 * notReadyRetries, 8000))
+              timersRef.current.push(retry)
             } else {
               reject(new Error(`conn_init_ack ${ack.error_code ?? 'unknown'} ${ack.error_msg ?? ''}`.trim()))
             }
@@ -252,13 +260,20 @@ export function useViduSwap() {
             setError("Impossible de changer d'avatar. Veuillez réessayer.")
           }
           if (msg?.type === 6) {
+            const reason = msg?.payload?.hangup?.hangup_reason ?? 'unknown'
+            if (!acked) {
+              reject(new Error(`vidu hangup before ack: ${reason}`))
+              return
+            }
+            console.error(`[live-swap] vidu hangup: ${reason}`)
             setError('Session Live Swap terminée.')
             void teardown('server_hangup')
           }
         }
         socket.onclose = (event) => {
-          if (!acked) reject(new Error(`ws closed ${event.code} ${event.reason}`.trim()))
-          else if (sessionRef.current) void teardown('closed')
+          if (!acked) {
+            reject(new Error(`ws closed ${event.code}${event.reason ? ` ${event.reason}` : ''} opened=${opened} notReady=${notReadyRetries} last=${lastSignal}`))
+          } else if (sessionRef.current) void teardown('closed')
         }
       })
 
