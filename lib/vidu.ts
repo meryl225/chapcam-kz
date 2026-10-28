@@ -62,7 +62,7 @@ export async function createViduSession(imageDataUri: string, editingType: ViduE
   const text = await res.text()
   if (!res.ok) {
     console.error('[Vidu] create session failed', res.status, text.slice(0, 300))
-    throw new ViduApiError(`Vidu create failed (${res.status})`, res.status)
+    throw new ViduApiError(`Vidu create failed (${res.status}): ${text.slice(0, 200)}`, res.status)
   }
   const body = JSON.parse(text)
   if (!body?.live?.id || !body?.rtc?.token || !body?.client_secret || !body?.render_uid) {
