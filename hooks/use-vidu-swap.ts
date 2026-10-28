@@ -259,7 +259,7 @@ export function useViduSwap() {
       engine.on('authInfoExpired', () => fail('Session Live Swap expirée. Veuillez réessayer.'))
 
       await callOptional(engine, 'setChannelProfile', 'communication')
-      await callOptional(engine, 'setDefaultPublishLocalAudioStream', false)
+      await callOptional(engine, 'setDefaultPublishLocalAudioStream', true)
       await callOptional(engine, 'setDefaultPublishLocalVideoStream', true)
       await callOptional(engine, 'setDefaultSubscribeAllRemoteAudioStreams', false)
       await callOptional(engine, 'setDefaultSubscribeAllRemoteVideoStreams', true)
@@ -292,24 +292,14 @@ export function useViduSwap() {
       const createdAt = performance.now()
       console.info(`[live-swap] SESSION CREATED live_id=${session.liveId} secret_len=${session.clientSecret?.length ?? 0}`)
 
-      // 2. Per Vidu docs, the WS control link and the AliRTC media link are opened in parallel
-      // right after create; the live is closed server-side if either is missing for too long.
+      // 2. Same sequence as Vidu's official S2-Editing demo: create -> WS -> wait for a successful
+      // conn_init_ack (re-sending conn_init every 2s on NOT_READY) -> join AliRTC -> publish video + audio.
       step = 'signaling'
       const query = new URLSearchParams({ live_id: session.liveId, conn_id: connId, client_secret: session.clientSecret })
       const socket = new WebSocket(`${session.wsUrl}?${query}`)
       socketRef.current = socket
       console.info(`[live-swap] WS CONNECT live_id=${session.liveId} url=${session.wsUrl} params=${[...query.keys()].join(',')}`)
       const sinceCreate = () => Math.round(performance.now() - createdAt)
-
-      const rtcReady = (async () => {
-        await engine.joinChannel(session.rtc.token, session.rtc.user_id)
-        await callOptional(engine, 'publishLocalVideoStream', true)
-        try { await callOptional(engine, 'subscribe', session.renderUid) } catch {}
-        console.info(`[live-swap] RTC PUBLISHED live_id=${session.liveId} after=${sinceCreate()}ms`)
-      })().catch((err) => {
-        step = 'rtc_join'
-        throw err
-      })
 
       const signalingReady = new Promise<void>((resolve, reject) => {
         const timeout = window.setTimeout(() => reject(new Error('conn_init_ack timeout')), CONN_INIT_TIMEOUT_MS)
@@ -333,9 +323,12 @@ export function useViduSwap() {
             if (ack.success) {
               if (!acked) { acked = true; window.clearTimeout(timeout); resolve() }
             } else if (ack.error_code === 'NOT_READY') {
-              // Vidu re-pushes the success ack itself once rendering is ready; resending conn_init is not needed.
               setConnectionState('warming_up')
               notReadyRetries += 1
+              const retry = window.setTimeout(() => {
+                if (!acked && socket.readyState === WebSocket.OPEN) init()
+              }, 2000)
+              timersRef.current.push(retry)
             } else {
               reject(new Error(`conn_init_ack ${ack.error_code ?? 'unknown'} ${ack.error_msg ?? ''}`.trim()))
             }
@@ -366,7 +359,20 @@ export function useViduSwap() {
         }
       })
 
-      await Promise.all([signalingReady, rtcReady])
+      await signalingReady
+      console.info(`[live-swap] CONN_INIT_ACK live_id=${session.liveId} after=${sinceCreate()}ms`)
+
+      step = 'rtc_join'
+      await engine.joinChannel(session.rtc.token, session.rtc.user_id)
+      if (localVideoRef.current) await callOptional(engine, 'setLocalViewConfig', localVideoRef.current, 1)
+      await callOptional(engine, 'startPreview', 1)
+      await callOptional(engine, 'publishLocalVideoStream', true)
+      try {
+        await callOptional(engine, 'publishLocalAudioStream', true)
+      } catch (audioErr) {
+        console.warn('[live-swap] microphone publish failed, continuing with video only', audioErr)
+      }
+      console.info(`[live-swap] RTC PUBLISHED live_id=${session.liveId} after=${sinceCreate()}ms`)
 
       const noOutput = window.setTimeout(() => {
         if (!elapsedTimerRef.current) {
