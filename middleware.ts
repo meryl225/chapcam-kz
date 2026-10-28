@@ -117,7 +117,7 @@ function addSecurityHeaders(
     "media-src 'self' blob: https:",
     // The Aliyun RTC SDK used by Vidu Live Swap reaches dynamic edge hosts/IPs and blob: workers,
     // so connect-src must allow any secure origin rather than a fixed allowlist.
-    "connect-src 'self' blob: data: https: http: ws: https://*.alicdn.com https://*.aliyuncs.com https://*.aliyun.com https://time.akamai.com https://*.vidu.com https://open.er-api.com https://*.supabase.co https://*.decart.ai https://*.fal.ai https://*.livekit.io wss://*.livekit.cloud https://api.paydunya.com https://*.vercel.app https://*.blob.vercel-storage.com https://*.proxy.runpod.net wss://*.proxy.runpod.net https://*.trycloudflare.com wss://*.trycloudflare.com wss: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.doubleclick.net https://*.adtrafficquality.google",
+    "connect-src 'self' blob: data: https: http: ws: wss: https://*.alicdn.com https://*.aliyuncs.com https://*.aliyun.com https://time.akamai.com https://*.vidu.com https://open.er-api.com https://*.supabase.co https://*.decart.ai https://*.fal.ai https://*.livekit.io wss://*.livekit.cloud https://api.paydunya.com https://*.vercel.app https://*.blob.vercel-storage.com https://*.proxy.runpod.net wss://*.proxy.runpod.net https://*.trycloudflare.com wss://*.trycloudflare.com wss: https://pagead2.googlesyndication.com https://*.googlesyndication.com https://*.google.com https://*.doubleclick.net https://*.adtrafficquality.google",
     "frame-src 'self' https://vercel.live https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://*.google.com https://*.googlesyndication.com https://*.adtrafficquality.google",
     "worker-src 'self' blob:",
   ].join('; '))
