@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { createBrowserClient } from '@supabase/ssr'
 import { Camera, Zap, Clock, Coins, Plus, Check, AlertCircle, Loader2, Square, Wifi, WifiOff, Monitor, Cloud, Settings, Download, Crown, CreditCard, ClipboardList, Video as VideoIcon, VideoOff, BookOpen, Maximize2, Minimize2, Sparkles, Wand2, Lock, ChevronDown, Smartphone, Film, Upload, Disc3, Trash2 } from 'lucide-react'
 import { useLucy21 } from '@/hooks/use-lucy-21'
+import { useViduSwap, type ViduEditingType } from '@/hooks/use-vidu-swap'
 import { LUCY_PRESET_CATEGORIES, buildScenePrompt, isVipPlan } from '@/lib/lucy-presets'
 import { pointsPerSecond, POINTS_PER_SECOND_SD, POINTS_PER_SECOND_HD } from '@/lib/swap-pricing'
 import { InstallationRequestModal } from '@/components/dashboard/installation-request-modal'
@@ -159,6 +160,12 @@ export default function DashboardPage() {
   try { sessionStorage.removeItem('chapcam_liveswap_chunk_reload') } catch {}
   }, [])
 
+  const [swapEngine, setSwapEngine] = useState<'lucy' | 'vidu'>('lucy')
+  const [viduEditingType, setViduEditingType] = useState<ViduEditingType>('subject_replacement')
+  const lucySwap = useLucy21()
+  const viduSwap = useViduSwap()
+  const activeSwap = swapEngine === 'vidu' ? viduSwap : lucySwap
+
   const {
     isConnected,
     isConnecting,
@@ -181,7 +188,7 @@ export default function DashboardPage() {
     startRecording,
     stopRecording,
     clearRecording,
-  } = useLucy21()
+  } = activeSwap
 
   // Quand le swap n'est plus actif, on met en pause la video importee (qui
   // tourne en boucle en arriere-plan pendant le swap) pour liberer les ressources.
@@ -611,6 +618,7 @@ export default function DashboardPage() {
       codec: videoCodec || undefined,
       sourceStream,
       sessionId: sessionIdRef.current ?? undefined,
+      editingType: viduEditingType,
       // Le serveur a debite le warmup a l'emission du token : on decremente le
       // solde local pour que l'affichage reste juste avant le 1er heartbeat.
   onReserved: (reservedPoints) => {
@@ -1475,6 +1483,46 @@ export default function DashboardPage() {
 
           {settingsOpen && (
           <>
+          {/* Moteur de swap */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-foreground/60">{t('Moteur')}</p>
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-black/40 p-1">
+              {([
+                { id: 'lucy', label: 'Lucy' },
+                { id: 'vidu', label: 'Vidu S2' },
+              ] as const).map(opt => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  disabled={isConnected || isConnecting}
+                  aria-pressed={swapEngine === opt.id}
+                  onClick={() => setSwapEngine(opt.id)}
+                  className={`rounded-md py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                    swapEngine === opt.id ? 'bg-primary text-black' : 'text-foreground/60 hover:text-foreground'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {swapEngine === 'vidu' && (
+              <label className="mt-3 flex flex-col gap-1.5">
+                <span className="text-xs font-medium text-foreground/60">{t('Mode Vidu')}</span>
+                <select
+                  value={viduEditingType}
+                  disabled={isConnected || isConnecting}
+                  onChange={(e) => setViduEditingType(e.target.value as ViduEditingType)}
+                  className="rounded-lg border border-hairline bg-black/40 px-3 py-2 text-sm text-foreground disabled:opacity-50"
+                >
+                  <option value="subject_replacement">{t('Remplacement du visage / sujet')}</option>
+                  <option value="style_transfer">{t('Transfert de style')}</option>
+                  <option value="virtual_tryon">{t('Essayage de tenue')}</option>
+                  <option value="background_replacement">{t("Remplacement d'arrière-plan")}</option>
+                </select>
+              </label>
+            )}
+          </div>
+
           {/* Qualite de rendu */}
           <div>
             <p className="mb-2 text-xs font-medium text-foreground/60">{t('Qualité de rendu')}</p>
