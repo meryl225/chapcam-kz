@@ -237,8 +237,23 @@ export function useViduSwap() {
           elapsedTimerRef.current = window.setInterval(() => setElapsedSeconds((s) => s + 1), 1000)
         }
       })
-      engine.on('remoteUserOffLineNotify', (userId: string) => {
-        if (userId === sessionRef.current?.renderUid) fail('Live Swap a été interrompu. Veuillez réessayer.')
+      // The render worker can drop and rejoin within a few seconds (network blips),
+      // so only fail if it stays offline.
+      let renderOfflineTimer: number | null = null
+      engine.on('remoteUserOnLineNotify', (userId: string) => {
+        if (userId !== sessionRef.current?.renderUid || renderOfflineTimer === null) return
+        console.info('[live-swap] render worker back online')
+        window.clearTimeout(renderOfflineTimer)
+        renderOfflineTimer = null
+      })
+      engine.on('remoteUserOffLineNotify', (userId: string, reason?: number) => {
+        if (userId !== sessionRef.current?.renderUid) return
+        console.warn(`[live-swap] render worker offline reason=${reason ?? 'unknown'}`)
+        if (renderOfflineTimer !== null) return
+        renderOfflineTimer = window.setTimeout(() => {
+          renderOfflineTimer = null
+          fail('Live Swap a été interrompu. Veuillez réessayer.')
+        }, 8000)
       })
       engine.on('bye', () => fail('Connexion Live Swap perdue. Veuillez réessayer.'))
       engine.on('authInfoExpired', () => fail('Session Live Swap expirée. Veuillez réessayer.'))
