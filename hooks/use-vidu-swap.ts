@@ -292,14 +292,8 @@ export function useViduSwap() {
       const createdAt = performance.now()
       console.info(`[live-swap] SESSION CREATED live_id=${session.liveId} secret_len=${session.clientSecret?.length ?? 0}`)
 
-      // 2. Media before signalling: Vidu's render worker hangs up (render_close) right after
-      // conn_init_ack when no camera stream is being pushed yet.
-      step = 'rtc_join'
-      await engine.joinChannel(session.rtc.token, session.rtc.user_id)
-      await callOptional(engine, 'publishLocalVideoStream', true)
-      console.info(`[live-swap] RTC PUBLISHED live_id=${session.liveId} after=${Math.round(performance.now() - createdAt)}ms`)
-
-      // 3. Signalling: only the ephemeral client_secret is used, never the API key.
+      // 2. Per Vidu docs, the WS control link and the AliRTC media link are opened in parallel
+      // right after create; the live is closed server-side if either is missing for too long.
       step = 'signaling'
       const query = new URLSearchParams({ live_id: session.liveId, conn_id: connId, client_secret: session.clientSecret })
       const socket = new WebSocket(`${session.wsUrl}?${query}`)
@@ -307,7 +301,17 @@ export function useViduSwap() {
       console.info(`[live-swap] WS CONNECT live_id=${session.liveId} url=${session.wsUrl} params=${[...query.keys()].join(',')}`)
       const sinceCreate = () => Math.round(performance.now() - createdAt)
 
-      await new Promise<void>((resolve, reject) => {
+      const rtcReady = (async () => {
+        await engine.joinChannel(session.rtc.token, session.rtc.user_id)
+        await callOptional(engine, 'publishLocalVideoStream', true)
+        try { await callOptional(engine, 'subscribe', session.renderUid) } catch {}
+        console.info(`[live-swap] RTC PUBLISHED live_id=${session.liveId} after=${sinceCreate()}ms`)
+      })().catch((err) => {
+        step = 'rtc_join'
+        throw err
+      })
+
+      const signalingReady = new Promise<void>((resolve, reject) => {
         const timeout = window.setTimeout(() => reject(new Error('conn_init_ack timeout')), CONN_INIT_TIMEOUT_MS)
         timersRef.current.push(timeout)
         let acked = false
@@ -329,11 +333,9 @@ export function useViduSwap() {
             if (ack.success) {
               if (!acked) { acked = true; window.clearTimeout(timeout); resolve() }
             } else if (ack.error_code === 'NOT_READY') {
-              // The render worker is still warming up: Vidu expects conn_init to be resent with backoff.
+              // Vidu re-pushes the success ack itself once rendering is ready; resending conn_init is not needed.
               setConnectionState('warming_up')
               notReadyRetries += 1
-              const retry = window.setTimeout(init, Math.min(2000 * notReadyRetries, 8000))
-              timersRef.current.push(retry)
             } else {
               reject(new Error(`conn_init_ack ${ack.error_code ?? 'unknown'} ${ack.error_msg ?? ''}`.trim()))
             }
@@ -363,6 +365,8 @@ export function useViduSwap() {
           } else if (sessionRef.current) void teardown('closed')
         }
       })
+
+      await Promise.all([signalingReady, rtcReady])
 
       const noOutput = window.setTimeout(() => {
         if (!elapsedTimerRef.current) {
