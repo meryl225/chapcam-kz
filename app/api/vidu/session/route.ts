@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     await releaseLiveSession(user.id, sessionId)
     const status = err instanceof ViduApiError ? err.status : 500
     console.error(`[Vidu] session creation failed user=${user.id} status=${status}`, err)
-    return NextResponse.json({ error: LIVE_SWAP_GENERIC_ERROR }, { status: 502 })
+    return NextResponse.json({ error: LIVE_SWAP_GENERIC_ERROR, code: `vidu_${status}` }, { status: 502 })
   }
 }
 
@@ -92,6 +92,11 @@ export async function DELETE(request: Request) {
 
   if (sessionId && SESSION_ID_PATTERN.test(sessionId)) {
     await releaseLiveSession(user.id, sessionId)
+  }
+  const failedStep = url.searchParams.get('failedStep')
+  if (failedStep && /^[a-z_]{2,32}$/.test(failedStep)) {
+    const detail = (url.searchParams.get('detail') ?? '').replace(/[^\w .:/()-]/g, '').slice(0, 300)
+    console.error(`[Vidu] client start failed user=${user.id} step=${failedStep} detail=${detail}`)
   }
   const live = liveId ? await getViduLive(liveId).catch(() => null) : null
   if (live) {
