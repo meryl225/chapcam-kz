@@ -11,19 +11,26 @@ import { PLAY_STORE_URL } from '@/components/home-mobile-apps'
 // une seule fois par session.
 const ANNOUNCEMENT_KEY = 'chapcam-5.0-launch-popup-seen'
 
-export function ChapCam2Announcement() {
+type ChapCam2AnnouncementProps = {
+  delayMs?: number
+  oncePerSession?: boolean
+}
+
+export function ChapCam2Announcement({ delayMs = 600, oncePerSession = true }: ChapCam2AnnouncementProps = {}) {
   const [open, setOpen] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
-    try {
-      if (sessionStorage.getItem(ANNOUNCEMENT_KEY)) return
-    } catch {
-      // stockage indisponible : on affiche quand meme
+    if (oncePerSession) {
+      try {
+        if (sessionStorage.getItem(ANNOUNCEMENT_KEY)) return
+      } catch {
+        // stockage indisponible : on affiche quand meme
+      }
     }
-    const t = setTimeout(() => setOpen(true), 600)
+    const t = setTimeout(() => setOpen(true), delayMs)
     return () => clearTimeout(t)
-  }, [])
+  }, [delayMs, oncePerSession])
 
   useEffect(() => {
     if (!open) return
