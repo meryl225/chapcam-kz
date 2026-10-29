@@ -279,7 +279,11 @@ async function applySubscriptions(admin: Admin, userId: string, email: string, s
     }
 
     try {
-      await activateSubscription(admin, userId, email, plan, { endDate: new Date(expiresMs) })
+      await activateSubscription(admin, userId, email, plan, {
+        endDate: new Date(expiresMs),
+        reference: `rc:${token}`,
+        source,
+      })
       // activateSubscription journalise ses erreurs sans les lever : on relit la
       // ligne pour ne jamais marquer credite un forfait qui n'a pas ete ecrit.
       const { data: written } = await admin
@@ -384,7 +388,7 @@ async function applyMinutePacks(admin: Admin, userId: string, email: string, sub
         // Part non expirable enregistree avant le solde : idempotente par token,
         // un nouvel essai apres un echec Supabase ne la double donc pas.
         await recordTopupCredit(token, userId, productId, packPoints)
-        await creditTopupPoints(admin, userId, email, packPoints)
+        await creditTopupPoints(admin, userId, email, packPoints, { reference: `rc:${token}`, source })
         points = await readLiveSwapPoints(admin, userId)
         if (points < before + packPoints) throw new Error(`minutes non enregistrees (avant ${before}, apres ${points})`)
         console.info('[iap-diag] minutes Live Swap creditees', { userId, productId: productId, token, minutes: pack.minutes, points, source })

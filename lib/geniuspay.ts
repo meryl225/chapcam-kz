@@ -351,7 +351,7 @@ export async function fulfillGeniusPayPayment(params: {
           amountXof: Number(reqRow?.amount || info.amount || 0),
           token,
         })
-      : await creditPurchase(admin, { productId, email, fullName, userId })
+      : await creditPurchase(admin, { productId, email, fullName, userId, reference: `geniuspay:${token}`, source: 'geniuspay' })
   } catch (e) {
     await admin.from('processed_payments').delete().eq('token', token)
     const reason = (e as Error)?.message || 'Exception pendant le credit'
@@ -500,7 +500,7 @@ export async function creditGeniusPayManually(params: {
           amountXof: Number(reqRow.amount || 0),
           token,
         })
-      : await creditPurchase(admin, { productId, email, fullName, userId })
+      : await creditPurchase(admin, { productId, email, fullName, userId, reference: `geniuspay:${token}`, source: 'geniuspay' })
   } catch (e) {
     await admin.from('processed_payments').delete().eq('token', token)
     const reason = (e as Error)?.message || 'Exception pendant le credit'

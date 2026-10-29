@@ -51,7 +51,10 @@ export async function POST() {
     }
 
     try {
-      const dates = await activateSubscription(admin, payment.user_id, payment.email, plan)
+      const dates = await activateSubscription(admin, payment.user_id, payment.email, plan, {
+        reference: `paydunya:${payment.paydunya_token}`,
+        source: 'manual-repair',
+      })
       await logPaymentEvent(admin, {
         source: 'manual-repair',
         token: payment.paydunya_token,

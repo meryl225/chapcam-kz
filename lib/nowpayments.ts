@@ -327,7 +327,7 @@ export async function fulfillNowPayment(params: {
           amountXof: Number(reqRow?.amount || 0),
           token,
         })
-      : await creditPurchase(admin, { productId, email, fullName, userId })
+      : await creditPurchase(admin, { productId, email, fullName, userId, reference: `nowpayments:${token}`, source: 'nowpayments' })
   } catch (e) {
     await admin.from('processed_payments').delete().eq('token', token)
     const reason = (e as Error)?.message || 'Exception pendant le credit'
