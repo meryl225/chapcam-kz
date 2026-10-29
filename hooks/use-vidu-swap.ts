@@ -163,7 +163,10 @@ export function useViduSwap() {
 
     if (session) {
       const query = new URLSearchParams({ sessionId: session.sessionId, liveId: session.liveId })
-      void fetch(`/api/vidu/session?${query}`, { method: 'DELETE', keepalive: true }).catch(() => {})
+      void fetch(`/api/vidu/session?${query}`, { method: 'DELETE', keepalive: true })
+        .then((r) => r.json())
+        .then((d) => console.info(`[live-swap][STEP] SESSION_STOPPED reason=${reason} billed=${d?.live?.billedSeconds ?? 'unknown'}s close_reason=${d?.live?.closeReason ?? 'unknown'}`))
+        .catch(() => {})
     }
 
     setIsPreviewing(false)
@@ -209,8 +212,75 @@ export function useViduSwap() {
     setElapsedSeconds(0)
     seqRef.current = 1
 
+    const waitForConnInitAck = (socket: WebSocket, liveId: string, sinceCreate: () => number) =>
+      new Promise<void>((resolve, reject) => {
+        const timeout = window.setTimeout(() => reject(new Error('conn_init_ack timeout')), CONN_INIT_TIMEOUT_MS)
+        timersRef.current.push(timeout)
+        let acked = false
+        let opened = false
+        let notReadyRetries = 0
+        let lastSignal = 'none'
+        const init = () => sendSignal(1, { conn_init: { version: 1 } })
+        socket.onopen = () => {
+          opened = true
+          console.info(`[live-swap] WS OPEN live_id=${liveId} after=${sinceCreate()}ms`)
+          mark('WS_CONNECTED')
+          init()
+        }
+        socket.onmessage = (event) => {
+          let msg: any
+          try { msg = JSON.parse(event.data) } catch { return }
+          lastSignal = `type=${msg?.type} ${Object.keys(msg?.payload ?? {}).join(',')}`
+          const ack = msg?.payload?.conn_init_ack
+          if (msg?.type === 2 && ack) {
+            if (ack.success) {
+              if (!acked) { acked = true; window.clearTimeout(timeout); resolve() }
+            } else if (ack.error_code === 'NOT_READY') {
+              setConnectionState('warming_up')
+              notReadyRetries += 1
+              const retry = window.setTimeout(() => {
+                if (!acked && socket.readyState === WebSocket.OPEN) init()
+              }, 2000)
+              timersRef.current.push(retry)
+            } else {
+              reject(new Error(`conn_init_ack ${ack.error_code ?? 'unknown'} ${ack.error_msg ?? ''}`.trim()))
+            }
+          }
+          if (msg?.type === 14 && msg?.payload?.switch_prompt_ack && !msg.payload.switch_prompt_ack.success) {
+            setError("Impossible de changer d'avatar. Veuillez réessayer.")
+          }
+          if (msg?.type === 6) {
+            const reason = msg?.payload?.hangup?.hangup_reason ?? 'unknown'
+            if (!acked) {
+              reject(new Error(`vidu hangup before ack: ${reason}`))
+              return
+            }
+            if (socketRef.current !== socket) return
+            console.error(`[live-swap] vidu hangup: ${reason}`)
+            setError('Session Live Swap terminée.')
+            void teardown('server_hangup')
+          }
+        }
+        socket.onclose = (event) => {
+          const current = socketRef.current === socket
+          console.info(`[live-swap] WS CLOSE live_id=${liveId} code=${event.code} opened=${opened} acked=${acked} current=${current} after=${sinceCreate()}ms`)
+          // A socket replaced or torn down by the client must not tear down the newer session.
+          if (!current && acked) return
+          if (!acked) {
+            reject(new Error(`ws closed ${event.code}${event.reason ? ` ${event.reason}` : ''} opened=${opened} notReady=${notReadyRetries} last=${lastSignal}`))
+          } else if (sessionRef.current) void teardown('closed')
+        }
+      })
+
+    const testStart = performance.now()
+    let lastStep = 'NONE'
+    const mark = (name: string, extra = '') => {
+      lastStep = name
+      console.info(`[live-swap][STEP] ${name} t=${Math.round(performance.now() - testStart)}ms ${extra}`.trim())
+    }
     // Each stage gets a code so a failure shows (and logs) exactly where it broke.
     let step = 'sdk'
+    let createdLiveId: string | null = null
     try {
       await loadAliRtcSdk()
       step = 'avatar'
@@ -219,15 +289,74 @@ export function useViduSwap() {
       const support = await window.AliRtcEngine!.isSupported()
       if (!support.support) throw new UserFacingError(`Navigateur non compatible (${support.reason ?? 'WebRTC'}).`)
 
-      // 1. Camera preview first: the user sees herself right away and permission is
-      // granted before any billed session exists.
+      // Permission is requested before any billed session exists, then the tracks are released
+      // so AliRTC can own the camera exactly as in the official demo.
       step = 'camera'
+      const probe = await navigator.mediaDevices
+        .getUserMedia({ video: true, audio: true })
+        .catch(() => navigator.mediaDevices.getUserMedia({ video: true }))
+      probe.getTracks().forEach((track) => track.stop())
+
+      step = 'session'
+      const res = await fetch('/api/vidu/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, image, editingType }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data) {
+        if (typeof data?.detail === 'string' && data.detail.includes('AuditSubmitIllegal')) {
+          console.error('[live-swap] Vidu content check rejected the avatar:', data.detail)
+          throw new UserFacingError(
+            "Vidu a refusé la photo de cet avatar (contrôle de contenu). Choisis un autre avatar, de préférence une photo nette d'un visage de face, puis réessaie.",
+          )
+        }
+        if (data?.error && data.error !== LIVE_SWAP_GENERIC_ERROR) throw new UserFacingError(data.error)
+        throw new Error(`session HTTP ${res.status}${data?.code ? ` ${data.code}` : ''}${data?.detail ? ` - ${data.detail}` : ''}`)
+      }
+      const session = data as ViduSessionResponse
+      const connId = newConnId()
+      sessionRef.current = { liveId: session.liveId, connId, renderUid: session.renderUid, sessionId }
+      const createdAt = performance.now()
+      const sinceCreate = () => Math.round(performance.now() - createdAt)
+      createdLiveId = session.liveId
+      console.info(`[live-swap] SESSION CREATED live_id=${session.liveId} render_uid=${session.renderUid} secret_len=${session.clientSecret?.length ?? 0}`)
+      mark('SESSION_CREATED', `live_id=${session.liveId}`)
+
+      // Official S2-Editing order: create -> WS -> successful conn_init_ack (re-send every 2s on
+      // NOT_READY) -> init AliRTC -> joinChannel -> preview + publish -> subscribe render_uid camera.
+      step = 'signaling'
+      const query = new URLSearchParams({ live_id: session.liveId, conn_id: connId, client_secret: session.clientSecret })
+      const socket = new WebSocket(`${session.wsUrl}?${query}`)
+      socketRef.current = socket
+      console.info(`[live-swap] WS CONNECT live_id=${session.liveId} url=${session.wsUrl} params=${[...query.keys()].join(',')}`)
+      await waitForConnInitAck(socket, session.liveId, sinceCreate)
+      console.info(`[live-swap] CONN_INIT_ACK live_id=${session.liveId} after=${sinceCreate()}ms`)
+      mark('CONN_INIT_ACK / SESSION_READY')
+
+      step = 'rtc_init'
+      mark('RTC_ENGINE_START')
+      window.AliRtcEngine!.setLogLevel(0)
       const engine = window.AliRtcEngine!.getInstance()
       engineRef.current = engine
-      engine.on('videoSubscribeStateChanged', (userId: string, _old: number, newState: number) => {
-        if (newState !== 3 || userId !== sessionRef.current?.renderUid || !remoteVideoRef.current) return
+      mark('RTC_ENGINE_READY')
+      engine.on('remoteTrackAvailableNotify', (userId: string, audioTrack: number, videoTrack: number) => {
+        if (userId === sessionRef.current?.renderUid && videoTrack > 0) {
+          mark('REMOTE_STREAM_PUBLISHED', `user=${userId} video=${videoTrack} audio=${audioTrack}`)
+        }
+      })
+      engine.on('videoSubscribeStateChanged', (userId: string, oldState: number, newState: number, _interval: number, channelId: string) => {
+        const isRender = userId === sessionRef.current?.renderUid
+        console.info(`[live-swap] RTC videoSubscribeStateChanged user=${userId} ${oldState}->${newState} channel=${channelId} render=${isRender}`)
+        if (newState !== 3 || !isRender) return
+        mark('REMOTE_STREAM_SUBSCRIBED', `user=${userId}`)
+        if (!remoteVideoRef.current) {
+          console.error('[live-swap] remote stream subscribed but the Chapcam video element is not mounted')
+          return
+        }
         void callOptional(engine, 'setRemoteViewConfig', remoteVideoRef.current, userId, 1)
         remoteVideoRef.current.play().catch(() => {})
+        mark('REMOTE_VIDEO_ATTACHED')
         timersRef.current.forEach((t) => window.clearTimeout(t))
         timersRef.current = []
         setIsConnecting(false)
@@ -259,114 +388,32 @@ export function useViduSwap() {
       engine.on('authInfoExpired', () => fail('Session Live Swap expirée. Veuillez réessayer.'))
 
       await callOptional(engine, 'setChannelProfile', 'communication')
-      await callOptional(engine, 'setDefaultPublishLocalAudioStream', false)
+      await callOptional(engine, 'setDefaultPublishLocalAudioStream', true)
       await callOptional(engine, 'setDefaultPublishLocalVideoStream', true)
-      await callOptional(engine, 'setDefaultSubscribeAllRemoteAudioStreams', false)
+      await callOptional(engine, 'setDefaultSubscribeAllRemoteAudioStreams', true)
       await callOptional(engine, 'setDefaultSubscribeAllRemoteVideoStreams', true)
+      mark('RTC_SDK_READY')
+      step = 'rtc_join'
+      const rtc = session.rtc as ViduSessionResponse['rtc'] & { app_id?: string; channel_id?: string }
+      console.info(`[live-swap] RTC JOIN app_id=${rtc.app_id ?? '?'} channel_id=${rtc.channel_id ?? '?'} user_id=${rtc.user_id} token_len=${rtc.token?.length ?? 0}`)
+      mark('RTC_JOIN_REQUESTED')
+      await engine.joinChannel(rtc.token, rtc.user_id)
+      setConnectionState('rtc_joined')
+      console.info(`[live-swap] RTC JOINED live_id=${session.liveId} after=${sinceCreate()}ms`)
+      mark('RTC_JOIN_SUCCESS')
+
+      step = 'rtc_publish'
       if (localVideoRef.current) await callOptional(engine, 'setLocalViewConfig', localVideoRef.current, 1)
       await callOptional(engine, 'startPreview', 1)
       setCameraEnabled(true)
       setIsPreviewing(true)
-      console.info('[live-swap] CAMERA PREVIEW started')
-
-      step = 'session'
-      const res = await fetch('/api/vidu/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId, image, editingType }),
-      })
-      const data = await res.json().catch(() => null)
-      if (!res.ok || !data) {
-        if (typeof data?.detail === 'string' && data.detail.includes('AuditSubmitIllegal')) {
-  console.error('[live-swap] Vidu content check rejected the avatar:', data.detail)
-  throw new UserFacingError(
-  "Vidu a refusé la photo de cet avatar (contrôle de contenu). Choisis un autre avatar, de préférence une photo nette d'un visage de face, puis réessaie.",
-  )
-  }
-  if (data?.error && data.error !== LIVE_SWAP_GENERIC_ERROR) throw new UserFacingError(data.error)
-        throw new Error(`session HTTP ${res.status}${data?.code ? ` ${data.code}` : ''}${data?.detail ? ` - ${data.detail}` : ''}`)
+      await callOptional(engine, 'publishLocalVideoStream', true)
+      try {
+        await callOptional(engine, 'publishLocalAudioStream', true)
+      } catch (audioErr) {
+        console.warn('[live-swap] microphone publish failed, continuing with video only', audioErr)
       }
-      const session = data as ViduSessionResponse
-      const connId = newConnId()
-      sessionRef.current = { liveId: session.liveId, connId, renderUid: session.renderUid, sessionId }
-      const createdAt = performance.now()
-      console.info(`[live-swap] SESSION CREATED live_id=${session.liveId} secret_len=${session.clientSecret?.length ?? 0}`)
-
-      // 2. Per Vidu docs, the WS control link and the AliRTC media link are opened in parallel
-      // right after create; the live is closed server-side if either is missing for too long.
-      step = 'signaling'
-      const query = new URLSearchParams({ live_id: session.liveId, conn_id: connId, client_secret: session.clientSecret })
-      const socket = new WebSocket(`${session.wsUrl}?${query}`)
-      socketRef.current = socket
-      console.info(`[live-swap] WS CONNECT live_id=${session.liveId} url=${session.wsUrl} params=${[...query.keys()].join(',')}`)
-      const sinceCreate = () => Math.round(performance.now() - createdAt)
-
-      const rtcReady = (async () => {
-        await engine.joinChannel(session.rtc.token, session.rtc.user_id)
-        await callOptional(engine, 'publishLocalVideoStream', true)
-        try { await callOptional(engine, 'subscribe', session.renderUid) } catch {}
-        console.info(`[live-swap] RTC PUBLISHED live_id=${session.liveId} after=${sinceCreate()}ms`)
-      })().catch((err) => {
-        step = 'rtc_join'
-        throw err
-      })
-
-      const signalingReady = new Promise<void>((resolve, reject) => {
-        const timeout = window.setTimeout(() => reject(new Error('conn_init_ack timeout')), CONN_INIT_TIMEOUT_MS)
-        timersRef.current.push(timeout)
-        let acked = false
-        let opened = false
-        let notReadyRetries = 0
-        let lastSignal = 'none'
-        const init = () => sendSignal(1, { conn_init: { version: 1 } })
-        socket.onopen = () => {
-          opened = true
-          console.info(`[live-swap] WS OPEN live_id=${session.liveId} after=${sinceCreate()}ms`)
-          init()
-        }
-        socket.onmessage = (event) => {
-          let msg: any
-          try { msg = JSON.parse(event.data) } catch { return }
-          lastSignal = `type=${msg?.type} ${Object.keys(msg?.payload ?? {}).join(',')}`
-          const ack = msg?.payload?.conn_init_ack
-          if (msg?.type === 2 && ack) {
-            if (ack.success) {
-              if (!acked) { acked = true; window.clearTimeout(timeout); resolve() }
-            } else if (ack.error_code === 'NOT_READY') {
-              // Vidu re-pushes the success ack itself once rendering is ready; resending conn_init is not needed.
-              setConnectionState('warming_up')
-              notReadyRetries += 1
-            } else {
-              reject(new Error(`conn_init_ack ${ack.error_code ?? 'unknown'} ${ack.error_msg ?? ''}`.trim()))
-            }
-          }
-          if (msg?.type === 14 && msg?.payload?.switch_prompt_ack && !msg.payload.switch_prompt_ack.success) {
-            setError("Impossible de changer d'avatar. Veuillez réessayer.")
-          }
-          if (msg?.type === 6) {
-            const reason = msg?.payload?.hangup?.hangup_reason ?? 'unknown'
-            if (!acked) {
-              reject(new Error(`vidu hangup before ack: ${reason}`))
-              return
-            }
-            if (socketRef.current !== socket) return
-            console.error(`[live-swap] vidu hangup: ${reason}`)
-            setError('Session Live Swap terminée.')
-            void teardown('server_hangup')
-          }
-        }
-        socket.onclose = (event) => {
-          const current = socketRef.current === socket
-          console.info(`[live-swap] WS CLOSE live_id=${session.liveId} code=${event.code} opened=${opened} acked=${acked} current=${current} after=${sinceCreate()}ms`)
-          // A socket replaced or torn down by the client must not tear down the newer session.
-          if (!current && acked) return
-          if (!acked) {
-            reject(new Error(`ws closed ${event.code}${event.reason ? ` ${event.reason}` : ''} opened=${opened} notReady=${notReadyRetries} last=${lastSignal}`))
-          } else if (sessionRef.current) void teardown('closed')
-        }
-      })
-
-      await Promise.all([signalingReady, rtcReady])
+      console.info(`[live-swap] RTC PUBLISHED live_id=${session.liveId} after=${sinceCreate()}ms`)
 
       const noOutput = window.setTimeout(() => {
         if (!elapsedTimerRef.current) {
@@ -378,8 +425,13 @@ export function useViduSwap() {
     } catch (err) {
       const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
       console.error(`[live-swap] connect failed at step=${step}`, err)
+      console.error(`[live-swap][STEP] FAILED last_success=${lastStep} failed_code=${step} error="${detail}"`)
       const report = new URLSearchParams({ sessionId, failedStep: step, detail: detail.slice(0, 300) })
-      void fetch(`/api/vidu/session?${report}`, { method: 'DELETE', keepalive: true }).catch(() => {})
+      if (createdLiveId) report.set('liveId', createdLiveId)
+      void fetch(`/api/vidu/session?${report}`, { method: 'DELETE', keepalive: true })
+        .then((r) => r.json())
+        .then((d) => console.info(`[live-swap][STEP] SESSION_STOPPED billed=${d?.live?.billedSeconds ?? 'unknown'}s close_reason=${d?.live?.closeReason ?? 'unknown'}`))
+        .catch(() => {})
 
       const denied = err instanceof DOMException && err.name === 'NotAllowedError'
       const message = err instanceof UserFacingError ? err.message : `${LIVE_SWAP_GENERIC_ERROR} (code : ${step})`
