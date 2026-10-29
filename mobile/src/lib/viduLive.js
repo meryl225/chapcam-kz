@@ -24,7 +24,7 @@ function httpErrorMessage(status, body) {
   if (status === 409) return 'Un Live Swap est déjà en cours sur ce compte. Ferme-le puis réessaie dans une minute.'
   if (status === 429) return body?.error || 'Limite quotidienne atteinte. Réessaie demain.'
   if (status === 400 && body?.error && !String(body.error).toLowerCase().includes('vidu')) return body.error
-  if (typeof body?.detail === 'string' && body.detail.includes('AuditSubmitIllegal')) {
+  if (body?.code === 'avatar_rejected' || (typeof body?.detail === 'string' && body.detail.includes('AuditSubmitIllegal'))) {
     return 'Cette photo a été refusée par le contrôle de contenu. Choisis une photo nette d\u2019un visage de face.'
   }
   return LIVE_SWAP_GENERIC_ERROR
