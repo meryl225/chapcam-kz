@@ -270,11 +270,11 @@ export const translations: Record<string, string> = {
   "Oui ! ChapCam fonctionne avec toutes les applications de visioconference : WhatsApp, Telegram, Zoom, Microsoft Teams, Google Meet, Discord, Skype, TikTok Live, et bien d'autres. Plus d'infos sur chapcam.com.":
     "Yes! ChapCam works with all video conferencing apps: WhatsApp, Telegram, Zoom, Microsoft Teams, Google Meet, Discord, Skype, TikTok Live, and many more. More info on chapcam.com.",
   "Quels sont les tarifs disponibles ?": "What pricing plans are available?",
-  "ChapCam propose plusieurs formules adaptees a vos besoins : Starter (10 000 FCFA pour 1 mois), Premium (50 000 FCFA pour 90 jours), VIP PRO (85 000 FCFA pour 365 jours) et VIP DEBOUT (150 000 FCFA, 1 h 10 min). Consultez tous les details sur chapcam.com.":
-    "ChapCam offers several plans to fit your needs: Starter (10,000 FCFA for 1 month), Premium (50,000 FCFA for 90 days), VIP PRO (85,000 FCFA for 365 days) and VIP DEBOUT (150,000 FCFA, 1 h 10 min). See all details on chapcam.com.",
+  "ChapCam propose plusieurs formules adaptees a vos besoins : Testeur (5 000 FCFA, 10 min Live Swap), Starter (10 000 FCFA, 25 min Live Swap), Premium (50 000 FCFA, 3 h Live Swap), VIP PRO (85 000 FCFA, 6 h Live Swap) et VIP DEBOUT (150 000 FCFA, 10 h Live Swap). Consultez tous les details sur chapcam.com.":
+    "ChapCam offers several plans to fit your needs: Testeur (5,000 FCFA, 10 min Live Swap), Starter (10,000 FCFA, 25 min Live Swap), Premium (50,000 FCFA, 3 h Live Swap), VIP PRO (85,000 FCFA, 6 h Live Swap) and VIP DEBOUT (150,000 FCFA, 10 h Live Swap). See all details on chapcam.com.",
   "Comment fonctionnent les points ?": "How do points work?",
-  "2 points = 1 seconde de transformation. Le plan Starter offre 720 points (6 min), Premium offre 3 600 points (30 min), VIP PRO offre 5 400 points (45 min) et VIP DEBOUT offre 8 400 points (1 h 10 min).":
-    "2 points = 1 second of transformation. The Starter plan offers 720 points (6 min), Premium offers 3,600 points (30 min), VIP PRO offers 5,400 points (45 min) and VIP DEBOUT offers 8,400 points (1 h 10 min).",
+  "2 points = 1 seconde de Live Swap. Testeur : 10 min, Starter : 25 min, Premium : 3 h, VIP PRO : 6 h et VIP DEBOUT : 10 h. Le compteur ne décompte que le temps réellement utilisé.":
+    "2 points = 1 second of Live Swap. Testeur: 10 min, Starter: 25 min, Premium: 3 h, VIP PRO: 6 h and VIP DEBOUT: 10 h. The counter only deducts time actually used.",
   "Mes donnees sont-elles securisees ?": "Is my data secure?",
   "Absolument. Chez ChapCam, la securite de vos donnees est notre priorite. Vos informations sont protegees et nous ne les partageons jamais avec des tiers.":
     "Absolutely. At ChapCam, the security of your data is our priority. Your information is protected and we never share it with third parties.",

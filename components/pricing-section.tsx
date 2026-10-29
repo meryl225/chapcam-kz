@@ -30,7 +30,8 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "360 points (3 min)",
+      "10 min Live Swap",
+      "Rendu humain ultra-réaliste",
       "Qualite HD"
     ],
     photoVideos: 0,
@@ -41,7 +42,7 @@ const plans = [
     popular: false,
     highlight: false,
     bestOffer: false,
-    watermark: "with" as Watermark,
+    watermark: "auto" as Watermark,
     icon: Star
   },
   {
@@ -54,7 +55,8 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "720 points (6 min)",
+      "25 min Live Swap",
+      "Rendu humain ultra-réaliste",
       "Qualite HD 1080p"
     ],
     photoVideos: 2,
@@ -65,7 +67,7 @@ const plans = [
     popular: false,
     highlight: false,
     bestOffer: false,
-    watermark: "with" as Watermark,
+    watermark: "auto" as Watermark,
     icon: Zap
   },
   {
@@ -78,7 +80,8 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "3 600 points (30 min)",
+      "3 h Live Swap",
+      "Rendu humain ultra-réaliste",
       "Rendu sans logo ChapCam inclus",
       "Qualite 4K Ultra HD",
       "Support prioritaire"
@@ -105,7 +108,8 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "5 400 points (45 min)",
+      "6 h Live Swap",
+      "Rendu humain ultra-réaliste",
       "Rendu Full HD 1080p sans logo",
       "Studio CHAPCAM : scènes en direct (décors, styles, effets)",
       "Prompts personnalisés en direct + Enhance",
@@ -134,7 +138,8 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "8 400 points (1 h 10 min)",
+      "10 h Live Swap",
+      "Rendu humain ultra-réaliste",
       "Rendu Full HD 1080p sans logo",
       "Studio CHAPCAM complet : scènes en direct (décors, styles, effets, arrière-plans)",
       "Prompts personnalisés illimités en direct + Enhance",
