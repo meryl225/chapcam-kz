@@ -217,6 +217,7 @@ export const translations: Record<string, string> = {
   "Voir moins": "See less",
   "Studio Photo en Vidéo :": "Photo to Video Studio:",
   "vidéos de 30s incluses": "30s videos included",
+  "jetons inclus": "tokens included",
   "Message Vocal :": "Voice Message:",
   "messages vocaux de 15s inclus": "15s voice messages included",
   "{n} messages vocaux de {s}s inclus": "{n} {s}s voice messages included",

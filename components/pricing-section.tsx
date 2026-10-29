@@ -7,6 +7,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useState } from "react"
 import { useT } from "@/lib/i18n/language-provider"
+import { PLANS } from "@/lib/plans"
 import {
   CURRENCIES,
   useCurrencySelection,
@@ -433,16 +434,19 @@ export function PricingSection() {
                   )
                 })()}
 
-                {/* Studio Photo en Video inclus dans le forfait Live Swap.
-                    Non affiche pour Starter (10.000 F) ni le Forfait Testeur. */}
-                {plan.id !== "starter" && plan.id !== "testeur" && (
-                  <div className="mb-4 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
-                    <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
-                    <p className="text-sm font-semibold text-emerald-300 leading-snug">
-                      {t("Studio Photo en Vidéo :")} {plan.photoVideos} {t("vidéos de 30s incluses")}
-                    </p>
-                  </div>
-                )}
+                {/* Jetons inclus : meme source que la page /dashboard/plans (lib/plans.ts). */}
+                {(() => {
+                  const jetons = PLANS.find((p) => p.id === plan.id)?.jetons
+                  if (!jetons) return null
+                  return (
+                    <div className="mb-4 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+                      <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
+                      <p className="text-sm font-semibold text-emerald-300 leading-snug">
+                        {jetons.toLocaleString("fr-FR")} {t("jetons inclus")}
+                      </p>
+                    </div>
+                  )
+                })()}
 
                 {/* Message Vocal inclus : messages vocaux IA de 15s (TTS ou changement
                     de voix). Non affiche pour le Forfait Testeur (pack minutes). */}
