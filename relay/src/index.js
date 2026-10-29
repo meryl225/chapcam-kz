@@ -173,9 +173,12 @@ export class LiveRelay {
         } else if (msg?.type === 14 && msg?.payload?.switch_prompt_ack && !msg.payload.switch_prompt_ack.success) {
           toClient({ t: 'avatar_failed' })
         } else if (msg?.type === 6) {
-          console.log(`[relay] upstream hangup live=${ticket.lid} ${msg?.payload?.hangup?.hangup_reason ?? ''}`)
+          const upstreamReason = String(msg?.payload?.hangup?.hangup_reason ?? '')
+          console.log(`[relay] upstream hangup live=${ticket.lid} ${upstreamReason}`)
           hungUp = true
-          toClient({ t: 'ended' })
+          // Only Chapcam-level reasons reach the client; provider reason strings stay here.
+          const reason = /internal|error/i.test(upstreamReason) ? 'engine_error' : /timeout/i.test(upstreamReason) ? 'timeout' : 'ended'
+          toClient({ t: 'ended', reason })
         }
       })
     } else {

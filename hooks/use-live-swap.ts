@@ -10,6 +10,7 @@ const ALIRTC_SDK_URL = 'https://g.alicdn.com/apsara-media-box/imp-web-rtc/7.1.9/
 const CONN_INIT_TIMEOUT_MS = 120_000
 const OUTPUT_TIMEOUT_MS = 90_000
 const REFERENCE_MAX_SIDE = 1024
+const MAX_AUTO_RETRIES = 1
 
 export type LiveEditingType = 'subject_replacement' | 'style_transfer' | 'virtual_tryon' | 'background_replacement'
 
@@ -108,6 +109,9 @@ export function useLiveSwap() {
   const elapsedTimerRef = useRef<number | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  const autoRetriesRef = useRef(0)
+  const lastConnectRef = useRef<{ avatarImageUrl: string; options?: Record<string, any> } | null>(null)
+  const connectRef = useRef<((avatarImageUrl: string, options?: Record<string, any>) => Promise<void>) | null>(null)
 
   const clearTimers = () => {
     timersRef.current.forEach((t) => window.clearTimeout(t))
@@ -155,7 +159,9 @@ export function useLiveSwap() {
 
     if (session) {
       const query = new URLSearchParams({ session: session.handle })
-      void fetch(`/api/live/session?${query}`, { method: 'DELETE', keepalive: true }).catch(() => {})
+      const release = fetch(`/api/live/session?${query}`, { method: 'DELETE', keepalive: true }).catch(() => {})
+      // A restart must wait for the account's session lock to be released, or the new session is refused.
+      if (reason === 'engine_restart') await release
       console.info(`[live-swap][STEP] SESSION_STOPPED reason=${reason}`)
     }
 
@@ -193,6 +199,8 @@ export function useLiveSwap() {
       return
     }
     startingRef.current = true
+    if (!options?.isAutoRetry) autoRetriesRef.current = 0
+    lastConnectRef.current = { avatarImageUrl, options }
     const sessionId = options?.sessionId ?? newConnId()
     const editingType = options?.editingType ?? 'subject_replacement'
     setError(null)
@@ -226,9 +234,28 @@ export function useLiveSwap() {
           } else if (msg?.t === 'avatar_failed') {
             setError("Impossible de changer d'avatar. Veuillez réessayer.")
           } else if (msg?.t === 'ended') {
-            if (!ready) return reject(new Error('ended before ready'))
+            if (!ready) return reject(new Error(`ended before ready ${msg.reason ?? ''}`.trim()))
             if (socketRef.current !== socket) return
-            setError('Session Live Swap terminée.')
+            const engineCrash = msg.reason === 'engine_error'
+            console.warn(`[live-swap] session ended by server reason=${msg.reason ?? 'unknown'}`)
+            // The engine's render worker occasionally crashes on its side; restart once transparently.
+            const canRetry = engineCrash && autoRetriesRef.current < MAX_AUTO_RETRIES && lastConnectRef.current
+            if (canRetry) {
+              autoRetriesRef.current += 1
+              const { avatarImageUrl: url, options: opts } = lastConnectRef.current!
+              void teardown('engine_restart').then(() => {
+                setConnectionState('reconnecting')
+                void connectRef.current?.(url, { ...opts, sessionId: undefined, isAutoRetry: true })
+              })
+              return
+            }
+            setError(
+              engineCrash
+                ? 'Le moteur Live Swap a rencontré une erreur. Relance le swap.'
+                : msg.reason === 'timeout'
+                  ? 'Session Live Swap expirée. Relance le swap.'
+                  : 'Session Live Swap terminée.',
+            )
             void teardown('server_hangup')
           }
         }
@@ -403,6 +430,7 @@ export function useLiveSwap() {
       startingRef.current = false
     }
   }, [fail, teardown])
+  connectRef.current = connect
 
   // Success sends no ack by design, so the switch is sent exactly once.
   const updateAvatar = useCallback(async (avatarImageUrl: string) => {
