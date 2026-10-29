@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { isAdminRequest } from '@/lib/admin-auth'
+import { ADMIN_EMAIL, isAdminRequest } from '@/lib/admin-auth'
+import { creditPoints } from '@/lib/points-ledger'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { resolveUserIdByEmail } from '@/lib/fulfillment'
 import { POINTS_PER_SECOND_SD } from '@/lib/swap-pricing'
@@ -55,10 +56,9 @@ export async function POST(request: NextRequest) {
 
     const pointsToAdd = minutes * POINTS_PER_MINUTE
 
-    // Recuperer l'abonnement (source du solde Live Swap).
     const { data: sub, error: fetchErr } = await admin
       .from('subscriptions')
-      .select('id, points, max_points')
+      .select('id')
       .eq('user_id', userId)
       .maybeSingle()
 
@@ -67,40 +67,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Erreur lecture abonnement.' }, { status: 500 })
     }
 
-    const now = new Date().toISOString()
-    let newPoints: number
-
-    if (sub) {
-      const current = sub.points || 0
-      newPoints = current + pointsToAdd
-      // On releve le plafond si besoin pour ne jamais ecreter le cadeau admin.
-      const newMax = Math.max(sub.max_points || 0, newPoints)
-      const { error: updErr } = await admin
-        .from('subscriptions')
-        .update({ points: newPoints, max_points: newMax, updated_at: now })
-        .eq('id', sub.id)
-      if (updErr) {
-        console.error('[live-minutes] update points:', updErr)
-        return NextResponse.json({ error: 'Erreur mise a jour des points.' }, { status: 500 })
-      }
-    } else {
-      // Pas d'abonnement : on en cree un minimal actif porteur des points offerts.
-      newPoints = pointsToAdd
+    if (!sub) {
+      // Pas d'abonnement : ligne minimale active, creditee ensuite par credit_points().
       const { error: insErr } = await admin.from('subscriptions').insert({
         user_id: userId,
         email,
         plan: 'bonus',
         is_active: true,
         status: 'active',
-        points: newPoints,
-        max_points: newPoints,
-        updated_at: now,
+        points: 0,
+        max_points: 0,
+        updated_at: new Date().toISOString(),
       })
       if (insErr) {
         console.error('[live-minutes] insert subscription:', insErr)
         return NextResponse.json({ error: 'Erreur creation du solde.' }, { status: 500 })
       }
     }
+
+    // Chaque ajout est journalise (qui, quand, combien) dans points_ledger, et
+    // les ajouts superieurs a 3 h levent une alerte dans credit_alerts.
+    const forwardedFor = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null
+    const credit = await creditPoints(admin, {
+      userId,
+      delta: pointsToAdd,
+      kind: 'admin_grant',
+      source: 'admin:live-minutes',
+      actor: `admin:${ADMIN_EMAIL}`,
+      meta: { email, minutes, ip: forwardedFor },
+    })
+    const newPoints = credit.balance
 
     const totalMinutes = Math.floor(newPoints / POINTS_PER_MINUTE)
 

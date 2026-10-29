@@ -26,6 +26,7 @@ import { creditJetons } from '@/lib/jetons'
 import { normalizePlanName } from '@/lib/watermark'
 import { createPcLicense } from '@/lib/pc-license'
 import { grantLiveWindow } from '@/lib/live-access'
+import { creditPoints } from '@/lib/points-ledger'
 import {
   sendSubscriptionApprovedEmail,
   sendLiveAccessApprovedEmail,
@@ -109,8 +110,9 @@ export async function activateSubscription(
   plan: { id: string; price: number; points: number; jetons: number; durationDays: number },
   // endDate : echeance imposee par le magasin (Apple). Elle remplace la duree du
   // forfait, sans jamais raccourcir une periode deja payee plus longue.
-  opts?: { endDate?: Date },
-): Promise<{ now: Date; end: Date }> {
+  // reference : cle d'idempotence du paiement (une reference = un seul credit).
+  opts?: { endDate?: Date; reference?: string | null; source?: string },
+): Promise<{ now: Date; end: Date; applied: boolean }> {
   const now = new Date()
   const durationMs = plan.durationDays * 24 * 60 * 60 * 1000
 
@@ -125,8 +127,6 @@ export async function activateSubscription(
   const prevActive = existing && existing.is_active && existing.end_date
     ? new Date(existing.end_date) > now
     : false
-  const prevPoints = prevActive ? Number(existing?.points ?? 0) : 0
-  const prevMax = prevActive ? Number(existing?.max_points ?? 0) : 0
   const base = prevActive && existing?.end_date ? new Date(existing.end_date) : now
   const end = opts?.endDate
     ? new Date(Math.max(opts.endDate.getTime(), prevActive ? base.getTime() : 0))
@@ -138,20 +138,33 @@ export async function activateSubscription(
     plan: normalizePlanName(plan.id),
     amount: plan.price,
     status: 'active',
-    points: prevPoints + plan.points,
-    max_points: prevMax + plan.points,
     is_active: true,
     start_date: now.toISOString(),
     end_date: end.toISOString(),
     expires_at: end.toISOString(),
   }
 
+  if (!existing) {
+    const { error } = await admin.from('subscriptions').insert({ ...subPayload, points: 0, max_points: 0 })
+    if (error) throw new Error(`subscriptions insert: ${error.message}`)
+  }
+
+  // Le solde n'est ecrit QUE par credit_points() : credit + journal dans la meme
+  // transaction. Un forfait expire repart de zero (mode 'set').
+  const credit = await creditPoints(admin, {
+    userId,
+    delta: plan.points,
+    mode: prevActive ? 'add' : 'set',
+    kind: 'subscription',
+    source: opts?.source ?? 'fulfillment',
+    reference: opts?.reference ?? null,
+    meta: { plan: plan.id, price: plan.price },
+  })
+  if (!credit.applied) return { now, end, applied: false }
+
   if (existing) {
     const { error } = await admin.from('subscriptions').update(subPayload).eq('id', existing.id)
     if (error) console.error('[fulfillment] Erreur update subscription:', error.message)
-  } else {
-    const { error } = await admin.from('subscriptions').insert(subPayload)
-    if (error) console.error('[fulfillment] Erreur insert subscription:', error.message)
   }
 
   // Les nouveaux forfaits creditent le portefeuille de jetons.
@@ -183,7 +196,7 @@ export async function activateSubscription(
     }
   }
 
-  return { now, end }
+  return { now, end, applied: true }
 }
 
 // Credite des MINUTES de voix (ChapVoice / Voice Swap) pour un user donne.
@@ -244,18 +257,16 @@ export async function creditMinutes(
   userId: string,
   email: string,
   offer: { id: string; points: number; validityDays: number },
-): Promise<{ points: number }> {
+  opts?: { reference?: string | null; source?: string },
+): Promise<{ points: number; applied: boolean }> {
   const now = new Date()
   const durationMs = offer.validityDays * 24 * 60 * 60 * 1000
 
   const { data: existing } = await admin
     .from('subscriptions')
-    .select('id, points, max_points, plan, expires_at, end_date')
+    .select('id, plan, expires_at, end_date')
     .eq('user_id', userId)
     .maybeSingle()
-
-  const prevPoints = Number(existing?.points ?? 0)
-  const prevMax = Number(existing?.max_points ?? 0)
 
   // Fenetre de validite : on ne raccourcit JAMAIS une expiration plus lointaine
   // (ex : VIP annuel) — on la prolonge seulement si elle est plus proche.
@@ -266,8 +277,6 @@ export async function creditMinutes(
   const payload: Record<string, any> = {
     user_id: userId,
     email,
-    points: prevPoints + offer.points,
-    max_points: prevMax + offer.points,
     is_active: true,
     expires_at: end.toISOString(),
     end_date: end.toISOString(),
@@ -277,16 +286,29 @@ export async function creditMinutes(
   // eu d'abonnement, on cree une ligne 'free' qui porte juste les minutes achetees.
   if (!existing?.plan) payload.plan = 'free'
 
+  if (!existing) {
+    const { error } = await admin
+      .from('subscriptions')
+      .insert({ ...payload, start_date: now.toISOString(), points: 0, max_points: 0 })
+    if (error) throw new Error(`subscriptions insert: ${error.message}`)
+  }
+
+  const credit = await creditPoints(admin, {
+    userId,
+    delta: offer.points,
+    kind: 'minutes',
+    source: opts?.source ?? 'fulfillment',
+    reference: opts?.reference ?? null,
+    meta: { offer: offer.id },
+  })
+  if (!credit.applied) return { points: credit.balance, applied: false }
+
   if (existing) {
     const { error } = await admin.from('subscriptions').update(payload).eq('id', existing.id)
     if (error) console.error('[fulfillment] Erreur update minutes:', error.message)
-  } else {
-    payload.start_date = now.toISOString()
-    const { error } = await admin.from('subscriptions').insert(payload)
-    if (error) console.error('[fulfillment] Erreur insert minutes:', error.message)
   }
 
-  return { points: prevPoints + offer.points }
+  return { points: credit.balance, applied: true }
 }
 
 // Recharge Live Swap (consommable Apple) : ajoute uniquement au solde, sans
@@ -297,38 +319,37 @@ export async function creditTopupPoints(
   userId: string,
   email: string,
   points: number,
-): Promise<void> {
+  opts?: { reference?: string | null; source?: string },
+): Promise<{ applied: boolean; balance: number }> {
   const now = new Date().toISOString()
   const { data: existing, error: readErr } = await admin
     .from('subscriptions')
-    .select('id, points, max_points')
+    .select('id')
     .eq('user_id', userId)
     .maybeSingle()
   if (readErr) throw new Error(`subscriptions read: ${readErr.message}`)
 
-  if (existing) {
-    const { error } = await admin
-      .from('subscriptions')
-      .update({
-        points: Number(existing.points ?? 0) + points,
-        max_points: Number(existing.max_points ?? 0) + points,
-        updated_at: now,
-      })
-      .eq('id', existing.id)
-    if (error) throw new Error(`subscriptions update: ${error.message}`)
-  } else {
+  if (!existing) {
     const { error } = await admin.from('subscriptions').insert({
       user_id: userId,
       email,
       plan: 'free',
       is_active: false,
-      points,
-      max_points: points,
+      points: 0,
+      max_points: 0,
       start_date: now,
       updated_at: now,
     })
     if (error) throw new Error(`subscriptions insert: ${error.message}`)
   }
+
+  return creditPoints(admin, {
+    userId,
+    delta: points,
+    kind: 'topup',
+    source: opts?.source ?? 'store',
+    reference: opts?.reference ?? null,
+  })
 }
 
 export interface PurchaseInput {
@@ -336,6 +357,9 @@ export interface PurchaseInput {
   email: string
   fullName: string
   userId?: string | null
+  // Token du paiement verifie : cle d'idempotence du credit dans points_ledger.
+  reference?: string | null
+  source?: string
 }
 
 export interface PurchaseResult {
@@ -536,7 +560,10 @@ export async function creditPurchase(
   // Les packs de minutes restent des recharges. Le produit anniv_5 est
   // maintenant un vrai forfait via getPlan(), donc il passe par activateSubscription.
   // Minutes supplementaires : on credite des points SANS changer le forfait.
-    const { points } = await creditMinutes(admin, userId, input.email, minutesOffer)
+    const { points } = await creditMinutes(admin, userId, input.email, minutesOffer, {
+      reference: input.reference,
+      source: input.source,
+    })
     return {
       ok: true,
       kind: 'minutes',
@@ -546,7 +573,10 @@ export async function creditPurchase(
   }
 
   // Formule a points
-  const { end } = await activateSubscription(admin, userId, input.email, plan!)
+  const { end } = await activateSubscription(admin, userId, input.email, plan!, {
+    reference: input.reference,
+    source: input.source,
+  })
   sendSubscriptionApprovedEmail(
     input.email,
     input.fullName,
@@ -812,7 +842,7 @@ async function fulfillConfirmedInvoice(params: {
           amountXof: totalAmount || Number(reqRow?.amount || cd.amount_xof || 0),
           token,
         })
-      : await creditPurchase(admin, { productId, email, fullName, userId })
+      : await creditPurchase(admin, { productId, email, fullName, userId, reference: `paydunya:${token}`, source })
   } catch (e) {
     // Le credit a JETE une exception (ex: Neon indisponible). Sans ce catch, la
     // reservation processed_payments resterait orpheline (credited=false) et

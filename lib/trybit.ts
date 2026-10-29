@@ -314,7 +314,7 @@ export async function fulfillTrybitInvoice(params: {
           amountXof: Number(reqRow?.amount || 0),
           token,
         })
-      : await creditPurchase(admin, { productId, email, fullName, userId })
+      : await creditPurchase(admin, { productId, email, fullName, userId, reference: `trybit:${token}`, source: 'trybit' })
   } catch (e) {
     // Le credit a jete : on libere le verrou pour permettre une nouvelle tentative.
     await admin.from('processed_payments').delete().eq('token', token)

@@ -206,7 +206,11 @@ export async function applyAppleTransaction(
     return { ...base, status: 'activated' }
   }
 
-  await activateSubscription(admin, opts.userId, email, plan, { endDate: new Date(tx.expiresDate) })
+  await activateSubscription(admin, opts.userId, email, plan, {
+    endDate: new Date(tx.expiresDate),
+    reference: token,
+    source: opts.source,
+  })
   await admin.from('processed_payments').update({ credited: true }).eq('token', token)
   await logPaymentEvent(admin, { ...logBase, status: 'completed', credited: true })
   return { ...base, status: 'activated' }
