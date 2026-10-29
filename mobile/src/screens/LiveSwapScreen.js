@@ -668,7 +668,11 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
       {granted ? (
         <View style={[styles.rail, { top: topInset + 84 }]}>
           <Pressable
-            onPress={() => setFacing((f) => (f === 'front' ? 'back' : 'front'))}
+            onPress={() => {
+              // While the native engine owns the camera, flip it there instead of reopening a preview capture.
+              if (rtcOwnsCamera) clientRef.current?.switchCamera?.()
+              setFacing((f) => (f === 'front' ? 'back' : 'front'))
+            }}
             accessibilityRole="button"
             accessibilityLabel={facing === 'front' ? 'Passer à la caméra arrière' : 'Passer à la caméra avant'}
             style={({ pressed }) => [styles.railBtn, pressed && styles.pressed]}
