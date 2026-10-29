@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { X, Sparkles, Monitor, Smartphone, WandSparkles, Mic2, Zap, ArrowRight } from 'lucide-react'
+import { X, Monitor, Smartphone, WandSparkles, Hand, Zap, ArrowRight } from 'lucide-react'
 
 // Version de l'annonce : incremente pour re-afficher le popup a tous les clients.
-const ANNOUNCEMENT_KEY = 'chapcam-3.0-announcement-seen'
+const ANNOUNCEMENT_KEY = 'chapcam-5.0-announcement-seen'
 
 export function ChapCam2Announcement() {
   const router = useRouter()
@@ -62,7 +62,7 @@ export function ChapCam2Announcement() {
               muted
               playsInline
               preload="metadata"
-              aria-label="Démonstration vidéo de ChapCam 3.0"
+              aria-label="Démonstration vidéo de ChapCam 5.0"
             >
               <source src="/videos/chapcam-3-topup.mov" type="video/quicktime" />
               Votre navigateur ne prend pas en charge la vidéo de démonstration.
@@ -70,13 +70,13 @@ export function ChapCam2Announcement() {
           </div>
           <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary">
             <Zap className="h-3.5 w-3.5" />
-            Nouveau · ChapCam 3.0 disponible
+            Nouveau · Sortie le 29 octobre à 2h05
           </span>
           <h2 className="text-balance text-2xl font-bold text-foreground">
-            ChapCam 3.0 est disponible
+            ChapCam 5.0 est disponible
           </h2>
           <p className="mt-2 text-pretty text-sm leading-relaxed text-muted-foreground">
-            Une nouvelle génération d’outils créatifs est disponible. Recharge ton compte pour en profiter dès maintenant.
+            Live Swap nouvelle génération : rendu humain ultra-réaliste, visage & corps entier, en temps réel et sans filigrane.
           </p>
         </div>
 
@@ -84,16 +84,20 @@ export function ChapCam2Announcement() {
         <div className="grid gap-3 px-6 py-6 sm:grid-cols-2">
           <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3">
             <WandSparkles className="h-5 w-5 flex-shrink-0 text-primary" />
-            <span className="text-sm text-foreground">Genjutsu & Motion Control</span>
+            <span className="text-sm text-foreground">Rendu ultra-réaliste</span>
           </div>
           <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3">
-            <Mic2 className="h-5 w-5 flex-shrink-0 text-primary" />
-            <span className="text-sm text-foreground">Voix humaine naturelle</span>
+            <Hand className="h-5 w-5 flex-shrink-0 text-primary" />
+            <span className="text-sm text-foreground">Tient tout objet en main</span>
           </div>
-          <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3 sm:col-span-2">
-            <Monitor className="h-5 w-5 flex-shrink-0 text-primary" />
+          <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3">
+            <Zap className="h-5 w-5 flex-shrink-0 text-primary" />
+            <span className="text-sm text-foreground">Temps réel · Sans filigrane</span>
+          </div>
+          <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3">
             <Smartphone className="h-5 w-5 flex-shrink-0 text-primary" />
-            <span className="text-sm text-foreground">Compatible téléphone et ordinateur</span>
+            <Monitor className="h-5 w-5 flex-shrink-0 text-primary" />
+            <span className="text-sm text-foreground">iPhone · Android · Windows · Mac</span>
           </div>
         </div>
 

@@ -7,6 +7,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useState } from "react"
 import { useT } from "@/lib/i18n/language-provider"
+import { ChapCam5Banner } from "@/components/chapcam-5-banner"
 import { PLANS } from "@/lib/plans"
 import {
   CURRENCIES,
@@ -216,45 +217,8 @@ export function PricingSection() {
           )}
         </motion.div>
 
-        {/* Annonce ChapCam 3.0 : les offres de recharge concernent le nouveau logiciel */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mb-12 rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 md:p-8"
-        >
-          <div className="flex flex-col items-center gap-4 text-center md:flex-row md:items-center md:gap-6 md:text-left">
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-black">
-              <Sparkles className="h-7 w-7" />
-            </div>
-            <div className="flex-1">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
-                {t("Nouveau · ChapCam 3.0 disponible")}
-              </div>
-              <h3 className="text-xl font-bold text-white md:text-2xl">
-                {t("Ces recharges alimentent ChapCam 3.0")}
-              </h3>
-              <p className="mt-2 text-pretty text-gray-300 leading-relaxed">
-                {t("Toutes les offres ci-dessous sont destinees a notre nouveau logiciel")}{" "}
-                <span className="font-semibold text-emerald-400">ChapCam 3.0</span>
-                {t(", avec Genjutsu, Motion Control et une voix humaine naturelle, sur")}{" "}
-                <span className="font-semibold text-white">{t("téléphone et ordinateur")}</span>{" "}
-                {t("et profite d'une expérience complète sur tous tes écrans")}{" "}
-                
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 text-sm text-gray-300 md:min-w-[220px]">
-              <span className="inline-flex items-center gap-2">
-                <Monitor className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                {t("Compatible téléphone et ordinateur")}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Palette className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                {t("Genjutsu · Motion Control · Voix humaine")}
-              </span>
-            </div>
-          </div>
-        </motion.div>
+        {/* Annonce ChapCam 5.0 : les offres de recharge concernent le nouveau logiciel */}
+        <ChapCam5Banner variant="dark" className="mb-12" />
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">

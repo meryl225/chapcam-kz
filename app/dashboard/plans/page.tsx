@@ -13,6 +13,7 @@ import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 import { PaymentBadgePopup } from '@/components/payment-badge-popup'
 import { CURRENCIES, useCurrencySelection, formatConverted, formatXof } from '@/lib/currency-convert'
 import { useT } from '@/lib/i18n/language-provider'
+import { ChapCam5Banner } from '@/components/chapcam-5-banner'
 
 function PlansContent() {
   const t = useT()
@@ -194,42 +195,8 @@ function PlansContent() {
         </motion.div>
         )}
 
-        {/* Annonce ChapCam 3.0 : les recharges concernent le nouveau logiciel */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-10 rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 md:p-8"
-        >
-          <div className="flex flex-col items-center gap-4 text-center md:flex-row md:items-center md:gap-6 md:text-left">
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-black">
-              <Sparkles className="h-7 w-7" />
-            </div>
-            <div className="flex-1">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
-                {t('Nouveau · Sorti en septembre')}
-              </div>
-              <h3 className="text-xl font-bold text-foreground md:text-2xl">
-                {t('Ces recharges alimentent ChapCam 3.0')}
-              </h3>
-              <p className="mt-2 text-pretty leading-relaxed text-muted-foreground">
-                {t('Toutes les offres ci-dessous sont destinees a notre nouveau logiciel')}{' '}
-                <span className="font-semibold text-emerald-400">ChapCam 3.0</span>{t(', qui fonctionne desormais avec')}{' '}
-                <span className="font-semibold text-foreground">{t('tout type de PC')}</span> {t('et permet meme de')}{' '}
-                <span className="font-semibold text-foreground">{t('changer la couleur de peau')}</span>.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 text-sm text-muted-foreground md:min-w-[220px]">
-              <span className="inline-flex items-center gap-2">
-                <Monitor className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                {t('Compatible avec tout type de PC')}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Palette className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                {t('Changement de la couleur de peau')}
-              </span>
-            </div>
-          </div>
-        </motion.div>
+        {/* Annonce ChapCam 5.0 : les recharges concernent le nouveau logiciel */}
+        <ChapCam5Banner className="mb-10" />
 
         {/* Forfait Testeur (5.000 F) : pack minutes "anniv_5" (10 min, sans logo).
             Offre permanente d'entree de gamme, ideale pour essayer ChapCam. */}

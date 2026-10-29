@@ -160,6 +160,19 @@ export const translations: Record<string, string> = {
   "avec ChapCam": "with ChapCam",
   "2 points = 1 seconde de transformation du visage et corps entier":
     "2 points = 1 second of full face and body transformation",
+  "Nouveau · Sortie le 29 octobre à 2h05": "New · Released October 29 at 2:05 AM",
+  "ChapCam 5.0 est disponible": "ChapCam 5.0 is available",
+  "Live Swap nouvelle génération • Rendu humain ultra-réaliste • Visage & corps entier • Temps réel • Sans filigrane":
+    "Next-generation Live Swap • Ultra-realistic human rendering • Face & full body • Real time • No watermark",
+  "Rendu humain ultra-réaliste": "Ultra-realistic human rendering",
+  "Transformation visage & corps entier": "Face & full-body transformation",
+  "Peut tenir et manipuler tout type d'objet en main pendant la transformation":
+    "Can hold and handle any object during the transformation",
+  "Transformation en temps réel": "Real-time transformation",
+  "Une expérience plus fluide et naturelle pour vos lives, appels vidéo et créations":
+    "A smoother, more natural experience for your lives, video calls and creations",
+  "Sans filigrane": "No watermark",
+  "CHAPCAM 5.0 — Transformez-vous. En temps réel.": "CHAPCAM 5.0 — Transform yourself. In real time.",
   "Nouveau · Sorti en septembre": "New · Released in September",
   "Ces recharges alimentent ChapCam 3.0": "These top-ups power ChapCam 3.0",
   "Toutes les offres ci-dessous sont destinees a notre nouveau logiciel":
