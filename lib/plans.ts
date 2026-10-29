@@ -41,9 +41,9 @@ export const PLANS: PlanConfig[] = [
     price: 5000,
     oldPrice: 5000,
     discount: 0,
-    points: 1200,
+    points: 600, // 300 s Live Swap
     jetons: 0,
-    minutes: '10 min',
+    minutes: '5 min',
     photoVideoQuota: 0,
     features: ['Transformation du visage et corps entier', 'Rendu humain ultra-réaliste', "Peut tenir tout type d'objet en main", 'Rendu sans logo ChapCam'],
     popular: false,
@@ -59,9 +59,9 @@ export const PLANS: PlanConfig[] = [
     price: 10000,
     oldPrice: 12000,
     discount: 17,
-    points: 3000,
+    points: 1800, // 900 s Live Swap
     jetons: 50,
-    minutes: '25 min',
+    minutes: '15 min',
     photoVideoQuota: 2,
     features: ['Transformation du visage et corps entier', 'Rendu humain ultra-réaliste', 'Rendu sans logo ChapCam', 'Qualite HD'],
     popular: false,
@@ -77,9 +77,9 @@ export const PLANS: PlanConfig[] = [
     price: 50000,
     oldPrice: 65000,
     discount: 23,
-    points: 21600,
+    points: 9600, // 4 800 s Live Swap
     jetons: 200,
-    minutes: '3 h',
+    minutes: '1h20',
     photoVideoQuota: 5,
     features: [
       'Transformation du visage et corps entier',
@@ -102,9 +102,9 @@ export const PLANS: PlanConfig[] = [
     price: 85000,
     oldPrice: 110000,
     discount: 23,
-    points: 43200,
+    points: 18000, // 9 000 s Live Swap
     jetons: 450,
-    minutes: '6 h',
+    minutes: '2h30',
     photoVideoQuota: 8,
     features: [
       'Transformation du visage et corps entier',
@@ -129,9 +129,9 @@ export const PLANS: PlanConfig[] = [
     price: 150000,
     oldPrice: 180000,
     discount: 25,
-    points: 72000,
+    points: 28800, // 14 400 s Live Swap
     jetons: 1000,
-    minutes: '10 h',
+    minutes: '4h',
     photoVideoQuota: 10,
     features: [
       'Transformation du visage et corps entier',

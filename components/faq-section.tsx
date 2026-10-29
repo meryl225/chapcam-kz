@@ -16,11 +16,11 @@ const faqs = [
   },
   {
     question: "Quels sont les tarifs disponibles ?",
-    answer: "ChapCam propose plusieurs formules adaptees a vos besoins : Testeur (5 000 FCFA, 10 min Live Swap), Starter (10 000 FCFA, 25 min Live Swap), Premium (50 000 FCFA, 3 h Live Swap), VIP PRO (85 000 FCFA, 6 h Live Swap) et VIP DEBOUT (150 000 FCFA, 10 h Live Swap). Consultez tous les details sur chapcam.com."
+    answer: "ChapCam propose plusieurs formules adaptees a vos besoins : Testeur (5 000 FCFA, 5 min Live Swap), Starter (10 000 FCFA, 15 min Live Swap), Premium (50 000 FCFA, 1h20 Live Swap), VIP PRO (85 000 FCFA, 2h30 Live Swap) et VIP DEBOUT (150 000 FCFA, 4h Live Swap). Consultez tous les details sur chapcam.com."
   },
   {
     question: "Comment fonctionnent les points ?",
-    answer: "2 points = 1 seconde de Live Swap. Testeur : 10 min, Starter : 25 min, Premium : 3 h, VIP PRO : 6 h et VIP DEBOUT : 10 h. Le compteur ne décompte que le temps réellement utilisé."
+    answer: "2 points = 1 seconde de Live Swap. Testeur : 5 min, Starter : 15 min, Premium : 1h20, VIP PRO : 2h30 et VIP DEBOUT : 4h. Le compteur ne décompte que le temps réellement utilisé."
   },
   {
     question: "Mes donnees sont-elles securisees ?",
