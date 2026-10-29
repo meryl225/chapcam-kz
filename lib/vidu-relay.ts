@@ -3,7 +3,7 @@ import { createCipheriv, createHmac, randomBytes } from 'node:crypto'
 
 // Browsers cannot reach Vidu's signaling socket directly (handshake works server-side only),
 // so they connect to the Cloudflare relay, exactly like the official Quick Start's local proxy.
-export const VIDU_RELAY_URL = process.env.VIDU_RELAY_URL || 'wss://relay.chapcam.com/live'
+export const VIDU_RELAY_URL = process.env.VIDU_RELAY_URL || 'wss://chapcam-vidu-relay.meryl-kacou.workers.dev/live'
 
 const TICKET_TTL_MS = 90_000
 const TICKET_KEY_LABEL = 'chapcam-vidu-relay-ticket-v1'
