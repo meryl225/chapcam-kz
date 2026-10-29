@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, Suspense } from 'react'
-import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift, Flame, Zap } from 'lucide-react'
+import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift, Flame, Zap, ArrowRight, ShieldCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -242,29 +242,42 @@ function PlansContent() {
                   </li>
                 </ul>
               </div>
-              <button
-                onClick={() => startCheckout(testeur.id)}
-                disabled={!!pendingKey}
-                style={{
-                  // Meme rendu "SaaS premium" que les forfaits pro (accent emeraude).
-                  backgroundImage:
-                    'linear-gradient(180deg, color-mix(in srgb, #fff 18%, #00ff88) 0%, #00ff88 48%, #00ff88e6 100%)',
-                  boxShadow:
-                    'inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.38), 0 6px 14px -8px rgba(0,0,0,0.55), 0 2px 4px -2px #00ff884d',
-                }}
-                className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl px-8 py-4 text-base font-bold text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[200px]"
-              >
-                {/* Reflet brillant qui balaie le bouton au survol */}
-                <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
-                {testeurLoading ? (
-                  <Loader2 className="relative h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    <span className="relative">{t('Recharger')}</span>
-                    <CreditCard className="relative h-5 w-5" />
-                  </>
-                )}
-              </button>
+              <div className="flex w-full flex-col items-center gap-3 md:w-auto md:min-w-[260px]">
+                <button
+                  onClick={() => startCheckout(testeur.id)}
+                  disabled={!!pendingKey}
+                  aria-busy={testeurLoading}
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(180deg, color-mix(in srgb, #fff 22%, #00ff88) 0%, #00ff88 50%, #00d973 100%)',
+                    boxShadow:
+                      'inset 0 0 0 1px rgba(255,255,255,0.22), inset 0 1px 0 rgba(255,255,255,0.45), 0 10px 30px -10px #00ff88aa, 0 2px 6px -2px rgba(0,0,0,0.5)',
+                  }}
+                  className="group relative flex w-full items-center justify-between gap-4 overflow-hidden rounded-2xl py-3 pl-6 pr-3 text-left text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {/* Reflet brillant qui balaie le bouton au survol */}
+                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                  <span className="relative flex flex-col leading-tight">
+                    <span className="text-lg font-extrabold">
+                      {testeurLoading ? t('Redirection...') : t('Recharger')}
+                    </span>
+                    <span className="text-xs font-semibold text-black/70">
+                      {formatXof(testeur.price)} FCFA · {testeur.minutes} {t('minutes')}
+                    </span>
+                  </span>
+                  <span className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-black/85 text-emerald-300 transition-transform duration-300 group-hover:translate-x-0.5">
+                    {testeurLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <ArrowRight className="h-5 w-5" />
+                    )}
+                  </span>
+                </button>
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                  {t('Paiement sécurisé · Activation immédiate')}
+                </p>
+              </div>
             </motion.div>
           )
         })()}
