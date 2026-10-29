@@ -231,7 +231,7 @@ function PlansContent() {
           </div>
         </motion.div>
 
-        {/* Forfait Testeur (5.000 F) : pack minutes "anniv_5" (3 min, avec logo).
+        {/* Forfait Testeur (5.000 F) : pack minutes "anniv_5" (10 min, sans logo).
             Offre permanente d'entree de gamme, ideale pour essayer ChapCam. */}
         {(() => {
           const testeur = getMinutesOffer('anniv_5')
@@ -262,8 +262,16 @@ function PlansContent() {
                     {t('Transformation du visage et corps entier')}
                   </li>
                   <li className="flex items-center gap-2">
-                    <Droplet className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    {t('Avec logo ChapCam')} · {t('Filigrane visible sur le rendu')}
+                    <Check className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                    {t('Rendu humain ultra-réaliste')}
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                    {t("Peut tenir tout type d'objet en main")}
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <DropletOff className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                    {t('Rendu sans logo ChapCam')}
                   </li>
                 </ul>
               </div>

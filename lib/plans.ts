@@ -45,7 +45,7 @@ export const PLANS: PlanConfig[] = [
     jetons: 0,
     minutes: '10 min',
     photoVideoQuota: 0,
-    features: ['Transformation du visage et corps entier', 'Rendu humain ultra-réaliste', 'Rendu sans logo ChapCam'],
+    features: ['Transformation du visage et corps entier', 'Rendu humain ultra-réaliste', "Peut tenir tout type d'objet en main", 'Rendu sans logo ChapCam'],
     popular: false,
     highlight: false,
     bestOffer: false,

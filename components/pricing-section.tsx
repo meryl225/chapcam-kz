@@ -33,7 +33,8 @@ const plans = [
       "Transformation du visage et corps entier",
       "10 min Live Swap",
       "Rendu humain ultra-réaliste",
-      "Qualite HD"
+      "Peut tenir tout type d'objet en main",
+      "Rendu sans logo ChapCam"
     ],
     photoVideos: 0,
     voiceMessages: 0,

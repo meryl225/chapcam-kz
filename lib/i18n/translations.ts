@@ -201,7 +201,8 @@ export const translations: Record<string, string> = {
   "MEILLEURE OFFRE": "BEST OFFER",
   POPULAIRE: "POPULAR",
   "Avec logo ChapCam": "With ChapCam logo",
-  "Filigrane visible sur le rendu": "Visible watermark on the output",
+    "Filigrane visible sur le rendu": "Visible watermark on the output",
+    "Peut tenir tout type d'objet en main": "Can hold any type of object",
   "Sans logo (automatique)": "Logo-free (automatic)",
   "Sans logo (sur demande)": "Logo-free (on request)",
   "Retrait du logo inclus, active automatiquement":
@@ -481,7 +482,8 @@ export const translations: Record<string, string> = {
   "MEILLEURE OFFRE": "BEST OFFER",
   "Édition VIP": "VIP Edition",
   "Avec logo ChapCam": "With ChapCam logo",
-  "Filigrane visible sur le rendu": "Watermark visible on the output",
+    "Filigrane visible sur le rendu": "Watermark visible on the output",
+    "Peut tenir tout type d'objet en main": "Can hold any type of object",
   "Sans logo (automatique)": "No logo (automatic)",
   "Sans logo (sur demande)": "No logo (on request)",
   "Retrait du logo inclus, active automatiquement":
@@ -727,7 +729,7 @@ export const translations: Record<string, string> = {
     "Unlock live CHAPCAM Studio prompts and watermark-free rendering with VIP PRO or VIP DEBOUT.",
   "Passer VIP": "Go VIP",
   Résolution: "Resolution",
-  "1080p réservé VIP": "1080p VIP only",
+  "1080p r��servé VIP": "1080p VIP only",
   "Choisir la résolution du live swap": "Choose the live swap resolution",
   "Connexion en cours...": "Connecting...",
   "Arrêter le Live Swap": "Stop Live Swap",
