@@ -1,0 +1,20 @@
+name = "chapcam-vidu-relay"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+workers_dev = true
+
+# Requires the chapcam.com zone to be on Cloudflare. Uncomment once DNS is moved.
+# routes = [{ pattern = "relay.chapcam.com", custom_domain = true }]
+
+[[durable_objects.bindings]]
+name = "LIVE_RELAY"
+class_name = "LiveRelay"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["LiveRelay"]
+
+[observability]
+enabled = true
+
+# Secret (not stored here): RELAY_TICKET_KEY = base64(HMAC-SHA256(VIDU_API_KEY, "chapcam-vidu-relay-ticket-v1"))

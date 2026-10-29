@@ -15,9 +15,10 @@ export type ViduEditingType = 'subject_replacement' | 'style_transfer' | 'virtua
 
 interface ViduSessionResponse {
   liveId: string
-  clientSecret: string
+  connId: string
   renderUid: string
-  wsUrl: string
+  relayUrl: string
+  ticket: string
   rtc: { token: string; user_id: string }
 }
 
@@ -315,51 +316,23 @@ export function useViduSwap() {
         throw new Error(`session HTTP ${res.status}${data?.code ? ` ${data.code}` : ''}${data?.detail ? ` - ${data.detail}` : ''}`)
       }
       const session = data as ViduSessionResponse
-      const connId = newConnId()
-      sessionRef.current = { liveId: session.liveId, connId, renderUid: session.renderUid, sessionId }
+      sessionRef.current = { liveId: session.liveId, connId: session.connId, renderUid: session.renderUid, sessionId }
       const createdAt = performance.now()
       const sinceCreate = () => Math.round(performance.now() - createdAt)
       createdLiveId = session.liveId
-      console.info(`[live-swap] SESSION CREATED live_id=${session.liveId} render_uid=${session.renderUid} secret_len=${session.clientSecret?.length ?? 0}`)
+      console.info(`[live-swap] SESSION CREATED live_id=${session.liveId} render_uid=${session.renderUid}`)
       mark('SESSION_CREATED', `live_id=${session.liveId}`)
 
-      // Official S2-Editing order: create -> WS -> successful conn_init_ack (re-send every 2s on
-      // NOT_READY) -> init AliRTC -> joinChannel -> preview + publish -> subscribe render_uid camera.
+      // Official S2-Editing order: create -> WS (through the relay, like the Quick Start proxy)
+      // -> successful conn_init_ack (re-send every 2s on NOT_READY) -> init AliRTC -> joinChannel
+      // -> preview + publish -> subscribe render_uid camera.
+      // Exactly one socket per session: the single-use ticket makes a retry impossible by design,
+      // and any failure tears the session down below.
       step = 'signaling'
-      const maxWsAttempts = 3
-      for (let attempt = 1; ; attempt++) {
-        const attemptConnId = attempt === 1 ? connId : newConnId()
-        if (sessionRef.current) sessionRef.current.connId = attemptConnId
-        const query = new URLSearchParams({ live_id: session.liveId, conn_id: attemptConnId, client_secret: session.clientSecret })
-        const socket = new WebSocket(`${session.wsUrl}?${query}`)
-        socketRef.current = socket
-        console.info(`[live-swap] WS CONNECT attempt=${attempt} live_id=${session.liveId} url=${session.wsUrl} params=${[...query.keys()].join(',')}`)
-        try {
-          await waitForConnInitAck(socket, session.liveId, sinceCreate)
-          break
-        } catch (wsErr) {
-          const neverOpened = wsErr instanceof Error && wsErr.message.includes('opened=false')
-          if (!neverOpened || attempt >= maxWsAttempts) {
-            if (neverOpened) {
-              // The browser hides the handshake status; ask the server for Vidu's real answer.
-              const probe = await fetch('/api/vidu/probe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ liveId: session.liveId, clientSecret: session.clientSecret }),
-              }).then((r) => r.json()).catch(() => null)
-              const hs = probe?.handshake
-              console.error(`[live-swap] WS PROBE server_status=${hs?.status ?? 'n/a'} body=${hs?.body || hs?.error || ''} live_status=${probe?.live?.status ?? 'n/a'} close_reason=${probe?.live?.closeReason ?? 'n/a'}`)
-              if (hs?.status === 101) {
-                throw new Error(`${wsErr.message} | server handshake OK: browser connection to api.vidu.com is blocked (network, VPN or extension)`)
-              }
-              throw new Error(`${wsErr.message} | vidu handshake ${hs?.status ?? 'n/a'} ${hs?.body ?? ''} live=${probe?.live?.status ?? 'n/a'}`)
-            }
-            throw wsErr
-          }
-          console.warn(`[live-swap] WS closed before open, retrying (${attempt}/${maxWsAttempts})`)
-          await new Promise((r) => setTimeout(r, 1000 * attempt))
-        }
-      }
+      const socket = new WebSocket(`${session.relayUrl}?${new URLSearchParams({ ticket: session.ticket })}`)
+      socketRef.current = socket
+      console.info(`[live-swap] WS CONNECT via relay live_id=${session.liveId} url=${session.relayUrl}`)
+      await waitForConnInitAck(socket, session.liveId, sinceCreate)
       console.info(`[live-swap] CONN_INIT_ACK live_id=${session.liveId} after=${sinceCreate()}ms`)
       mark('CONN_INIT_ACK / SESSION_READY')
 

@@ -3,3 +3,6 @@ electron/
 resources/akvirtualcamera/
 electron-builder.yml
 dist/
+
+# Worker Cloudflare (relais Vidu) - deploye separement avec wrangler
+relay/

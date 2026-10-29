@@ -3,8 +3,9 @@ import { LIVE_SWAP_GENERIC_ERROR } from '@/lib/live-swap-provider'
 import { createClient } from '@/lib/supabase/server'
 import { checkLiveAccess, claimLiveSession, releaseLiveSession } from '@/lib/live-guard'
 import { trackGPUUsage } from '@/lib/rate-limit'
+import { randomUUID } from 'node:crypto'
+import { VIDU_RELAY_URL, createRelayTicket } from '@/lib/vidu-relay'
 import {
-  VIDU_WS_URL,
   ViduApiError,
   createViduSession,
   getViduLive,
@@ -24,7 +25,7 @@ async function requireUser() {
 }
 
 // Cree une session Vidu S2-Editing. La cle API ne quitte jamais le serveur :
-// le client ne recoit que les identifiants ephemeres (client_secret + token RTC).
+// le client ne recoit que le token RTC et un ticket chiffre pour le relais (client_secret inclus, illisible).
 export async function POST(request: Request) {
   const user = await requireUser()
   if (!user) {
@@ -72,7 +73,17 @@ export async function POST(request: Request) {
   try {
     const session = await createViduSession(imageDataUri, editingType)
     console.log(`[Vidu] session created user=${user.id} live=${session.liveId} type=${editingType}`)
-    return NextResponse.json({ ...session, wsUrl: VIDU_WS_URL })
+    const connId = randomUUID()
+    const ticket = createRelayTicket({ liveId: session.liveId, connId, clientSecret: session.clientSecret, userId: user.id })
+    // client_secret stays sealed inside the ticket; only the relay can open it.
+    return NextResponse.json({
+      liveId: session.liveId,
+      renderUid: session.renderUid,
+      rtc: session.rtc,
+      connId,
+      relayUrl: VIDU_RELAY_URL,
+      ticket,
+    })
   } catch (err) {
     await releaseLiveSession(user.id, sessionId)
     const status = err instanceof ViduApiError ? err.status : 500
