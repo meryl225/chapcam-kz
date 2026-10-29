@@ -198,7 +198,7 @@ function PlansContent() {
         {/* Annonce ChapCam 5.0 : les recharges concernent le nouveau logiciel */}
         <ChapCam5Banner className="mb-10" />
 
-        {/* Forfait Testeur (5.000 F) : pack minutes "anniv_5" (10 min, sans logo).
+        {/* Forfait Testeur (5.000 F) : pack minutes "anniv_5" (5 min, sans logo).
             Offre permanente d'entree de gamme, ideale pour essayer ChapCam. */}
         {(() => {
           const testeur = getMinutesOffer('anniv_5')

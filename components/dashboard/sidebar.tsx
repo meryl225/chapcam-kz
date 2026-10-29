@@ -46,15 +46,6 @@ const PLAN_COLORS: Record<string, string> = {
   vipdebout: 'bg-yellow-500 text-black',
 }
 
-
-const PLAN_POINTS: Record<string, number> = {
-  free: 0,
-  '1day': 600,
-  '30days': 3000,
-  '90days': 7500,
-  '365days': 15000,
-}
-
 interface NavItem {
   href: string
   icon: React.ElementType

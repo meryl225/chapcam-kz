@@ -32,7 +32,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "10 min Live Swap",
+      "5 min Live Swap",
       "Rendu humain ultra-réaliste",
       "Peut tenir tout type d'objet en main",
       "Rendu sans logo ChapCam"
@@ -58,7 +58,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "25 min Live Swap",
+      "15 min Live Swap",
       "Rendu humain ultra-réaliste",
       "Qualite HD 1080p"
     ],
@@ -83,7 +83,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "3 h Live Swap",
+      "1h20 Live Swap",
       "Rendu humain ultra-réaliste",
       "Rendu sans logo ChapCam inclus",
       "Qualite 4K Ultra HD",
@@ -111,7 +111,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "6 h Live Swap",
+      "2h30 Live Swap",
       "Rendu humain ultra-réaliste",
       "Rendu Full HD 1080p sans logo",
       "Studio CHAPCAM : scènes en direct (décors, styles, effets)",
@@ -141,7 +141,7 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "10 h Live Swap",
+      "4h Live Swap",
       "Rendu humain ultra-réaliste",
       "Rendu Full HD 1080p sans logo",
       "Studio CHAPCAM complet : scènes en direct (décors, styles, effets, arrière-plans)",
