@@ -5,6 +5,7 @@ import { pointsPerSecond } from '@/lib/swap-pricing'
 import { trackGPUUsage } from '@/lib/rate-limit'
 import { cancelSubscription, claimLiveSession, releaseLiveSession } from '@/lib/live-guard'
 import { getTopupPoints, setTopupPoints } from '@/lib/liveswap-topup'
+import { RESERVATION_POINTS, RESERVATION_SECONDS } from '@/lib/swap-pricing'
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,14 +47,23 @@ export async function POST(request: NextRequest) {
       const admin = createAdminClient()
       const { data: reservation } = await admin
         .from('swap_sessions')
-        .select('id, points_used, finalized')
+        .select('id, points_used, duration_seconds, finalized')
         .eq('session_id', String(sessionId))
         .eq('user_id', user.id)
         .eq('finalized', false)
         .maybeSingle()
 
+      // Seul le warmup (aucun heartbeat recu) est remboursable. Sans ce garde,
+      // un client pouvait utiliser le swap puis reclamer le remboursement de
+      // TOUTE la session -> acces illimite et gratuit.
+      const onlyWarmup = (reservation?.duration_seconds || 0) <= RESERVATION_SECONDS
+      if (reservation && !onlyWarmup) {
+        if (sessionId) await releaseLiveSession(user.id, String(sessionId)).catch(() => {})
+        return NextResponse.json({ success: true, refunded: false })
+      }
+
       if (reservation && (reservation.points_used || 0) > 0) {
-        const refund = Math.max(0, Math.floor(reservation.points_used))
+        const refund = Math.max(0, Math.min(Math.floor(reservation.points_used), RESERVATION_POINTS))
         const { data: subscription } = await admin
           .from('subscriptions')
           .select('id, points, is_active, expires_at')
@@ -170,11 +180,27 @@ export async function POST(request: NextRequest) {
     // jamais plus que le max theorique (duree x tarif de la resolution). Ainsi
     // un client ne peut pas forger un pointsToDeduct arbitraire. On garde une
     // petite marge (1 palier) pour absorber les arrondis de synchronisation.
-    const requested = Math.floor(pointsToDeduct || (sessionDuration * rate) || 0)
-    const maxAllowed = sessionDuration > 0
-      ? Math.floor(sessionDuration * rate) + rate
-      : requested
-    const points = Math.max(0, Math.min(requested, maxAllowed))
+    // Le plancher est aussi calcule cote serveur : le temps reellement ecoule
+    // depuis le dernier heartbeat (moins une petite tolerance reseau). Un client
+    // ne peut donc plus payer 1 point par heartbeat en envoyant une duree minuscule.
+    const clientSeconds = Math.max(0, Math.min(Math.floor(Number(sessionDuration) || 0), 60))
+    let serverSeconds = 0
+    if (sessionId) {
+      const { data: prev } = await createAdminClient()
+        .from('swap_sessions')
+        .select('duration_seconds, updated_at')
+        .eq('session_id', String(sessionId))
+        .eq('user_id', user.id)
+        .maybeSingle()
+      if (prev?.updated_at && (prev.duration_seconds || 0) > RESERVATION_SECONDS) {
+        const sinceLast = Math.floor((Date.now() - new Date(prev.updated_at).getTime()) / 1000) - 3
+        serverSeconds = Math.max(0, Math.min(sinceLast, 60))
+      }
+    }
+    const billedSeconds = Math.max(clientSeconds, serverSeconds)
+    const floorPoints = billedSeconds * rate
+    const requested = Math.floor(Number(pointsToDeduct) || 0)
+    const points = Math.max(floorPoints, Math.min(requested, floorPoints + rate))
     if (points <= 0) {
       return NextResponse.json({ success: false, error: 'Rien a deduire' }, { status: 400 })
     }
@@ -202,7 +228,7 @@ export async function POST(request: NextRequest) {
     // Cap quotidien de GPU (2h/jour/compte) : on comptabilise le temps reellement
     // ecoule sur cette sync (~10s) puis on coupe le swap si le plafond est atteint.
     // C'est ce qui rend le garde-fou effectif (l'emission du token ne comptait 0s).
-    const elapsed = Math.max(0, Math.min(Math.floor(sessionDuration || 0), 60))
+    const elapsed = billedSeconds
     const gpu = trackGPUUsage(user.id, elapsed)
     if (!gpu.allowed) {
       console.warn(`[Points] CAP quotidien atteint user=${user.id} used=${gpu.totalUsed}s`)
