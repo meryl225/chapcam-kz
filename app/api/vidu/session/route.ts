@@ -17,6 +17,8 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 const SESSION_ID_PATTERN = /^[A-Za-z0-9-]{8,64}$/
+const AVATAR_REJECTED_ERROR =
+  "Cette photo d'avatar a été refusée par le contrôle de contenu. Choisis un autre avatar, de préférence une photo nette d'un visage de face, puis réessaie."
 
 async function requireUser() {
   const supabase = await createClient()
@@ -87,11 +89,16 @@ export async function POST(request: Request) {
   } catch (err) {
     await releaseLiveSession(user.id, sessionId)
     const status = err instanceof ViduApiError ? err.status : 500
-    console.error(`[Vidu] session creation failed user=${user.id} status=${status}`, err)
-    return NextResponse.json(
-      { error: LIVE_SWAP_GENERIC_ERROR, code: `vidu_${status}`, detail: describeError(err) },
-      { status: 502 },
-    )
+    const detail = describeError(err)
+    console.error(`[Vidu] session creation failed user=${user.id} status=${status} detail=${detail}`, err)
+    // The provider name and raw message never reach the client.
+    if (detail.includes('AuditSubmitIllegal')) {
+      return NextResponse.json(
+        { error: AVATAR_REJECTED_ERROR, code: 'avatar_rejected', detail: 'AuditSubmitIllegal' },
+        { status: 502 },
+      )
+    }
+    return NextResponse.json({ error: LIVE_SWAP_GENERIC_ERROR, code: `live_${status}` }, { status: 502 })
   }
 }
 

@@ -253,11 +253,11 @@ export function useViduSwap() {
           if (msg?.type === 6) {
             const reason = msg?.payload?.hangup?.hangup_reason ?? 'unknown'
             if (!acked) {
-              reject(new Error(`vidu hangup before ack: ${reason}`))
+              reject(new Error(`hangup before ack: ${reason}`))
               return
             }
             if (socketRef.current !== socket) return
-            console.error(`[live-swap] vidu hangup: ${reason}`)
+            console.error(`[live-swap] server hangup: ${reason}`)
             setError('Session Live Swap terminée.')
             void teardown('server_hangup')
           }
@@ -306,10 +306,11 @@ export function useViduSwap() {
       })
       const data = await res.json().catch(() => null)
       if (!res.ok || !data) {
-        if (typeof data?.detail === 'string' && data.detail.includes('AuditSubmitIllegal')) {
-          console.error('[live-swap] Vidu content check rejected the avatar:', data.detail)
+        if (data?.code === 'avatar_rejected') {
           throw new UserFacingError(
-            "Vidu a refusé la photo de cet avatar (contrôle de contenu). Choisis un autre avatar, de préférence une photo nette d'un visage de face, puis réessaie.",
+            typeof data.error === 'string'
+              ? data.error
+              : "Cette photo d'avatar a été refusée par le contrôle de contenu. Choisis un autre avatar, de préférence une photo nette d'un visage de face, puis réessaie.",
           )
         }
         if (data?.error && data.error !== LIVE_SWAP_GENERIC_ERROR) throw new UserFacingError(data.error)
