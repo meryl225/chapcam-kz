@@ -406,29 +406,12 @@ function PlansContent() {
                 </div>
 
                 {/* Statut du logo (watermark) mis en avant */}
-                {plan.watermark === 'with' ? (
+                {plan.watermark === 'with' && (
                   <div className="mt-8 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                     <Droplet className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-bold text-foreground">{t('Avec logo ChapCam')}</p>
                       <p className="text-xs text-muted-foreground">{t('Filigrane visible sur le rendu')}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className="mt-8 flex items-center gap-3 rounded-2xl px-4 py-3"
-                    style={{ backgroundColor: `${accent}1f`, border: `1px solid ${accent}66` }}
-                  >
-                    <DropletOff className="h-5 w-5 flex-shrink-0" style={{ color: accent }} />
-                    <div>
-                      <p className="text-sm font-bold" style={{ color: accent }}>
-                        {plan.watermark === 'auto' ? t('Sans logo (automatique)') : t('Sans logo (sur demande)')}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {plan.watermark === 'auto'
-                          ? t('Retrait du logo inclus, active automatiquement')
-                          : t('Retrait du logo active par notre equipe')}
-                      </p>
                     </div>
                   </div>
                 )}
