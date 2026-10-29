@@ -9,7 +9,7 @@ import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
 import { ChapcamRtcView, isChapcamRtcAvailable } from '../../modules/chapcam-rtc'
-import { startLiveSession } from '../lib/liveEngine'
+import { startViduLive } from '../lib/viduLive'
 import { launchLibrary } from '../lib/mediaAccess'
 import Constants from 'expo-constants'
 import { BRAND, C, PAD, shadow } from '../ui/catalog'
@@ -24,7 +24,7 @@ import { deleteUserFaces, forgetUserFace, getFavoriteIds, listUserFaces, loadPre
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 
 // The native engine is used whenever the binary ships it; EXPO_PUBLIC_LIVE_ENGINE=decart forces the previous engine.
-const USE_NATIVE_LIVE = isChapcamRtcAvailable && (process.env.EXPO_PUBLIC_LIVE_ENGINE ?? 'primary') !== 'decart'
+const USE_NATIVE_LIVE = isChapcamRtcAvailable && (process.env.EXPO_PUBLIC_LIVE_ENGINE ?? 'vidu') !== 'decart'
 const FACE_MAX_SIZE = 1024
 const RATE = 2
 const HEARTBEAT_SECONDS = 5
@@ -425,7 +425,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     setPhase('connecting')
     setConnState('connecting')
 
-    clientRef.current = startLiveSession({
+    clientRef.current = startViduLive({
       authedFetch,
       sessionId: session.id,
       imageBase64: face.base64,
