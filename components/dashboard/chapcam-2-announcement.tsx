@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
+import { PLAY_STORE_URL } from '@/components/home-mobile-apps'
 
 // sessionStorage : le popup s'affiche a chaque nouvelle connexion (nouvelle session navigateur),
 // une seule fois par session.
@@ -11,6 +13,7 @@ const ANNOUNCEMENT_KEY = 'chapcam-5.0-launch-popup-seen'
 
 export function ChapCam2Announcement() {
   const [open, setOpen] = useState(false)
+  const router = useRouter()
 
   useEffect(() => {
     try {
@@ -40,6 +43,17 @@ export function ChapCam2Announcement() {
     setOpen(false)
   }
 
+  function handleMainDownload() {
+    const ua = navigator.userAgent
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)
+    dismiss()
+    if (/Android/i.test(ua)) {
+      window.open(PLAY_STORE_URL, '_blank', 'noopener,noreferrer')
+    } else if (!isIOS) {
+      router.push('/download')
+    }
+  }
+
   if (!open) return null
 
   return (
@@ -62,7 +76,7 @@ export function ChapCam2Announcement() {
           <X className="h-5 w-5" />
         </button>
 
-        <Link href="/download" onClick={dismiss} className="block">
+        <div className="relative">
           <Image
             src="/images/chapcam-5-launch.png"
             alt="ChapCam 5.0 est disponible : rendu humain ultra-réaliste, visage et corps entier, peut tenir tout type d'objet en main, transformation en temps réel sans filigrane. Compatible iPhone, Android, Windows et MacBook."
@@ -71,7 +85,47 @@ export function ChapCam2Announcement() {
             priority
             className="h-auto w-full"
           />
-        </Link>
+
+          {/* Zones cliquables positionnees (en %) sur les badges et le bouton dessines dans l'image. */}
+          <button
+            type="button"
+            onClick={dismiss}
+            title="Sur iPhone, ChapCam 5.0 s'utilise directement ici dans ton navigateur"
+            aria-label="iPhone : utiliser ChapCam 5.0 dans le navigateur"
+            className="absolute rounded-xl outline-none ring-sky-300 transition hover:bg-white/10 focus-visible:ring-2"
+            style={{ left: '3.6%', top: '83.2%', width: '10.8%', height: '10.6%' }}
+          />
+          <a
+            href={PLAY_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={dismiss}
+            aria-label="Télécharger ChapCam 5.0 sur Google Play (Android)"
+            className="absolute rounded-xl outline-none ring-sky-300 transition hover:bg-white/10 focus-visible:ring-2"
+            style={{ left: '15.4%', top: '83.2%', width: '11.4%', height: '10.6%' }}
+          />
+          <Link
+            href="/download"
+            onClick={dismiss}
+            aria-label="Télécharger ChapCam 5.0 pour Windows"
+            className="absolute rounded-xl outline-none ring-sky-300 transition hover:bg-white/10 focus-visible:ring-2"
+            style={{ left: '27.7%', top: '83.2%', width: '12.4%', height: '10.6%' }}
+          />
+          <Link
+            href="/download"
+            onClick={dismiss}
+            aria-label="Télécharger ChapCam 5.0 pour MacBook"
+            className="absolute rounded-xl outline-none ring-sky-300 transition hover:bg-white/10 focus-visible:ring-2"
+            style={{ left: '41%', top: '83.2%', width: '12.4%', height: '10.6%' }}
+          />
+          <button
+            type="button"
+            onClick={handleMainDownload}
+            aria-label="Télécharger ChapCam 5.0 pour mon appareil"
+            className="absolute rounded-full outline-none ring-sky-300 transition hover:bg-white/10 focus-visible:ring-2"
+            style={{ left: '59.3%', top: '82.6%', width: '36%', height: '12%' }}
+          />
+        </div>
 
         <div className="flex justify-center border-t border-white/10 py-2">
           <button
