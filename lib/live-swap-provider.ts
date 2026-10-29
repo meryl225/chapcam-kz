@@ -1,9 +1,9 @@
-// Internal Live Swap engine routing. Engine names must never reach the client bundle or UI:
-// switch engines here (or via NEXT_PUBLIC_LIVE_SWAP_PROVIDER) without touching any screen.
-export type LiveSwapProvider = 'primary' | 'decart'
+// Internal Live Swap provider routing. Provider names must never reach the UI:
+// switch providers here (or via NEXT_PUBLIC_LIVE_SWAP_PROVIDER) without touching any screen.
+export type LiveSwapProvider = 'vidu' | 'decart'
 
 export const LIVE_SWAP_PROVIDER: LiveSwapProvider =
-  process.env.NEXT_PUBLIC_LIVE_SWAP_PROVIDER === 'decart' ? 'decart' : 'primary'
+  process.env.NEXT_PUBLIC_LIVE_SWAP_PROVIDER === 'decart' ? 'decart' : 'vidu'
 
 export const LIVE_SWAP_EDITING_TYPE = 'subject_replacement' as const
 

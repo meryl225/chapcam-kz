@@ -1,4 +1,4 @@
-name = "chapcam-live-relay"
+name = "chapcam-vidu-relay"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
 workers_dev = true
@@ -17,6 +17,4 @@ new_sqlite_classes = ["LiveRelay"]
 [observability]
 enabled = true
 
-# Secrets (not stored here), derived server-side in lib/live-engine/tokens.ts:
-#   RELAY_TICKET_KEY     (v2, Chapcam protocol)
-#   RELAY_TICKET_KEY_V1  (v1, legacy passthrough for installed mobile builds)
+# Secret (not stored here): RELAY_TICKET_KEY = base64(HMAC-SHA256(VIDU_API_KEY, "chapcam-vidu-relay-ticket-v1"))
