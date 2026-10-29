@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { X, ArrowRight } from 'lucide-react'
+import { X } from 'lucide-react'
 
 // sessionStorage : le popup s'affiche a chaque nouvelle connexion (nouvelle session navigateur),
 // une seule fois par session.
@@ -73,21 +73,13 @@ export function ChapCam2Announcement() {
           />
         </Link>
 
-        <div className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-end">
+        <div className="flex justify-center border-t border-white/10 py-2">
           <button
             onClick={dismiss}
-            className="order-2 rounded-2xl px-5 py-3 text-sm text-white/60 transition-colors hover:text-white sm:order-1"
+            className="rounded-xl px-5 py-2 text-sm text-white/60 transition-colors hover:text-white"
           >
             Plus tard
           </button>
-          <Link
-            href="/download"
-            onClick={dismiss}
-            className="order-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-400 to-violet-500 px-6 py-3 font-semibold text-white shadow-[0_0_24px_rgba(56,189,248,0.45)] transition-opacity hover:opacity-90 sm:order-2"
-          >
-            Télécharger ChapCam 5.0
-            <ArrowRight className="h-4 w-4" />
-          </Link>
         </div>
       </div>
     </div>
