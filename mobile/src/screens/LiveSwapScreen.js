@@ -5,8 +5,11 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { StatusBar } from 'expo-status-bar'
 import * as NavigationBar from 'expo-navigation-bar'
 import { Ionicons } from '@expo/vector-icons'
-import { useCameraPermissions } from 'expo-camera'
+import { useCameraPermissions, useMicrophonePermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator'
+import { ChapcamRtcView, isChapcamRtcAvailable } from '../../modules/chapcam-rtc'
+import { startViduLive } from '../lib/viduLive'
 import { launchLibrary } from '../lib/mediaAccess'
 import Constants from 'expo-constants'
 import { BRAND, C, PAD, shadow } from '../ui/catalog'
@@ -20,6 +23,9 @@ import { deleteUserFaces, forgetUserFace, getFavoriteIds, listUserFaces, loadPre
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 
+// The native engine is used whenever the binary ships it; EXPO_PUBLIC_LIVE_ENGINE=decart forces the previous engine.
+const USE_NATIVE_LIVE = isChapcamRtcAvailable && (process.env.EXPO_PUBLIC_LIVE_ENGINE ?? 'vidu') !== 'decart'
+const FACE_MAX_SIZE = 1024
 const RATE = 2
 const HEARTBEAT_SECONDS = 5
 const RESOLUTION = '720p'
@@ -98,6 +104,9 @@ const tokenErrorMessage = ({ status, body }) => {
 
 export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, subscription }) {
   const [permission, requestPermission] = useCameraPermissions()
+  const [micPermission, requestMicPermission] = useMicrophonePermissions()
+  // True while the native engine holds the camera; the preview stream must be released for it.
+  const [rtcOwnsCamera, setRtcOwnsCamera] = useState(false)
   const [facing, setFacing] = useState('front')
   const [mirror, setMirror] = useState(true)
   const [face, setFace] = useState(null)
@@ -153,7 +162,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
 
   const applyLook = async (next) => {
     const client = clientRef.current
-    if (!client || !face) return false
+    if (!client || !face || typeof client.set !== 'function') return false
     const prompt = buildLookPrompt(next)
     try {
       await client.set(prompt ? { image: face.base64, prompt, enhance: true } : { image: face.base64 })
@@ -194,7 +203,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
   }, [syncLibrary])
 
   useEffect(() => {
-    if (!granted || inSession) return undefined
+    if (!granted || inSession || rtcOwnsCamera) return undefined
     let cancelled = false
     mediaDevices
       .getUserMedia({ audio: false, video: { facingMode: facing === 'front' ? 'user' : 'environment', width: 1280, height: 720, frameRate: 30 } })
@@ -210,7 +219,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     }
     // inSession is intentionally read only to avoid re-acquiring the camera mid-session.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [granted, facing])
+  }, [granted, facing, rtcOwnsCamera])
 
   const clearTimers = () => {
     timersRef.current.forEach(clearInterval)
@@ -226,7 +235,8 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     sessionRef.current = null
     setPhase('stopping')
     try {
-      clientRef.current?.disconnect()
+      // Native engine: hangup, leave the channel, release camera and microphone before anything else.
+      await clientRef.current?.disconnect()
     } catch {}
     clientRef.current = null
     setRemoteStream(null)
@@ -260,6 +270,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
 
     setElapsed(0)
     setPhase('idle')
+    setRtcOwnsCamera(false)
     if (reason) setNotice(reason)
     endingRef.current = false
   }, [])
@@ -336,6 +347,8 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     const session = { id: newSessionId(), liveAt: null, startedAt: null }
     sessionRef.current = session
 
+    if (USE_NATIVE_LIVE) return startNative(session)
+
     try {
       const res = await authedFetch(`/api/decart-token?sessionId=${encodeURIComponent(session.id)}`)
       if (!res.ok || !res.body?.token) {
@@ -398,16 +411,50 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     }
   }
 
+  const startNative = async (session) => {
+    if (!micPermission?.granted && micPermission?.canAskAgain !== false) {
+      await requestMicPermission().catch(() => {})
+    }
+    if (sessionRef.current !== session) return
+
+    // Free the preview camera so the native engine can capture; the original image is never shown.
+    localRef.current?.getTracks().forEach((t) => t.stop())
+    localRef.current = null
+    setLocalStream(null)
+    setRtcOwnsCamera(true)
+    setPhase('connecting')
+    setConnState('connecting')
+
+    clientRef.current = startViduLive({
+      authedFetch,
+      sessionId: session.id,
+      imageBase64: face.base64,
+      frontCamera: facing === 'front',
+      onState: (state) => sessionRef.current === session && setConnState(state),
+      onVisible: () => sessionRef.current === session && goLive(),
+      onEnded: ({ message, wasVisible }) => {
+        if (sessionRef.current !== session) return
+        stop({ tone: wasVisible ? 'info' : 'error', retry: !wasVisible, text: message })
+      },
+    })
+  }
+
   const pickFace = async () => {
     try {
       const res = await launchLibrary({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8, base64: true })
       const asset = res.assets?.[0]
       if (res.canceled || !asset?.uri || !asset.base64) return
-      const picked = { uri: asset.uri, base64: asset.base64, source: 'upload' }
+      let base64 = asset.base64
+      if ((asset.width ?? 0) > FACE_MAX_SIZE || (asset.height ?? 0) > FACE_MAX_SIZE) {
+        // Keeps the reference photo well under the 4 MB session limit.
+        const resized = await manipulateAsync(asset.uri, [{ resize: { width: FACE_MAX_SIZE } }], { compress: 0.85, format: SaveFormat.JPEG, base64: true }).catch(() => null)
+        if (resized?.base64) base64 = resized.base64
+      }
+      const picked = { uri: asset.uri, base64, source: 'upload' }
       setPendingFace(picked)
       setFace(picked)
       try {
-        const saved = await uploadUserFace(asset.base64)
+        const saved = await uploadUserFace(base64)
         setUserFaces((list) => [saved, ...list.filter((f) => f.key !== saved.key)])
         setFace((current) => (current === picked ? { ...picked, userFaceKey: saved.key } : current))
       } catch (error) {
@@ -535,6 +582,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     return (
       <ImmersiveSession
         transformedStream={live ? remoteStream : null}
+        nativeVideo={rtcOwnsCamera}
         connState={connState}
         queuePosition={queuePosition}
         phase={phase}
@@ -741,7 +789,7 @@ function SideAction({ icon, label, dot, onPress, accessibilityLabel }) {
   )
 }
 
-function ImmersiveSession({ transformedStream, connState, queuePosition, phase, elapsed, face, planLabel, remaining, topInset, bottomInset, onStop, onBack, effectsUnlocked, look, onApplyLook, onOpenPlans }) {
+function ImmersiveSession({ transformedStream, nativeVideo, connState, queuePosition, phase, elapsed, face, planLabel, remaining, topInset, bottomInset, onStop, onBack, effectsUnlocked, look, onApplyLook, onOpenPlans }) {
   const [visible, setVisible] = useState(true)
   const [effectsOpen, setEffectsOpen] = useState(false)
   const [pinned, setPinned] = useState(false)
@@ -750,7 +798,8 @@ function ImmersiveSession({ transformedStream, connState, queuePosition, phase, 
 
   const live = phase === 'live'
   const stopping = phase === 'stopping'
-  const hasFrame = live && Boolean(transformedStream)
+  // Native engine: phase only turns 'live' once the first transformed frame has been drawn.
+  const hasFrame = live && (nativeVideo || Boolean(transformedStream))
   const busyText = stopping
     ? 'Arrêt de la session…'
     : phase === 'preparing'
@@ -762,8 +811,10 @@ function ImmersiveSession({ transformedStream, connState, queuePosition, phase, 
             ? 'Démarrage de la transformation…'
             : connState === 'reconnecting'
               ? 'Reconnexion…'
-              : 'Connexion au moteur ChapCam…'
-        : live && !transformedStream
+              : connState === 'warming_up'
+                ? 'Préparation de ton avatar…'
+                : 'Connexion au moteur ChapCam…'
+        : live && !hasFrame
           ? 'Réception de la vidéo transformée…'
           : null
 
@@ -820,6 +871,10 @@ function ImmersiveSession({ transformedStream, connState, queuePosition, phase, 
 
   const openEffects = () => {
     if (!live) return
+    if (nativeVideo) {
+      Alert.alert('Effets', 'Les effets et arrière-plans arrivent bientôt sur ce mode Live Swap.')
+      return
+    }
     if (!effectsUnlocked) {
       Alert.alert('Forfait Premium requis', 'Les effets et arrière-plans sont disponibles à partir du forfait Premium.', [
         { text: 'Plus tard', style: 'cancel' },
@@ -850,7 +905,10 @@ function ImmersiveSession({ transformedStream, connState, queuePosition, phase, 
         accessibilityRole="button"
         accessibilityLabel={hasFrame ? 'Vidéo transformée. Touche pour afficher les commandes.' : 'Connexion en cours'}
       >
-        {hasFrame ? (
+        {nativeVideo ? (
+          // Mounted from the start so the render stream attaches as soon as it is published.
+          <ChapcamRtcView style={StyleSheet.absoluteFill} pointerEvents="none" />
+        ) : hasFrame ? (
           <RTCView streamURL={transformedStream.toURL()} style={StyleSheet.absoluteFill} objectFit="cover" zOrder={0} />
         ) : null}
         {busyText ? (
