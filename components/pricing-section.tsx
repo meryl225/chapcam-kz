@@ -7,6 +7,8 @@ import Link from "next/link"
 import Image from "next/image"
 import { useState } from "react"
 import { useT } from "@/lib/i18n/language-provider"
+import { ChapCam5Banner } from "@/components/chapcam-5-banner"
+import { PLANS } from "@/lib/plans"
 import {
   CURRENCIES,
   useCurrencySelection,
@@ -30,8 +32,10 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "360 points (3 min)",
-      "Qualite HD"
+      "10 min Live Swap",
+      "Rendu humain ultra-réaliste",
+      "Peut tenir tout type d'objet en main",
+      "Rendu sans logo ChapCam"
     ],
     photoVideos: 0,
     voiceMessages: 0,
@@ -41,7 +45,7 @@ const plans = [
     popular: false,
     highlight: false,
     bestOffer: false,
-    watermark: "with" as Watermark,
+    watermark: "auto" as Watermark,
     icon: Star
   },
   {
@@ -54,7 +58,8 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "720 points (6 min)",
+      "25 min Live Swap",
+      "Rendu humain ultra-réaliste",
       "Qualite HD 1080p"
     ],
     photoVideos: 2,
@@ -65,7 +70,7 @@ const plans = [
     popular: false,
     highlight: false,
     bestOffer: false,
-    watermark: "with" as Watermark,
+    watermark: "auto" as Watermark,
     icon: Zap
   },
   {
@@ -78,7 +83,8 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "3 600 points (30 min)",
+      "3 h Live Swap",
+      "Rendu humain ultra-réaliste",
       "Rendu sans logo ChapCam inclus",
       "Qualite 4K Ultra HD",
       "Support prioritaire"
@@ -105,7 +111,8 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "5 400 points (45 min)",
+      "6 h Live Swap",
+      "Rendu humain ultra-réaliste",
       "Rendu Full HD 1080p sans logo",
       "Studio CHAPCAM : scènes en direct (décors, styles, effets)",
       "Prompts personnalisés en direct + Enhance",
@@ -134,7 +141,8 @@ const plans = [
     currency: "FCFA",
     features: [
       "Transformation du visage et corps entier",
-      "8 400 points (1 h 10 min)",
+      "10 h Live Swap",
+      "Rendu humain ultra-réaliste",
       "Rendu Full HD 1080p sans logo",
       "Studio CHAPCAM complet : scènes en direct (décors, styles, effets, arrière-plans)",
       "Prompts personnalisés illimités en direct + Enhance",
@@ -209,45 +217,8 @@ export function PricingSection() {
           )}
         </motion.div>
 
-        {/* Annonce ChapCam 3.0 : les offres de recharge concernent le nouveau logiciel */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mb-12 rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 md:p-8"
-        >
-          <div className="flex flex-col items-center gap-4 text-center md:flex-row md:items-center md:gap-6 md:text-left">
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-black">
-              <Sparkles className="h-7 w-7" />
-            </div>
-            <div className="flex-1">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
-                {t("Nouveau · ChapCam 3.0 disponible")}
-              </div>
-              <h3 className="text-xl font-bold text-white md:text-2xl">
-                {t("Ces recharges alimentent ChapCam 3.0")}
-              </h3>
-              <p className="mt-2 text-pretty text-gray-300 leading-relaxed">
-                {t("Toutes les offres ci-dessous sont destinees a notre nouveau logiciel")}{" "}
-                <span className="font-semibold text-emerald-400">ChapCam 3.0</span>
-                {t(", avec Genjutsu, Motion Control et une voix humaine naturelle, sur")}{" "}
-                <span className="font-semibold text-white">{t("téléphone et ordinateur")}</span>{" "}
-                {t("et profite d'une expérience complète sur tous tes écrans")}{" "}
-                
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 text-sm text-gray-300 md:min-w-[220px]">
-              <span className="inline-flex items-center gap-2">
-                <Monitor className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                {t("Compatible téléphone et ordinateur")}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Palette className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                {t("Genjutsu · Motion Control · Voix humaine")}
-              </span>
-            </div>
-          </div>
-        </motion.div>
+        {/* Annonce ChapCam 5.0 : les offres de recharge concernent le nouveau logiciel */}
+        <ChapCam5Banner variant="dark" className="mb-12" />
 
         {/* Pricing Cards */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
@@ -428,16 +399,19 @@ export function PricingSection() {
                   )
                 })()}
 
-                {/* Studio Photo en Video inclus dans le forfait Live Swap.
-                    Non affiche pour Starter (10.000 F) ni le Forfait Testeur. */}
-                {plan.id !== "starter" && plan.id !== "testeur" && (
-                  <div className="mb-4 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
-                    <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
-                    <p className="text-sm font-semibold text-emerald-300 leading-snug">
-                      {t("Studio Photo en Vidéo :")} {plan.photoVideos} {t("vidéos de 30s incluses")}
-                    </p>
-                  </div>
-                )}
+                {/* Jetons inclus : meme source que la page /dashboard/plans (lib/plans.ts). */}
+                {(() => {
+                  const jetons = PLANS.find((p) => p.id === plan.id)?.jetons
+                  if (!jetons) return null
+                  return (
+                    <div className="mb-4 flex items-center gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3">
+                      <Clapperboard className="h-5 w-5 flex-shrink-0 text-emerald-400" />
+                      <p className="text-sm font-semibold text-emerald-300 leading-snug">
+                        {jetons.toLocaleString("fr-FR")} {t("jetons inclus")}
+                      </p>
+                    </div>
+                  )
+                })()}
 
                 {/* Message Vocal inclus : messages vocaux IA de 15s (TTS ou changement
                     de voix). Non affiche pour le Forfait Testeur (pack minutes). */}

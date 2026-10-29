@@ -63,7 +63,7 @@ export function PlansTopupModal({ open, onClose }: { open: boolean; onClose: () 
               {formatConverted(plan.price, currency, rates) && (
                 <p className={`mt-1 text-xs font-semibold ${featured ? "text-cyan-200" : "text-[#0788c4]"}`}>≈ {formatConverted(plan.price, currency, rates)}</p>
               )}
-              <p className={`mt-1 text-xs ${featured ? "text-blue-100/70" : "text-[#71839e]"}`}>{plan.minutes} de création IA · {plan.photoVideoQuota} vidéos photo</p>
+              <p className={`mt-1 text-xs ${featured ? "text-blue-100/70" : "text-[#71839e]"}`}>{plan.minutes} de création IA · {plan.jetons.toLocaleString("fr-FR")} jetons inclus</p>
               <ul className={`mt-5 space-y-2 text-xs leading-5 ${featured ? "text-blue-50/85" : "text-[#536783]"}`}>{plan.features.slice(0, 4).map((feature) => <li key={feature} className="flex gap-2"><Check className={`mt-0.5 h-3.5 w-3.5 shrink-0 ${featured ? "text-cyan-300" : "text-[#159fea]"}`} />{feature}</li>)}</ul>
               <Link href="/dashboard/plans" onClick={onClose} className={`mt-6 flex w-full items-center justify-center rounded-xl px-4 py-3 text-xs font-bold transition hover:-translate-y-0.5 ${featured ? "bg-gradient-to-r from-cyan-300 to-violet-400 text-[#071a42]" : "bg-[#e8f6ff] text-[#087bad] hover:bg-[#d9efff]"}`}>Choisir cette offre</Link>
             </article>

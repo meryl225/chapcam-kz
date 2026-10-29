@@ -57,7 +57,7 @@ function isKnownPlan(value: string | null | undefined): boolean {
   return key in PLAN_ALIASES
 }
 
-const AUTO_NO_WATERMARK_PLANS = new Set(['premium', 'vip pro', 'vip debout'])
+const AUTO_NO_WATERMARK_PLANS = new Set(['testeur', 'starter', 'premium', 'vip pro', 'vip debout'])
 // Forfaits eligibles au sans-watermark manuel (active par l'admin).
 const MANUAL_NO_WATERMARK_PLANS = new Set<string>([])
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, Suspense } from 'react'
-import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift, Flame, Zap } from 'lucide-react'
+import { Check, Crown, Clock, Sparkles, Loader2, CreditCard, Droplet, DropletOff, Monitor, Palette, Gift, Flame, Zap, ArrowRight, ShieldCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -13,6 +13,7 @@ import { usePaymentCheckout } from '@/components/payment/use-payment-checkout'
 import { PaymentBadgePopup } from '@/components/payment-badge-popup'
 import { CURRENCIES, useCurrencySelection, formatConverted, formatXof } from '@/lib/currency-convert'
 import { useT } from '@/lib/i18n/language-provider'
+import { ChapCam5Banner } from '@/components/chapcam-5-banner'
 
 function PlansContent() {
   const t = useT()
@@ -194,44 +195,10 @@ function PlansContent() {
         </motion.div>
         )}
 
-        {/* Annonce ChapCam 3.0 : les recharges concernent le nouveau logiciel */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-10 rounded-3xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 p-6 md:p-8"
-        >
-          <div className="flex flex-col items-center gap-4 text-center md:flex-row md:items-center md:gap-6 md:text-left">
-            <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-black">
-              <Sparkles className="h-7 w-7" />
-            </div>
-            <div className="flex-1">
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-emerald-400">
-                {t('Nouveau · Sorti en septembre')}
-              </div>
-              <h3 className="text-xl font-bold text-foreground md:text-2xl">
-                {t('Ces recharges alimentent ChapCam 3.0')}
-              </h3>
-              <p className="mt-2 text-pretty leading-relaxed text-muted-foreground">
-                {t('Toutes les offres ci-dessous sont destinees a notre nouveau logiciel')}{' '}
-                <span className="font-semibold text-emerald-400">ChapCam 3.0</span>{t(', qui fonctionne desormais avec')}{' '}
-                <span className="font-semibold text-foreground">{t('tout type de PC')}</span> {t('et permet meme de')}{' '}
-                <span className="font-semibold text-foreground">{t('changer la couleur de peau')}</span>.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 text-sm text-muted-foreground md:min-w-[220px]">
-              <span className="inline-flex items-center gap-2">
-                <Monitor className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                {t('Compatible avec tout type de PC')}
-              </span>
-              <span className="inline-flex items-center gap-2">
-                <Palette className="h-4 w-4 flex-shrink-0 text-emerald-400" />
-                {t('Changement de la couleur de peau')}
-              </span>
-            </div>
-          </div>
-        </motion.div>
+        {/* Annonce ChapCam 5.0 : les recharges concernent le nouveau logiciel */}
+        <ChapCam5Banner className="mb-10" />
 
-        {/* Forfait Testeur (5.000 F) : pack minutes "anniv_5" (3 min, avec logo).
+        {/* Forfait Testeur (5.000 F) : pack minutes "anniv_5" (10 min, sans logo).
             Offre permanente d'entree de gamme, ideale pour essayer ChapCam. */}
         {(() => {
           const testeur = getMinutesOffer('anniv_5')
@@ -262,34 +229,55 @@ function PlansContent() {
                     {t('Transformation du visage et corps entier')}
                   </li>
                   <li className="flex items-center gap-2">
-                    <Droplet className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
-                    {t('Avec logo ChapCam')} · {t('Filigrane visible sur le rendu')}
+                    <Check className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                    {t('Rendu humain ultra-réaliste')}
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <Check className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                    {t("Peut tenir tout type d'objet en main")}
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <DropletOff className="h-4 w-4 flex-shrink-0 text-emerald-400" />
+                    {t('Rendu sans logo ChapCam')}
                   </li>
                 </ul>
               </div>
-              <button
-                onClick={() => startCheckout(testeur.id)}
-                disabled={!!pendingKey}
-                style={{
-                  // Meme rendu "SaaS premium" que les forfaits pro (accent emeraude).
-                  backgroundImage:
-                    'linear-gradient(180deg, color-mix(in srgb, #fff 18%, #00ff88) 0%, #00ff88 48%, #00ff88e6 100%)',
-                  boxShadow:
-                    'inset 0 0 0 1px rgba(255,255,255,0.18), inset 0 1px 0 rgba(255,255,255,0.38), 0 6px 14px -8px rgba(0,0,0,0.55), 0 2px 4px -2px #00ff884d',
-                }}
-                className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-2xl px-8 py-4 text-base font-bold text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 md:min-w-[200px]"
-              >
-                {/* Reflet brillant qui balaie le bouton au survol */}
-                <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
-                {testeurLoading ? (
-                  <Loader2 className="relative h-5 w-5 animate-spin" />
-                ) : (
-                  <>
-                    <span className="relative">{t('Recharger')}</span>
-                    <CreditCard className="relative h-5 w-5" />
-                  </>
-                )}
-              </button>
+              <div className="flex w-full flex-col items-center gap-3 md:w-auto md:min-w-[260px]">
+                <button
+                  onClick={() => startCheckout(testeur.id)}
+                  disabled={!!pendingKey}
+                  aria-busy={testeurLoading}
+                  style={{
+                    backgroundImage:
+                      'linear-gradient(180deg, color-mix(in srgb, #fff 22%, #00ff88) 0%, #00ff88 50%, #00d973 100%)',
+                    boxShadow:
+                      'inset 0 0 0 1px rgba(255,255,255,0.22), inset 0 1px 0 rgba(255,255,255,0.45), 0 10px 30px -10px #00ff88aa, 0 2px 6px -2px rgba(0,0,0,0.5)',
+                  }}
+                  className="group relative flex w-full items-center justify-between gap-4 overflow-hidden rounded-2xl py-3 pl-6 pr-3 text-left text-black transition-all duration-300 hover:-translate-y-0.5 hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {/* Reflet brillant qui balaie le bouton au survol */}
+                  <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full" />
+                  <span className="relative flex flex-col leading-tight">
+                    <span className="text-lg font-extrabold">
+                      {testeurLoading ? t('Redirection...') : t('Recharger')}
+                    </span>
+                    <span className="text-xs font-semibold text-black/70">
+                      {formatXof(testeur.price)} FCFA · {testeur.minutes} {t('minutes')}
+                    </span>
+                  </span>
+                  <span className="relative flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl bg-black/85 text-emerald-300 transition-transform duration-300 group-hover:translate-x-0.5">
+                    {testeurLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <ArrowRight className="h-5 w-5" />
+                    )}
+                  </span>
+                </button>
+                <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-400" />
+                  {t('Paiement sécurisé · Activation immédiate')}
+                </p>
+              </div>
             </motion.div>
           )
         })()}
@@ -418,29 +406,12 @@ function PlansContent() {
                 </div>
 
                 {/* Statut du logo (watermark) mis en avant */}
-                {plan.watermark === 'with' ? (
+                {plan.watermark === 'with' && (
                   <div className="mt-8 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
                     <Droplet className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
                     <div>
                       <p className="text-sm font-bold text-foreground">{t('Avec logo ChapCam')}</p>
                       <p className="text-xs text-muted-foreground">{t('Filigrane visible sur le rendu')}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    className="mt-8 flex items-center gap-3 rounded-2xl px-4 py-3"
-                    style={{ backgroundColor: `${accent}1f`, border: `1px solid ${accent}66` }}
-                  >
-                    <DropletOff className="h-5 w-5 flex-shrink-0" style={{ color: accent }} />
-                    <div>
-                      <p className="text-sm font-bold" style={{ color: accent }}>
-                        {plan.watermark === 'auto' ? t('Sans logo (automatique)') : t('Sans logo (sur demande)')}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {plan.watermark === 'auto'
-                          ? t('Retrait du logo inclus, active automatiquement')
-                          : t('Retrait du logo active par notre equipe')}
-                      </p>
                     </div>
                   </div>
                 )}

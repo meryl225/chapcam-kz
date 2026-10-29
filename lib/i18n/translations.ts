@@ -160,6 +160,19 @@ export const translations: Record<string, string> = {
   "avec ChapCam": "with ChapCam",
   "2 points = 1 seconde de transformation du visage et corps entier":
     "2 points = 1 second of full face and body transformation",
+  "Nouveau · Sortie le 29 octobre à 2h05": "New · Released October 29 at 2:05 AM",
+  "ChapCam 5.0 est disponible": "ChapCam 5.0 is available",
+  "Live Swap nouvelle génération • Rendu humain ultra-réaliste • Visage & corps entier • Temps réel • Sans filigrane":
+    "Next-generation Live Swap • Ultra-realistic human rendering • Face & full body • Real time • No watermark",
+  "Rendu humain ultra-réaliste": "Ultra-realistic human rendering",
+  "Transformation visage & corps entier": "Face & full-body transformation",
+  "Peut tenir et manipuler tout type d'objet en main pendant la transformation":
+    "Can hold and handle any object during the transformation",
+  "Transformation en temps réel": "Real-time transformation",
+  "Une expérience plus fluide et naturelle pour vos lives, appels vidéo et créations":
+    "A smoother, more natural experience for your lives, video calls and creations",
+  "Sans filigrane": "No watermark",
+  "CHAPCAM 5.0 — Transformez-vous. En temps réel.": "CHAPCAM 5.0 — Transform yourself. In real time.",
   "Nouveau · Sorti en septembre": "New · Released in September",
   "Ces recharges alimentent ChapCam 3.0": "These top-ups power ChapCam 3.0",
   "Toutes les offres ci-dessous sont destinees a notre nouveau logiciel":
@@ -201,7 +214,8 @@ export const translations: Record<string, string> = {
   "MEILLEURE OFFRE": "BEST OFFER",
   POPULAIRE: "POPULAR",
   "Avec logo ChapCam": "With ChapCam logo",
-  "Filigrane visible sur le rendu": "Visible watermark on the output",
+    "Filigrane visible sur le rendu": "Visible watermark on the output",
+    "Peut tenir tout type d'objet en main": "Can hold any type of object",
   "Sans logo (automatique)": "Logo-free (automatic)",
   "Sans logo (sur demande)": "Logo-free (on request)",
   "Retrait du logo inclus, active automatiquement":
@@ -217,6 +231,7 @@ export const translations: Record<string, string> = {
   "Voir moins": "See less",
   "Studio Photo en Vidéo :": "Photo to Video Studio:",
   "vidéos de 30s incluses": "30s videos included",
+  "jetons inclus": "tokens included",
   "Message Vocal :": "Voice Message:",
   "messages vocaux de 15s inclus": "15s voice messages included",
   "{n} messages vocaux de {s}s inclus": "{n} {s}s voice messages included",
@@ -270,11 +285,11 @@ export const translations: Record<string, string> = {
   "Oui ! ChapCam fonctionne avec toutes les applications de visioconference : WhatsApp, Telegram, Zoom, Microsoft Teams, Google Meet, Discord, Skype, TikTok Live, et bien d'autres. Plus d'infos sur chapcam.com.":
     "Yes! ChapCam works with all video conferencing apps: WhatsApp, Telegram, Zoom, Microsoft Teams, Google Meet, Discord, Skype, TikTok Live, and many more. More info on chapcam.com.",
   "Quels sont les tarifs disponibles ?": "What pricing plans are available?",
-  "ChapCam propose plusieurs formules adaptees a vos besoins : Starter (10 000 FCFA pour 1 mois), Premium (50 000 FCFA pour 90 jours), VIP PRO (85 000 FCFA pour 365 jours) et VIP DEBOUT (150 000 FCFA, 1 h 10 min). Consultez tous les details sur chapcam.com.":
-    "ChapCam offers several plans to fit your needs: Starter (10,000 FCFA for 1 month), Premium (50,000 FCFA for 90 days), VIP PRO (85,000 FCFA for 365 days) and VIP DEBOUT (150,000 FCFA, 1 h 10 min). See all details on chapcam.com.",
+  "ChapCam propose plusieurs formules adaptees a vos besoins : Testeur (5 000 FCFA, 10 min Live Swap), Starter (10 000 FCFA, 25 min Live Swap), Premium (50 000 FCFA, 3 h Live Swap), VIP PRO (85 000 FCFA, 6 h Live Swap) et VIP DEBOUT (150 000 FCFA, 10 h Live Swap). Consultez tous les details sur chapcam.com.":
+    "ChapCam offers several plans to fit your needs: Testeur (5,000 FCFA, 10 min Live Swap), Starter (10,000 FCFA, 25 min Live Swap), Premium (50,000 FCFA, 3 h Live Swap), VIP PRO (85,000 FCFA, 6 h Live Swap) and VIP DEBOUT (150,000 FCFA, 10 h Live Swap). See all details on chapcam.com.",
   "Comment fonctionnent les points ?": "How do points work?",
-  "2 points = 1 seconde de transformation. Le plan Starter offre 720 points (6 min), Premium offre 3 600 points (30 min), VIP PRO offre 5 400 points (45 min) et VIP DEBOUT offre 8 400 points (1 h 10 min).":
-    "2 points = 1 second of transformation. The Starter plan offers 720 points (6 min), Premium offers 3,600 points (30 min), VIP PRO offers 5,400 points (45 min) and VIP DEBOUT offers 8,400 points (1 h 10 min).",
+  "2 points = 1 seconde de Live Swap. Testeur : 10 min, Starter : 25 min, Premium : 3 h, VIP PRO : 6 h et VIP DEBOUT : 10 h. Le compteur ne décompte que le temps réellement utilisé.":
+    "2 points = 1 second of Live Swap. Testeur: 10 min, Starter: 25 min, Premium: 3 h, VIP PRO: 6 h and VIP DEBOUT: 10 h. The counter only deducts time actually used.",
   "Mes donnees sont-elles securisees ?": "Is my data secure?",
   "Absolument. Chez ChapCam, la securite de vos donnees est notre priorite. Vos informations sont protegees et nous ne les partageons jamais avec des tiers.":
     "Absolutely. At ChapCam, the security of your data is our priority. Your information is protected and we never share it with third parties.",
@@ -480,7 +495,8 @@ export const translations: Record<string, string> = {
   "MEILLEURE OFFRE": "BEST OFFER",
   "Édition VIP": "VIP Edition",
   "Avec logo ChapCam": "With ChapCam logo",
-  "Filigrane visible sur le rendu": "Watermark visible on the output",
+    "Filigrane visible sur le rendu": "Watermark visible on the output",
+    "Peut tenir tout type d'objet en main": "Can hold any type of object",
   "Sans logo (automatique)": "No logo (automatic)",
   "Sans logo (sur demande)": "No logo (on request)",
   "Retrait du logo inclus, active automatiquement":
@@ -726,7 +742,7 @@ export const translations: Record<string, string> = {
     "Unlock live CHAPCAM Studio prompts and watermark-free rendering with VIP PRO or VIP DEBOUT.",
   "Passer VIP": "Go VIP",
   Résolution: "Resolution",
-  "1080p réservé VIP": "1080p VIP only",
+  "1080p r��servé VIP": "1080p VIP only",
   "Choisir la résolution du live swap": "Choose the live swap resolution",
   "Connexion en cours...": "Connecting...",
   "Arrêter le Live Swap": "Stop Live Swap",
