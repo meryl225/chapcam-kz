@@ -6,6 +6,7 @@ import { getRequestGeo } from '@/lib/geo'
 import { DashboardSidebar, PlanGuardBanner } from '@/components/dashboard/sidebar'
 import { TelegramSupport } from '@/components/telegram-support'
 import { ElectronMenuBridge } from '@/components/desktop/electron-menu-bridge'
+import { ChapCam2Announcement } from '@/components/dashboard/chapcam-2-announcement'
 import { resolveWatermarkForUser } from '@/lib/watermark'
 
 /*
@@ -122,6 +123,8 @@ export default async function DashboardLayout({
       </main>
 
       <ElectronMenuBridge />
+
+      <ChapCam2Announcement />
 
       {/* Telegram Support Button */}
       <TelegramSupport />

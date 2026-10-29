@@ -1,121 +1,93 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { X, Monitor, Smartphone, WandSparkles, Hand, Zap, ArrowRight } from 'lucide-react'
+import Image from 'next/image'
+import Link from 'next/link'
+import { X, ArrowRight } from 'lucide-react'
 
-// Version de l'annonce : incremente pour re-afficher le popup a tous les clients.
-const ANNOUNCEMENT_KEY = 'chapcam-5.0-announcement-seen'
+// sessionStorage : le popup s'affiche a chaque nouvelle connexion (nouvelle session navigateur),
+// une seule fois par session.
+const ANNOUNCEMENT_KEY = 'chapcam-5.0-launch-popup-seen'
 
 export function ChapCam2Announcement() {
-  const router = useRouter()
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    // Affiche le popup une seule fois par client (jusqu'a fermeture).
     try {
-      const seen = localStorage.getItem(ANNOUNCEMENT_KEY)
-      if (!seen) {
-        // Petit delai pour laisser le dashboard s'afficher avant le popup.
-        const t = setTimeout(() => setOpen(true), 600)
-        return () => clearTimeout(t)
-      }
+      if (sessionStorage.getItem(ANNOUNCEMENT_KEY)) return
     } catch {
-      setOpen(true)
+      // stockage indisponible : on affiche quand meme
     }
+    const t = setTimeout(() => setOpen(true), 600)
+    return () => clearTimeout(t)
   }, [])
 
-  const dismiss = () => {
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dismiss()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
+
+  function dismiss() {
     try {
-      localStorage.setItem(ANNOUNCEMENT_KEY, '1')
+      sessionStorage.setItem(ANNOUNCEMENT_KEY, '1')
     } catch {
       // ignore
     }
     setOpen(false)
   }
 
-  const goToRecharge = () => {
-    dismiss()
-    router.push('/dashboard/plans')
-  }
-
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-primary/40 bg-card shadow-[0_0_50px_rgba(16,185,129,0.25)]">
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
+      onClick={dismiss}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="ChapCam 5.0 est disponible"
+        className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-sky-400/40 bg-[#050b24] shadow-[0_0_60px_rgba(56,189,248,0.35)]"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           onClick={dismiss}
-          className="absolute right-4 top-4 z-10 text-muted-foreground transition-colors hover:text-foreground"
+          className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white/80 backdrop-blur transition-colors hover:bg-black/80 hover:text-white"
           aria-label="Fermer"
         >
           <X className="h-5 w-5" />
         </button>
 
-        {/* En-tete */}
-        <div className="flex flex-col items-center bg-gradient-to-br from-primary/20 to-primary/5 px-6 pb-6 pt-10 text-center">
-          <div className="mb-4 flex w-full items-center justify-center overflow-hidden rounded-2xl border border-primary/30 bg-black/50 shadow-inner">
-            <video
-              className="max-h-[42vh] w-full object-contain sm:max-h-[320px]"
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="metadata"
-              aria-label="Démonstration vidéo de ChapCam 5.0"
-            >
-              <source src="/videos/chapcam-3-topup.mov" type="video/quicktime" />
-              Votre navigateur ne prend pas en charge la vidéo de démonstration.
-            </video>
-          </div>
-          <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-primary/20 px-3 py-1 text-xs font-bold uppercase tracking-wide text-primary">
-            <Zap className="h-3.5 w-3.5" />
-            Nouveau · Sortie le 29 octobre à 2h05
-          </span>
-          <h2 className="text-balance text-2xl font-bold text-foreground">
-            ChapCam 5.0 est disponible
-          </h2>
-          <p className="mt-2 text-pretty text-sm leading-relaxed text-muted-foreground">
-            Live Swap nouvelle génération : rendu humain ultra-réaliste, visage & corps entier, en temps réel et sans filigrane.
-          </p>
-        </div>
+        <Link href="/download" onClick={dismiss} className="block">
+          <Image
+            src="/images/chapcam-5-launch.png"
+            alt="ChapCam 5.0 est disponible : rendu humain ultra-réaliste, visage et corps entier, peut tenir tout type d'objet en main, transformation en temps réel sans filigrane. Compatible iPhone, Android, Windows et MacBook."
+            width={1280}
+            height={640}
+            priority
+            className="h-auto w-full"
+          />
+        </Link>
 
-        {/* Nouveautes */}
-        <div className="grid gap-3 px-6 py-6 sm:grid-cols-2">
-          <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3">
-            <WandSparkles className="h-5 w-5 flex-shrink-0 text-primary" />
-            <span className="text-sm text-foreground">Rendu ultra-réaliste</span>
-          </div>
-          <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3">
-            <Hand className="h-5 w-5 flex-shrink-0 text-primary" />
-            <span className="text-sm text-foreground">Tient tout objet en main</span>
-          </div>
-          <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3">
-            <Zap className="h-5 w-5 flex-shrink-0 text-primary" />
-            <span className="text-sm text-foreground">Temps réel · Sans filigrane</span>
-          </div>
-          <div className="flex items-center gap-3 rounded-2xl border border-hairline bg-muted/50 px-4 py-3">
-            <Smartphone className="h-5 w-5 flex-shrink-0 text-primary" />
-            <Monitor className="h-5 w-5 flex-shrink-0 text-primary" />
-            <span className="text-sm text-foreground">iPhone · Android · Windows · Mac</span>
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex flex-col gap-2 px-6 pb-6">
-          <button
-            onClick={goToRecharge}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3.5 font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            Voir les recharges
-            <ArrowRight className="h-4 w-4" />
-          </button>
+        <div className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-end">
           <button
             onClick={dismiss}
-            className="w-full rounded-2xl py-2.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="order-2 rounded-2xl px-5 py-3 text-sm text-white/60 transition-colors hover:text-white sm:order-1"
           >
             Plus tard
           </button>
+          <Link
+            href="/download"
+            onClick={dismiss}
+            className="order-1 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-sky-400 to-violet-500 px-6 py-3 font-semibold text-white shadow-[0_0_24px_rgba(56,189,248,0.45)] transition-opacity hover:opacity-90 sm:order-2"
+          >
+            Télécharger ChapCam 5.0
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </div>
     </div>
