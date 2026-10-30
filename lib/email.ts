@@ -34,12 +34,9 @@ const FROM_EMAIL =
 
 const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
 
-// Zoho (MX de chapcam.com) rejette "554 5.7.7 Email policy violation" les mails
-// envoyés par Brevo au nom de chapcam.com tant que le SPF n'inclut pas Brevo et
-// que le DKIM Brevo n'est pas publié. Une copie part donc aussi vers la boîte admin.
-const TEAM_INBOXES = Array.from(
-  new Set(['contact@chapcam.com', process.env.REPORTS_NOTIFY_EMAIL || 'fanny.guck@gmail.com']),
-)
+// Zoho (MX de chapcam.com) n'accepte les mails Brevo envoyés au nom de chapcam.com
+// que si le SPF du domaine inclut Brevo (include:spf.brevo.com).
+const TEAM_INBOXES = ['contact@chapcam.com']
 
 type SendPayload = {
   from?: string
