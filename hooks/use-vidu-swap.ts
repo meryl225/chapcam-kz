@@ -2,6 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LIVE_SWAP_GENERIC_ERROR } from '@/lib/live-swap-provider'
+import { CameraSourceError, cameraErrorMessage, openSourceCamera } from '@/lib/camera-devices'
+
+const CHAPCAM_LABEL = /chapcam/i
+
+function stopStream(stream: MediaStream | null) {
+  stream?.getTracks().forEach((track) => track.stop())
+}
 
 // Only these messages are shown verbatim; any other (SDK/provider) error becomes the generic one.
 class UserFacingError extends Error {}
@@ -111,6 +118,88 @@ export function useViduSwap() {
   const elapsedTimerRef = useRef<number | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  // Apercu brut de la webcam avant le swap. AliRTC reprend la camera pendant le swap.
+  const previewStreamRef = useRef<MediaStream | null>(null)
+  const previewTokenRef = useRef(0)
+  const [previewError, setPreviewError] = useState<string | null>(null)
+  const [outputFps, setOutputFps] = useState(0)
+  const [outputResolution, setOutputResolution] = useState<string | null>(null)
+
+  const stopLocalPreview = useCallback(() => {
+    previewTokenRef.current += 1
+    const stream = previewStreamRef.current
+    previewStreamRef.current = null
+    if (!stream) return
+    if (localVideoRef.current?.srcObject === stream) localVideoRef.current.srcObject = null
+    stopStream(stream)
+    if (!engineRef.current) setIsPreviewing(false)
+  }, [])
+
+  const startLocalPreview = useCallback(async () => {
+    if (previewStreamRef.current || startingRef.current || engineRef.current) return
+    const token = ++previewTokenRef.current
+    setPreviewError(null)
+    try {
+      const stream = await openSourceCamera({ width: 1280, height: 720 })
+      if (token !== previewTokenRef.current || startingRef.current || engineRef.current) {
+        stopStream(stream)
+        return
+      }
+      previewStreamRef.current = stream
+      const el = localVideoRef.current
+      if (el) {
+        el.srcObject = stream
+        el.play().catch(() => {})
+      }
+      stream.getVideoTracks()[0]?.addEventListener('ended', () => {
+        if (previewStreamRef.current !== stream) return
+        previewStreamRef.current = null
+        setIsPreviewing(false)
+        setPreviewError('La webcam a été déconnectée. Rebranche-la ou choisis une autre caméra dans Paramètres > Caméra.')
+      })
+      setIsPreviewing(true)
+    } catch (err) {
+      if (token !== previewTokenRef.current) return
+      console.error('[live-swap] webcam preview failed', err)
+      setPreviewError(cameraErrorMessage(err))
+    }
+  }, [])
+
+  // FPS et resolution mesures sur les images reellement recues (jamais de valeur fixe).
+  useEffect(() => {
+    const video = remoteVideoRef.current as (HTMLVideoElement & {
+      requestVideoFrameCallback?: (cb: () => void) => number
+      cancelVideoFrameCallback?: (id: number) => void
+    }) | null
+    if (!isConnected || !video) {
+      setOutputFps(0)
+      setOutputResolution(null)
+      return
+    }
+    let frames = 0
+    let handle = 0
+    const onFrame = () => {
+      frames += 1
+      handle = video.requestVideoFrameCallback!(onFrame)
+    }
+    const hasRvfc = typeof video.requestVideoFrameCallback === 'function'
+    if (hasRvfc) handle = video.requestVideoFrameCallback!(onFrame)
+    let lastDecoded = video.getVideoPlaybackQuality?.().totalVideoFrames ?? 0
+    const interval = window.setInterval(() => {
+      if (!hasRvfc) {
+        const decoded = video.getVideoPlaybackQuality?.().totalVideoFrames ?? 0
+        frames = decoded - lastDecoded
+        lastDecoded = decoded
+      }
+      setOutputFps(frames)
+      setOutputResolution(video.videoHeight > 0 ? `${video.videoHeight}p` : null)
+      frames = 0
+    }, 1000)
+    return () => {
+      window.clearInterval(interval)
+      if (hasRvfc) video.cancelVideoFrameCallback?.(handle)
+    }
+  }, [isConnected])
 
   const clearTimers = () => {
     timersRef.current.forEach((t) => window.clearTimeout(t))
@@ -292,11 +381,23 @@ export function useViduSwap() {
 
       // Permission is requested before any billed session exists, then the tracks are released
       // so AliRTC can own the camera exactly as in the official demo.
+      // AliRTC opens the default Windows camera, which can be the ChapCam virtual camera
+      // (video loop). We resolve the physical webcam here and force its deviceId below.
       step = 'camera'
-      const probe = await navigator.mediaDevices
-        .getUserMedia({ video: true, audio: true })
-        .catch(() => navigator.mediaDevices.getUserMedia({ video: true }))
-      probe.getTracks().forEach((track) => track.stop())
+      stopLocalPreview()
+      let probe: MediaStream
+      try {
+        probe = await openSourceCamera({ audio: true }).catch((err) => {
+          if (err instanceof CameraSourceError) throw err
+          return openSourceCamera()
+        })
+      } catch (err) {
+        throw new UserFacingError(cameraErrorMessage(err))
+      }
+      const sourceTrack = probe.getVideoTracks()[0]
+      const sourceDeviceId = sourceTrack?.getSettings().deviceId
+      console.info(`[live-swap] source webcam="${sourceTrack?.label ?? '?'}" deviceId=${sourceDeviceId ?? '?'}`)
+      stopStream(probe)
 
       step = 'session'
       const res = await fetch('/api/vidu/session', {
@@ -406,8 +507,15 @@ export function useViduSwap() {
       mark('RTC_JOIN_SUCCESS')
 
       step = 'rtc_publish'
+      if (sourceDeviceId) await callOptional(engine, 'setCameraCapturerConfiguration', { deviceId: sourceDeviceId })
       if (localVideoRef.current) await callOptional(engine, 'setLocalViewConfig', localVideoRef.current, 1)
       await callOptional(engine, 'startPreview', 1)
+      const rtcTrack = (localVideoRef.current?.srcObject as MediaStream | null)?.getVideoTracks()[0]
+      const rtcDeviceId = typeof engine.getCurrentCameraDeviceId === 'function' ? engine.getCurrentCameraDeviceId() : rtcTrack?.getSettings().deviceId
+      console.info(`[live-swap] AliRTC camera="${rtcTrack?.label ?? '?'}" deviceId=${rtcDeviceId ?? '?'}`)
+      if (CHAPCAM_LABEL.test(rtcTrack?.label ?? '') || (sourceDeviceId && rtcDeviceId && rtcDeviceId !== sourceDeviceId)) {
+        throw new UserFacingError("Live Swap n'a pas pu utiliser ta webcam physique (la caméra virtuelle ChapCam a été sélectionnée). Choisis ta webcam dans Paramètres > Caméra, puis relance.")
+      }
       setCameraEnabled(true)
       setIsPreviewing(true)
       await callOptional(engine, 'publishLocalVideoStream', true)
@@ -442,7 +550,7 @@ export function useViduSwap() {
     } finally {
       startingRef.current = false
     }
-  }, [fail, sendSignal, teardown])
+  }, [fail, sendSignal, teardown, stopLocalPreview])
 
   // Success sends no ack by design, so the switch is sent exactly once.
   const updateAvatar = useCallback(async (avatarImageUrl: string) => {
@@ -490,9 +598,10 @@ export function useViduSwap() {
     window.addEventListener('beforeunload', onUnload)
     return () => {
       window.removeEventListener('beforeunload', onUnload)
+      stopLocalPreview()
       void teardown('unmount')
     }
-  }, [teardown])
+  }, [teardown, stopLocalPreview])
 
   return {
     isConnected,
@@ -507,6 +616,11 @@ export function useViduSwap() {
     setLivePrompt,
     cameraEnabled,
     isPreviewing,
+    previewError,
+    startLocalPreview,
+    stopLocalPreview,
+    outputFps,
+    outputResolution,
     toggleCamera,
     isRecording,
     recordedUrl,
