@@ -415,3 +415,15 @@ Translate your voice live
 =
 Something went wrong
 ChapCam ran into an error on this screen. Your creations and balance aren't affected.
+Sexual content
+Violence
+Hate or harassment
+Couldn’t send. Check your connection and try again.
+Thank you. Our moderation team will review this content.
+Report not sent
+Edit report
+Content concerned
+Other content
+Couldn’t load your creations. You can describe the content in the details.
+Message not sent
+Edit message

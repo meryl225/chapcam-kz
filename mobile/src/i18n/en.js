@@ -1083,5 +1083,16 @@ export const EN = {
  "Change ta voix en temps réel": "Change your voice in real time",
  "Traduis ta voix en direct": "Translate your voice live",
  "Un problème est survenu": "Something went wrong",
- "ChapCam a rencontré une erreur sur cet écran. Tes créations et ton solde ne sont pas affectés.": "ChapCam ran into an error on this screen. Your creations and balance aren't affected."
+ "ChapCam a rencontré une erreur sur cet écran. Tes créations et ton solde ne sont pas affectés.": "ChapCam ran into an error on this screen. Your creations and balance aren't affected.",
+ "Contenu sexuel": "Sexual content",
+ "Haine ou harcèlement": "Hate or harassment",
+ "Envoi impossible. Vérifie ta connexion et réessaie.": "Couldn’t send. Check your connection and try again.",
+ "Merci. Notre équipe de modération va examiner ce contenu.": "Thank you. Our moderation team will review this content.",
+ "Signalement non envoyé": "Report not sent",
+ "Modifier le signalement": "Edit report",
+ "Contenu concerné": "Content concerned",
+ "Autre contenu": "Other content",
+ "Impossible de charger tes créations. Tu peux décrire le contenu dans les détails.": "Couldn’t load your creations. You can describe the content in the details.",
+ "Message non envoyé": "Message not sent",
+ "Modifier le message": "Edit message"
 }

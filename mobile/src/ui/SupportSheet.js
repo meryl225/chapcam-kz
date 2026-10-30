@@ -1,46 +1,51 @@
 import React, { useState } from 'react'
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native'
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native'
 import { Text, TextInput } from '../i18n/Text'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { apiJson, friendlyError } from '../lib/api'
 import { C } from './catalog'
+import { SheetResult } from './Safety'
+
+const SEND_ERROR = 'Envoi impossible. Vérifie ta connexion et réessaie.'
 
 export function SupportSheet({ visible, onClose }) {
   const insets = useSafeAreaInsets()
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
+  const [phase, setPhase] = useState('form')
+  const [error, setError] = useState('')
   const canSend = message.trim().length > 0 && !sending
 
   const close = () => {
     if (sending) return
-    setMessage('')
+    setMessage(''); setPhase('form'); setError('')
     onClose()
   }
 
   const submit = async () => {
     if (!canSend) return
     setSending(true)
+    setError('')
     try {
       const { response, body } = await apiJson('/api/mobile/support', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: message.trim(), platform: Platform.OS }),
       })
-      if (!response.ok) throw new Error(body.error || 'Envoi impossible. Réessaie dans un instant.')
-      setMessage('')
-      onClose()
-      Alert.alert('Message envoyé', 'Merci. Le service client ChapCam te répondra par e-mail.')
+      if (!response.ok || !body.success) throw new Error(body.error || SEND_ERROR)
+      setPhase('success')
     } catch (e) {
-      Alert.alert('Service client', friendlyError(e, 'Envoi impossible. Réessaie dans un instant.'))
+      setError(friendlyError(e, SEND_ERROR))
+      setPhase('error')
     } finally {
       setSending(false)
     }
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close} statusBarTranslucent>
+      <KeyboardAvoidingView style={s.wrap} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={s.backdrop} onPress={close} accessibilityLabel="Fermer" />
         <View style={[s.sheet, { paddingBottom: insets.bottom + 16 }]}>
           <View style={s.topBar}>
@@ -49,43 +54,64 @@ export function SupportSheet({ visible, onClose }) {
               <Ionicons name="close" size={20} color={C.ink} />
             </Pressable>
           </View>
-          <View style={s.header}>
-            <View style={s.icon}>
-              <Ionicons name="headset-outline" size={22} color={C.blue} />
-            </View>
-            <View style={s.headerText}>
-              <Text style={s.title} accessibilityRole="header">Service client</Text>
-              <Text style={s.copy}>Décris ta demande, notre équipe te répond par e-mail.</Text>
-            </View>
-          </View>
-          <TextInput
-            value={message}
-            onChangeText={setMessage}
-            placeholder="Comment pouvons-nous t’aider ?"
-            placeholderTextColor={C.muted}
-            multiline
-            maxLength={4000}
-            textAlignVertical="top"
-            style={s.input}
-            accessibilityLabel="Message pour le service client"
-            editable={!sending}
-          />
-          <Pressable
-            onPress={submit}
-            disabled={!canSend}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canSend }}
-            style={({ pressed }) => [s.send, !canSend && s.sendOff, pressed && s.pressed]}
-          >
-            {sending ? (
-              <ActivityIndicator color={C.white} />
-            ) : (
-              <>
-                <Ionicons name="send" size={16} color={C.white} />
-                <Text style={s.sendText}>Envoyer</Text>
-              </>
-            )}
-          </Pressable>
+          {phase === 'success' ? (
+            <SheetResult
+              ok
+              title="Message envoyé"
+              message="Merci. Le service client ChapCam te répondra par e-mail."
+              primaryLabel="Fermer"
+              onPrimary={close}
+            />
+          ) : phase === 'error' ? (
+            <SheetResult
+              title="Message non envoyé"
+              message={error}
+              primaryLabel="Réessayer"
+              onPrimary={submit}
+              secondaryLabel="Modifier le message"
+              onSecondary={() => setPhase('form')}
+            />
+          ) : (
+            <>
+              <View style={s.header}>
+                <View style={s.icon}>
+                  <Ionicons name="headset-outline" size={22} color={C.blue} />
+                </View>
+                <View style={s.headerText}>
+                  <Text style={s.title} accessibilityRole="header">Service client</Text>
+                  <Text style={s.copy}>Décris ta demande, notre équipe te répond par e-mail.</Text>
+                </View>
+              </View>
+              <TextInput
+                value={message}
+                onChangeText={setMessage}
+                placeholder="Comment pouvons-nous t’aider ?"
+                placeholderTextColor={C.muted}
+                multiline
+                maxLength={4000}
+                textAlignVertical="top"
+                style={s.input}
+                accessibilityLabel="Message pour le service client"
+                editable={!sending}
+              />
+              <Pressable
+                onPress={submit}
+                disabled={!canSend}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !canSend, busy: sending }}
+                style={({ pressed }) => [s.send, !canSend && s.sendOff, pressed && s.pressed]}
+              >
+                {sending ? (
+                  <ActivityIndicator color={C.white} />
+                ) : (
+                  <>
+                    <Ionicons name="send" size={16} color={C.white} />
+                    <Text style={s.sendText}>Envoyer</Text>
+                  </>
+                )}
+              </Pressable>
+            </>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>

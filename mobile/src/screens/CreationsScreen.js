@@ -600,9 +600,9 @@ function ViewerContent({ item, busy, onClose, onDownload, onShare, onDelete }) {
           <ViewerAction icon="arrow-down-circle-outline" label="Télécharger" loading={busy === 'download'} disabled={!!busy} onPress={() => onDownload(item)} />
           <ViewerAction icon="share-outline" label="Partager" loading={busy === 'share'} disabled={!!busy} onPress={() => onShare(item)} />
           <ViewerAction icon="trash-outline" label="Supprimer" danger loading={busy === 'delete'} disabled={!!busy} onPress={() => onDelete(item)} />
-          {Platform.OS !== 'ios' ? <ViewerAction icon="flag-outline" label="Signaler" disabled={!!busy} onPress={() => setReporting(true)} /> : null}
+          <ViewerAction icon="flag-outline" label="Signaler" disabled={!!busy} onPress={() => setReporting(true)} />
         </View>
-        <ReportAbuseSheet visible={reporting} onClose={() => setReporting(false)} contentUrl={item.playback_url} context={`Mes créations · ${meta.label}`} />
+        <ReportAbuseSheet visible={reporting} onClose={() => setReporting(false)} contentUrl={item.playback_url} context={`Mes créations · ${meta.label}`} creation={item} />
       </View>
   )
 }
