@@ -20,6 +20,8 @@ type Report = {
   context: string | null
   platform: string | null
   email_sent: boolean
+  email_status?: 'pending' | 'sent' | 'failed' | 'delivered' | 'bounced'
+  email_error?: string | null
   created_at: string
   handled_at: string | null
 }
@@ -169,7 +171,17 @@ export default function AdminReportsPage() {
                       <p className="mt-1 text-xs text-gray-400">
                         Reçu le {formatDate(report.created_at)}
                         {report.handled_at ? ` · traité le ${formatDate(report.handled_at)}` : ''}
-                        {report.email_sent ? ' · e-mail envoyé' : ' · e-mail non envoyé'}
+                        {report.email_status === 'delivered'
+                          ? ` · e-mail ${report.email_error || 'livré'}`
+                          : report.email_status === 'bounced'
+                            ? ` · e-mail rejeté (${report.email_error || 'destinataire'})`
+                            : report.email_status === 'sent'
+                              ? ' · e-mail accepté par Brevo, livraison en attente'
+                              : report.email_status === 'failed'
+                                ? ` · e-mail en échec${report.email_error ? ` (${report.email_error})` : ''}`
+                                : report.email_sent
+                                  ? ' · e-mail accepté (statut de livraison inconnu)'
+                                  : ' · e-mail non envoyé'}
                       </p>
                     </div>
                     <span

@@ -34,6 +34,10 @@ const FROM_EMAIL =
 
 const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email'
 
+// Zoho (MX de chapcam.com) n'accepte les mails Brevo envoyés au nom de chapcam.com
+// que si le SPF du domaine inclut Brevo (include:spf.brevo.com).
+const TEAM_INBOXES = ['contact@chapcam.com']
+
 type SendPayload = {
   from?: string
   to: string | string[]
@@ -224,7 +228,7 @@ export async function sendAbuseReportEmail(report: {
   try {
     const { data, error } = await client.emails.send({
       from: FROM_EMAIL,
-      to: ['contact@chapcam.com'],
+      to: TEAM_INBOXES,
       replyTo: report.email,
       subject: `Signalement d'abus — ${report.reason}`,
       html: `
@@ -266,6 +270,7 @@ export async function sendSupportRequestEmail(request: {
   message: string
   userId: string
   platform: string
+  requestId?: string
 }) {
   const client = await getResendClient()
   if (!client) {
@@ -279,7 +284,7 @@ export async function sendSupportRequestEmail(request: {
   try {
     const { data, error } = await client.emails.send({
       from: FROM_EMAIL,
-      to: ['contact@chapcam.com'],
+      to: TEAM_INBOXES,
       replyTo: request.email,
       subject: `Service client — ${request.name}`,
       html: `
@@ -290,6 +295,7 @@ export async function sendSupportRequestEmail(request: {
             <tr><td style="padding: 8px 0; color: #9aa3b2;">Email</td><td style="padding: 8px 0;">${esc(request.email)}</td></tr>
             <tr><td style="padding: 8px 0; color: #9aa3b2;">ID utilisateur</td><td style="padding: 8px 0;">${esc(request.userId)}</td></tr>
             <tr><td style="padding: 8px 0; color: #9aa3b2;">Plateforme</td><td style="padding: 8px 0;">${esc(request.platform)}</td></tr>
+            <tr><td style="padding: 8px 0; color: #9aa3b2;">Demande</td><td style="padding: 8px 0;">${request.requestId ? esc(request.requestId) : '—'}</td></tr>
           </table>
           <div style="margin-top: 16px; padding: 16px; background: #111111; border: 1px solid #242424; border-radius: 12px;">
             <p style="color: #9aa3b2; margin: 0 0 8px; font-size: 13px;">Message</p>
