@@ -38,30 +38,19 @@ function ensureScratch(w, h) {
   }
 }
 
-// Trouve la source a diffuser : priorite au tag explicite, sinon plus grand
-// canvas/video visible de la page.
+// Only the element explicitly tagged as the transformed output, and only once the
+// page has flagged it ready, is ever broadcast. There is deliberately no fallback to
+// "the largest video on the page": that element can be the raw webcam.
 function findSource() {
-  const tagged = document.querySelector('[data-chapcam-output]')
-  // Live Swap page: only the transformed output is ever sent, never the raw webcam.
-  if (tagged) return isUsable(tagged) ? tagged : null
+  const tagged = document.querySelector('[data-chapcam-output][data-chapcam-ready="true"]')
+  return isUsable(tagged) ? tagged : null
+}
 
-  let best = null
-  let bestArea = 0
-  const candidates = [
-    ...document.querySelectorAll('canvas'),
-    ...document.querySelectorAll('video'),
-  ]
-  for (const el of candidates) {
-    if (!isUsable(el)) continue
-    const w = el.videoWidth || el.width || el.clientWidth || 0
-    const h = el.videoHeight || el.height || el.clientHeight || 0
-    const area = w * h
-    if (area > bestArea) {
-      bestArea = area
-      best = el
-    }
-  }
-  return best
+const NEUTRAL_COLOR = '#1a1a1a'
+
+function drawNeutral(ctx, dw, dh) {
+  ctx.fillStyle = NEUTRAL_COLOR
+  ctx.fillRect(0, 0, dw, dh)
 }
 
 function isUsable(el) {
@@ -100,13 +89,20 @@ function tick() {
   const minInterval = 1000 / capture.fps
   if (now - capture.lastSentAt >= minInterval) {
     const src = findSource()
-    if (src) {
-      capture.missWarned = false
-      const { w: sw, h: sh } = srcDims(src)
-      if (sw > 0 && sh > 0) {
+    if (!src && !capture.missWarned) {
+      console.warn('[ChapCam][capture] flux transforme pas pret -> ecran neutre')
+      capture.missWarned = true
+    }
+    if (src) capture.missWarned = false
+    {
+      const { w: sw, h: sh } = src ? srcDims(src) : { w: 0, h: 0 }
+      {
         ensureScratch(capture.width, capture.height)
         try {
-          drawContain(capture.ctx, src, sw, sh, capture.width, capture.height)
+          // A neutral frame (rather than no frame) overwrites whatever the virtual
+          // camera showed last, so a frozen raw image can never linger.
+          if (src && sw > 0 && sh > 0) drawContain(capture.ctx, src, sw, sh, capture.width, capture.height)
+          else drawNeutral(capture.ctx, capture.width, capture.height)
           const img = capture.ctx.getImageData(0, 0, capture.width, capture.height)
           // Buffer transferable -> evite une copie supplementaire
           ipcRenderer.send('vcam:frame', {
@@ -124,9 +120,6 @@ function tick() {
           }
         }
       }
-    } else if (!capture.missWarned) {
-      console.warn('[ChapCam][capture] aucune source video transformee trouvee')
-      capture.missWarned = true
     }
   }
 
@@ -154,6 +147,13 @@ function startCapture(opts = {}) {
 }
 
 function stopCapture() {
+  if (capture.running && capture.ctx) {
+    try {
+      drawNeutral(capture.ctx, capture.width, capture.height)
+      const img = capture.ctx.getImageData(0, 0, capture.width, capture.height)
+      ipcRenderer.send('vcam:frame', { width: capture.width, height: capture.height, buffer: img.data.buffer })
+    } catch {}
+  }
   capture.running = false
   if (capture.rafId) clearTimeout(capture.rafId)
   capture.rafId = null

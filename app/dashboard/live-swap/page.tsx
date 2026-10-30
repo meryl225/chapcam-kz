@@ -189,6 +189,7 @@ export default function DashboardPage() {
     stopRecording,
     clearRecording,
   } = activeSwap
+  const isOutputReady = 'isOutputReady' in activeSwap ? Boolean(activeSwap.isOutputReady) : isConnected
 
   // Quand le swap n'est plus actif, on met en pause la video importee (qui
   // tourne en boucle en arriere-plan pendant le swap) pour liberer les ressources.
@@ -1023,6 +1024,7 @@ export default function DashboardPage() {
                 <video
                   ref={remoteVideoRef}
                   data-chapcam-output="true"
+                  data-chapcam-ready={isOutputReady ? 'true' : 'false'}
                   autoPlay
                   playsInline
                   muted

@@ -82,6 +82,21 @@ async function callOptional(engine: AliRtcEngineInstance, method: string, ...arg
   if (typeof engine[method] === 'function') await engine[method](...args)
 }
 
+// Thrown when teardown ran while connect() was awaiting: the attempt is abandoned silently.
+class AbortedAttemptError extends Error {}
+
+// Only short machine-readable tokens leave the browser (no tokens, URLs or user data).
+function diagToken(value: unknown) {
+  return String(value ?? '').replace(/[^\w.:-]/g, '_').slice(0, 64)
+}
+
+function videoTrackLabel(video: HTMLVideoElement | null) {
+  const stream = video?.srcObject
+  if (!(stream instanceof MediaStream)) return 'no_srcObject'
+  const track = stream.getVideoTracks()[0]
+  return track ? `${track.label || 'unlabeled'} (${track.readyState})` : 'no_video_track'
+}
+
 export function useViduSwap() {
   const [isConnected, setIsConnected] = useState(false)
   const [isConnecting, setIsConnecting] = useState(false)
@@ -90,6 +105,8 @@ export function useViduSwap() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const [cameraEnabled, setCameraEnabled] = useState(true)
   const [isPreviewing, setIsPreviewing] = useState(false)
+  // True only while the remote (transformed) video is rendering; ChapCam Camera reads it.
+  const [isOutputReady, setIsOutputReady] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null)
   const [connectionQuality] = useState<string | null>(null)
@@ -111,6 +128,8 @@ export function useViduSwap() {
   const elapsedTimerRef = useRef<number | null>(null)
   const recorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
+  // Last end signal seen for the current session, reported to the server on DELETE.
+  const endInfoRef = useRef<{ hangupReason?: string; wsCode?: number }>({})
 
   const clearTimers = () => {
     timersRef.current.forEach((t) => window.clearTimeout(t))
@@ -131,8 +150,11 @@ export function useViduSwap() {
 
   const teardown = useCallback(async (reason: string) => {
     clearTimers()
+    setIsOutputReady(false)
     const session = sessionRef.current
     sessionRef.current = null
+    const endInfo = endInfoRef.current
+    endInfoRef.current = {}
 
     // Hangup first so Vidu stops billing immediately, then release local resources.
     const socket = socketRef.current
@@ -151,10 +173,8 @@ export function useViduSwap() {
     const engine = engineRef.current
     engineRef.current = null
     if (engine) {
-      try {
-        await callOptional(engine, 'stopPreview')
-        await callOptional(engine, 'leaveChannel')
-      } catch {}
+      try { await callOptional(engine, 'stopPreview') } catch {}
+      try { await callOptional(engine, 'leaveChannel') } catch {}
       try { engine.destroy() } catch {}
     }
 
@@ -163,10 +183,12 @@ export function useViduSwap() {
     if (localVideoRef.current) localVideoRef.current.srcObject = null
 
     if (session) {
-      const query = new URLSearchParams({ sessionId: session.sessionId, liveId: session.liveId })
+      const query = new URLSearchParams({ sessionId: session.sessionId, liveId: session.liveId, endReason: diagToken(reason) })
+      if (endInfo.hangupReason) query.set('hangupReason', diagToken(endInfo.hangupReason))
+      if (endInfo.wsCode !== undefined) query.set('wsCode', String(endInfo.wsCode))
       void fetch(`/api/vidu/session?${query}`, { method: 'DELETE', keepalive: true })
         .then((r) => r.json())
-        .then((d) => console.info(`[live-swap][STEP] SESSION_STOPPED reason=${reason} billed=${d?.live?.billedSeconds ?? 'unknown'}s close_reason=${d?.live?.closeReason ?? 'unknown'}`))
+        .then((d) => console.info(`[live-swap][STEP] SESSION_STOPPED reason=${reason} hangup_reason=${endInfo.hangupReason ?? 'none'} ws_code=${endInfo.wsCode ?? 'none'} billed=${d?.live?.billedSeconds ?? 'unknown'}s close_reason=${d?.live?.closeReason ?? 'unknown'}`))
         .catch(() => {})
     }
 
@@ -257,7 +279,8 @@ export function useViduSwap() {
               return
             }
             if (socketRef.current !== socket) return
-            console.error(`[live-swap] server hangup: ${reason}`)
+            console.error(`[live-swap] server hangup: ${reason} payload_keys=${Object.keys(msg?.payload?.hangup ?? {}).join(',')}`)
+            endInfoRef.current.hangupReason = String(reason)
             setError('Session Live Swap terminée.')
             void teardown('server_hangup')
           }
@@ -269,7 +292,11 @@ export function useViduSwap() {
           if (!current && acked) return
           if (!acked) {
             reject(new Error(`ws closed ${event.code}${event.reason ? ` ${event.reason}` : ''} opened=${opened} notReady=${notReadyRetries} last=${lastSignal}`))
-          } else if (sessionRef.current) void teardown('closed')
+          } else if (sessionRef.current) {
+            endInfoRef.current.wsCode = event.code
+            setError(`Connexion au moteur Live Swap fermée (code ${event.code}).`)
+            void teardown('closed')
+          }
         }
       })
 
@@ -337,12 +364,33 @@ export function useViduSwap() {
       console.info(`[live-swap] CONN_INIT_ACK live_id=${session.liveId} after=${sinceCreate()}ms`)
       mark('CONN_INIT_ACK / SESSION_READY')
 
+      if (sessionRef.current?.liveId !== session.liveId) throw new AbortedAttemptError('stopped before rtc_init')
+
       step = 'rtc_init'
       mark('RTC_ENGINE_START')
       window.AliRtcEngine!.setLogLevel(0)
       const engine = window.AliRtcEngine!.getInstance()
       engineRef.current = engine
       mark('RTC_ENGINE_READY')
+      // After every await: if teardown ran meanwhile, release this engine ourselves so the camera
+      // is never reopened by an engine nobody owns any more.
+      const ensureCurrent = async (where: string) => {
+        if (engineRef.current === engine && sessionRef.current?.liveId === session.liveId) return
+        console.warn(`[live-swap] attempt abandoned after ${where}: session already stopped`)
+        try { await callOptional(engine, 'stopPreview') } catch {}
+        try { await callOptional(engine, 'leaveChannel') } catch {}
+        try { engine.destroy() } catch {}
+        throw new AbortedAttemptError(`stopped during ${where}`)
+      }
+      const sdkMethods = Object.getOwnPropertyNames(Object.getPrototypeOf(engine) ?? {})
+        .filter((k) => /camera|device|preview|capture/i.test(k))
+      console.info(`[live-swap][DIAG] sdk_camera_methods=${sdkMethods.join(',') || 'none'}`)
+      const markReady = () => {
+        const video = remoteVideoRef.current
+        if (engineRef.current !== engine || !video || video.videoWidth === 0) return
+        setIsOutputReady(true)
+        mark('OUTPUT_READY', `${video.videoWidth}x${video.videoHeight}`)
+      }
       engine.on('remoteTrackAvailableNotify', (userId: string, audioTrack: number, videoTrack: number) => {
         if (userId === sessionRef.current?.renderUid && videoTrack > 0) {
           mark('REMOTE_STREAM_PUBLISHED', `user=${userId} video=${videoTrack} audio=${audioTrack}`)
@@ -358,7 +406,8 @@ export function useViduSwap() {
           return
         }
         void callOptional(engine, 'setRemoteViewConfig', remoteVideoRef.current, userId, 1)
-        remoteVideoRef.current.play().catch(() => {})
+        remoteVideoRef.current.addEventListener('playing', markReady, { once: true })
+        remoteVideoRef.current.play().then(markReady).catch(() => {})
         mark('REMOTE_VIDEO_ATTACHED')
         timersRef.current.forEach((t) => window.clearTimeout(t))
         timersRef.current = []
@@ -377,10 +426,14 @@ export function useViduSwap() {
         console.info('[live-swap] render worker back online')
         window.clearTimeout(renderOfflineTimer)
         renderOfflineTimer = null
+        remoteVideoRef.current?.addEventListener('playing', markReady, { once: true })
+        markReady()
       })
       engine.on('remoteUserOffLineNotify', (userId: string, reason?: number) => {
         if (userId !== sessionRef.current?.renderUid) return
         console.warn(`[live-swap] render worker offline reason=${reason ?? 'unknown'}`)
+        // The last remote frame may stay on screen: ChapCam Camera switches to neutral now.
+        setIsOutputReady(false)
         if (renderOfflineTimer !== null) return
         renderOfflineTimer = window.setTimeout(() => {
           renderOfflineTimer = null
@@ -401,6 +454,7 @@ export function useViduSwap() {
       console.info(`[live-swap] RTC JOIN app_id=${rtc.app_id ?? '?'} channel_id=${rtc.channel_id ?? '?'} user_id=${rtc.user_id} token_len=${rtc.token?.length ?? 0}`)
       mark('RTC_JOIN_REQUESTED')
       await engine.joinChannel(rtc.token, rtc.user_id)
+      await ensureCurrent('rtc_join')
       setConnectionState('rtc_joined')
       console.info(`[live-swap] RTC JOINED live_id=${session.liveId} after=${sinceCreate()}ms`)
       mark('RTC_JOIN_SUCCESS')
@@ -408,9 +462,12 @@ export function useViduSwap() {
       step = 'rtc_publish'
       if (localVideoRef.current) await callOptional(engine, 'setLocalViewConfig', localVideoRef.current, 1)
       await callOptional(engine, 'startPreview', 1)
+      await ensureCurrent('start_preview')
+      console.info(`[live-swap][DIAG] source_track="${videoTrackLabel(localVideoRef.current)}"`)
       setCameraEnabled(true)
       setIsPreviewing(true)
       await callOptional(engine, 'publishLocalVideoStream', true)
+      await ensureCurrent('publish')
       try {
         await callOptional(engine, 'publishLocalAudioStream', true)
       } catch (audioErr) {
@@ -426,6 +483,10 @@ export function useViduSwap() {
       }, OUTPUT_TIMEOUT_MS)
       timersRef.current.push(noOutput)
     } catch (err) {
+      if (err instanceof AbortedAttemptError) {
+        console.info(`[live-swap][STEP] ABORTED ${err.message}`)
+        return
+      }
       const detail = err instanceof Error ? `${err.name}: ${err.message}` : String(err)
       console.error(`[live-swap] connect failed at step=${step}`, err)
       console.error(`[live-swap][STEP] FAILED last_success=${lastStep} failed_code=${step} error="${detail}"`)
@@ -507,6 +568,7 @@ export function useViduSwap() {
     setLivePrompt,
     cameraEnabled,
     isPreviewing,
+    isOutputReady,
     toggleCamera,
     isRecording,
     recordedUrl,
