@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from 'next/server'
 import { createClient, type User } from '@supabase/supabase-js'
 import { sendAbuseReportEmail } from '@/lib/email'
 import { getVideoHistoryItem } from '@/lib/video-history'
-import { ABUSE_REASONS, markReportEmailSent, saveUserReport } from '@/lib/user-reports'
+import { ABUSE_REASONS, recordReportNotification, saveUserReport } from '@/lib/user-reports'
 
 export const dynamic = 'force-dynamic'
 
@@ -89,8 +89,8 @@ export async function POST(request: NextRequest) {
   ].join('\n')
 
   const mail = await sendAbuseReportEmail({ name, email: user.email, reason, description, contentUrl: contentUrl || undefined })
-  if (mail.success) await markReportEmailSent(reportId).catch(() => {})
-  else console.error('[report] Email non envoyé (signalement enregistré):', reportId, mail.error)
+  if (!mail.success) console.error('[report] Email non envoyé (signalement enregistré):', reportId, mail.error)
+  await recordReportNotification(reportId, mail).catch((error) => console.error('[report] Statut e-mail non enregistré:', reportId, error))
 
   return NextResponse.json({ success: true, id: reportId })
 }

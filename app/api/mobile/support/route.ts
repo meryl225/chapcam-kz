@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient, type User } from '@supabase/supabase-js'
 import { sendSupportRequestEmail } from '@/lib/email'
-import { markReportEmailSent, saveUserReport } from '@/lib/user-reports'
+import { recordReportNotification, saveUserReport } from '@/lib/user-reports'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,23 +37,21 @@ export async function POST(request: NextRequest) {
   const platform = body?.platform === 'android' ? 'Android' : 'iOS'
 
   // The stored row is what the admin inbox reads; the e-mail is the team notification.
-  let requestId: string | null = null
+  // Success is only reported once the request is stored, so the admin inbox never misses it.
+  let requestId: string
   try {
     requestId = await saveUserReport({ kind: 'support', userId: user.id, email: user.email, name, message, platform })
   } catch (error) {
     console.error('[support] Enregistrement impossible:', error)
-  }
-
-  const result = await sendSupportRequestEmail({ name, email: user.email, message, userId: user.id, platform })
-  if (result.success && requestId) await markReportEmailSent(requestId).catch(() => {})
-  if (!result.success) console.error('[support] Email non envoyé:', requestId, result.error)
-
-  if (!requestId && !result.success) {
     return NextResponse.json(
       { error: 'Le service client est momentanément indisponible. Réessaie plus tard.' },
-      { status: 502 },
+      { status: 503 },
     )
   }
+
+  const result = await sendSupportRequestEmail({ name, email: user.email, message, userId: user.id, platform, requestId })
+  if (!result.success) console.error('[support] Email non envoyé (demande enregistrée):', requestId, result.error)
+  await recordReportNotification(requestId, result).catch((error) => console.error('[support] Statut e-mail non enregistré:', requestId, error))
 
   return NextResponse.json({ success: true, id: requestId })
 }

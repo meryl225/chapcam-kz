@@ -19,6 +19,9 @@ export type UserReport = {
   context: string | null
   platform: string | null
   email_sent: boolean
+  email_status: 'pending' | 'sent' | 'failed'
+  email_message_id: string | null
+  email_error: string | null
   created_at: string
   handled_at: string | null
 }
@@ -70,6 +73,9 @@ async function ensureTable() {
     )
   `
   await sql`CREATE INDEX IF NOT EXISTS user_reports_kind_status_created ON user_reports (kind, status, created_at DESC)`
+  await sql`ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS email_status text NOT NULL DEFAULT 'pending'`
+  await sql`ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS email_message_id text`
+  await sql`ALTER TABLE user_reports ADD COLUMN IF NOT EXISTS email_error text`
   tableReady = true
 }
 
@@ -98,8 +104,19 @@ export async function saveUserReport(input: {
   return String(rows[0].id)
 }
 
-export async function markReportEmailSent(id: string) {
-  await db()`UPDATE user_reports SET email_sent = true WHERE id = ${id}`
+export async function recordReportNotification(
+  id: string,
+  result: { success: boolean; id?: string | null; error?: unknown },
+) {
+  const error = result.success ? null : String((result.error as any)?.message ?? result.error ?? 'unknown').slice(0, 500)
+  await db()`
+    UPDATE user_reports
+    SET email_sent = ${result.success},
+        email_status = ${result.success ? 'sent' : 'failed'},
+        email_message_id = ${result.id ?? null},
+        email_error = ${error}
+    WHERE id = ${id}
+  `
 }
 
 export async function listUserReports(kind: UserReportKind | 'all', status: UserReportStatus | 'all'): Promise<UserReport[]> {
