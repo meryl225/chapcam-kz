@@ -18,6 +18,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { SwapConsent, GenerateNotice } from '@/components/dashboard/swap-consent'
 import { detectHardwareCapabilities, determineProcessingMode, loadProcessingPreferences, saveProcessingPreferences, type HardwareCapabilities, type UserProcessingPreferences } from '@/lib/hardware-detection'
 import { useT } from '@/lib/i18n/language-provider'
+import { CAMERA_CHANGED_EVENT } from '@/lib/camera-devices'
 
 const SUPABASE_URL = 'https://ojmzqokffbptmcktnwdy.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9qbXpxb2tmZmJwdG1ja3Rud2R5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkzMTAzNTYsImV4cCI6MjA5NDg4NjM1Nn0.e9sk4b_15ge2LIIQwFpXC3n_q48ctu9IJ6oJxV85kgw'
@@ -189,6 +190,33 @@ export default function DashboardPage() {
     stopRecording,
     clearRecording,
   } = activeSwap
+
+  // Webcam brute visible a gauche avant le swap et apres son arret. Pendant le
+  // swap, AliRTC reprend la meme webcam : on libere l'apercu pour n'ouvrir qu'une capture.
+  const { startLocalPreview, stopLocalPreview } = viduSwap
+  useEffect(() => {
+    if (LIVE_SWAP_PROVIDER !== 'vidu') return
+    if (swapSource === 'camera' && !isConnected && !isConnecting) {
+      void startLocalPreview()
+      return
+    }
+    stopLocalPreview()
+  }, [swapSource, isConnected, isConnecting, startLocalPreview, stopLocalPreview])
+
+  useEffect(() => {
+    if (LIVE_SWAP_PROVIDER !== 'vidu') return
+    const restart = () => {
+      if (swapSource !== 'camera' || isConnected || isConnecting) return
+      stopLocalPreview()
+      void startLocalPreview()
+    }
+    window.addEventListener(CAMERA_CHANGED_EVENT, restart)
+    return () => window.removeEventListener(CAMERA_CHANGED_EVENT, restart)
+  }, [swapSource, isConnected, isConnecting, startLocalPreview, stopLocalPreview])
+
+  const isVidu = LIVE_SWAP_PROVIDER === 'vidu'
+  const shownFps = isVidu ? viduSwap.outputFps : stats.fps
+  const shownResolution = isVidu ? viduSwap.outputResolution : stats.resolution
 
   // Quand le swap n'est plus actif, on met en pause la video importee (qui
   // tourne en boucle en arriere-plan pendant le swap) pour liberer les ressources.
@@ -946,10 +974,30 @@ export default function DashboardPage() {
                   className="h-full w-full object-cover"
                   style={{ transform: 'scaleX(-1)' }}
                 />
-                {!isConnected && !(LIVE_SWAP_PROVIDER === 'vidu' && viduSwap.isPreviewing) && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-text-faint">
-                    <Camera className="mb-2 h-12 w-12 opacity-50" />
-                    <p className="text-sm">{t('Caméra inactive')}</p>
+                {!isConnected && !(isVidu && viduSwap.isPreviewing) && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-4 text-center text-text-faint">
+                    <Camera className="h-12 w-12 opacity-50" />
+                    {isVidu && viduSwap.previewError ? (
+                      <>
+                        <p className="text-pretty text-sm text-red-400">{viduSwap.previewError}</p>
+                        <div className="flex flex-wrap items-center justify-center gap-2">
+                          <button
+                            onClick={() => { stopLocalPreview(); void startLocalPreview() }}
+                            className="rounded-lg border border-hairline bg-muted px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted/70"
+                          >
+                            {t('Réessayer')}
+                          </button>
+                          <Link
+                            href="/dashboard/settings"
+                            className="rounded-lg border border-hairline px-3 py-1.5 text-xs font-medium text-foreground hover:bg-muted"
+                          >
+                            {t('Choisir une caméra')}
+                          </Link>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-sm">{t('Caméra inactive')}</p>
+                    )}
                   </div>
                 )}
                 {/* Controle camera : coupe / reactive la piste video envoyee au
@@ -988,9 +1036,17 @@ export default function DashboardPage() {
                 <div className="ml-auto flex items-center gap-2 text-[11px]">
                   {isConnected && (
                     <>
-                      <span className="font-semibold text-primary">{stats.fps} FPS</span>
-                      <span className="text-foreground/30">|</span>
-                      <span className="text-foreground/60">{stats.resolution}</span>
+                      {shownFps > 0 ? (
+                        <span className="font-semibold text-primary">{shownFps} FPS</span>
+                      ) : (
+                        <span className="font-semibold text-yellow-400">{t('En attente d’images')}</span>
+                      )}
+                      {shownResolution && (
+                        <>
+                          <span className="text-foreground/30">|</span>
+                          <span className="text-foreground/60">{shownResolution}</span>
+                        </>
+                      )}
                       <span className="text-foreground/30">|</span>
                       <span className="flex items-center gap-1 text-foreground/60">
                         <Clock className="h-3 w-3" />

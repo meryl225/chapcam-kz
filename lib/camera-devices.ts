@@ -173,7 +173,10 @@ export function pickAutoCamera(cams: CameraDevice[]): CameraDevice | null {
 export function resolveSourceCamera(cams: CameraDevice[]): CameraDevice | null {
   const saved = getSavedCameraId()
   const savedCam = saved ? cams.find(c => c.deviceId === saved) : undefined
-  if (isUsableSource(savedCam)) return savedCam!
+  if (isUsableSource(savedCam) && !savedCam!.isVirtual && !savedCam!.isInfrared) return savedCam!
+  // Ancienne camera memorisee disparue, virtuelle ou infrarouge : on la remplace
+  // par la webcam physique automatique (uniquement si les noms sont connus).
+  if (saved && cams.length > 0 && cams.every(c => c.label)) saveCameraId(null)
   return pickAutoCamera(cams)
 }
 

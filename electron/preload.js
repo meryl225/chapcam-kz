@@ -42,7 +42,8 @@ function ensureScratch(w, h) {
 // canvas/video visible de la page.
 function findSource() {
   const tagged = document.querySelector('[data-chapcam-output]')
-  if (tagged && isUsable(tagged)) return tagged
+  // Live Swap page: only the transformed output is ever sent, never the raw webcam.
+  if (tagged) return isUsable(tagged) ? tagged : null
 
   let best = null
   let bestArea = 0
