@@ -105,8 +105,9 @@ const formatDay = (value) => {
 /**
  * creation: when opened from a creation, its id is attached automatically.
  * Otherwise (profile) the user can pick one of their creations in the form.
+ * subject: { title, meta, uri } describes non-creation content (e.g. a live session) and replaces the picker.
  */
-export function ReportAbuseSheet({ visible, onClose, contentUrl, context, creation }) {
+export function ReportAbuseSheet({ visible, onClose, contentUrl, context, creation, subject }) {
   const insets = useSafeAreaInsets()
   const [reason, setReason] = useState('')
   const [details, setDetails] = useState('')
@@ -121,7 +122,7 @@ export function ReportAbuseSheet({ visible, onClose, contentUrl, context, creati
   const canSend = !!reason && details.trim().length > 0 && !sending
 
   const loadCreations = async () => {
-    if (creation) return
+    if (creation || subject) return
     setCreationsError(false)
     try {
       const { response, body } = await apiJson('/api/mobile/creations')
@@ -207,6 +208,8 @@ export function ReportAbuseSheet({ visible, onClose, contentUrl, context, creati
                 <Text style={s.label}>Contenu concerné</Text>
                 {creation ? (
                   <CreationChip item={creation} selected />
+                ) : subject ? (
+                  <CreationChip item={{ title: subject.title, thumbnail_url: subject.uri, meta: subject.meta }} icon="videocam-outline" selected />
                 ) : creations === null ? (
                   <View style={s.pickerLoading}><ChapCamLoader size="small" /></View>
                 ) : (
@@ -263,8 +266,9 @@ export function ReportAbuseSheet({ visible, onClose, contentUrl, context, creati
   )
 }
 
-function CreationChip({ item, selected, onPress }) {
+function CreationChip({ item, selected, onPress, icon = 'film-outline' }) {
   const title = item.title || 'Création'
+  const meta = item.meta || (item.created_at ? formatDay(item.created_at) : '')
   return (
     <Pressable
       onPress={onPress}
@@ -278,12 +282,12 @@ function CreationChip({ item, selected, onPress }) {
         {item.thumbnail_url ? (
           <Image source={{ uri: item.thumbnail_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         ) : (
-          <Ionicons name="film-outline" size={18} color={C.muted} />
+          <Ionicons name={icon} size={18} color={C.muted} />
         )}
       </View>
       <View style={s.chipText}>
         <Text numberOfLines={1} style={[s.chipTitle, selected && s.reasonTextOn]}>{title}</Text>
-        {item.created_at ? <Text numberOfLines={1} style={[s.chipMeta, selected && s.chipMetaOn]}>{formatDay(item.created_at)}</Text> : null}
+        {meta ? <Text numberOfLines={1} style={[s.chipMeta, selected && s.chipMetaOn]}>{meta}</Text> : null}
       </View>
     </Pressable>
   )
