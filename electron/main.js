@@ -225,6 +225,26 @@ function getIconPath() {
   return path.join(__dirname, 'icons', name)
 }
 
+// Test builds only: `ChapCam.exe --app-url=https://<preview>.vercel.app` points the desktop
+// app at a Vercel preview of this team so web + installer can be validated together.
+// Any other host is ignored, so the flag cannot redirect the app to a third-party site.
+function resolveTestAppUrl() {
+  const arg = process.argv.find((a) => a.startsWith('--app-url='))
+  if (!arg) return null
+  try {
+    const url = new URL(arg.slice('--app-url='.length))
+    const allowed = url.protocol === 'https:' && /^[a-z0-9-]+-chapcam-s-projects\.vercel\.app$/.test(url.hostname)
+    if (!allowed) {
+      log(`Ignored --app-url (host not allowed): ${url.hostname}`)
+      return null
+    }
+    return `${url.origin}/dashboard`
+  } catch {
+    log('Ignored --app-url (invalid URL)')
+    return null
+  }
+}
+
 // Load the application
 function loadApp() {
   if (isDev) {
@@ -234,8 +254,9 @@ function loadApp() {
     mainWindow.loadURL(devUrl)
   } else {
     // Production: load the web app directly (like Slack, Discord do)
-    log('Loading ChapCam web app...')
-    mainWindow.loadURL('https://chapcam.com/dashboard')
+    const testUrl = resolveTestAppUrl()
+    log(testUrl ? `Loading TEST web app: ${testUrl}` : 'Loading ChapCam web app...')
+    mainWindow.loadURL(testUrl || 'https://chapcam.com/dashboard')
   }
 }
 
