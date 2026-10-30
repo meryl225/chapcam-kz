@@ -16,10 +16,10 @@ import { BRAND, C, PAD, shadow } from '../ui/catalog'
 import { ChapCamLoader } from '../ui/ChapCamLoader'
 import { supabase } from '../lib/supabase'
 import { loadDecart, mediaDevices, newSessionId, RTCView } from '../lib/realtime'
-import { AiBadge, RightsConsent } from '../ui/Safety'
+import { AiBadge, ReportAbuseSheet, RightsConsent } from '../ui/Safety'
 import { FaceLibrary } from '../ui/FaceLibrary'
 import { ActionSheet, ManageFacesSheet } from '../ui/FaceSheets'
-import { deleteUserFaces, forgetUserFace, getFavoriteIds, listUserFaces, loadPresetFace, loadUserFace, saveFavoriteIds, uploadUserFace } from '../lib/liveSwapPresets'
+import { deleteUserFaces, forgetUserFace, getFavoriteIds, listUserFaces, loadPresetFace, loadUserFace, PRESET_FACES, saveFavoriteIds, uploadUserFace } from '../lib/liveSwapPresets'
 
 const WEB_URL = (process.env.EXPO_PUBLIC_API_URL ?? Constants.expoConfig?.extra?.apiUrl ?? 'https://chapcam.com').replace(/\/$/, '')
 
@@ -61,6 +61,28 @@ const EFFECTS = [
   { key: 'paint', label: 'Peinture', icon: 'brush-outline', prompt: 'oil painting style' },
   { key: 'vintage', label: 'Vintage', icon: 'camera-outline', prompt: 'vintage 1970s film photo look' },
 ]
+
+const faceLabel = (face) => {
+  if (!face) return null
+  if (face.presetId) return PRESET_FACES.find((p) => p.id === face.presetId)?.label || face.presetId
+  return face.source === 'upload' ? 'Visage importé' : null
+}
+
+// Session and face/effect are optional extras: the report stays valid without them.
+const buildLiveReport = ({ sessionId, face, look }) => {
+  const visage = faceLabel(face)
+  const effect = EFFECTS.find((e) => e.key === look?.effect && e.key !== 'none')?.label
+  const background = BACKGROUNDS.find((b) => b.key === look?.background && b.key !== 'none')?.label
+  const context = [
+    'Live Swap',
+    sessionId ? `session ${sessionId}` : null,
+    visage ? `visage ${visage}` : null,
+    effect ? `effet ${effect}` : null,
+    background ? `fond ${background}` : null,
+  ].filter(Boolean).join(' · ').slice(0, 200)
+  const meta = [visage, effect].filter(Boolean).join(' · ') || (sessionId ? 'Session en cours' : 'Aperçu caméra')
+  return { context, subject: { title: 'Live Swap', meta, uri: face?.uri } }
+}
 
 const buildLookPrompt = ({ background, effect }) => {
   const bg = BACKGROUNDS.find((b) => b.key === background)?.prompt
@@ -129,6 +151,8 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
   const localRef = useRef(null)
   const clientRef = useRef(null)
   const sessionRef = useRef(null)
+  const [lastSessionId, setLastSessionId] = useState(null)
+  const [idleReportOpen, setIdleReportOpen] = useState(false)
   const timersRef = useRef([])
   const endingRef = useRef(false)
 
@@ -346,6 +370,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
     setPhase('preparing')
     const session = { id: newSessionId(), liveAt: null, startedAt: null }
     sessionRef.current = session
+    setLastSessionId(session.id)
 
     if (USE_NATIVE_LIVE) return startNative(session)
 
@@ -598,6 +623,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
         look={look}
         onApplyLook={applyLook}
         onOpenPlans={onOpenPlans}
+        sessionId={lastSessionId}
       />
     )
   }
@@ -697,6 +723,7 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
           >
             <Ionicons name="scan-outline" size={22} color={C.white} />
           </Pressable>
+          <ReportRailButton onPress={() => setIdleReportOpen(true)} />
         </View>
       ) : null}
 
@@ -773,7 +800,31 @@ export function LiveSwapScreen({ onBack, onOpenPlans, topInset, bottomInset, sub
       />
       <ActionSheet visible={optionsOpen} title="Live Swap" subtitle="Chaque seconde en direct coûte 2 points." actions={optionActions} bottomInset={bottomInset} onClose={() => setOptionsOpen(false)} />
       <ManageFacesSheet visible={manageOpen} faces={userFaces} bottomInset={bottomInset} onClose={() => setManageOpen(false)} onDelete={deleteWithConfirm} />
+      <LiveReportSheet visible={idleReportOpen} onClose={() => setIdleReportOpen(false)} sessionId={lastSessionId} face={face} look={look} />
     </View>
+  )
+}
+
+function LiveReportSheet({ visible, onClose, sessionId, face, look }) {
+  const { context, subject } = buildLiveReport({ sessionId, face, look })
+  return <ReportAbuseSheet visible={visible} onClose={onClose} contentUrl="" context={context} subject={subject} />
+}
+
+function ReportRailButton({ onPress, onPressIn }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={onPressIn}
+      accessibilityRole="button"
+      accessibilityLabel="Signaler"
+      accessibilityHint="Ouvre le formulaire de signalement"
+      style={({ pressed }) => [styles.railItem, pressed && styles.pressed]}
+    >
+      <View style={styles.railBtn}>
+        <Ionicons name="flag-outline" size={22} color={C.white} />
+      </View>
+      <Text style={styles.railLabel} numberOfLines={1}>Signaler</Text>
+    </Pressable>
   )
 }
 
@@ -793,9 +844,10 @@ function SideAction({ icon, label, dot, onPress, accessibilityLabel }) {
   )
 }
 
-function ImmersiveSession({ transformedStream, nativeVideo, connState, queuePosition, phase, elapsed, face, planLabel, remaining, topInset, bottomInset, onStop, onBack, effectsUnlocked, look, onApplyLook, onOpenPlans }) {
+function ImmersiveSession({ transformedStream, nativeVideo, connState, queuePosition, phase, elapsed, face, planLabel, remaining, topInset, bottomInset, onStop, onBack, effectsUnlocked, look, onApplyLook, onOpenPlans, sessionId }) {
   const [visible, setVisible] = useState(true)
   const [effectsOpen, setEffectsOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const [pinned, setPinned] = useState(false)
   const opacity = useRef(new Animated.Value(0)).current
   const hideTimer = useRef(null)
@@ -890,6 +942,18 @@ function ImmersiveSession({ transformedStream, nativeVideo, connState, queuePosi
     setEffectsOpen(true)
   }
 
+  // Controls stay on screen while the form is open; the session and camera keep running behind it.
+  const openReport = () => {
+    clearTimeout(hideTimer.current)
+    setVisible(true)
+    setReportOpen(true)
+  }
+
+  const closeReport = () => {
+    setReportOpen(false)
+    if (hasFrame) scheduleHide()
+  }
+
   const toggle = () => {
     if (visible && hasFrame) {
       clearTimeout(hideTimer.current)
@@ -955,6 +1019,10 @@ function ImmersiveSession({ transformedStream, nativeVideo, connState, queuePosi
           <AiBadge tone="dark" />
         </View>
 
+        <View style={[styles.rail, { top: topInset + 72 }]} pointerEvents="box-none">
+          <ReportRailButton onPress={openReport} />
+        </View>
+
         <View style={[styles.bottomBar, { paddingBottom: Math.max(bottomInset, 16) + 12 }]} pointerEvents="box-none">
           {planLabel || remaining ? (
             <Text style={styles.meta} numberOfLines={1}>
@@ -1006,6 +1074,7 @@ function ImmersiveSession({ transformedStream, nativeVideo, connState, queuePosi
       {effectsOpen ? (
         <EffectsSheet look={look} bottomInset={bottomInset} onApply={onApplyLook} onClose={() => setEffectsOpen(false)} />
       ) : null}
+      <LiveReportSheet visible={reportOpen} onClose={closeReport} sessionId={sessionId} face={face} look={look} />
     </View>
   )
 }
@@ -1145,7 +1214,9 @@ const styles = StyleSheet.create({
   pillBorder: { borderRadius: 999, padding: 1.5, shadowColor: C.violet, shadowOpacity: 0.6, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: 6 },
   pill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(12,12,24,0.92)', borderRadius: 999, paddingHorizontal: 12, height: 40 },
   pillText: { color: C.white, fontSize: 13, fontWeight: '700' },
-  rail: { position: 'absolute', right: 14, gap: 16 },
+  rail: { position: 'absolute', right: 14, gap: 16, alignItems: 'center' },
+  railItem: { alignItems: 'center', gap: 4 },
+  railLabel: { color: C.white, fontSize: 12, fontWeight: '600', textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 },
   railBtn: { width: 56, height: 56, borderRadius: 28, backgroundColor: GLASS, alignItems: 'center', justifyContent: 'center' },
   railBtnOn: { backgroundColor: 'rgba(123,77,255,0.7)' },
   idleNotice: { position: 'absolute', left: 14, right: 82 },

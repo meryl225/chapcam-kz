@@ -1,18 +1,22 @@
 import React, { useState } from 'react'
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Image, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Text, TextInput } from '../i18n/Text'
 import { Ionicons } from '@expo/vector-icons'
 import * as WebBrowser from 'expo-web-browser'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { supabase } from '../lib/supabase'
-import { API_URL, friendlyError } from '../lib/api'
+import { API_URL, apiJson, friendlyError } from '../lib/api'
 import { C } from './catalog'
 import { ChapCamLoader } from './ChapCamLoader'
 
 export const RIGHTS_TEXT = 'Je confirme disposer des droits et autorisations nécessaires pour utiliser ce contenu.'
 const CHARTER_URL = `${API_URL}/charte`
+const SEND_ERROR = 'Envoi impossible. Vérifie ta connexion et réessaie.'
 
+// Values are sent as-is to /api/mobile/report, which validates them against the same list.
 const REPORT_REASONS = [
+  'Contenu sexuel',
+  'Violence',
+  'Haine ou harcèlement',
   'Usurpation d’identité',
   'Escroquerie ou fraude',
   'Cybercriminalité',
@@ -64,103 +68,228 @@ export function ReportAbuseButton({ contentUrl, context }) {
   const [open, setOpen] = useState(false)
   return (
     <>
-      <Pressable onPress={() => setOpen(true)} accessibilityRole="button" accessibilityLabel="Signaler un abus" hitSlop={8} style={s.reportLink}>
+      <Pressable onPress={() => setOpen(true)} accessibilityRole="button" accessibilityLabel="Signaler un contenu" hitSlop={8} style={s.reportLink}>
         <Ionicons name="flag-outline" size={14} color={C.muted} />
-        <Text style={s.reportLinkText}>Signaler un abus</Text>
+        <Text style={s.reportLinkText}>Signaler un contenu</Text>
       </Pressable>
       <ReportAbuseSheet visible={open} onClose={() => setOpen(false)} contentUrl={contentUrl} context={context} />
     </>
   )
 }
 
-export function ReportAbuseSheet({ visible, onClose, contentUrl, context }) {
+export function SheetResult({ ok, title, message, onPrimary, primaryLabel, onSecondary, secondaryLabel }) {
+  return (
+    <View style={s.result} accessibilityLiveRegion="polite">
+      <View style={[s.resultIcon, ok ? s.resultIconOk : s.resultIconErr]}>
+        <Ionicons name={ok ? 'checkmark' : 'alert'} size={26} color={C.white} />
+      </View>
+      <Text style={s.resultTitle} accessibilityRole="header">{title}</Text>
+      <Text style={s.resultCopy}>{message}</Text>
+      <Pressable onPress={onPrimary} accessibilityRole="button" style={({ pressed }) => [s.send, pressed && s.pressed]}>
+        <Text style={s.sendText}>{primaryLabel}</Text>
+      </Pressable>
+      {onSecondary ? (
+        <Pressable onPress={onSecondary} accessibilityRole="button" hitSlop={8} style={s.secondary}>
+          <Text style={s.secondaryText}>{secondaryLabel}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  )
+}
+
+const formatDay = (value) => {
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString()
+}
+
+/**
+ * creation: when opened from a creation, its id is attached automatically.
+ * Otherwise (profile) the user can pick one of their creations in the form.
+ * subject: { title, meta, uri } describes non-creation content (e.g. a live session) and replaces the picker.
+ */
+export function ReportAbuseSheet({ visible, onClose, contentUrl, context, creation, subject }) {
   const insets = useSafeAreaInsets()
   const [reason, setReason] = useState('')
   const [details, setDetails] = useState('')
+  const [picked, setPicked] = useState(null)
+  const [creations, setCreations] = useState(null)
+  const [creationsError, setCreationsError] = useState(false)
+  const [phase, setPhase] = useState('form')
+  const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
+
+  const target = creation || picked
   const canSend = !!reason && details.trim().length > 0 && !sending
+
+  const loadCreations = async () => {
+    if (creation || subject) return
+    setCreationsError(false)
+    try {
+      const { response, body } = await apiJson('/api/mobile/creations')
+      if (!response.ok) throw new Error(body.error)
+      setCreations((body.creations || []).filter((c) => c.status === 'completed'))
+    } catch {
+      setCreationsError(true)
+      setCreations([])
+    }
+  }
+
+  const reset = () => {
+    setReason(''); setDetails(''); setPicked(null); setCreations(null); setPhase('form'); setError('')
+  }
 
   const close = () => {
     if (sending) return
-    setReason(''); setDetails('')
+    reset()
     onClose()
   }
 
   const submit = async () => {
     if (!canSend) return
     setSending(true)
+    setError('')
     try {
-      const { data } = await supabase.auth.getUser()
-      const user = data?.user
-      if (!user?.email) throw new Error('Reconnecte-toi pour envoyer un signalement.')
-      const name = user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0]
-      const res = await fetch(`${API_URL}/api/report-abuse`, {
+      const { response, body } = await apiJson('/api/mobile/report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
-          email: user.email,
           reason,
-          description: `${details.trim()}\n\nSignalé depuis l’app iOS${context ? ` · ${context}` : ''}`,
-          contentUrl: contentUrl || '',
+          details: details.trim(),
+          creationId: target?.id ? String(target.id) : '',
+          contentUrl: contentUrl || target?.playback_url || '',
+          context: context || '',
+          platform: Platform.OS,
         }),
       })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(json.error || 'Envoi impossible. Réessaie dans un instant.')
-      setReason(''); setDetails('')
-      onClose()
-      Alert.alert('Signalement envoyé', 'Merci. Notre équipe va examiner ce contenu.')
+      if (!response.ok || !body.success) throw new Error(body.error || SEND_ERROR)
+      setPhase('success')
     } catch (e) {
-      Alert.alert('Signalement', friendlyError(e, 'Envoi impossible. Réessaie dans un instant.'))
+      setError(friendlyError(e, SEND_ERROR))
+      setPhase('error')
     } finally {
       setSending(false)
     }
   }
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <KeyboardAvoidingView style={s.sheetWrap} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close} onShow={loadCreations} statusBarTranslucent>
+      <KeyboardAvoidingView style={s.sheetWrap} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={s.backdrop} onPress={close} accessibilityLabel="Fermer" />
         <View style={[s.sheet, { paddingBottom: insets.bottom + 16 }]}>
           <View style={s.topBar}>
             <View style={s.handle} />
-            <Pressable onPress={close} disabled={sending} accessibilityRole="button" accessibilityLabel="Fermer" hitSlop={10} style={({ pressed }) => [s.closeBtn, pressed && { opacity: 0.85 }]}>
+            <Pressable onPress={close} disabled={sending} accessibilityRole="button" accessibilityLabel="Fermer" hitSlop={10} style={({ pressed }) => [s.closeBtn, pressed && s.pressed]}>
               <Ionicons name="close" size={20} color={C.ink} />
             </Pressable>
           </View>
-          <Text style={s.sheetTitle} accessibilityRole="header">Signaler un abus</Text>
-          <Text style={s.sheetCopy}>Ton signalement est transmis à l’équipe de modération ChapCam.</Text>
-          <ScrollView style={s.sheetScroll} keyboardShouldPersistTaps="handled">
-            <Text style={s.label}>Motif</Text>
-            <View style={s.reasons}>
-              {REPORT_REASONS.map((r) => {
-                const active = reason === r
-                return (
-                  <Pressable key={r} onPress={() => setReason(r)} accessibilityRole="radio" accessibilityState={{ selected: active }} style={[s.reason, active && s.reasonOn]}>
-                    <Text style={[s.reasonText, active && s.reasonTextOn]}>{r}</Text>
-                  </Pressable>
-                )
-              })}
-            </View>
-            <Text style={s.label}>Détails</Text>
-            <TextInput
-              value={details}
-              onChangeText={setDetails}
-              multiline
-              maxLength={1000}
-              placeholder="Décris le problème…"
-              placeholderTextColor={C.muted}
-              textAlignVertical="top"
-              style={s.input}
-              accessibilityLabel="Détails du signalement"
+
+          {phase === 'success' ? (
+            <SheetResult
+              ok
+              title="Signalement envoyé"
+              message="Merci. Notre équipe de modération va examiner ce contenu."
+              primaryLabel="Fermer"
+              onPrimary={close}
             />
-          </ScrollView>
-          <Pressable onPress={submit} disabled={!canSend} accessibilityRole="button" accessibilityState={{ disabled: !canSend, busy: sending }} style={[s.send, !canSend && s.sendOff]}>
-            {sending ? <ChapCamLoader size="small" tone="light" /> : <Text style={s.sendText}>Envoyer le signalement</Text>}
-          </Pressable>
+          ) : phase === 'error' ? (
+            <SheetResult
+              title="Signalement non envoyé"
+              message={error}
+              primaryLabel="Réessayer"
+              onPrimary={submit}
+              secondaryLabel="Modifier le signalement"
+              onSecondary={() => setPhase('form')}
+            />
+          ) : (
+            <>
+              <Text style={s.sheetTitle} accessibilityRole="header">Signaler un contenu</Text>
+              <Text style={s.sheetCopy}>Ton signalement est transmis à l’équipe de modération ChapCam.</Text>
+              <ScrollView style={s.sheetScroll} keyboardShouldPersistTaps="handled">
+                <Text style={s.label}>Contenu concerné</Text>
+                {creation ? (
+                  <CreationChip item={creation} selected />
+                ) : subject ? (
+                  <CreationChip item={{ title: subject.title, thumbnail_url: subject.uri, meta: subject.meta }} icon="videocam-outline" selected />
+                ) : creations === null ? (
+                  <View style={s.pickerLoading}><ChapCamLoader size="small" /></View>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.picker} keyboardShouldPersistTaps="handled">
+                    <Pressable
+                      onPress={() => setPicked(null)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: !picked }}
+                      style={[s.otherChip, !picked && s.chipOn]}
+                    >
+                      <Ionicons name="help-circle-outline" size={18} color={!picked ? C.white : C.ink} />
+                      <Text style={[s.otherChipText, !picked && s.reasonTextOn]}>Autre contenu</Text>
+                    </Pressable>
+                    {creations.map((item) => (
+                      <CreationChip key={item.id} item={item} selected={picked?.id === item.id} onPress={() => setPicked(item)} />
+                    ))}
+                  </ScrollView>
+                )}
+                {creationsError ? <Text style={s.hint}>Impossible de charger tes créations. Tu peux décrire le contenu dans les détails.</Text> : null}
+
+                <Text style={s.label}>Motif</Text>
+                <View style={s.reasons}>
+                  {REPORT_REASONS.map((r) => {
+                    const active = reason === r
+                    return (
+                      <Pressable key={r} onPress={() => setReason(r)} accessibilityRole="radio" accessibilityState={{ selected: active }} style={[s.reason, active && s.reasonOn]}>
+                        <Text style={[s.reasonText, active && s.reasonTextOn]}>{r}</Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+                <Text style={s.label}>Détails</Text>
+                <TextInput
+                  value={details}
+                  onChangeText={setDetails}
+                  multiline
+                  maxLength={1000}
+                  placeholder="Décris le problème…"
+                  placeholderTextColor={C.muted}
+                  textAlignVertical="top"
+                  style={s.input}
+                  editable={!sending}
+                  accessibilityLabel="Détails du signalement"
+                />
+              </ScrollView>
+              <Pressable onPress={submit} disabled={!canSend} accessibilityRole="button" accessibilityState={{ disabled: !canSend, busy: sending }} style={[s.send, !canSend && s.sendOff]}>
+                {sending ? <ChapCamLoader size="small" tone="light" /> : <Text style={s.sendText}>Envoyer le signalement</Text>}
+              </Pressable>
+            </>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
+  )
+}
+
+function CreationChip({ item, selected, onPress, icon = 'film-outline' }) {
+  const title = item.title || 'Création'
+  const meta = item.meta || (item.created_at ? formatDay(item.created_at) : '')
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      accessibilityLabel={title}
+      style={[s.chip, selected && s.chipOn]}
+    >
+      <View style={s.thumb}>
+        {item.thumbnail_url ? (
+          <Image source={{ uri: item.thumbnail_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        ) : (
+          <Ionicons name={icon} size={18} color={C.muted} />
+        )}
+      </View>
+      <View style={s.chipText}>
+        <Text numberOfLines={1} style={[s.chipTitle, selected && s.reasonTextOn]}>{title}</Text>
+        {meta ? <Text numberOfLines={1} style={[s.chipMeta, selected && s.chipMetaOn]}>{meta}</Text> : null}
+      </View>
+    </Pressable>
   )
 }
 
@@ -181,7 +310,7 @@ const s = StyleSheet.create({
   reportLinkText: { color: C.muted, fontSize: 13, fontWeight: '700' },
   sheetWrap: { flex: 1, justifyContent: 'flex-end' },
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(14,21,48,0.45)' },
-  sheet: { maxHeight: '85%', backgroundColor: C.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 18, paddingTop: 10, gap: 8 },
+  sheet: { maxHeight: '88%', backgroundColor: C.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 18, paddingTop: 10, gap: 8 },
   topBar: { height: 32, alignItems: 'center', justifyContent: 'center' },
   handle: { alignSelf: 'center', width: 40, height: 5, borderRadius: 3, backgroundColor: C.line },
   closeBtn: { position: 'absolute', top: 0, right: -4, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg },
@@ -189,13 +318,34 @@ const s = StyleSheet.create({
   sheetCopy: { color: C.muted, fontSize: 13, lineHeight: 19 },
   sheetScroll: { flexGrow: 0 },
   label: { color: C.ink, fontSize: 13, fontWeight: '800', marginTop: 10, marginBottom: 8 },
+  hint: { color: C.muted, fontSize: 12, lineHeight: 17, marginTop: 6 },
+  pickerLoading: { height: 56, alignItems: 'center', justifyContent: 'center' },
+  picker: { gap: 8, paddingRight: 4 },
+  chip: { width: 170, flexDirection: 'row', alignItems: 'center', gap: 8, padding: 6, borderRadius: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.bg },
+  chipOn: { backgroundColor: C.ink, borderColor: C.ink },
+  thumb: { width: 40, height: 40, borderRadius: 10, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', backgroundColor: C.line },
+  chipText: { flex: 1, gap: 1 },
+  chipTitle: { color: C.ink, fontSize: 13, fontWeight: '800' },
+  chipMeta: { color: C.muted, fontSize: 11, fontWeight: '600' },
+  chipMetaOn: { color: 'rgba(255,255,255,0.7)' },
+  otherChip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.bg },
+  otherChipText: { color: C.ink, fontSize: 13, fontWeight: '700' },
   reasons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   reason: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.bg },
   reasonOn: { backgroundColor: C.ink, borderColor: C.ink },
   reasonText: { color: C.ink, fontSize: 13, fontWeight: '700' },
   reasonTextOn: { color: C.white },
   input: { minHeight: 100, borderRadius: 14, borderWidth: 1, borderColor: C.line, backgroundColor: C.bg, padding: 12, color: C.ink, fontSize: 15, lineHeight: 21 },
-  send: { height: 52, borderRadius: 26, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  send: { alignSelf: 'stretch', height: 52, borderRadius: 26, backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   sendOff: { opacity: 0.4 },
   sendText: { color: C.white, fontSize: 15, fontWeight: '900' },
+  pressed: { opacity: 0.85 },
+  result: { alignItems: 'center', gap: 10, paddingTop: 4, paddingBottom: 4 },
+  resultIcon: { width: 56, height: 56, borderRadius: 28, alignItems: 'center', justifyContent: 'center' },
+  resultIconOk: { backgroundColor: C.blue },
+  resultIconErr: { backgroundColor: C.violet },
+  resultTitle: { color: C.ink, fontSize: 19, fontWeight: '900', textAlign: 'center' },
+  resultCopy: { color: C.muted, fontSize: 14, lineHeight: 20, textAlign: 'center' },
+  secondary: { paddingVertical: 8 },
+  secondaryText: { color: C.ink, fontSize: 14, fontWeight: '800' },
 })
