@@ -186,6 +186,9 @@ export function useViduSwap() {
       const query = new URLSearchParams({ sessionId: session.sessionId, liveId: session.liveId, endReason: diagToken(reason) })
       if (endInfo.hangupReason) query.set('hangupReason', diagToken(endInfo.hangupReason))
       if (endInfo.wsCode !== undefined) query.set('wsCode', String(endInfo.wsCode))
+      const videoCodecs = typeof RTCRtpSender !== 'undefined' ? RTCRtpSender.getCapabilities?.('video')?.codecs ?? [] : []
+      query.set('h264', videoCodecs.some((c) => c.mimeType === 'video/H264') ? 'yes' : 'no')
+      query.set('client', (window as Window & { electronAPI?: unknown }).electronAPI ? 'desktop' : 'browser')
       void fetch(`/api/vidu/session?${query}`, { method: 'DELETE', keepalive: true })
         .then((r) => r.json())
         .then((d) => console.info(`[live-swap][STEP] SESSION_STOPPED reason=${reason} hangup_reason=${endInfo.hangupReason ?? 'none'} ws_code=${endInfo.wsCode ?? 'none'} billed=${d?.live?.billedSeconds ?? 'unknown'}s close_reason=${d?.live?.closeReason ?? 'unknown'}`))

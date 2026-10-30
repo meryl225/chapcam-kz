@@ -128,7 +128,7 @@ export async function DELETE(request: Request) {
     console.error(`[Vidu] client start failed user=${user.id} step=${failedStep} detail=${detail}`)
   }
   const token = (name: string) => (url.searchParams.get(name) ?? '').replace(/[^\w.:-]/g, '').slice(0, 64) || 'none'
-  const clientEnd = `client_end=${token('endReason')} hangup_reason=${token('hangupReason')} ws_code=${token('wsCode')}`
+  const clientEnd = `client_end=${token('endReason')} hangup_reason=${token('hangupReason')} ws_code=${token('wsCode')} client=${token('client')} h264=${token('h264')}`
   const live = liveId ? await getViduLive(liveId).catch(() => null) : null
   if (live) {
     console.log(`[Vidu] session ended user=${user.id} live=${liveId} billed=${live.billedSeconds}s reason=${live.closeReason} ${clientEnd}`)
