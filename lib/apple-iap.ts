@@ -18,6 +18,7 @@ import { activateSubscription, logPaymentEvent } from '@/lib/fulfillment'
 import { getPlan, type PlanConfig, type PlanId } from '@/lib/plans'
 import { normalizePlanName } from '@/lib/watermark'
 import { APPLE_ROOT_CA_G3_BASE64 } from '@/lib/apple-root-ca'
+import { isApplePurchaseAllowed } from '@/lib/apple-purchase-allowlist'
 
 type Admin = ReturnType<typeof createAdminClient>
 
@@ -178,6 +179,10 @@ export async function applyAppleTransaction(
   }
   if (!tx.expiresDate || tx.expiresDate <= Date.now()) {
     return { ...base, status: 'expired' }
+  }
+  if (!isApplePurchaseAllowed(email)) {
+    console.warn('[iap-diag] achat Apple bloque', { userId: opts.userId, productId: tx.productId, source: opts.source })
+    return { ...base, status: 'rejected', reason: 'Achats Apple suspendus' }
   }
 
   // Reservation atomique (cle primaire processed_payments.token) : une seule

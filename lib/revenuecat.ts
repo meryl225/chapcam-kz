@@ -5,6 +5,7 @@ import { recordTopupCredit } from '@/lib/liveswap-topup'
 import { creditJetonsOnce, revokeJetonsOnce } from '@/lib/jetons'
 import { APPLE_PRODUCTS, deactivateAppleSubscription, emailFor, extendAppleSubscription, planForAppleProduct } from '@/lib/apple-iap'
 import { getPlan, type PlanConfig, type PlanId } from '@/lib/plans'
+import { isApplePurchaseAllowed } from '@/lib/apple-purchase-allowlist'
 
 // ============================================================
 // Achats iOS (App Store) et Android (Google Play) via RevenueCat.
@@ -104,7 +105,7 @@ async function fetchSubscriber(userId: string): Promise<RcSubscriber> {
   return body?.subscriber ?? {}
 }
 
-export type SyncStatus = 'activated' | 'already' | 'credited' | 'expired' | 'revoked' | 'other_account'
+export type SyncStatus = 'activated' | 'already' | 'credited' | 'expired' | 'revoked' | 'other_account' | 'blocked'
 
 export interface SyncItem {
   productId: string
@@ -230,6 +231,12 @@ async function applySubscriptions(admin: Admin, userId: string, email: string, s
       continue
     }
 
+    if (store === 'app_store' && !isApplePurchaseAllowed(email)) {
+      console.warn('[iap-diag] achat Apple bloque', { userId, productId, token, source })
+      items.push({ productId, store, transactionId: token, status: 'blocked', expiresAt: sub.expires_date })
+      continue
+    }
+
     if (!(await ownsSubscriptionLineage(admin, userId, email, productId, plan.id, sub, token, store))) {
       console.info('[iap-diag] abonnement rattache a un autre compte', { userId, productId, token })
       items.push({ productId, store, transactionId: token, status: 'other_account', expiresAt: sub.expires_date })
@@ -318,6 +325,11 @@ async function applyTokenPacks(admin: Admin, userId: string, email: string, subs
     for (const entry of purchases[productId] ?? []) {
       if (entry.store !== store) continue
       const token = transactionKey(store, productId, entry)
+      if (store === 'app_store' && !isApplePurchaseAllowed(email)) {
+        console.warn('[iap-diag] achat Apple bloque', { userId, productId, token, source })
+        items.push({ productId, store, transactionId: token, status: 'blocked', jetons: pack.jetons })
+        continue
+      }
       const result = await creditJetonsOnce(userId, token, pack.jetons, {
         source,
         productId,
@@ -366,6 +378,11 @@ async function applyMinutePacks(admin: Admin, userId: string, email: string, sub
       if (entry.store !== store) continue
       const token = transactionKey(store, productId, entry)
       const packPoints = pack.minutes * 60 * LIVESWAP_POINTS_PER_SECOND
+      if (store === 'app_store' && !isApplePurchaseAllowed(email)) {
+        console.warn('[iap-diag] achat Apple bloque', { userId, productId, token, source })
+        items.push({ productId, store, transactionId: token, status: 'blocked', minutes: pack.minutes })
+        continue
+      }
 
       const { error: insertErr } = await admin
         .from('processed_payments')
