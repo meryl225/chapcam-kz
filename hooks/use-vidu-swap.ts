@@ -511,9 +511,8 @@ export function useViduSwap() {
       if (localVideoRef.current) await callOptional(engine, 'setLocalViewConfig', localVideoRef.current, 1)
       await callOptional(engine, 'startPreview', 1)
       const rtcTrack = (localVideoRef.current?.srcObject as MediaStream | null)?.getVideoTracks()[0]
-      const rtcDeviceId = typeof engine.getCurrentCameraDeviceId === 'function' ? engine.getCurrentCameraDeviceId() : rtcTrack?.getSettings().deviceId
-      console.info(`[live-swap] AliRTC camera="${rtcTrack?.label ?? '?'}" deviceId=${rtcDeviceId ?? '?'}`)
-      if (CHAPCAM_LABEL.test(rtcTrack?.label ?? '') || (sourceDeviceId && rtcDeviceId && rtcDeviceId !== sourceDeviceId)) {
+      console.info(`[live-swap] AliRTC camera="${rtcTrack?.label ?? '?'}"`)
+      if (CHAPCAM_LABEL.test(rtcTrack?.label ?? '')) {
         throw new UserFacingError("Live Swap n'a pas pu utiliser ta webcam physique (la caméra virtuelle ChapCam a été sélectionnée). Choisis ta webcam dans Paramètres > Caméra, puis relance.")
       }
       setCameraEnabled(true)
