@@ -25,10 +25,12 @@ export type DesktopRelease = {
   status: DesktopReleaseStatus
 }
 
-const RELEASE_TAG = "desktop-v1.0.5"
-const BASE = `https://github.com/meryl225/chapcam-kz/releases/download/${RELEASE_TAG}`
+const RELEASES = "https://github.com/meryl225/chapcam-kz/releases/download"
+const WINDOWS_BASE = `${RELEASES}/desktop-v1.0.6`
+// The Mac installers were not rebuilt for 1.0.6.
+const BASE = `${RELEASES}/desktop-v1.0.5`
 
-export const DESKTOP_VERSION = "1.0.5"
+export const DESKTOP_VERSION = "1.0.6"
 
 export const desktopReleases: DesktopRelease[] = [
   {
@@ -37,12 +39,12 @@ export const desktopReleases: DesktopRelease[] = [
     title: "Windows",
     compatibility: "Windows 11 x64",
     format: "EXE",
-    fileName: "ChapCam-Setup-1.0.5-x64.exe",
-    url: `${BASE}/ChapCam-Setup-1.0.5-x64.exe`,
-    sizeBytes: 322304138,
-    sha256: "e80cc4c810a6ab4e0732355f4a4ed67528e542241296b4115f5a18451d283fae",
-    sourceCommit: "6f88e7dc",
-    sourceRun: "40192778566",
+    fileName: "ChapCam-Setup-1.0.6-x64.exe",
+    url: `${WINDOWS_BASE}/ChapCam-Setup-1.0.6-x64.exe`,
+    sizeBytes: 323405538,
+    sha256: "b2e4f2e6aca9d624b6f92ebc4970d53c843080d8757599e2893ea26c59117f1d",
+    sourceCommit: "ad82b7e5",
+    sourceRun: "41131267580",
     signed: false,
     status: "validated",
   },

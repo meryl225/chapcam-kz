@@ -5,7 +5,6 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { X } from 'lucide-react'
-import { PLAY_STORE_URL } from '@/components/home-mobile-apps'
 
 // sessionStorage : le popup s'affiche a chaque nouvelle connexion (nouvelle session navigateur),
 // une seule fois par session.
@@ -52,11 +51,9 @@ export function ChapCam2Announcement({ delayMs = 600, oncePerSession = true }: C
 
   function handleMainDownload() {
     const ua = navigator.userAgent
-    const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(ua) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)
     dismiss()
-    if (/Android/i.test(ua)) {
-      window.open(PLAY_STORE_URL, '_blank', 'noopener,noreferrer')
-    } else if (!isIOS) {
+    if (!isMobile) {
       router.push('/download')
     }
   }
@@ -102,12 +99,11 @@ export function ChapCam2Announcement({ delayMs = 600, oncePerSession = true }: C
             className="absolute rounded-xl outline-none ring-sky-300 transition hover:bg-white/10 focus-visible:ring-2"
             style={{ left: '3.6%', top: '83.2%', width: '10.8%', height: '10.6%' }}
           />
-          <a
-            href={PLAY_STORE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
             onClick={dismiss}
-            aria-label="Télécharger ChapCam 5.0 sur Google Play (Android)"
+            title="Android : bientôt disponible sur Google Play. En attendant, ChapCam 5.0 s'utilise ici dans ton navigateur"
+            aria-label="Android : bientôt disponible, utiliser ChapCam 5.0 dans le navigateur"
             className="absolute rounded-xl outline-none ring-sky-300 transition hover:bg-white/10 focus-visible:ring-2"
             style={{ left: '15.4%', top: '83.2%', width: '11.4%', height: '10.6%' }}
           />
