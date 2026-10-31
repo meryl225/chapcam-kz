@@ -35,10 +35,9 @@ begin
     return new;
   end if;
 
+  -- INSERT : les privileges par colonne empechent deja le client de fournir
+  -- points / plan / plan_expires_at, qui prennent leurs valeurs par defaut.
   if tg_op = 'INSERT' then
-    new.points := 0;
-    new.plan := 'free';
-    new.plan_expires_at := null;
     return new;
   end if;
 
