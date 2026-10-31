@@ -4,7 +4,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getPlan } from '@/lib/plans'
 import { getLiveOffer } from '@/lib/live-offers'
 import { getInstallOffer } from '@/lib/install-offer'
-import { getPcOffer } from '@/lib/pc-offer'
 import { getVoiceOffer } from '@/lib/voice-offers'
 import { getPhotoVideoOffer } from '@/lib/photo-video-offers'
 import { getMotionOffer } from '@/lib/motion-offers'
@@ -46,14 +45,13 @@ export async function POST(request: NextRequest) {
     const plan = getPlan(productId)
     const liveOffer = getLiveOffer(productId)
     const installOffer = getInstallOffer(productId)
-    const pcOffer = getPcOffer(productId)
     const voiceOffer = getVoiceOffer(productId)
     const photoOffer = getPhotoVideoOffer(productId)
     const motionOffer = getMotionOffer(productId)
     const translationOffer = getTranslationOffer(productId)
     const minutesOffer = getMinutesOffer(productId)
     const jetonsOffer = getJetonsOffer(productId)
-    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer && !minutesOffer && !jetonsOffer) {
+    if (!plan && !liveOffer && !installOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer && !minutesOffer && !jetonsOffer) {
       return NextResponse.json({ success: false, error: 'Produit inconnu.' }, { status: 400 })
     }
 
@@ -65,9 +63,7 @@ export async function POST(request: NextRequest) {
         ? { amount: liveOffer.price, kind: 'live' as const, label: `${liveOffer.name} (${liveOffer.windowMinutes} min d'acces Live)` }
         : installOffer
           ? { amount: installOffer.price, kind: 'installation' as const, label: installOffer.name }
-          : pcOffer
-            ? { amount: pcOffer.price, kind: 'pc' as const, label: `${pcOffer.name} (licence a vie)` }
-            : voiceOffer
+          : voiceOffer
               ? { amount: voiceOffer.price, kind: 'voice' as const, label: `${voiceOffer.name} (${voiceOffer.minutes} min de voix)` }
               : photoOffer
                 ? { amount: photoOffer.price, kind: 'photo' as const, label: `${photoOffer.name} (${photoOffer.credits} videos de 30s)` }
