@@ -5,7 +5,6 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getPlan } from '@/lib/plans'
 import { getLiveOffer } from '@/lib/live-offers'
 import { getInstallOffer } from '@/lib/install-offer'
-import { getPcOffer } from '@/lib/pc-offer'
 import { getVoiceOffer } from '@/lib/voice-offers'
 import { getPhotoVideoOffer } from '@/lib/photo-video-offers'
 import { getMotionOffer } from '@/lib/motion-offers'
@@ -50,13 +49,12 @@ export async function POST(request: NextRequest) {
     const plan = getPlan(productId)
     const liveOffer = getLiveOffer(productId)
     const installOffer = getInstallOffer(productId)
-    const pcOffer = getPcOffer(productId)
     const voiceOffer = getVoiceOffer(productId)
     const photoOffer = getPhotoVideoOffer(productId)
     const motionOffer = getMotionOffer(productId)
     const translationOffer = getTranslationOffer(productId)
     const minutesOffer = getMinutesOffer(productId)
-    if (!plan && !liveOffer && !installOffer && !pcOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer && !minutesOffer) {
+    if (!plan && !liveOffer && !installOffer && !voiceOffer && !photoOffer && !motionOffer && !translationOffer && !minutesOffer) {
       return NextResponse.json({ success: false, error: 'Produit inconnu.' }, { status: 400 })
     }
 
@@ -66,9 +64,7 @@ export async function POST(request: NextRequest) {
         ? liveOffer.price
         : installOffer
           ? installOffer.price
-          : pcOffer
-            ? pcOffer.price
-            : voiceOffer
+          : voiceOffer
               ? voiceOffer.price
               : photoOffer
                 ? photoOffer.price
