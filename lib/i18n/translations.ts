@@ -15,6 +15,9 @@ export const translations: Record<string, string> = {
   Tarifs: "Pricing",
   Télécharger: "Download",
   "Nouveau sur Google Play": "New on Google Play",
+  "Bientôt sur mobile": "Coming soon to mobile",
+  "Live Swap, Genjutsu et tous tes outils IA bientôt dans ta poche. En attendant, utilise ChapCam directement dans ton navigateur.":
+    "Live Swap, Genjutsu and all your AI tools, soon in your pocket. Meanwhile, use ChapCam right in your browser.",
   "ChapCam sur ton téléphone": "ChapCam on your phone",
   "Live Swap, Genjutsu et tous tes outils IA dans ta poche. Télécharge l’application Android dès maintenant.":
     "Live Swap, Genjutsu and all your AI tools in your pocket. Download the Android app now.",
