@@ -2,364 +2,337 @@ import type { Metadata } from "next"
 import { LegalShell, LegalSection } from "@/components/legal/legal-shell"
 
 export const metadata: Metadata = {
-  title: "Politique de Confidentialité — ChapCam",
+  title: "Privacy Policy — ChapCam",
   description:
-    "Politique de Confidentialité de ChapCam : quelles données nous collectons, comment nous les utilisons et vos droits (RGPD).",
+    "ChapCam Privacy Policy: what data we collect, how we use it, how face data is handled, and your rights (GDPR).",
+}
+
+const linkClass = "text-primary hover:underline"
+
+function ContactEmail() {
+  return (
+    <a href="mailto:contact@chapcam.com" className={linkClass}>
+      contact@chapcam.com
+    </a>
+  )
 }
 
 export default function ConfidentialitePage() {
   return (
     <LegalShell
-      title="Politique de Confidentialité"
-      updatedAt="15 octobre 2026"
-      intro="La présente Politique de Confidentialité explique comment ChapCam collecte, utilise, conserve et protège vos données personnelles lorsque vous utilisez notre plateforme de transformation de visage en temps réel. Elle s'applique conformément au Règlement Général sur la Protection des Données (RGPD) et aux lois applicables en matière de protection des données."
+      locale="en"
+      title="Privacy Policy"
+      updatedAt="November 1, 2026"
+      intro="This Privacy Policy explains how ChapCam collects, uses, retains and protects your personal data when you use our real-time face transformation platform. It applies in accordance with the General Data Protection Regulation (GDPR) and other applicable data protection laws."
     >
-      <LegalSection title="1. Responsable du traitement">
+      <LegalSection title="1. Data controller">
         <p>
-          ChapCam est responsable du traitement de vos données personnelles dans le cadre de l&apos;utilisation de la
-          Plateforme. Pour toute question relative à vos données, vous pouvez nous contacter à{" "}
-          <a href="mailto:contact@chapcam.com" className="text-primary hover:underline">
-            contact@chapcam.com
-          </a>
-          .
+          ChapCam is the controller of your personal data processed in connection with your use of the Platform. For
+          any question about your data, you can contact us at <ContactEmail />.
         </p>
       </LegalSection>
 
-      <LegalSection title="2. Données que nous collectons">
-        <p>Selon votre utilisation de la Plateforme, nous pouvons collecter les catégories de données suivantes :</p>
+      <LegalSection title="2. Data we collect">
+        <p>Depending on how you use the Platform, we may collect the following categories of data:</p>
         <ul className="ml-5 list-disc space-y-2">
           <li>
-            <span className="text-foreground">Données de compte</span> : adresse e-mail, mot de passe (chiffré), et
-            informations de profil que vous fournissez.
+            <span className="text-foreground">Account data</span>: email address, password (encrypted), and profile
+            information you provide.
           </li>
           <li>
-            <span className="text-foreground">Données faciales</span> : flux caméra, photos et vidéos montrant un
-            visage, que vous fournissez pour utiliser certaines fonctionnalités (voir la section 4).
+            <span className="text-foreground">Face data</span>: camera feed, photos and videos showing a face, which you
+            provide in order to use certain features (see section 4).
           </li>
           <li>
-            <span className="text-foreground">Contenu</span> : flux caméra, images, avatars et autres éléments que vous
-            fournissez ou générez.
+            <span className="text-foreground">Content</span>: camera feed, images, avatars and other material you
+            provide or generate.
           </li>
           <li>
-            <span className="text-foreground">Données de paiement</span> : traitées par nos prestataires de paiement
-            sécurisés ; nous ne stockons pas vos numéros de carte complets.
+            <span className="text-foreground">Payment data</span>: processed by our secure payment providers; we do not
+            store your full card numbers.
           </li>
           <li>
-            <span className="text-foreground">Données d&apos;usage et techniques</span> : adresse IP, type
-            d&apos;appareil et de navigateur, journaux de connexion, pays, et données d&apos;analyse d&apos;audience.
+            <span className="text-foreground">Usage and technical data</span>: IP address, device and browser type,
+            connection logs, country, and audience analytics data.
           </li>
         </ul>
       </LegalSection>
 
-      <LegalSection title="3. Finalités et bases légales (RGPD)">
-        <p>Nous traitons vos données pour les finalités suivantes :</p>
+      <LegalSection title="3. Purposes and legal bases (GDPR)">
+        <p>We process your data for the following purposes:</p>
         <ul className="ml-5 list-disc space-y-2">
           <li>
-            fournir et exploiter la Plateforme, créer et gérer votre compte —{" "}
-            <span className="text-foreground">base : exécution du contrat</span> ;
+            providing and operating the Platform, creating and managing your account —{" "}
+            <span className="text-foreground">basis: performance of a contract</span>;
           </li>
           <li>
-            fournir les fonctionnalités utilisant vos photos, vidéos ou flux caméra (section 4) —{" "}
-            <span className="text-foreground">base : votre consentement, exprimé lorsque vous lancez la fonctionnalité</span> ;
+            providing the features that use your photos, videos or camera feed (section 4) —{" "}
+            <span className="text-foreground">basis: your consent, given when you launch the feature</span>;
           </li>
           <li>
-            traiter les paiements et gérer les abonnements —{" "}
-            <span className="text-foreground">base : exécution du contrat / obligation légale</span> ;
+            processing payments and managing subscriptions —{" "}
+            <span className="text-foreground">basis: performance of a contract / legal obligation</span>;
           </li>
           <li>
-            assurer la sécurité, prévenir la fraude et les usages abusifs —{" "}
-            <span className="text-foreground">base : intérêt légitime / obligation légale</span> ;
+            ensuring security and preventing fraud and abuse —{" "}
+            <span className="text-foreground">basis: legitimate interest / legal obligation</span>;
           </li>
           <li>
-            améliorer la Plateforme et réaliser des statistiques —{" "}
-            <span className="text-foreground">base : intérêt légitime ou consentement</span> ;
+            improving the Platform and producing statistics —{" "}
+            <span className="text-foreground">basis: legitimate interest or consent</span>;
           </li>
           <li>
-            vous adresser des communications relatives au service ou, le cas échéant, marketing —{" "}
-            <span className="text-foreground">base : consentement / intérêt légitime</span>.
+            sending you service-related communications and, where applicable, marketing —{" "}
+            <span className="text-foreground">basis: consent / legitimate interest</span>.
           </li>
         </ul>
       </LegalSection>
 
-      <LegalSection title="4. Données faciales et traitement par intelligence artificielle">
+      <LegalSection title="4. Face data and artificial intelligence processing">
         <div id="donnees-faciales" className="scroll-mt-24 space-y-3">
-          <h3 className="font-semibold text-foreground">4.1 Données faciales traitées</h3>
+          <h3 className="font-semibold text-foreground">4.1 Face data processed</h3>
           <p>
-            Certaines fonctionnalités de ChapCam traitent des images sur lesquelles votre visage, ou celui d&apos;une
-            autre personne, peut apparaître. Il s&apos;agit uniquement des contenus que vous choisissez de fournir :
+            Some ChapCam features process images in which your face, or another person&apos;s face, may appear. This is
+            only content you choose to provide:
           </p>
           <ul className="ml-5 list-disc space-y-2">
             <li>
-              <span className="text-foreground">Flux caméra en direct</span> : image de la caméra avant de votre
-              appareil pendant une session Live Swap ;
+              <span className="text-foreground">Live camera feed</span>: the image from your device&apos;s front camera
+              during a Live Swap session;
             </li>
             <li>
-              <span className="text-foreground">Photos</span> : visage de référence Live Swap, photo de profil, et
-              photos que vous sélectionnez pour Photo → Vidéo, Motion, Genjutsu et ChapVerify ;
+              <span className="text-foreground">Photos</span>: the Live Swap reference face, your profile picture, and
+              photos you select for Photo → Video, Motion, Genjutsu and ChapVerify;
             </li>
             <li>
-              <span className="text-foreground">Vidéos</span> : vidéos que vous sélectionnez pour Genjutsu, la
-              Traduction vidéo et ChapVerify ;
+              <span className="text-foreground">Videos</span>: videos you select for Genjutsu, Video Translation and
+              ChapVerify;
             </li>
             <li>
-              <span className="text-foreground">Contenus générés</span> : vidéos produites à partir de ces éléments.
+              <span className="text-foreground">Generated content</span>: videos produced from these inputs.
             </li>
           </ul>
           <p>
-            ChapCam ne calcule pas, ne crée pas et ne conserve pas de gabarit biométrique, d&apos;empreinte faciale ou
-            de mesure de la géométrie du visage permettant de vous identifier. L&apos;application n&apos;utilise ni Face
-            ID, ni ARKit, ni la caméra TrueDepth pour ces fonctionnalités. Le traitement du visage nécessaire à la
-            génération des contenus est effectué par les modèles d&apos;intelligence artificielle de nos prestataires
-            (voir la section 6), à partir des images et vidéos que vous leur transmettez par notre intermédiaire.
+            ChapCam does not compute, create or store any biometric template, faceprint or facial geometry measurement
+            that could identify you. The app does not use Face ID, ARKit or the TrueDepth camera for these features.
+            The face processing required to generate content is performed by the artificial intelligence models of our
+            providers (see section 6), using the images and videos you send them through us.
           </p>
         </div>
 
         <div id="finalites-donnees-faciales" className="scroll-mt-24 space-y-3 pt-2">
-          <h3 className="font-semibold text-foreground">4.2 Finalités</h3>
-          <p>Ces données sont utilisées exclusivement pour fournir la fonctionnalité que vous avez lancée :</p>
+          <h3 className="font-semibold text-foreground">4.2 Purposes</h3>
+          <p>This data is used exclusively to deliver the feature you launched:</p>
           <ul className="ml-5 list-disc space-y-2">
-            <li>Live Swap : remplacer en direct votre visage par le visage de référence choisi ;</li>
-            <li>Photo → Vidéo : animer la photo sélectionnée ;</li>
-            <li>Motion et Genjutsu : appliquer un mouvement ou une vidéo de référence à la photo sélectionnée ;</li>
-            <li>Traduction vidéo : traduire une vidéo et synchroniser les lèvres ;</li>
-            <li>ChapVerify : estimer si une image ou une vidéo a été générée ou modifiée par une IA ;</li>
-            <li>Photo de profil : afficher votre profil dans l&apos;application.</li>
+            <li>Live Swap: replacing your face in real time with the reference face you chose;</li>
+            <li>Photo → Video: animating the selected photo;</li>
+            <li>Motion and Genjutsu: applying a reference motion or video to the selected photo;</li>
+            <li>Video Translation: translating a video and synchronizing lip movements;</li>
+            <li>ChapVerify: estimating whether an image or video was generated or altered by AI;</li>
+            <li>Profile picture: displaying your profile in the app.</li>
           </ul>
           <p>
-            Les données faciales ne sont traitées que lorsque vous lancez vous-même une de ces fonctionnalités et
-            sélectionnez ou filmez un contenu. ChapCam n&apos;utilise pas vos données faciales pour vous identifier, pour
-            la publicité, pour le profilage, ni pour entraîner ses propres modèles, et ne les vend pas.
+            Face data is processed only when you launch one of these features yourself and select or film content.
+            ChapCam does not use your face data to identify you, for advertising, for profiling, or to train its own
+            models, and does not sell it.
           </p>
         </div>
 
         <div id="temps-reel-et-fichiers" className="scroll-mt-24 space-y-3 pt-2">
-          <h3 className="font-semibold text-foreground">4.3 Traitement en temps réel et fichiers enregistrés</h3>
+          <h3 className="font-semibold text-foreground">4.3 Real-time processing and saved files</h3>
           <p>
-            <span className="text-foreground">Temps réel (Live Swap)</span> : le flux de votre caméra est transmis de
-            votre appareil directement au prestataire de transformation vidéo, de façon chiffrée, pendant la durée de la
-            session. Il ne transite pas par les serveurs de ChapCam et n&apos;est ni enregistré ni conservé par ChapCam.
-            Seules des informations techniques sans image (date, durée de la session) sont conservées.
+            <span className="text-foreground">Real time (Live Swap)</span>: your camera feed is sent, encrypted,
+            directly from your device to the video transformation provider (Decart AI) for the duration of the session.
+            It does not pass through ChapCam&apos;s servers and is neither recorded nor retained by ChapCam. The
+            reference face you choose is sent to the provider at the start of the session. Only technical information
+            without images (date and duration of the session) is retained.
           </p>
           <p>
-            <span className="text-foreground">Fichiers enregistrés</span> : les photos et vidéos que vous sélectionnez
-            sont envoyées de façon chiffrée au prestataire concerné. Certaines sont également conservées par ChapCam,
-            comme indiqué ci-dessous, ainsi que les vidéos générées.
+            <span className="text-foreground">Saved files</span>: the photos and videos you select are sent, encrypted,
+            to the relevant provider. Some of them are also retained by ChapCam, as described below, along with the
+            generated videos.
           </p>
         </div>
 
         <div id="stockage-conservation-donnees-faciales" className="scroll-mt-24 space-y-3 pt-2">
-          <h3 className="font-semibold text-foreground">4.4 Lieux de stockage et durées de conservation</h3>
+          <h3 className="font-semibold text-foreground">4.4 Storage locations and retention periods</h3>
           <ul className="ml-5 list-disc space-y-2">
             <li>
-              <span className="text-foreground">Flux caméra Live Swap</span> : non conservé par ChapCam.
+              <span className="text-foreground">Live Swap camera feed</span>: not retained by ChapCam.
             </li>
             <li>
-              <span className="text-foreground">Photo de profil et visages de référence Live Swap</span> : stockés chez
-              Supabase (stockage de fichiers), jusqu&apos;à leur remplacement ou suppression par vous, ou jusqu&apos;à la
-              suppression de votre compte.
+              <span className="text-foreground">Profile picture and Live Swap reference faces</span>: stored with
+              Supabase (file storage) until you replace or delete them, or until you delete your account.
             </li>
             <li>
-              <span className="text-foreground">Photos et vidéos source Motion et Genjutsu</span> : stockées chez
-              Supabase, jusqu&apos;à la suppression de votre compte ou jusqu&apos;à votre demande de suppression.
+              <span className="text-foreground">Motion and Genjutsu source photos and videos</span>: stored with
+              Supabase until you delete your account or request their deletion.
             </li>
             <li>
-              <span className="text-foreground">Photos et vidéos source Photo → Vidéo, Traduction vidéo et
-              ChapVerify</span> : transmises au prestataire concerné ; ChapCam n&apos;en conserve pas de copie.
+              <span className="text-foreground">Photo → Video, Video Translation and ChapVerify source photos and
+              videos</span>: sent to the relevant provider; ChapCam does not keep a copy.
             </li>
             <li>
-              <span className="text-foreground">Vidéos générées</span> : stockées chez Vercel (Blob) et Cloudflare (R2
-              et Stream), jusqu&apos;à leur suppression par vous ou jusqu&apos;à la suppression de votre compte.
+              <span className="text-foreground">Generated videos</span>: stored with Vercel (Blob) and Cloudflare (R2
+              and Stream) until you delete them or delete your account.
             </li>
             <li>
-              <span className="text-foreground">Informations techniques sans image</span> (historique, statut des
-              générations, journaux de session) : stockées chez Neon (base de données) et supprimées avec votre compte.
+              <span className="text-foreground">Technical information without images</span> (history, generation
+              status, session logs): stored with Neon (database) and deleted with your account.
             </li>
           </ul>
           <p>
-            <span className="text-foreground">Chez nos prestataires</span> : la durée pendant laquelle chaque
-            prestataire conserve les fichiers qu&apos;il reçoit est régie par ses propres conditions et accords de
-            traitement des données. ChapCam ne contrôle pas directement cette durée et ne peut pas garantir la
-            suppression immédiate de ces fichiers chez le prestataire. Nous mettrons à jour cette section à mesure que
-            ces durées nous sont confirmées par écrit.
+            <span className="text-foreground">With our providers</span>: how long each provider retains the files it
+            receives is governed by its own terms and data processing agreements. ChapCam does not directly control
+            this period and cannot guarantee the immediate deletion of these files by the provider. We will update this
+            section as these periods are confirmed to us in writing.
           </p>
         </div>
 
         <div id="suppression-donnees-faciales" className="scroll-mt-24 space-y-3 pt-2">
-          <h3 className="font-semibold text-foreground">4.5 Suppression</h3>
+          <h3 className="font-semibold text-foreground">4.5 Deletion</h3>
           <ul className="ml-5 list-disc space-y-2">
+            <li>you can delete your generated videos (Creations) and remove your profile picture in the app;</li>
             <li>
-              vous pouvez supprimer vos vidéos générées (Créations) et retirer votre photo de profil depuis
-              l&apos;application ;
+              you can delete your account in the app (Profile). This erases the files and data retained by ChapCam
+              described in 4.4;
             </li>
             <li>
-              vous pouvez supprimer votre compte depuis l&apos;application (Profil). Cette suppression efface les
-              fichiers et données conservés par ChapCam décrits en 4.4 ;
-            </li>
-            <li>
-              vous pouvez demander à tout moment la suppression de vos données faciales à{" "}
-              <a href="mailto:contact@chapcam.com" className="text-primary hover:underline">
-                contact@chapcam.com
-              </a>
-              . Nous transmettrons, lorsque c&apos;est possible, votre demande aux prestataires concernés.
+              you can request the deletion of your face data at any time at <ContactEmail />. Where possible, we will
+              forward your request to the relevant providers.
             </li>
           </ul>
         </div>
 
         <div id="protection-droits-donnees-faciales" className="scroll-mt-24 space-y-3 pt-2">
-          <h3 className="font-semibold text-foreground">4.6 Mesures de protection et vos droits</h3>
+          <h3 className="font-semibold text-foreground">4.6 Safeguards and your rights</h3>
           <p>
-            Les échanges sont chiffrés en transit (HTTPS/TLS, WebRTC chiffré). Les clés d&apos;accès à nos prestataires
-            restent sur nos serveurs et ne sont jamais intégrées à l&apos;application ; Live Swap utilise un jeton
-            temporaire. L&apos;accès à la caméra et aux photos n&apos;est demandé qu&apos;au moment où vous utilisez une
-            fonctionnalité qui en a besoin, et votre refus n&apos;empêche pas d&apos;utiliser le reste de
-            l&apos;application. Vous ne devez fournir que des images de vous-même ou de personnes qui y ont consenti.
-            Vous pouvez retirer votre consentement à tout moment en cessant d&apos;utiliser ces fonctionnalités, en
-            désactivant l&apos;accès à la caméra dans les Réglages de votre appareil ou en nous contactant, et exercer
-            les droits décrits à la section 9.
+            Data is encrypted in transit (HTTPS/TLS, encrypted WebRTC). Our providers&apos; access keys stay on our
+            servers and are never embedded in the app; Live Swap uses a temporary token. Access to the camera and photos
+            is requested only when you use a feature that needs it, and refusing does not prevent you from using the
+            rest of the app. You must only provide images of yourself or of people who have consented. You can withdraw
+            your consent at any time by no longer using these features, by disabling camera access in your device
+            Settings, or by contacting us, and you can exercise the rights described in section 9.
           </p>
         </div>
       </LegalSection>
 
-      <LegalSection title="5. Durée de conservation">
+      <LegalSection title="5. Retention period">
         <p>
-          Nous conservons vos données aussi longtemps que votre compte est actif et que cela est nécessaire aux
-          finalités décrites, puis nous les supprimons ou les anonymisons. Nous pouvons conserver certaines données plus
-          longtemps lorsque la loi l&apos;exige (obligations légales, comptables ou fiscales) ou pour la constatation,
-          l&apos;exercice ou la défense de droits en justice. Les durées propres aux données faciales sont détaillées
-          à la section 4.4. Vous pouvez demander la suppression de vos données à{" "}
-          <a href="mailto:contact@chapcam.com" className="text-primary hover:underline">
-            contact@chapcam.com
-          </a>
-          .
+          We retain your data for as long as your account is active and as necessary for the purposes described, then
+          delete or anonymize it. We may retain certain data longer when required by law (legal, accounting or tax
+          obligations) or to establish, exercise or defend legal claims. Retention periods specific to face data are
+          detailed in section 4.4. You can request the deletion of your data at <ContactEmail />.
         </p>
       </LegalSection>
 
-      <LegalSection title="6. Partage de vos données">
-        <p>Nous ne vendons pas vos données personnelles. Nous pouvons les partager avec :</p>
+      <LegalSection title="6. Sharing your data">
+        <p>We do not sell your personal data. We may share it with:</p>
         <ul className="ml-5 list-disc space-y-2">
           <li>
-            nos prestataires techniques (hébergement, infrastructure de calcul, fournisseurs de paiement, outils
-            d&apos;analyse) agissant en notre nom et soumis à des obligations de confidentialité ;
+            our technical providers (hosting, computing infrastructure, payment providers, analytics tools) acting on
+            our behalf and bound by confidentiality obligations;
           </li>
+          <li>competent authorities, courts or bodies, when required by law or to defend our rights;</li>
           <li>
-            les autorités, juridictions ou organismes compétents, lorsque la loi l&apos;exige ou pour défendre nos
-            droits ;
-          </li>
-          <li>
-            un tiers en cas de fusion, acquisition ou cession de tout ou partie de notre activité, dans le respect de la
-            présente Politique.
+            a third party in the event of a merger, acquisition or sale of all or part of our business, in accordance
+            with this Policy.
           </li>
         </ul>
         <div id="sous-traitants" className="scroll-mt-24 space-y-3 pt-2">
-          <h3 className="font-semibold text-foreground">Prestataires et sous-traitants</h3>
+          <h3 className="font-semibold text-foreground">Providers and processors</h3>
           <p>
-            Prestataires d&apos;intelligence artificielle recevant des données faciales (photos, vidéos ou flux caméra)
-            pour générer les contenus que vous demandez :
+            Artificial intelligence providers receiving face data (photos, videos or camera feed) to generate the
+            content you request:
           </p>
           <ul className="ml-5 list-disc space-y-2">
-            <li>Decart : Live Swap (flux caméra en direct et visage de référence) ;</li>
-            <li>HeyGen : Photo → Vidéo et Traduction vidéo (photos et vidéos sélectionnées) ;</li>
-            <li>Higgsfield : Motion et Genjutsu (photos et vidéos sélectionnées) ;</li>
-            <li>Resemble AI : ChapVerify (images et vidéos soumises à l&apos;analyse).</li>
+            <li>Decart AI: Live Swap (live camera feed and reference face);</li>
+            <li>HeyGen: Photo → Video and Video Translation (selected photos and videos);</li>
+            <li>Higgsfield: Motion and Genjutsu (selected photos and videos);</li>
+            <li>Kling AI: Motion Control (selected photo and motion video);</li>
+            <li>Resemble AI: ChapVerify (images and videos submitted for analysis).</li>
           </ul>
-          <p>Prestataires ne recevant pas de données faciales :</p>
+          <p>Providers that do not receive face data:</p>
           <ul className="ml-5 list-disc space-y-2">
-            <li>ElevenLabs et Resemble AI : message vocal, génération et transformation de voix (audio uniquement) ;</li>
+            <li>ElevenLabs and Resemble AI: voice messages, voice generation and voice transformation (audio only);</li>
             <li>
-              Supabase (stockage de fichiers), Vercel (hébergement et Blob), Cloudflare (R2 et Stream) et Neon (base de
-              données) : hébergement et stockage des données décrits en 4.4, pour le compte de ChapCam.
+              Supabase (file storage), Vercel (hosting and Blob), Cloudflare (R2 and Stream) and Neon (database):
+              hosting and storage of the data described in 4.4, on behalf of ChapCam.
             </li>
           </ul>
           <p>
-            Ces prestataires peuvent traiter les données en dehors de l&apos;Espace économique européen, notamment aux
-            États-Unis (voir la section 7). Ces données ne sont ni vendues ni utilisées à des fins publicitaires par
-            ChapCam.
+            These providers may process data outside the European Economic Area, in particular in the United States
+            (see section 7). This data is neither sold nor used for advertising by ChapCam.
           </p>
         </div>
       </LegalSection>
 
-      <LegalSection title="7. Transferts hors de l'Union européenne">
+      <LegalSection title="7. Transfers outside the European Union">
         <p>
-          Lorsque vos données sont transférées en dehors de l&apos;Espace économique européen, nous mettons en place des
-          garanties appropriées (décisions d&apos;adéquation de la Commission européenne, clauses contractuelles types
-          ou tout autre mécanisme approuvé) afin d&apos;assurer un niveau de protection équivalent à celui garanti par
-          le RGPD.
+          When your data is transferred outside the European Economic Area, we put appropriate safeguards in place
+          (European Commission adequacy decisions, standard contractual clauses or any other approved mechanism) to
+          ensure a level of protection equivalent to that guaranteed by the GDPR.
         </p>
       </LegalSection>
 
-      <LegalSection title="8. Sécurité">
+      <LegalSection title="8. Security">
         <p>
-          Nous mettons en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données
-          contre l&apos;accès, la divulgation, l&apos;altération ou la destruction non autorisés. Aucun système
-          n&apos;étant totalement infaillible, nous ne pouvons toutefois garantir une sécurité absolue. Veillez à
-          protéger vos identifiants et l&apos;appareil que vous utilisez.
+          We implement appropriate technical and organizational measures to protect your data against unauthorized
+          access, disclosure, alteration or destruction. As no system is completely infallible, we cannot guarantee
+          absolute security. Please protect your credentials and the device you use.
         </p>
       </LegalSection>
 
-      <LegalSection title="9. Vos droits">
-        <p>Conformément au RGPD, vous disposez des droits suivants sur vos données personnelles :</p>
+      <LegalSection title="9. Your rights">
+        <p>Under the GDPR, you have the following rights over your personal data:</p>
         <ul className="ml-5 list-disc space-y-2">
-          <li>droit d&apos;accès à vos données ;</li>
-          <li>droit de rectification des données inexactes ;</li>
-          <li>droit à l&apos;effacement (« droit à l&apos;oubli ») ;</li>
-          <li>droit à la limitation et droit d&apos;opposition au traitement ;</li>
-          <li>droit à la portabilité de vos données ;</li>
+          <li>right of access to your data;</li>
+          <li>right to rectification of inaccurate data;</li>
+          <li>right to erasure (&quot;right to be forgotten&quot;);</li>
+          <li>right to restriction of processing and right to object;</li>
+          <li>right to data portability;</li>
+          <li>right to withdraw your consent at any time, in particular for the processing of your face data;</li>
           <li>
-            droit de retirer votre consentement à tout moment, notamment pour le traitement de vos données faciales ;
-          </li>
-          <li>
-            droit d&apos;introduire une réclamation auprès d&apos;une autorité de contrôle (en France, la CNIL —{" "}
-            <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+            right to lodge a complaint with a supervisory authority (in France, the CNIL —{" "}
+            <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className={linkClass}>
               cnil.fr
             </a>
             ).
           </li>
         </ul>
         <p>
-          Pour exercer vos droits, écrivez-nous à{" "}
-          <a href="mailto:contact@chapcam.com" className="text-primary hover:underline">
-            contact@chapcam.com
-          </a>
-          . Nous pourrons vous demander de vérifier votre identité avant de traiter votre demande.
+          To exercise your rights, write to us at <ContactEmail />. We may ask you to verify your identity before
+          processing your request.
         </p>
       </LegalSection>
 
-      <LegalSection title="10. Cookies et outils d'analyse">
+      <LegalSection title="10. Cookies and analytics tools">
         <p>
-          Nous utilisons des cookies et des outils de mesure d&apos;audience pour assurer le fonctionnement de la
-          Plateforme, analyser son utilisation et améliorer nos services. Vous pouvez gérer vos préférences de cookies
-          via les paramètres de votre navigateur. Certains cookies essentiels sont nécessaires au fonctionnement du
-          service.
+          We use cookies and audience measurement tools to operate the Platform, analyze its use and improve our
+          services. You can manage your cookie preferences in your browser settings. Some essential cookies are required
+          for the service to work.
         </p>
       </LegalSection>
 
-      <LegalSection title="11. Mineurs">
+      <LegalSection title="11. Minors">
         <p>
-          La Plateforme n&apos;est pas destinée aux personnes de moins de dix-huit (18) ans et nous ne collectons pas
-          sciemment de données auprès de mineurs. Si nous apprenons qu&apos;un mineur nous a transmis des données, nous
-          les supprimerons. Si vous pensez qu&apos;un mineur nous a fourni des données, contactez-nous à{" "}
-          <a href="mailto:contact@chapcam.com" className="text-primary hover:underline">
-            contact@chapcam.com
-          </a>
-          .
+          The Platform is not intended for people under eighteen (18) years of age, and we do not knowingly collect data
+          from minors. If we learn that a minor has provided us with data, we will delete it. If you believe a minor has
+          provided us with data, contact us at <ContactEmail />.
         </p>
       </LegalSection>
 
-      <LegalSection title="12. Modifications de cette politique">
+      <LegalSection title="12. Changes to this policy">
         <p>
-          Nous pouvons mettre à jour la présente Politique de Confidentialité. En cas de modification significative, nous
-          vous en informerons par une notification sur la Plateforme ou par tout autre moyen approprié. Nous vous
-          invitons à consulter régulièrement cette page.
+          We may update this Privacy Policy. In the event of a significant change, we will inform you through a
+          notification on the Platform or by any other appropriate means. We encourage you to review this page
+          regularly.
         </p>
       </LegalSection>
 
-      <LegalSection title="13. Nous contacter">
+      <LegalSection title="13. Contact us">
         <p>
-          Pour toute question relative à la présente Politique ou à vos données personnelles, contactez-nous à{" "}
-          <a href="mailto:contact@chapcam.com" className="text-primary hover:underline">
-            contact@chapcam.com
-          </a>
-          .
+          For any question about this Policy or your personal data, contact us at <ContactEmail />.
         </p>
       </LegalSection>
     </LegalShell>

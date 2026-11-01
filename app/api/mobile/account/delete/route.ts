@@ -164,6 +164,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    step.name = 'supabase:storage:live-faces'
+    for (let round = 0; round < MOTION_MAX_ROUNDS; round++) {
+      const { data: files, error } = await db.storage.from('live-faces').list(userId, { limit: MOTION_LIST_LIMIT })
+      if (error) throw error
+      const paths = (files ?? []).filter((f) => f.id).map((f) => `${userId}/${f.name}`)
+      if (paths.length === 0) break
+      const { error: removeError } = await db.storage.from('live-faces').remove(paths)
+      if (removeError) throw removeError
+    }
+
     step.name = 'supabase:auth:deleteUser'
     {
       const { error } = await db.auth.admin.deleteUser(userId)
