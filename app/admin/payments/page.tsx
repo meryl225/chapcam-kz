@@ -491,6 +491,12 @@ export default function AdminPaymentsPage() {
               Bonus réseaux
             </Link>
             <Link
+              href="/admin/ios-audit"
+              className="inline-flex items-center gap-2 rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-medium text-foreground"
+            >
+              Audit iOS
+            </Link>
+            <Link
               href="/admin/reports"
               className="inline-flex items-center gap-2 rounded-xl border border-red-500/40 bg-[#2a0d0d] px-4 py-2.5 text-sm font-medium text-red-300 transition-colors hover:border-red-400 hover:text-white"
             >
