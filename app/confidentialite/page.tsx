@@ -11,7 +11,7 @@ export default function ConfidentialitePage() {
   return (
     <LegalShell
       title="Politique de Confidentialité"
-      updatedAt="15 octobre 2026"
+      updatedAt="1er novembre 2026"
       intro="La présente Politique de Confidentialité explique comment ChapCam collecte, utilise, conserve et protège vos données personnelles lorsque vous utilisez notre plateforme de transformation de visage en temps réel. Elle s'applique conformément au Règlement Général sur la Protection des Données (RGPD) et aux lois applicables en matière de protection des données."
     >
       <LegalSection title="1. Responsable du traitement">
@@ -138,7 +138,9 @@ export default function ConfidentialitePage() {
             <span className="text-foreground">Temps réel (Live Swap)</span> : le flux de votre caméra est transmis de
             votre appareil directement au prestataire de transformation vidéo, de façon chiffrée, pendant la durée de la
             session. Il ne transite pas par les serveurs de ChapCam et n&apos;est ni enregistré ni conservé par ChapCam.
-            Seules des informations techniques sans image (date, durée de la session) sont conservées.
+            Seuls des messages techniques de connexion, sans image, passent par un relais Cloudflare. Le visage de
+            référence choisi est transmis au prestataire par nos serveurs au démarrage de la session, sans y être
+            copié. Seules des informations techniques sans image (date, durée de la session) sont conservées.
           </p>
           <p>
             <span className="text-foreground">Fichiers enregistrés</span> : les photos et vidéos que vous sélectionnez
@@ -257,9 +259,11 @@ export default function ConfidentialitePage() {
             pour générer les contenus que vous demandez :
           </p>
           <ul className="ml-5 list-disc space-y-2">
-            <li>Decart : Live Swap (flux caméra en direct et visage de référence) ;</li>
+            <li>Vidu (ShengShu Technology) : Live Swap (flux caméra en direct et visage de référence) ;</li>
+            <li>Decart : Live Swap, moteur de secours (flux caméra en direct et visage de référence) ;</li>
             <li>HeyGen : Photo → Vidéo et Traduction vidéo (photos et vidéos sélectionnées) ;</li>
             <li>Higgsfield : Motion et Genjutsu (photos et vidéos sélectionnées) ;</li>
+            <li>Kling AI : Motion Control (photo et vidéo de mouvement sélectionnées) ;</li>
             <li>Resemble AI : ChapVerify (images et vidéos soumises à l&apos;analyse).</li>
           </ul>
           <p>Prestataires ne recevant pas de données faciales :</p>
